@@ -79,9 +79,7 @@
 
           <view class="privacy-note">
             <view class="privacy-glyph"><text>i</text></view>
-            <text>
-              为持续同步教务信息，服务端会按本项目约定保存教务账号与密码。请只连接你信任的部署。
-            </text>
+            <view class="privacy-copy"><text>{{privacyNotice}}</text></view>
           </view>
         </form>
 

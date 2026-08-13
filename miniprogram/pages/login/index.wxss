@@ -204,6 +204,14 @@
   line-height: 1.55;
 }
 
+.privacy-copy {
+  display: block;
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  white-space: normal;
+}
+
 .privacy-glyph {
   display: flex;
   flex: none;
