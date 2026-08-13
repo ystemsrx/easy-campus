@@ -6,6 +6,7 @@
     enhanced
     show-scrollbar="{{false}}"
     refresher-enabled
+    refresher-default-style="none"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscroll="onScroll"
@@ -23,17 +24,48 @@
         </view>
       </view>
 
-      <view class="hero-card stagger-item stagger-1">
+      <view
+        class="hero-card pressable stagger-item stagger-1"
+        bindtap="openTimetable"
+        hover-class="hero-card--pressed"
+        aria-role="button"
+        aria-label="今日课程，当前时间 {{currentTime}}"
+      >
         <view class="hero-glow"></view>
         <view class="hero-topline">
-          <text class="hero-kicker">EASY SWU</text>
-          <view class="hero-live"><view class="live-dot"></view><text>按需同步</text></view>
+          <view>
+            <text class="hero-kicker">TODAY</text>
+            <text class="hero-title">今日课程</text>
+          </view>
+          <view class="hero-clock"><text>{{currentTime}}</text></view>
         </view>
-        <text class="hero-title">今天想查什么？</text>
-        <text class="hero-description">成绩会智能缓存，消息、通知、考试和空教室保持实时更新。</text>
+
+        <view wx:if="{{todayCourses.length}}" class="hero-course-list">
+          <view
+            wx:for="{{todayCourses}}"
+            wx:key="id"
+            class="hero-course-row {{index < todayCourses.length - 1 ? 'hero-course-row--divided' : ''}}"
+          >
+            <view class="hero-course-status {{item.current ? 'hero-course-status--current' : ''}}">
+              <view wx:if="{{item.current}}" class="hero-current-dot"></view>
+              <text>{{item.statusLabel}}</text>
+            </view>
+            <view class="hero-course-copy">
+              <text class="hero-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
+              <text class="hero-course-location" overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text>
+            </view>
+            <text class="hero-course-chevron">›</text>
+          </view>
+        </view>
+
+        <view wx:else class="hero-course-empty">
+          <text class="hero-course-empty-title">今天的课程已结束</text>
+          <text class="hero-course-empty-caption">可以进入课表查看本周安排</text>
+        </view>
+
         <view class="hero-foot">
-          <text>90 天滑动会话</text>
-          <text class="hero-arrow">→</text>
+          <text>{{remainingCourseCount ? '还有 ' + remainingCourseCount + ' 门课程' : '查看完整课表'}}</text>
+          <view class="hero-foot-action"><text>本周课表</text><text class="hero-arrow">›</text></view>
         </view>
       </view>
 
@@ -47,7 +79,7 @@
       <view class="quick-grid stagger-item stagger-2">
         <view
           wx:for="{{quickActions}}"
-          wx:key="link"
+          wx:key="title"
           class="quick-card card pressable"
           data-route="{{item.route}}"
           bindtap="onQuickAction"

@@ -105,8 +105,8 @@ Page({
   async loadCalendar(academicYear?: number, refresh = false) {
     this.setData({
       loading: !this.data.calendar,
-      refreshing: refresh,
-      imageLoading: true,
+      refreshing: false,
+      imageLoading: !this.data.imagePath,
       errorMessage: "",
     });
     try {

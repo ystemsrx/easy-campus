@@ -6,6 +6,7 @@
     enhanced
     show-scrollbar="{{false}}"
     refresher-enabled
+    refresher-default-style="none"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="loadMore"
@@ -134,7 +135,7 @@
           </view>
         </view>
 
-        <view wx:if="{{loadingMore}}" class="rooms-load-more"><view class="rooms-spinner"></view><text>加载更多</text></view>
+        <view wx:if="{{loadingMore}}" class="rooms-load-more"><text>正在载入更多…</text></view>
         <text wx:elif="{{page >= totalPages}}" class="rooms-end">以上是全部可用教室</text>
       </view>
 

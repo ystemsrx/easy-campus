@@ -9,8 +9,9 @@
     "check:json": "node scripts/check-json.js",
     "check:wxml": "node scripts/check-wxml.js",
     "check:timezone": "node scripts/check-timezones.js",
+    "check:timetable": "node scripts/check-timetable.js",
     "check:lf": "node scripts/check-lf.js",
-    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:timezone && npm run check:lf && npm run check:wxss",
+    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:timezone && npm run check:timetable && npm run check:lf && npm run check:wxss",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },

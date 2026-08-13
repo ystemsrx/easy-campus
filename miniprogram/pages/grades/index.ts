@@ -155,7 +155,7 @@ Page({
     const sequence = ++requestSequence;
     this.setData({
       loading: reset && !this.data.gradeItems.length,
-      refreshing: refresh,
+      refreshing: false,
       loadingMore: !reset,
       errorMessage: "",
     });

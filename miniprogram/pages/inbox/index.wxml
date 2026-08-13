@@ -43,6 +43,7 @@
         enhanced
         show-scrollbar="{{false}}"
         refresher-enabled
+        refresher-default-style="none"
         refresher-triggered="{{messageRefreshing}}"
         bindrefresherrefresh="refreshMessages"
         bindscrolltolower="loadMoreMessages"
@@ -117,7 +118,7 @@
               <text wx:else class="message-content">{{item.content}}</text>
             </view>
 
-            <view wx:if="{{messageLoadingMore}}" class="load-more"><view class="mini-spinner"></view><text>加载更多</text></view>
+            <view wx:if="{{messageLoadingMore}}" class="load-more"><text>正在载入更多…</text></view>
             <text wx:elif="{{messagePage >= messageTotalPages}}" class="end-caption">已经到底了</text>
           </view>
 
@@ -150,6 +151,7 @@
         enhanced
         show-scrollbar="{{false}}"
         refresher-enabled
+        refresher-default-style="none"
         refresher-triggered="{{noticeRefreshing}}"
         bindrefresherrefresh="refreshNotices"
         bindscrolltolower="loadMoreNotices"
@@ -201,7 +203,7 @@
               </view>
               <text class="notice-item-chevron">›</text>
             </view>
-            <view wx:if="{{noticeLoadingMore}}" class="load-more"><view class="mini-spinner"></view><text>加载更多</text></view>
+            <view wx:if="{{noticeLoadingMore}}" class="load-more"><text>正在载入更多…</text></view>
             <text wx:elif="{{noticePage >= noticeTotalPages}}" class="end-caption">已经到底了</text>
           </view>
 

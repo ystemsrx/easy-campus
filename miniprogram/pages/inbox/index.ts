@@ -97,6 +97,30 @@ function toMessageView(message: TeachingMessage): MessageView {
   }
 }
 
+function mergeMessages(
+  incoming: MessageView[],
+  existing: MessageView[],
+): MessageView[] {
+  const seen = new Set<string>();
+  return [...incoming, ...existing].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function mergeNotices(
+  incoming: NoticeView[],
+  existing: NoticeView[],
+): NoticeView[] {
+  const seen = new Set<string>();
+  return [...incoming, ...existing].filter((item) => {
+    if (seen.has(item.link)) return false;
+    seen.add(item.link);
+    return true;
+  });
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -157,9 +181,9 @@ Page({
           : this.data.activeTab;
     this.setData({ activeTab });
     if (activeTab === 0) {
-      void this.loadMessages(true, false);
+      void this.loadMessages(true, false, this.data.messageItems.length > 0);
     } else {
-      void this.loadNotices(true, false);
+      void this.loadNotices(true, false, this.data.noticeItems.length > 0);
     }
   },
   applyAppearance() {
@@ -183,12 +207,12 @@ Page({
   },
   loadActiveTab(index: number) {
     if (index === 0) {
-      void this.loadMessages(true, false);
+      void this.loadMessages(true, false, this.data.messageItems.length > 0);
     } else {
-      void this.loadNotices(true, false);
+      void this.loadNotices(true, false, this.data.noticeItems.length > 0);
     }
   },
-  async loadMessages(reset: boolean, refresh: boolean) {
+  async loadMessages(reset: boolean, refresh: boolean, mergeFresh = false) {
     if (
       (this.data.messageLoading || this.data.messageLoadingMore) &&
       !refresh
@@ -199,7 +223,7 @@ Page({
     const sequence = ++messageRequestSequence;
     this.setData({
       messageLoading: reset && this.data.messageItems.length === 0,
-      messageRefreshing: refresh,
+      messageRefreshing: false,
       messageLoadingMore: !reset,
       messageError: "",
     });
@@ -218,8 +242,10 @@ Page({
       const incoming = result.data.items.map(toMessageView);
       this.setData({
         messageItems: reset
-          ? incoming
-          : [...this.data.messageItems, ...incoming],
+          ? mergeFresh
+            ? mergeMessages(incoming, this.data.messageItems)
+            : incoming
+          : mergeMessages(this.data.messageItems, incoming),
         messagePage: result.data.pagination.page,
         messageTotalPages: result.data.pagination.totalPages,
       });
@@ -237,7 +263,7 @@ Page({
       }
     }
   },
-  async loadNotices(reset: boolean, refresh: boolean) {
+  async loadNotices(reset: boolean, refresh: boolean, mergeFresh = false) {
     if ((this.data.noticeLoading || this.data.noticeLoadingMore) && !refresh) {
       return;
     }
@@ -245,7 +271,7 @@ Page({
     const sequence = ++noticeRequestSequence;
     this.setData({
       noticeLoading: reset && this.data.noticeItems.length === 0,
-      noticeRefreshing: refresh,
+      noticeRefreshing: false,
       noticeLoadingMore: !reset,
       noticeError: "",
     });
@@ -264,7 +290,11 @@ Page({
         displayTime: formatDateTime(notice.publishedAt),
       }));
       this.setData({
-        noticeItems: reset ? incoming : [...this.data.noticeItems, ...incoming],
+        noticeItems: reset
+          ? mergeFresh
+            ? mergeNotices(incoming, this.data.noticeItems)
+            : incoming
+          : mergeNotices(this.data.noticeItems, incoming),
         noticePage: result.data.pagination.page,
         noticeTotalPages: result.data.pagination.totalPages,
       });
@@ -284,11 +314,11 @@ Page({
   },
   refreshMessages() {
     haptic("light");
-    void this.loadMessages(true, true);
+    void this.loadMessages(true, true, true);
   },
   refreshNotices() {
     haptic("light");
-    void this.loadNotices(true, true);
+    void this.loadNotices(true, true, true);
   },
   loadMoreMessages() {
     if (this.data.messagePage < this.data.messageTotalPages) {

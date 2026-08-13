@@ -90,7 +90,7 @@ Page({
     }
     this.applyAppearance();
     this.syncTabBarAppearance();
-    void this.loadUser(false);
+    void this.loadUser();
   },
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
@@ -122,13 +122,13 @@ Page({
       profileRows: buildProfileRows(user),
     });
   },
-  async loadUser(refreshing: boolean) {
+  async loadUser() {
     if (this.data.loading) {
       return;
     }
     this.setData({
       loading: !this.data.profileRows.length,
-      refreshing,
+      refreshing: false,
       errorMessage: "",
     });
     try {
@@ -144,7 +144,7 @@ Page({
   },
   onRefresh() {
     haptic("light");
-    void this.loadUser(true);
+    void this.loadUser();
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const scrolled = event.detail.scrollTop > 18;

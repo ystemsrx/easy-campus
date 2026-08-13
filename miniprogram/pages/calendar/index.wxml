@@ -6,6 +6,7 @@
     enhanced
     show-scrollbar="{{false}}"
     refresher-enabled
+    refresher-default-style="none"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscroll="onScroll"

@@ -1,6 +1,12 @@
 import { getCurrentUser } from "../../services/auth";
 import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import {
+  coursePreview,
+  formatClock,
+  remainingCourses,
+  type TimetableCourse,
+} from "../../data/timetable";
 import type { Notice, TeachingMessage } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import {
@@ -26,6 +32,25 @@ interface NoticePreview {
   title: string;
   time: string;
   link: string;
+}
+
+interface TodayCoursePreview extends TimetableCourse {
+  statusLabel: string;
+  current: boolean;
+}
+
+let courseClockTimer: number | undefined;
+
+function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
+  const preview = coursePreview(now, 3);
+  return preview.courses.map((course) => {
+    const current = course.id === preview.currentCourseId;
+    return {
+      ...course,
+      current,
+      statusLabel: current ? "进行中" : `${course.startTime}–${course.endTime}`,
+    };
+  });
 }
 
 function getGreeting(): string {
@@ -86,6 +111,34 @@ function toNoticePreview(notice: Notice): NoticePreview {
   };
 }
 
+function mergeMessagePreviews(
+  incoming: MessagePreview[],
+  existing: MessagePreview[],
+): MessagePreview[] {
+  const seen = new Set<string>();
+  return [...incoming, ...existing]
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .slice(0, 3);
+}
+
+function mergeNoticePreviews(
+  incoming: NoticePreview[],
+  existing: NoticePreview[],
+): NoticePreview[] {
+  const seen = new Set<string>();
+  return [...incoming, ...existing]
+    .filter((item) => {
+      if (seen.has(item.link)) return false;
+      seen.add(item.link);
+      return true;
+    })
+    .slice(0, 3);
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -102,6 +155,9 @@ Page({
     dateLabel: formatFriendlyDate(today()),
     userName: "同学",
     organizationName: "",
+    currentTime: formatClock(),
+    todayCourses: todayCoursePreview(),
+    remainingCourseCount: remainingCourses().length,
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
     quickActions: [
@@ -135,7 +191,7 @@ Page({
       },
       {
         title: "课表",
-        caption: "功能已预留",
+        caption: "查看本周课程",
         glyph: "课",
         tone: "orange",
         route: "/pages/timetable/index",
@@ -162,7 +218,36 @@ Page({
       themeClass: this.data.themeClass,
       motionClass: this.data.motionClass,
     });
+    this.updateTodayCourses();
+    this.stopCourseClock();
+    courseClockTimer = setInterval(
+      () => this.updateTodayCourses(),
+      30000,
+    ) as unknown as number;
     void this.loadDashboard(false);
+  },
+  onHide() {
+    this.stopCourseClock();
+  },
+  onUnload() {
+    this.stopCourseClock();
+  },
+  stopCourseClock() {
+    if (courseClockTimer !== undefined) {
+      clearInterval(courseClockTimer);
+      courseClockTimer = undefined;
+    }
+  },
+  updateTodayCourses() {
+    const now = new Date();
+    const courses = todayCoursePreview(now);
+    this.setData({
+      currentTime: formatClock(now),
+      todayCourses: courses,
+      remainingCourseCount: remainingCourses(now).length,
+      greeting: getGreeting(),
+      dateLabel: formatFriendlyDate(today()),
+    });
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -180,7 +265,7 @@ Page({
 
     this.setData({
       loading: !this.data.loaded,
-      refreshing: refresh,
+      refreshing: false,
       errorMessage: "",
       greeting: getGreeting(),
       dateLabel: formatFriendlyDate(today()),
@@ -209,10 +294,16 @@ Page({
         userResult.value.profile.organizationName || "西南大学";
     }
     if (messageResult.status === "fulfilled") {
-      patch.messages = messageResult.value.data.items.map(toMessagePreview);
+      patch.messages = mergeMessagePreviews(
+        messageResult.value.data.items.map(toMessagePreview),
+        this.data.messages,
+      );
     }
     if (noticeResult.status === "fulfilled") {
-      patch.notices = noticeResult.value.data.items.map(toNoticePreview);
+      patch.notices = mergeNoticePreviews(
+        noticeResult.value.data.items.map(toNoticePreview),
+        this.data.notices,
+      );
     }
     if (
       messageResult.status === "rejected" &&
@@ -240,6 +331,10 @@ Page({
     if (route) {
       void navigateTo(route);
     }
+  },
+  openTimetable() {
+    haptic("light");
+    void navigateTo("/pages/timetable/index");
   },
   openMessages() {
     wx.setStorageSync("easy-swu:inbox-tab", "messages");

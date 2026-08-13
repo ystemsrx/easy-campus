@@ -399,7 +399,7 @@ Page({
     const sequence = ++roomsSequence;
     this.setData({
       querying: reset && !this.data.roomItems.length,
-      refreshing: reset && this.data.hasQueried,
+      refreshing: false,
       loadingMore: !reset,
       errorMessage: "",
     });

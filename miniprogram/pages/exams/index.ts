@@ -224,7 +224,7 @@ Page({
     const sequence = ++examsSequence;
     this.setData({
       loading: reset && !this.data.examItems.length,
-      refreshing: refresh,
+      refreshing: false,
       loadingMore: !reset,
       errorMessage: "",
     });

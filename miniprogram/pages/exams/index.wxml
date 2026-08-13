@@ -6,6 +6,7 @@
     enhanced
     show-scrollbar="{{false}}"
     refresher-enabled
+    refresher-default-style="none"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="loadMore"
@@ -90,7 +91,7 @@
           <text class="exam-chevron">›</text>
         </view>
 
-        <view wx:if="{{loadingMore}}" class="exam-load-more"><view class="exam-spinner"></view><text>加载更多</text></view>
+        <view wx:if="{{loadingMore}}" class="exam-load-more"><text>正在载入更多…</text></view>
         <text wx:elif="{{page >= totalPages}}" class="exam-end">以上是全部考试安排</text>
       </view>
 
