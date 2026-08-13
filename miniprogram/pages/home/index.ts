@@ -1,4 +1,10 @@
 import { getCurrentUser } from "../../services/auth";
+import {
+  downloadPublicationMedia,
+  getPublicationFeed,
+  markPublicationRead,
+  recordAnnouncementPopup,
+} from "../../services/content";
 import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import {
@@ -7,7 +13,7 @@ import {
   remainingCourses,
   type TimetableCourse,
 } from "../../data/timetable";
-import type { Notice, TeachingMessage } from "../../types/api";
+import type { Notice, Publication, TeachingMessage } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import {
   currentLocalHour,
@@ -17,6 +23,7 @@ import {
 } from "../../utils/date";
 import { formatSchedule } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
+import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 
 interface MessagePreview {
@@ -39,7 +46,38 @@ interface TodayCoursePreview extends TimetableCourse {
   current: boolean;
 }
 
+interface PublicationPreview extends Publication {
+  contentHtml: string;
+  previewText: string;
+  timeLabel: string;
+  isLong: boolean;
+  expanded: boolean;
+}
+
 let courseClockTimer: number | undefined;
+let publicationPanelTimer: number | undefined;
+let announcementModalTimer: number | undefined;
+let publicationRequestInFlight = false;
+let homeVisible = false;
+let queuedAnnouncements: Publication[] = [];
+let automaticPopupsThisEntry = new Set<string>();
+
+function publicationPreview(
+  publication: Publication,
+  expanded = false,
+): PublicationPreview {
+  const plainText = stripMarkdown(publication.contentMarkdown);
+  return {
+    ...publication,
+    contentHtml: renderMarkdown(publication.contentMarkdown, {
+      accentColor: publication.accentColor,
+    }),
+    previewText: plainText,
+    timeLabel: formatDateTime(publication.startsAt),
+    isLong: plainText.length > 78 || publication.contentMarkdown.includes("\n"),
+    expanded,
+  };
+}
 
 function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
   const preview = coursePreview(now, 3);
@@ -160,6 +198,15 @@ Page({
     remainingCourseCount: remainingCourses().length,
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
+    announcements: [] as PublicationPreview[],
+    platformNotifications: [] as PublicationPreview[],
+    publicationUnreadCount: 0,
+    publicationUnreadLabel: "",
+    publicationPanelMounted: false,
+    publicationPanelOpen: false,
+    announcementModalMounted: false,
+    announcementModalOpen: false,
+    activeAnnouncement: null as PublicationPreview | null,
     quickActions: [
       {
         title: "成绩",
@@ -212,6 +259,8 @@ Page({
     if (!ensureAuthenticated()) {
       return;
     }
+    homeVisible = true;
+    automaticPopupsThisEntry = new Set<string>();
     this.applyAppearance();
     this.getTabBar().setData({
       selected: 0,
@@ -225,12 +274,17 @@ Page({
       30000,
     ) as unknown as number;
     void this.loadDashboard(false);
+    void this.loadPublicationFeed();
   },
   onHide() {
+    homeVisible = false;
     this.stopCourseClock();
+    this.resetPublicationLayers();
   },
   onUnload() {
+    homeVisible = false;
     this.stopCourseClock();
+    this.resetPublicationLayers();
   },
   stopCourseClock() {
     if (courseClockTimer !== undefined) {
@@ -257,6 +311,211 @@ Page({
     if (scrolled !== this.data.headerScrolled) {
       this.setData({ headerScrolled: scrolled });
     }
+  },
+  async loadPublicationFeed() {
+    if (publicationRequestInFlight) return;
+    publicationRequestInFlight = true;
+    try {
+      const feed = await getPublicationFeed();
+      const expandedIds = new Set(
+        this.data.platformNotifications
+          .filter((item) => item.expanded)
+          .map((item) => item.id),
+      );
+      const announcements = feed.announcements.map((item) =>
+        publicationPreview(item),
+      );
+      const platformNotifications = feed.notifications.map((item) =>
+        publicationPreview(item, expandedIds.has(item.id)),
+      );
+      this.setData({
+        announcements,
+        platformNotifications,
+        publicationUnreadCount: feed.unreadCount,
+        publicationUnreadLabel:
+          feed.unreadCount > 99 ? "99+" : String(feed.unreadCount || ""),
+      });
+
+      if (homeVisible && !this.data.announcementModalMounted) {
+        queuedAnnouncements = feed.announcements.filter(
+          (item) => item.shouldPopup && !automaticPopupsThisEntry.has(item.id),
+        );
+        this.showNextQueuedAnnouncement();
+      }
+    } catch {
+      // 平台公告是附加信息。刷新失败时保留当前内容，不打断主页使用。
+    } finally {
+      publicationRequestInFlight = false;
+    }
+  },
+  togglePublicationPanel() {
+    haptic("light");
+    if (this.data.publicationPanelOpen) {
+      this.closePublicationPanel();
+      return;
+    }
+    if (publicationPanelTimer !== undefined) {
+      clearTimeout(publicationPanelTimer);
+      publicationPanelTimer = undefined;
+    }
+    this.setData({ publicationPanelMounted: true });
+    setTimeout(() => {
+      if (homeVisible) this.setData({ publicationPanelOpen: true });
+    }, 16);
+  },
+  closePublicationPanel() {
+    if (!this.data.publicationPanelMounted) return;
+    this.setData({ publicationPanelOpen: false });
+    if (publicationPanelTimer !== undefined) {
+      clearTimeout(publicationPanelTimer);
+    }
+    publicationPanelTimer = setTimeout(() => {
+      this.setData({ publicationPanelMounted: false });
+      publicationPanelTimer = undefined;
+    }, 260) as unknown as number;
+  },
+  resetPublicationLayers() {
+    if (publicationPanelTimer !== undefined) {
+      clearTimeout(publicationPanelTimer);
+      publicationPanelTimer = undefined;
+    }
+    if (announcementModalTimer !== undefined) {
+      clearTimeout(announcementModalTimer);
+      announcementModalTimer = undefined;
+    }
+    queuedAnnouncements = [];
+    this.setData({
+      publicationPanelMounted: false,
+      publicationPanelOpen: false,
+      announcementModalMounted: false,
+      announcementModalOpen: false,
+      activeAnnouncement: null,
+    });
+  },
+  stopPropagation() {},
+  onAnnouncementTap(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    const announcement = this.data.announcements.find((item) => item.id === id);
+    if (!announcement) return;
+    haptic("light");
+    queuedAnnouncements = [];
+    this.closePublicationPanel();
+    void this.presentAnnouncement(announcement, false);
+  },
+  onPlatformNotificationTap(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    const notification = this.data.platformNotifications.find(
+      (item) => item.id === id,
+    );
+    if (!notification) return;
+    haptic("light");
+    this.markPublicationLocallyRead(id);
+    if (!notification.isRead) {
+      void markPublicationRead(id).catch(() => undefined);
+    }
+    if (notification.isLong) {
+      this.setData({
+        platformNotifications: this.data.platformNotifications.map((item) =>
+          item.id === id ? { ...item, expanded: !item.expanded } : item,
+        ),
+      });
+    }
+  },
+  showNextQueuedAnnouncement() {
+    if (
+      !homeVisible ||
+      this.data.announcementModalMounted ||
+      !queuedAnnouncements.length
+    ) {
+      return;
+    }
+    const next = queuedAnnouncements.shift();
+    if (next) void this.presentAnnouncement(next, true);
+  },
+  async presentAnnouncement(
+    publication: Publication | PublicationPreview,
+    automatic: boolean,
+  ) {
+    const preview = publicationPreview(publication);
+    this.closePublicationPanel();
+    this.setData({
+      activeAnnouncement: preview,
+      announcementModalMounted: true,
+    });
+    setTimeout(() => {
+      if (homeVisible && this.data.activeAnnouncement?.id === preview.id) {
+        this.setData({ announcementModalOpen: true });
+      }
+    }, 16);
+    this.markPublicationLocallyRead(preview.id);
+    if (automatic) {
+      automaticPopupsThisEntry.add(preview.id);
+      void recordAnnouncementPopup(preview.id).catch(() => undefined);
+    } else if (!preview.isRead) {
+      void markPublicationRead(preview.id).catch(() => undefined);
+    }
+
+    if (!preview.media.length) return;
+    const downloaded = await Promise.all(
+      preview.media.map(async (asset) => ({
+        id: asset.id.toLowerCase(),
+        path: await downloadPublicationMedia(asset),
+      })),
+    );
+    const mediaUrls: Record<string, string> = {};
+    for (const asset of downloaded) {
+      if (asset.path) mediaUrls[asset.id] = asset.path;
+    }
+    if (this.data.activeAnnouncement?.id !== preview.id) return;
+    this.setData({
+      activeAnnouncement: {
+        ...this.data.activeAnnouncement,
+        contentHtml: renderMarkdown(preview.contentMarkdown, {
+          accentColor: preview.accentColor,
+          mediaUrls,
+        }),
+      },
+    });
+  },
+  markPublicationLocallyRead(id: string) {
+    const wasUnread = [
+      ...this.data.announcements,
+      ...this.data.platformNotifications,
+    ].some((item) => item.id === id && !item.isRead);
+    if (!wasUnread) return;
+    const publicationUnreadCount = Math.max(
+      0,
+      this.data.publicationUnreadCount - 1,
+    );
+    this.setData({
+      announcements: this.data.announcements.map((item) =>
+        item.id === id ? { ...item, isRead: true } : item,
+      ),
+      platformNotifications: this.data.platformNotifications.map((item) =>
+        item.id === id ? { ...item, isRead: true } : item,
+      ),
+      publicationUnreadCount,
+      publicationUnreadLabel:
+        publicationUnreadCount > 99
+          ? "99+"
+          : String(publicationUnreadCount || ""),
+    });
+  },
+  closeAnnouncementModal() {
+    if (!this.data.announcementModalMounted) return;
+    haptic("light");
+    this.setData({ announcementModalOpen: false });
+    if (announcementModalTimer !== undefined) {
+      clearTimeout(announcementModalTimer);
+    }
+    announcementModalTimer = setTimeout(() => {
+      this.setData({
+        announcementModalMounted: false,
+        activeAnnouncement: null,
+      });
+      announcementModalTimer = undefined;
+      setTimeout(() => this.showNextQueuedAnnouncement(), 90);
+    }, 280) as unknown as number;
   },
   async loadDashboard(refresh: boolean) {
     if (this.data.loading && this.data.loaded && !refresh) {
@@ -319,6 +578,7 @@ Page({
   onRefresh() {
     haptic("light");
     void this.loadDashboard(true);
+    void this.loadPublicationFeed();
   },
   onQuickAction(event: WechatMiniprogram.TouchEvent) {
     const route = String(event.currentTarget.dataset.route || "");

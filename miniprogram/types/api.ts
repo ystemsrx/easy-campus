@@ -146,6 +146,45 @@ export interface Notice {
   publishedAt: string;
 }
 
+export type PublicationKind = "announcement" | "notification";
+export type PublicationIconTone = "default" | "warning" | "success" | "info";
+export type PublicationReminderMode = "once" | "always" | "inbox";
+
+export interface PublicationMedia {
+  id: string;
+  publicationId: string;
+  originalName: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+  url: string;
+}
+
+export interface Publication {
+  id: string;
+  kind: PublicationKind;
+  title: string;
+  contentMarkdown: string;
+  iconTone: PublicationIconTone;
+  accentColor: string;
+  visibilityMode: "permanent" | "timed";
+  reminderMode: PublicationReminderMode;
+  startsAt: string;
+  expiresAt: string | null;
+  createdAt: string;
+  isRead: boolean;
+  readAt: string | null;
+  shouldPopup: boolean;
+  media: PublicationMedia[];
+}
+
+export interface PublicationFeed {
+  items: Publication[];
+  announcements: Publication[];
+  notifications: Publication[];
+  unreadCount: number;
+}
+
 export type GradeValue = number | string | null;
 
 export interface GradeComponent {

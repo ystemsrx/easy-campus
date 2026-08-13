@@ -19,8 +19,20 @@
           <text class="welcome-name">{{userName}}</text>
           <text class="welcome-date">{{dateLabel}} · {{organizationName || '西南大学'}}</text>
         </view>
-        <view class="status-orb {{serviceHealthy ? '' : 'status-orb--muted'}}" aria-label="{{serviceLabel}}">
-          <view class="status-core {{serviceHealthy ? '' : 'status-core--muted'}}"></view>
+        <view
+          class="publication-bell pressable"
+          bindtap="togglePublicationPanel"
+          hover-class="publication-bell--pressed"
+          aria-role="button"
+          aria-label="公告与通知，{{publicationUnreadCount}} 条未读"
+        >
+          <view class="bell-glyph">
+            <view class="bell-dome"></view>
+            <view class="bell-clapper"></view>
+          </view>
+          <view wx:if="{{publicationUnreadCount}}" class="publication-badge">
+            <text>{{publicationUnreadLabel}}</text>
+          </view>
         </view>
       </view>
 
@@ -164,4 +176,137 @@
       </view>
     </view>
   </scroll-view>
+
+  <view
+    wx:if="{{publicationPanelMounted}}"
+    class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}"
+  >
+    <view class="publication-popover-dismiss" catchtap="closePublicationPanel"></view>
+    <view class="publication-popover" catchtap="stopPropagation">
+      <view class="publication-popover-header">
+        <view>
+          <text class="publication-popover-eyebrow">INBOX</text>
+          <text class="publication-popover-title">公告与通知</text>
+        </view>
+        <view wx:if="{{publicationUnreadCount}}" class="publication-unread-summary">
+          <text>{{publicationUnreadCount}} 条未读</text>
+        </view>
+        <view wx:else class="publication-unread-summary publication-unread-summary--clear">
+          <text>已全部读完</text>
+        </view>
+      </view>
+
+      <scroll-view
+        class="publication-popover-scroll"
+        type="list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+      >
+        <view wx:if="{{announcements.length}}" class="publication-group">
+          <view class="publication-group-header">
+            <text>公告</text>
+            <text>{{announcements.length}}</text>
+          </view>
+          <view class="publication-group-card">
+            <view
+              wx:for="{{announcements}}"
+              wx:key="id"
+              class="platform-announcement-row pressable {{!item.isRead ? 'publication-row--unread' : ''}} {{index < announcements.length - 1 ? 'publication-row--divided' : ''}}"
+              data-id="{{item.id}}"
+              catchtap="onAnnouncementTap"
+              hover-class="publication-row--pressed"
+            >
+              <view class="publication-tone publication-tone--{{item.iconTone}}" style="color: {{item.accentColor}};">
+                <view class="mini-megaphone"><view></view></view>
+              </view>
+              <text class="platform-announcement-title" overflow="ellipsis" max-lines="2">{{item.title}}</text>
+              <view wx:if="{{!item.isRead}}" class="publication-unread-dot"></view>
+              <text class="publication-row-chevron">›</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{platformNotifications.length}}" class="publication-group">
+          <view class="publication-group-header">
+            <text>通知</text>
+            <text>{{platformNotifications.length}}</text>
+          </view>
+          <view class="publication-group-card">
+            <view
+              wx:for="{{platformNotifications}}"
+              wx:key="id"
+              class="platform-notification-row pressable {{!item.isRead ? 'publication-row--unread' : ''}} {{index < platformNotifications.length - 1 ? 'publication-row--divided' : ''}}"
+              data-id="{{item.id}}"
+              catchtap="onPlatformNotificationTap"
+              hover-class="publication-row--pressed"
+            >
+              <view class="platform-notification-head">
+                <view class="publication-tone publication-tone--{{item.iconTone}}" style="color: {{item.accentColor}};">
+                  <view class="mini-bell"><view></view></view>
+                </view>
+                <view class="platform-notification-copy">
+                  <view class="platform-notification-title-row">
+                    <text class="platform-notification-title">{{item.title}}</text>
+                    <view wx:if="{{!item.isRead}}" class="publication-unread-dot"></view>
+                  </view>
+                  <text class="platform-notification-time">{{item.timeLabel}}</text>
+                </view>
+              </view>
+              <view class="platform-notification-body {{item.expanded ? 'platform-notification-body--expanded' : ''}}">
+                <rich-text wx:if="{{item.expanded}}" nodes="{{item.contentHtml}}"></rich-text>
+                <text wx:else overflow="ellipsis" max-lines="2">{{item.previewText}}</text>
+              </view>
+              <text wx:if="{{item.isLong}}" class="platform-notification-expand">{{item.expanded ? '收起' : '展开'}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{!announcements.length && !platformNotifications.length}}" class="publication-empty">
+          <view class="publication-empty-bell">
+            <view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view>
+          </view>
+          <text class="publication-empty-title">暂时没有新内容</text>
+          <text class="publication-empty-caption">公告和通知会在这里集中显示</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view
+    wx:if="{{announcementModalMounted && activeAnnouncement}}"
+    class="announcement-modal-layer {{announcementModalOpen ? 'announcement-modal-layer--open' : ''}}"
+  >
+    <view class="announcement-modal-backdrop" catchtap="closeAnnouncementModal"></view>
+    <view class="announcement-modal" catchtap="stopPropagation">
+      <view class="announcement-accent" style="background-color: {{activeAnnouncement.accentColor}};"></view>
+      <view class="announcement-header">
+        <view class="announcement-icon publication-tone--{{activeAnnouncement.iconTone}}" style="color: {{activeAnnouncement.accentColor}};">
+          <view class="mini-megaphone"><view></view></view>
+        </view>
+        <view class="announcement-heading">
+          <text class="announcement-label">公告</text>
+          <text class="announcement-title">{{activeAnnouncement.title}}</text>
+          <text class="announcement-time">{{activeAnnouncement.timeLabel}}</text>
+        </view>
+        <view class="announcement-close pressable" catchtap="closeAnnouncementModal" hover-class="announcement-close--pressed">
+          <text>×</text>
+        </view>
+      </view>
+      <scroll-view
+        class="announcement-content"
+        type="list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+      >
+        <rich-text nodes="{{activeAnnouncement.contentHtml}}"></rich-text>
+      </scroll-view>
+      <view class="announcement-footer">
+        <view class="announcement-confirm pressable" style="background-color: {{activeAnnouncement.accentColor}};" catchtap="closeAnnouncementModal" hover-class="announcement-confirm--pressed">
+          <text>知道了</text>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

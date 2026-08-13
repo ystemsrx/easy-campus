@@ -11,6 +11,10 @@ image {
   box-sizing: border-box;
 }
 
+rich-text {
+  box-sizing: border-box;
+}
+
 page {
   width: 100%;
   height: 100%;
