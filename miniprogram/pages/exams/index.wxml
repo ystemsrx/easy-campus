@@ -1,0 +1,254 @@
+<view class="page exams-page {{themeClass}} {{motionClass}}">
+  <scroll-view
+    class="page-scroll"
+    type="list"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    refresher-enabled
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="loadMore"
+    bindscroll="onScroll"
+    lower-threshold="180"
+  >
+    <navigation-bar title="考试安排" subtitle="实时查询" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <view class="exams-content page-content page-enter">
+      <view class="exam-hero">
+        <view class="exam-hero-orbit"></view>
+        <view class="exam-hero-copy">
+          <text class="exam-hero-eyebrow">CURRENT QUERY</text>
+          <text class="exam-hero-title">{{filterLabel}}</text>
+          <text class="exam-hero-caption">共找到 {{total}} 场考试 · 数据每次实时更新</text>
+        </view>
+        <view class="exam-hero-symbol"><view class="symbol-top"></view><text>考</text></view>
+      </view>
+
+      <view class="exam-tools">
+        <view class="search-field exam-search {{searchFocused ? 'search-field--focus' : ''}}">
+          <view class="search-glyph"></view>
+          <input
+            class="search-input"
+            value="{{queryText}}"
+            placeholder="课程、考场或教学班"
+            placeholder-class="exam-placeholder"
+            bindinput="onQueryInput"
+            bindfocus="onSearchFocus"
+            bindblur="onSearchBlur"
+            bindconfirm="search"
+            confirm-type="search"
+            aria-label="搜索考试"
+          />
+          <view wx:if="{{queryText}}" class="exam-clear" bindtap="clearSearch"><text>×</text></view>
+        </view>
+        <view class="exam-filter pressable" bindtap="openFilter" hover-class="pressing" aria-role="button" aria-label="筛选考试">
+          <view class="exam-filter-lines"><view></view><view></view><view></view></view>
+        </view>
+      </view>
+
+      <view class="exam-result-heading">
+        <view>
+          <text class="exam-result-title">考试日程</text>
+          <text class="exam-result-caption">按考试时间{{order === 'asc' ? '正序' : '倒序'}}排列</text>
+        </view>
+        <view class="realtime-pill"><view class="realtime-dot"></view><text>实时</text></view>
+      </view>
+
+      <loading-view wx:if="{{loading || optionsLoading && !loaded}}" label="正在读取考试安排"></loading-view>
+
+      <view wx:elif="{{examItems.length}}" class="exam-list">
+        <view
+          wx:for="{{examItems}}"
+          wx:key="id"
+          class="exam-card card pressable stagger-item"
+          style="animation-delay: {{index < 7 ? index * 32 : 0}}ms;"
+          data-id="{{item.id}}"
+          bindtap="openExam"
+          hover-class="pressing"
+          aria-role="button"
+          aria-label="{{item.course.name}}，{{item.dateLabel}} {{item.timeLabel}}"
+        >
+          <view class="exam-date-block">
+            <text class="exam-date-label">{{item.dateLabel}}</text>
+            <text class="exam-time-label">{{item.timeLabel}}</text>
+          </view>
+          <view class="exam-main">
+            <view class="exam-name-row">
+              <text class="exam-type">{{item.examName || '考试'}}</text>
+              <text wx:if="{{item.method}}" class="exam-method">{{item.method}}</text>
+            </view>
+            <text class="exam-course-name" overflow="ellipsis" max-lines="2">{{item.course.name}}</text>
+            <view class="exam-location-row">
+              <view class="location-pin"><view class="location-pin-core"></view></view>
+              <text class="exam-location" overflow="ellipsis" max-lines="1">{{item.locationLabel}}</text>
+            </view>
+          </view>
+          <view class="exam-seat">
+            <text class="exam-seat-value">{{item.seatLabel}}</text>
+            <text class="exam-seat-label">座位</text>
+          </view>
+          <text class="exam-chevron">›</text>
+        </view>
+
+        <view wx:if="{{loadingMore}}" class="exam-load-more"><view class="exam-spinner"></view><text>加载更多</text></view>
+        <text wx:elif="{{page >= totalPages}}" class="exam-end">以上是全部考试安排</text>
+      </view>
+
+      <empty-state
+        wx:elif="{{!errorMessage}}"
+        glyph="考"
+        title="暂无考试安排"
+        description="当前筛选条件下没有查到考试，可更换学期或日期范围"
+        action-text="调整筛选"
+        bindaction="openFilter"
+      ></empty-state>
+
+      <empty-state
+        wx:else
+        glyph="!"
+        title="考试信息加载失败"
+        description="{{errorMessage}}"
+        action-text="重新加载"
+        bindaction="onRefresh"
+      ></empty-state>
+    </view>
+  </scroll-view>
+
+  <bottom-sheet visible="{{filterVisible}}" title="筛选考试" theme="{{theme}}" bindclose="closeFilter">
+    <scroll-view class="exam-filter-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="exam-filter-section">
+        <text class="exam-filter-title">学年</text>
+        <scroll-view class="exam-year-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+          <view class="exam-year-row">
+            <view
+              wx:for="{{academicYears}}"
+              wx:key="value"
+              class="exam-option-chip {{draftAcademicYear === item.numericValue ? 'exam-option-chip--active' : ''}}"
+              data-value="{{item.value}}"
+              bindtap="selectDraftYear"
+              hover-class="exam-option--pressed"
+            >
+              <text>{{item.label}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="exam-filter-section">
+        <text class="exam-filter-title">学期</text>
+        <view class="exam-term-row">
+          <view
+            wx:for="{{terms}}"
+            wx:key="value"
+            wx:if="{{item.term}}"
+            class="exam-term-option {{draftTerm === item.term ? 'exam-term-option--active' : ''}}"
+            data-value="{{item.term}}"
+            bindtap="selectDraftTerm"
+            hover-class="exam-option--pressed"
+          >
+            <text>第 {{item.term}} 学期</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="exam-filter-section">
+        <text class="exam-filter-title">日期范围</text>
+        <view class="exam-date-range">
+          <picker class="exam-date-picker" mode="date" value="{{draftStartDate || '2020-01-01'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftStartDate">
+            <view class="exam-date-value">
+              <text class="exam-date-caption">开始日期</text>
+              <text class="exam-date-text {{!draftStartDate ? 'exam-date-text--placeholder' : ''}}">{{draftStartDate || '不限'}}</text>
+            </view>
+          </picker>
+          <view wx:if="{{draftStartDate}}" class="exam-date-clear" bindtap="clearDraftStartDate"><text>×</text></view>
+          <text class="exam-date-dash">—</text>
+          <picker class="exam-date-picker" mode="date" value="{{draftEndDate || '2030-12-31'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftEndDate">
+            <view class="exam-date-value">
+              <text class="exam-date-caption">结束日期</text>
+              <text class="exam-date-text {{!draftEndDate ? 'exam-date-text--placeholder' : ''}}">{{draftEndDate || '不限'}}</text>
+            </view>
+          </picker>
+          <view wx:if="{{draftEndDate}}" class="exam-date-clear" bindtap="clearDraftEndDate"><text>×</text></view>
+        </view>
+      </view>
+
+      <view wx:if="{{examNames.length}}" class="exam-filter-section">
+        <text class="exam-filter-title">考试名称</text>
+        <view class="exam-wrap-options">
+          <view
+            class="exam-wrap-option {{!draftExamNameId ? 'exam-wrap-option--active' : ''}}"
+            data-value=""
+            bindtap="selectDraftExamName"
+            hover-class="exam-option--pressed"
+          ><text>全部</text></view>
+          <view
+            wx:for="{{examNames}}"
+            wx:key="value"
+            class="exam-wrap-option {{draftExamNameId === item.value ? 'exam-wrap-option--active' : ''}}"
+            data-value="{{item.value}}"
+            bindtap="selectDraftExamName"
+            hover-class="exam-option--pressed"
+          ><text overflow="ellipsis" max-lines="1">{{item.label}}</text></view>
+        </view>
+      </view>
+
+      <view wx:if="{{departments.length}}" class="exam-filter-section">
+        <text class="exam-filter-title">开课学院</text>
+        <view class="exam-wrap-options">
+          <view
+            class="exam-wrap-option {{!draftDepartmentId ? 'exam-wrap-option--active' : ''}}"
+            data-value=""
+            bindtap="selectDraftDepartment"
+            hover-class="exam-option--pressed"
+          ><text>全部</text></view>
+          <view
+            wx:for="{{departments}}"
+            wx:key="value"
+            class="exam-wrap-option {{draftDepartmentId === item.value ? 'exam-wrap-option--active' : ''}}"
+            data-value="{{item.value}}"
+            bindtap="selectDraftDepartment"
+            hover-class="exam-option--pressed"
+          ><text overflow="ellipsis" max-lines="1">{{item.label}}</text></view>
+        </view>
+      </view>
+
+      <view class="exam-filter-section">
+        <text class="exam-filter-title">时间顺序</text>
+        <view class="exam-order-control">
+          <view class="exam-order-indicator {{draftOrder === 'desc' ? 'exam-order-indicator--desc' : ''}}"></view>
+          <view class="exam-order-item {{draftOrder === 'asc' ? 'exam-order-item--active' : ''}}" data-value="asc" bindtap="selectDraftOrder"><text>较早优先</text></view>
+          <view class="exam-order-item {{draftOrder === 'desc' ? 'exam-order-item--active' : ''}}" data-value="desc" bindtap="selectDraftOrder"><text>较晚优先</text></view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view slot="footer" class="exam-filter-actions">
+      <button class="secondary-button exam-reset" hover-class="button-pressed" bindtap="resetFilter">重置</button>
+      <button class="primary-button exam-apply" hover-class="button-pressed" bindtap="applyFilter">查询考试</button>
+    </view>
+  </bottom-sheet>
+
+  <bottom-sheet
+    visible="{{selectedExamVisible}}"
+    title="{{selectedExam.title || '考试详情'}}"
+    theme="{{theme}}"
+    bindclose="closeExam"
+  >
+    <scroll-view wx:if="{{selectedExam}}" class="exam-detail-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="exam-detail-card">
+        <view
+          wx:for="{{selectedExam.rows}}"
+          wx:key="label"
+          class="exam-detail-row {{index < selectedExam.rows.length - 1 ? 'exam-detail-row--divided' : ''}}"
+        >
+          <text class="exam-detail-label">{{item.label}}</text>
+          <text class="exam-detail-value" overflow="ellipsis" max-lines="4">{{item.value}}</text>
+        </view>
+      </view>
+      <view wx:if="{{selectedExam.note}}" class="exam-note">
+        <text class="exam-note-title">备注</text>
+        <text class="exam-note-value">{{selectedExam.note}}</text>
+      </view>
+    </scroll-view>
+  </bottom-sheet>
+</view>

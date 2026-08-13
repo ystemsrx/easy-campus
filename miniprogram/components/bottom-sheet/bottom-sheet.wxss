@@ -1,0 +1,132 @@
+.sheet-layer {
+  --sheet-bg: rgba(255, 255, 255, 0.96);
+  --sheet-text: #172033;
+  --sheet-secondary: #657086;
+  --sheet-close: #edf1f7;
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1200;
+}
+
+.sheet-layer--dark {
+  --sheet-bg: rgba(24, 29, 39, 0.97);
+  --sheet-text: #f5f7fb;
+  --sheet-secondary: #a9b2c2;
+  --sheet-close: #2a3241;
+}
+
+.sheet-scrim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(8, 13, 23, 0.42);
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.sheet-scrim--active {
+  opacity: 1;
+}
+
+.sheet-card {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 88%;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  border-radius: 40rpx 40rpx 0 0;
+  color: var(--sheet-text);
+  background-color: var(--sheet-bg);
+  box-shadow: 0 -24rpx 70rpx rgba(12, 21, 38, 0.2);
+  backdrop-filter: blur(28px);
+  opacity: 0.7;
+  transform: translateY(102%) scale(0.98);
+  transform-origin: 50% 100%;
+  transition: transform 320ms cubic-bezier(0.2, 0.82, 0.2, 1), opacity 220ms ease;
+}
+
+.sheet-card--active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.motion-reduced .sheet-scrim,
+.motion-reduced .sheet-card,
+.motion-reduced .sheet-close {
+  transition-duration: 1ms;
+}
+
+.sheet-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 116rpx;
+  padding: 26rpx 30rpx 18rpx 36rpx;
+}
+
+.sheet-title-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.sheet-title {
+  color: var(--sheet-text);
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.6rpx;
+}
+
+.sheet-close {
+  position: relative;
+  width: 62rpx;
+  height: 62rpx;
+  margin-left: 20rpx;
+  border-radius: 50%;
+  background-color: var(--sheet-close);
+  transform: scale(1);
+  transition: transform 100ms ease-out, opacity 100ms ease-out;
+}
+
+.sheet-close--pressed {
+  opacity: 0.72;
+  transform: scale(0.9);
+}
+
+.sheet-close-line {
+  position: absolute;
+  top: 29rpx;
+  left: 18rpx;
+  width: 26rpx;
+  height: 3rpx;
+  border-radius: 3rpx;
+  background-color: var(--sheet-secondary);
+}
+
+.sheet-close-line--a {
+  transform: rotate(45deg);
+}
+
+.sheet-close-line--b {
+  transform: rotate(-45deg);
+}
+
+.sheet-content {
+  max-height: 62vh;
+  padding: 0 36rpx 24rpx;
+  overflow: hidden;
+}
+
+.sheet-footer {
+  padding: 16rpx 36rpx 26rpx;
+}

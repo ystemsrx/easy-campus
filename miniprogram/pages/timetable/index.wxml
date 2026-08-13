@@ -1,0 +1,53 @@
+<view class="page timetable-page {{themeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="课表" back theme="{{theme}}"></navigation-bar>
+    <view class="timetable-content page-content page-enter">
+      <view class="timetable-hero">
+        <view class="timetable-orbit timetable-orbit--one"></view>
+        <view class="timetable-orbit timetable-orbit--two"></view>
+        <view class="timetable-symbol">
+          <view class="timetable-symbol-top"></view>
+          <view class="timetable-symbol-grid"><view></view><view></view><view></view><view></view></view>
+        </view>
+        <text class="timetable-kicker">COMING NEXT</text>
+        <text class="timetable-title">课表正在准备中</text>
+        <text class="timetable-description">后端接口已预留。待课表数据结构完善后，这里会直接接入，无需改变整体导航。</text>
+      </view>
+
+      <view class="preview-card card">
+        <view class="preview-heading">
+          <text class="preview-title">计划中的体验</text>
+          <text class="preview-caption">保持简单，也保留细节</text>
+        </view>
+        <view class="preview-row preview-row--divided">
+          <view class="preview-glyph preview-glyph--blue"><text>周</text></view>
+          <view class="preview-copy">
+            <text class="preview-row-title">周视图</text>
+            <text class="preview-row-caption">快速掌握每天的课程节奏</text>
+          </view>
+        </view>
+        <view class="preview-row preview-row--divided">
+          <view class="preview-glyph preview-glyph--green"><text>课</text></view>
+          <view class="preview-copy">
+            <text class="preview-row-title">课程详情</text>
+            <text class="preview-row-caption">教师、地点、周次与节次清晰呈现</text>
+          </view>
+        </view>
+        <view class="preview-row">
+          <view class="preview-glyph preview-glyph--purple"><text>变</text></view>
+          <view class="preview-copy">
+            <text class="preview-row-title">变更联动</text>
+            <text class="preview-row-caption">与调课、补课、停课消息自然关联</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="reserved-note">
+        <view class="reserved-dot"></view>
+        <text>当前调用后端课表接口会返回 TIMETABLE_NOT_IMPLEMENTED（HTTP 501）。前端以明确的预留状态呈现，不进行无意义重试。</text>
+      </view>
+
+      <button class="secondary-button back-home-button" hover-class="button-pressed" bindtap="goBack">返回</button>
+    </view>
+  </scroll-view>
+</view>

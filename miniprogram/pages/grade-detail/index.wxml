@@ -1,0 +1,87 @@
+<view class="page grade-detail-page {{themeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="成绩明细" back theme="{{theme}}"></navigation-bar>
+    <view wx:if="{{course}}" class="detail-content page-content page-enter">
+      <view class="detail-hero detail-hero--{{scoreTone}}">
+        <view class="detail-hero-glow"></view>
+        <view class="detail-course-copy">
+          <text class="detail-year">{{course.academicYear}} · {{termLabel}}</text>
+          <text class="detail-course-name">{{course.courseName}}</text>
+          <text class="detail-course-meta">{{course.courseCode}} · {{creditsLabel}} 学分</text>
+        </view>
+        <view class="detail-score {{scoreIsText ? 'detail-score--text' : ''}}">
+          <text class="detail-score-value" overflow="ellipsis" max-lines="3">{{displayScore}}</text>
+          <text class="detail-score-label">总评成绩</text>
+        </view>
+      </view>
+
+      <view wx:if="{{course.gradeRemark}}" class="detail-remark">
+        <view class="detail-remark-symbol"><text>!</text></view>
+        <view class="detail-remark-copy">
+          <text class="detail-remark-title">成绩备注</text>
+          <text class="detail-remark-value">{{course.gradeRemark}}</text>
+        </view>
+      </view>
+
+      <view class="section-header">
+        <view>
+          <text class="section-title">成绩构成</text>
+          <text class="section-caption">教务系统返回的全部细分项目</text>
+        </view>
+      </view>
+
+      <view wx:if="{{components.length}}" class="components-card card">
+        <view
+          wx:for="{{components}}"
+          wx:key="name"
+          class="component-row {{index < components.length - 1 ? 'component-row--divided' : ''}}"
+        >
+          <view class="component-row-head">
+            <view class="component-row-copy">
+              <text class="component-row-name">{{item.name}}</text>
+              <text class="component-row-weight">{{item.weight}}</text>
+            </view>
+            <text class="component-row-score component-row-score--{{item.tone}}">{{item.score}}</text>
+          </view>
+          <view wx:if="{{!item.isText && item.progress > 0}}" class="progress-track">
+            <view class="progress-fill progress-fill--{{item.tone}}" style="width: {{item.progress}}%;"></view>
+          </view>
+          <view wx:elif="{{item.isText}}" class="text-status-note">
+            <text>该分项由教务系统以文字状态返回</text>
+          </view>
+        </view>
+      </view>
+
+      <empty-state
+        wx:else
+        compact
+        glyph="分"
+        title="暂无分项成绩"
+        description="当前课程只提供总评成绩"
+      ></empty-state>
+
+      <view class="section-header">
+        <view>
+          <text class="section-title">课程信息</text>
+          <text class="section-caption">只保留查询有用的字段</text>
+        </view>
+      </view>
+
+      <view class="detail-info-card card">
+        <view
+          wx:for="{{detailRows}}"
+          wx:key="label"
+          class="detail-info-row {{index < detailRows.length - 1 ? 'detail-info-row--divided' : ''}}"
+        >
+          <text class="detail-info-label">{{item.label}}</text>
+          <text class="detail-info-value" overflow="ellipsis" max-lines="3">{{item.value}}</text>
+        </view>
+      </view>
+
+      <view class="accuracy-note">
+        <view class="accuracy-dot"></view>
+        <text>数字成绩以数字展示，等级制及缓考等任意文字状态均按教务系统原文保留。</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,0 +1,29 @@
+{
+  "name": "easy-swu-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Easy SWU 微信小程序前端（TypeScript + Skyline）",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check:wxss": "skyline wxss check --json --miniprogram-root miniprogram --files app.wxss custom-tab-bar/index.wxss components/navigation-bar/navigation-bar.wxss components/bottom-sheet/bottom-sheet.wxss components/empty-state/empty-state.wxss components/loading-view/loading-view.wxss pages/login/index.wxss pages/home/index.wxss pages/inbox/index.wxss pages/profile/index.wxss pages/grades/index.wxss pages/grade-detail/index.wxss pages/rooms/index.wxss pages/exams/index.wxss pages/calendar/index.wxss pages/timetable/index.wxss pages/browser/index.wxss",
+    "check:json": "node scripts/check-json.js",
+    "check:wxml": "node scripts/check-wxml.js",
+    "check:timezone": "node scripts/check-timezones.js",
+    "check:lf": "node scripts/check-lf.js",
+    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:timezone && npm run check:lf && npm run check:wxss",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\""
+  },
+  "keywords": [
+    "wechat-miniprogram",
+    "typescript",
+    "skyline"
+  ],
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "miniprogram-api-typings": "^5.2.3",
+    "prettier": "^3.6.2",
+    "skyline-cli": "^0.0.2",
+    "typescript": "^5.9.2"
+  }
+}

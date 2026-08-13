@@ -1,0 +1,78 @@
+.loading-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 440rpx;
+  padding: 54rpx 24rpx;
+}
+
+.loading-wrap--compact {
+  min-height: 250rpx;
+  padding: 32rpx 24rpx;
+}
+
+.loading-orb {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 12rpx var(--color-primary-soft);
+  animation-name: loading-breathe;
+  animation-duration: 1.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.loading-label {
+  margin-top: 30rpx;
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  font-weight: 550;
+}
+
+.skeleton-list {
+  width: 100%;
+  margin-top: 30rpx;
+}
+
+.skeleton-row {
+  width: 100%;
+  height: 18rpx;
+  margin-top: 16rpx;
+  border-radius: 999rpx;
+  background-color: var(--color-bg-subtle);
+}
+
+.skeleton-row--short {
+  width: 68%;
+}
+
+.skeleton-shimmer {
+  animation-name: skeleton-pulse;
+  animation-duration: 1.3s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes loading-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}

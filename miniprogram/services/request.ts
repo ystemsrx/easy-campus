@@ -1,0 +1,219 @@
+import { getApiBaseUrl } from "../config/index";
+import { clearSession, getSession } from "../store/session";
+import type {
+  ApiErrorPayload,
+  ApiSuccess,
+  QueryMeta,
+  TeachingSuccess,
+} from "../types/api";
+import { goToLogin } from "../utils/navigation";
+
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+
+interface RequestOptions {
+  method?: HttpMethod;
+  data?: WechatMiniprogram.IAnyObject | string | ArrayBuffer;
+  authenticated?: boolean;
+  retry?: boolean;
+  timeout?: number;
+}
+
+interface SuccessEnvelope<T> extends ApiSuccess<T> {
+  meta?: QueryMeta;
+}
+
+const AUTH_ERROR_CODES = new Set(["INVALID_TOKEN", "USER_NOT_FOUND"]);
+const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
+const RETRYABLE_STATUS_CODES = new Set([429, 502, 503]);
+let redirectingToLogin = false;
+
+export class ApiClientError extends Error {
+  readonly code: string;
+  readonly statusCode: number;
+  readonly details?: unknown;
+  readonly requestId?: string;
+
+  constructor(options: {
+    code: string;
+    message: string;
+    statusCode: number;
+    details?: unknown;
+    requestId?: string;
+  }) {
+    super(options.message);
+    this.name = "ApiClientError";
+    this.code = options.code;
+    this.statusCode = options.statusCode;
+    this.details = options.details;
+    this.requestId = options.requestId;
+  }
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function redirectAfterAuthFailure(): void {
+  if (redirectingToLogin) {
+    return;
+  }
+  redirectingToLogin = true;
+  clearSession();
+  wx.showToast({
+    title: "登录已失效，请重新登录",
+    icon: "none",
+    duration: 2200,
+  });
+  setTimeout(() => {
+    goToLogin();
+    redirectingToLogin = false;
+  }, 320);
+}
+
+function isSuccessEnvelope<T>(value: unknown): value is SuccessEnvelope<T> {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    (value as { success?: unknown }).success === true &&
+    "data" in value,
+  );
+}
+
+function toApiError(data: unknown, statusCode: number): ApiClientError {
+  const payload = data as Partial<ApiErrorPayload> | undefined;
+  if (payload?.success === false && payload.error) {
+    return new ApiClientError({
+      code: payload.error.code || "REQUEST_FAILED",
+      message: payload.error.message || "请求失败，请稍后重试。",
+      statusCode,
+      details: payload.error.details,
+      requestId: payload.requestId,
+    });
+  }
+
+  return new ApiClientError({
+    code: statusCode === 0 ? "NETWORK_ERROR" : "INVALID_RESPONSE",
+    message:
+      statusCode === 0
+        ? "网络连接失败，请检查网络后重试。"
+        : "服务返回了无法识别的数据。",
+    statusCode,
+  });
+}
+
+function requestOnce<T>(
+  path: string,
+  options: RequestOptions,
+): Promise<SuccessEnvelope<T>> {
+  const authenticated = options.authenticated !== false;
+  const session = getSession();
+  if (authenticated && !session) {
+    const error = new ApiClientError({
+      code: "INVALID_TOKEN",
+      message: "请先登录。",
+      statusCode: 401,
+    });
+    redirectAfterAuthFailure();
+    return Promise.reject(error);
+  }
+
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: `${getApiBaseUrl()}${path}`,
+      method: options.method || "GET",
+      data: options.data,
+      timeout: options.timeout || 30000,
+      header: {
+        Accept: "application/json",
+        ...(options.method && options.method !== "GET"
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
+      },
+      success: (response) => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          if (isSuccessEnvelope<T>(response.data)) {
+            resolve(response.data);
+            return;
+          }
+          reject(toApiError(response.data, response.statusCode));
+          return;
+        }
+
+        const error = toApiError(response.data, response.statusCode);
+        if (
+          authenticated &&
+          (AUTH_ERROR_CODES.has(error.code) ||
+            (error.code === "SWU_SESSION_EXPIRED" && options.retry === false))
+        ) {
+          redirectAfterAuthFailure();
+        }
+        reject(error);
+      },
+      fail: () => reject(toApiError(undefined, 0)),
+    });
+  });
+}
+
+async function requestEnvelope<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<SuccessEnvelope<T>> {
+  try {
+    return await requestOnce<T>(path, options);
+  } catch (error) {
+    const apiError = error as ApiClientError;
+    const retryable =
+      options.retry !== false &&
+      (apiError.code === "NETWORK_ERROR" ||
+        RETRYABLE_ERROR_CODES.has(apiError.code) ||
+        RETRYABLE_STATUS_CODES.has(apiError.statusCode));
+    if (!retryable) {
+      throw error;
+    }
+
+    await wait(apiError.statusCode === 429 ? 800 : 360);
+    return requestOnce<T>(path, { ...options, retry: false });
+  }
+}
+
+export function handleAuthenticationFailure(error: ApiClientError): void {
+  if (error.statusCode === 401 || AUTH_ERROR_CODES.has(error.code)) {
+    redirectAfterAuthFailure();
+  }
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options?: RequestOptions,
+): Promise<T> {
+  const envelope = await requestEnvelope<T>(path, options);
+  return envelope.data;
+}
+
+export async function teachingRequest<T>(
+  path: string,
+  options?: RequestOptions,
+): Promise<{ data: T; meta: QueryMeta }> {
+  const envelope = (await requestEnvelope<T>(
+    path,
+    options,
+  )) as TeachingSuccess<T>;
+  return {
+    data: envelope.data,
+    meta: envelope.meta || { cached: false },
+  };
+}
+
+export function getErrorMessage(
+  error: unknown,
+  fallback = "加载失败，请稍后重试。",
+): string {
+  if (error instanceof ApiClientError && error.message) {
+    return error.message;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}

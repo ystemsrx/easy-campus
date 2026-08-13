@@ -1,0 +1,9 @@
+<view class="loading-wrap {{compact ? 'loading-wrap--compact' : ''}}" aria-role="alert">
+  <view class="loading-orb"></view>
+  <text class="loading-label">{{label}}</text>
+  <view class="skeleton-list">
+    <view class="skeleton-row skeleton-shimmer"></view>
+    <view class="skeleton-row skeleton-row--short skeleton-shimmer"></view>
+    <view wx:if="{{!compact}}" class="skeleton-row skeleton-shimmer"></view>
+  </view>
+</view>

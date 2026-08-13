@@ -1,0 +1,38 @@
+<view class="page browser-page {{themeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="通知链接" back theme="{{theme}}"></navigation-bar>
+    <view class="browser-content page-content page-enter">
+      <view class="link-hero">
+        <view class="link-orbit"></view>
+        <view class="link-symbol"><view class="link-chain link-chain--one"></view><view class="link-chain link-chain--two"></view></view>
+        <text class="link-domain">{{domain}}</text>
+        <text class="link-title">{{title}}</text>
+      </view>
+
+      <view class="link-card card">
+        <text class="link-card-label">原始链接</text>
+        <text class="link-url" selectable user-select>{{url || '未提供链接'}}</text>
+        <view class="link-security-row">
+          <view class="security-dot"></view>
+          <text>来自后端实时返回的教务通知地址</text>
+        </view>
+      </view>
+
+      <view class="network-note">
+        <view class="network-note-icon"><text>!</text></view>
+        <view class="network-note-copy">
+          <text class="network-note-title">可能需要校园网或学校 VPN</text>
+          <text class="network-note-text">小程序后端的登录态不能直接交给系统浏览器。复制链接后，请在具备学校网络访问条件的浏览器中打开。</text>
+        </view>
+      </view>
+
+      <button class="primary-button copy-link-button {{!url ? 'primary-button--disabled' : ''}}" disabled="{{!url}}" hover-class="button-pressed" bindtap="copyLink">复制通知链接</button>
+      <button class="secondary-button guide-button" hover-class="button-pressed" bindtap="showOpenGuide">查看打开说明</button>
+
+      <view class="browser-footnote">
+        <view class="footnote-dot"></view>
+        <text>为保持 Skyline 页面兼容性与登录边界清晰，这里不以内嵌网页冒充后端教务会话。</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

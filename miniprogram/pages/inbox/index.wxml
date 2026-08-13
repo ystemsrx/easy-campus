@@ -1,0 +1,279 @@
+<view class="page inbox-page {{themeClass}} {{motionClass}}">
+  <navigation-bar title="动态" theme="{{theme}}"></navigation-bar>
+
+  <view class="inbox-toolbar page-enter">
+    <view class="segmented-control" aria-role="tablist">
+      <view class="segment-indicator segment-indicator--{{activeTab}}"></view>
+      <view
+        class="segment-item {{activeTab === 0 ? 'segment-item--active' : ''}}"
+        data-index="0"
+        bindtap="onTabTap"
+        hover-class="segment-item--pressed"
+        aria-role="tab"
+        aria-selected="{{activeTab === 0}}"
+      >
+        <text>消息</text>
+      </view>
+      <view
+        class="segment-item {{activeTab === 1 ? 'segment-item--active' : ''}}"
+        data-index="1"
+        bindtap="onTabTap"
+        hover-class="segment-item--pressed"
+        aria-role="tab"
+        aria-selected="{{activeTab === 1}}"
+      >
+        <text>通知</text>
+      </view>
+    </view>
+  </view>
+
+  <swiper
+    class="inbox-swiper"
+    current="{{activeTab}}"
+    duration="360"
+    easing-function="easeOutCubic"
+    bindchange="onSwiperChange"
+    cache-extent="1"
+  >
+    <swiper-item>
+      <scroll-view
+        class="inbox-list"
+        type="list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        refresher-enabled
+        refresher-triggered="{{messageRefreshing}}"
+        bindrefresherrefresh="refreshMessages"
+        bindscrolltolower="loadMoreMessages"
+        lower-threshold="180"
+      >
+        <view class="inbox-content page-content page-content--tab">
+          <view class="filter-summary-row">
+            <view class="filter-copy">
+              <text class="filter-heading">教务消息</text>
+              <text class="filter-caption">
+                {{messageType || from || to ? '已按条件筛选' : '待阅与已阅已合并并按时间排序'}}
+              </text>
+            </view>
+            <view
+              class="filter-button pressable {{messageType || from || to ? 'filter-button--active' : ''}}"
+              bindtap="openMessageFilter"
+              hover-class="pressing"
+              aria-role="button"
+              aria-label="筛选消息"
+            >
+              <view class="filter-lines"><view></view><view></view><view></view></view>
+              <text>筛选</text>
+            </view>
+          </view>
+
+          <loading-view wx:if="{{messageLoading}}" label="正在整理教务消息"></loading-view>
+
+          <view wx:elif="{{messageItems.length}}" class="message-list">
+            <view
+              wx:for="{{messageItems}}"
+              wx:key="id"
+              class="message-card card stagger-item"
+              style="animation-delay: {{index < 6 ? index * 35 : 0}}ms;"
+            >
+              <view class="message-head">
+                <view class="message-badge message-badge--{{item.tone}}"><text>{{item.label}}</text></view>
+                <text class="message-time">{{item.createdAt}}</text>
+              </view>
+              <text class="message-title" overflow="ellipsis" max-lines="2">{{item.title}}</text>
+              <text wx:if="{{item.teacher}}" class="message-teacher">{{item.teacher}}</text>
+
+              <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-change">
+                <view class="schedule-block schedule-block--old">
+                  <text class="schedule-label">原安排</text>
+                  <text class="schedule-primary">{{item.original.primary}}</text>
+                  <text class="schedule-location">{{item.original.location}}</text>
+                </view>
+                <view class="change-arrow"><text>→</text></view>
+                <view class="schedule-block schedule-block--new">
+                  <text class="schedule-label">新安排</text>
+                  <text class="schedule-primary">{{item.current.primary}}</text>
+                  <text class="schedule-location">{{item.current.location}}</text>
+                </view>
+              </view>
+
+              <view wx:elif="{{item.type === 'makeup_class'}}" class="single-schedule single-schedule--green">
+                <view class="schedule-pin"></view>
+                <view class="single-schedule-copy">
+                  <text class="schedule-primary">{{item.current.primary}}</text>
+                  <text class="schedule-location">{{item.current.location}}</text>
+                </view>
+              </view>
+
+              <view wx:elif="{{item.type === 'course_cancelled'}}" class="single-schedule single-schedule--orange">
+                <view class="schedule-pin"></view>
+                <view class="single-schedule-copy">
+                  <text class="schedule-primary cancelled-text">{{item.original.primary}}</text>
+                  <text class="schedule-location">{{item.original.location}}</text>
+                </view>
+              </view>
+
+              <text wx:else class="message-content">{{item.content}}</text>
+            </view>
+
+            <view wx:if="{{messageLoadingMore}}" class="load-more"><view class="mini-spinner"></view><text>加载更多</text></view>
+            <text wx:elif="{{messagePage >= messageTotalPages}}" class="end-caption">已经到底了</text>
+          </view>
+
+          <empty-state
+            wx:elif="{{!messageError}}"
+            glyph="讯"
+            title="没有符合条件的消息"
+            description="更换筛选条件，或下拉刷新后再看看"
+            action-text="调整筛选"
+            bindaction="openMessageFilter"
+          ></empty-state>
+
+          <empty-state
+            wx:else
+            glyph="!"
+            title="消息加载失败"
+            description="{{messageError}}"
+            action-text="重新加载"
+            bindaction="refreshMessages"
+          ></empty-state>
+        </view>
+      </scroll-view>
+    </swiper-item>
+
+    <swiper-item>
+      <scroll-view
+        class="inbox-list"
+        type="list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        refresher-enabled
+        refresher-triggered="{{noticeRefreshing}}"
+        bindrefresherrefresh="refreshNotices"
+        bindscrolltolower="loadMoreNotices"
+        lower-threshold="180"
+      >
+        <view class="inbox-content page-content page-content--tab">
+          <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
+            <view class="search-glyph"></view>
+            <input
+              class="search-input"
+              value="{{noticeQuery}}"
+              placeholder="搜索通知标题"
+              placeholder-class="notice-placeholder"
+              bindinput="onNoticeQueryInput"
+              bindfocus="onNoticeSearchFocus"
+              bindblur="onNoticeSearchBlur"
+              bindconfirm="searchNotices"
+              confirm-type="search"
+              aria-label="搜索通知标题"
+            />
+            <view wx:if="{{noticeQuery}}" class="search-clear" bindtap="clearNoticeQuery" aria-role="button" aria-label="清空搜索">
+              <text>×</text>
+            </view>
+          </view>
+
+          <view class="notice-source">
+            <view class="source-dot"></view>
+            <text>数据来自学校教务系统，每次打开实时更新</text>
+          </view>
+
+          <loading-view wx:if="{{noticeLoading}}" label="正在读取最新通知"></loading-view>
+
+          <view wx:elif="{{noticeItems.length}}" class="notice-list">
+            <view
+              wx:for="{{noticeItems}}"
+              wx:key="link"
+              class="notice-item card pressable stagger-item"
+              style="animation-delay: {{index < 6 ? index * 35 : 0}}ms;"
+              data-link="{{item.link}}"
+              data-title="{{item.title}}"
+              bindtap="openNotice"
+              hover-class="pressing"
+              aria-role="link"
+            >
+              <view class="notice-mark"><view class="notice-mark-line"></view></view>
+              <view class="notice-item-copy">
+                <text class="notice-item-title" overflow="ellipsis" max-lines="3">{{item.title}}</text>
+                <text class="notice-item-time">{{item.displayTime}}</text>
+              </view>
+              <text class="notice-item-chevron">›</text>
+            </view>
+            <view wx:if="{{noticeLoadingMore}}" class="load-more"><view class="mini-spinner"></view><text>加载更多</text></view>
+            <text wx:elif="{{noticePage >= noticeTotalPages}}" class="end-caption">已经到底了</text>
+          </view>
+
+          <empty-state
+            wx:elif="{{!noticeError}}"
+            glyph="告"
+            title="没有找到通知"
+            description="尝试更换关键词，或清空搜索条件"
+            action-text="清空搜索"
+            bindaction="clearNoticeQuery"
+          ></empty-state>
+
+          <empty-state
+            wx:else
+            glyph="!"
+            title="通知加载失败"
+            description="{{noticeError}}"
+            action-text="重新加载"
+            bindaction="refreshNotices"
+          ></empty-state>
+        </view>
+      </scroll-view>
+    </swiper-item>
+  </swiper>
+
+  <bottom-sheet
+    visible="{{messageFilterVisible}}"
+    title="筛选消息"
+    theme="{{theme}}"
+    bindclose="closeMessageFilter"
+  >
+    <view class="filter-section">
+      <text class="filter-section-title">消息类型</text>
+      <view class="type-grid">
+        <view
+          wx:for="{{messageTypeOptions}}"
+          wx:key="value"
+          class="type-option {{draftType === item.value ? 'type-option--active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="selectDraftType"
+          hover-class="type-option--pressed"
+        >
+          <text>{{item.label}}</text>
+          <view wx:if="{{draftType === item.value}}" class="option-check"><text>✓</text></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="filter-section">
+      <text class="filter-section-title">时间范围</text>
+      <view class="date-range">
+        <picker class="date-picker" mode="date" value="{{draftFrom || '2020-01-01'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftFromChange">
+          <view class="date-value">
+            <text class="date-label">开始</text>
+            <text class="date-text {{!draftFrom ? 'date-text--placeholder' : ''}}">{{draftFrom || '不限'}}</text>
+          </view>
+        </picker>
+        <view wx:if="{{draftFrom}}" class="date-clear" bindtap="clearDraftFrom"><text>×</text></view>
+        <text class="date-separator">—</text>
+        <picker class="date-picker" mode="date" value="{{draftTo || '2030-12-31'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftToChange">
+          <view class="date-value">
+            <text class="date-label">结束</text>
+            <text class="date-text {{!draftTo ? 'date-text--placeholder' : ''}}">{{draftTo || '不限'}}</text>
+          </view>
+        </picker>
+        <view wx:if="{{draftTo}}" class="date-clear" bindtap="clearDraftTo"><text>×</text></view>
+      </view>
+    </view>
+
+    <view slot="footer" class="filter-actions">
+      <button class="secondary-button reset-button" hover-class="button-pressed" bindtap="resetMessageFilter">重置</button>
+      <button class="primary-button apply-button" hover-class="button-pressed" bindtap="applyMessageFilter">查看结果</button>
+    </view>
+  </bottom-sheet>
+</view>

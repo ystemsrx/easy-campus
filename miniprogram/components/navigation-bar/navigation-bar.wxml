@@ -1,0 +1,32 @@
+<view class="nav-spacer" style="height: {{totalHeight}}px;"></view>
+<view
+  class="nav-shell nav-shell--{{theme}} {{transparent && !scrolled ? 'nav-shell--transparent' : 'nav-shell--material'}}"
+  style="height: {{totalHeight}}px; padding-top: {{statusBarHeight}}px;"
+>
+  <view class="nav-content" style="height: {{contentHeight}}px;">
+    <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
+      <view
+        wx:if="{{back}}"
+        class="back-button"
+        bindtap="onBack"
+        hover-class="nav-button--pressed"
+        hover-stay-time="90"
+        aria-role="button"
+        aria-label="返回"
+      >
+        <view class="back-glyph"></view>
+      </view>
+      <slot wx:else name="left"></slot>
+    </view>
+
+    <view class="nav-title-wrap">
+      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
+      <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
+      <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
+    </view>
+
+    <view class="nav-side nav-side--right" style="width: {{sideWidth}}px;">
+      <slot name="right"></slot>
+    </view>
+  </view>
+</view>

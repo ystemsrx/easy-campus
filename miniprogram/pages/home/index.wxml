@@ -1,0 +1,135 @@
+<view class="page home-page {{themeClass}} {{motionClass}}">
+  <scroll-view
+    class="page-scroll"
+    type="list"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    refresher-enabled
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscroll="onScroll"
+  >
+    <navigation-bar transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <view class="home-content page-content page-content--tab page-enter">
+      <view class="welcome-row">
+        <view class="welcome-copy">
+          <text class="eyebrow">{{greeting}}</text>
+          <text class="welcome-name">{{userName}}</text>
+          <text class="welcome-date">{{dateLabel}} · {{organizationName || '西南大学'}}</text>
+        </view>
+        <view class="status-orb {{serviceHealthy ? '' : 'status-orb--muted'}}" aria-label="{{serviceLabel}}">
+          <view class="status-core {{serviceHealthy ? '' : 'status-core--muted'}}"></view>
+        </view>
+      </view>
+
+      <view class="hero-card stagger-item stagger-1">
+        <view class="hero-glow"></view>
+        <view class="hero-topline">
+          <text class="hero-kicker">EASY SWU</text>
+          <view class="hero-live"><view class="live-dot"></view><text>按需同步</text></view>
+        </view>
+        <text class="hero-title">今天想查什么？</text>
+        <text class="hero-description">成绩会智能缓存，消息、通知、考试和空教室保持实时更新。</text>
+        <view class="hero-foot">
+          <text>90 天滑动会话</text>
+          <text class="hero-arrow">→</text>
+        </view>
+      </view>
+
+      <view class="section-header stagger-item stagger-2">
+        <view>
+          <text class="section-title">常用功能</text>
+          <text class="section-caption">少一点层级，快一点到达</text>
+        </view>
+      </view>
+
+      <view class="quick-grid stagger-item stagger-2">
+        <view
+          wx:for="{{quickActions}}"
+          wx:key="link"
+          class="quick-card card pressable"
+          data-route="{{item.route}}"
+          bindtap="onQuickAction"
+          hover-class="pressing"
+          hover-stay-time="90"
+          aria-role="button"
+          aria-label="{{item.title}}，{{item.caption}}"
+        >
+          <view class="quick-glyph quick-glyph--{{item.tone}}"><text>{{item.glyph}}</text></view>
+          <view class="quick-copy">
+            <text class="quick-title">{{item.title}}</text>
+            <text class="quick-caption">{{item.caption}}</text>
+          </view>
+          <text class="quick-chevron">›</text>
+        </view>
+      </view>
+
+      <view class="section-header stagger-item stagger-3">
+        <view>
+          <text class="section-title">教务消息</text>
+          <text class="section-caption">调课、补课与停课提醒</text>
+        </view>
+        <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>全部</text></view>
+      </view>
+
+      <view wx:if="{{loading}}" class="feed-card card stagger-item stagger-3">
+        <loading-view compact label="正在读取最新消息"></loading-view>
+      </view>
+      <view wx:elif="{{messages.length}}" class="feed-card card stagger-item stagger-3">
+        <view
+          wx:for="{{messages}}"
+          wx:key="id"
+          class="feed-row pressable {{index < messages.length - 1 ? 'feed-row--divided' : ''}}"
+          bindtap="openMessages"
+          hover-class="pressing"
+        >
+          <view class="feed-badge feed-badge--{{item.tone}}"><text>{{item.label}}</text></view>
+          <view class="feed-copy">
+            <text class="feed-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
+            <text class="feed-subtitle" overflow="ellipsis" max-lines="1">{{item.subtitle}}</text>
+          </view>
+          <text class="feed-time">{{item.time}}</text>
+        </view>
+      </view>
+      <view wx:else class="feed-card card stagger-item stagger-3">
+        <empty-state compact glyph="讯" title="暂无新消息" description="有调课或补课安排时会出现在这里"></empty-state>
+      </view>
+
+      <view class="section-header stagger-item stagger-4">
+        <view>
+          <text class="section-title">最新通知</text>
+          <text class="section-caption">来自学校教务系统</text>
+        </view>
+        <view class="section-action pressable" bindtap="openNotices" hover-class="pressing"><text>全部</text></view>
+      </view>
+
+      <view wx:if="{{notices.length}}" class="notice-card card stagger-item stagger-4">
+        <view
+          wx:for="{{notices}}"
+          wx:key="title"
+          class="notice-row pressable {{index < notices.length - 1 ? 'notice-row--divided' : ''}}"
+          data-link="{{item.link}}"
+          data-title="{{item.title}}"
+          bindtap="openNotice"
+          hover-class="pressing"
+        >
+          <view class="notice-dot"></view>
+          <view class="notice-copy">
+            <text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text>
+            <text class="notice-time">{{item.time}}</text>
+          </view>
+          <text class="notice-chevron">›</text>
+        </view>
+      </view>
+      <view wx:elif="{{!loading}}" class="notice-card card stagger-item stagger-4">
+        <empty-state compact glyph="告" title="暂无通知" description="学校发布新通知后会及时显示"></empty-state>
+      </view>
+
+      <view wx:if="{{errorMessage}}" class="dashboard-error" bindtap="onRefresh" hover-class="dashboard-error--pressed">
+        <text>{{errorMessage}}</text>
+        <text class="retry-text">重新加载</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,0 +1,32 @@
+<view wx:if="{{mounted}}" class="sheet-layer sheet-layer--{{theme}}">
+  <view
+    class="sheet-scrim {{active ? 'sheet-scrim--active' : ''}}"
+    bindtap="onMaskTap"
+    catchtouchmove="noop"
+  ></view>
+  <view class="sheet-card {{active ? 'sheet-card--active' : ''}}" catchtouchmove="noop">
+    <view class="sheet-header">
+      <view class="sheet-title-wrap">
+        <text class="sheet-title">{{title}}</text>
+        <slot name="subtitle"></slot>
+      </view>
+      <view
+        class="sheet-close"
+        bindtap="onClose"
+        hover-class="sheet-close--pressed"
+        hover-stay-time="90"
+        aria-role="button"
+        aria-label="关闭"
+      >
+        <view class="sheet-close-line sheet-close-line--a"></view>
+        <view class="sheet-close-line sheet-close-line--b"></view>
+      </view>
+    </view>
+    <view class="sheet-content">
+      <slot></slot>
+    </view>
+    <view class="sheet-footer">
+      <slot name="footer"></slot>
+    </view>
+  </view>
+</view>

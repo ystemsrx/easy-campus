@@ -1,0 +1,240 @@
+.login-page {
+  background-color: var(--color-bg);
+}
+
+.login-stage {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: calc(52rpx + env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+
+.ambient {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.ambient--one {
+  top: -180rpx;
+  right: -160rpx;
+  width: 540rpx;
+  height: 540rpx;
+  background: linear-gradient(145deg, rgba(73, 153, 255, 0.32), rgba(135, 205, 255, 0.04));
+}
+
+.ambient--two {
+  bottom: 80rpx;
+  left: -260rpx;
+  width: 560rpx;
+  height: 560rpx;
+  background: linear-gradient(145deg, rgba(112, 91, 255, 0.14), rgba(96, 180, 255, 0.02));
+}
+
+.theme-dark .ambient--one {
+  opacity: 0.42;
+}
+
+.theme-dark .ambient--two {
+  opacity: 0.3;
+}
+
+.login-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 62rpx 38rpx 24rpx;
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 52rpx;
+}
+
+.brand-mark {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 112rpx;
+  height: 112rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.68);
+  border-radius: 36rpx;
+  color: #ffffff;
+  background: #1677ff;
+  box-shadow: 0 20rpx 50rpx rgba(22, 119, 255, 0.28);
+  font-size: 54rpx;
+  font-weight: 750;
+  line-height: 1;
+  transform: rotate(-3deg);
+}
+
+.brand-name {
+  margin-top: 26rpx;
+  color: var(--color-text);
+  font-size: 52rpx;
+  font-weight: 750;
+  line-height: 1.05;
+  letter-spacing: -1.8rpx;
+}
+
+.brand-tagline {
+  margin-top: 14rpx;
+  color: var(--color-text-secondary);
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+.login-card {
+  padding: 38rpx 32rpx 34rpx;
+}
+
+.form-heading {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 30rpx;
+}
+
+.form-title {
+  color: var(--color-text);
+  font-size: 38rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.7rpx;
+}
+
+.form-subtitle {
+  margin-top: 8rpx;
+  color: var(--color-text-tertiary);
+  font-size: 24rpx;
+}
+
+.field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 96rpx;
+  margin-top: 18rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid var(--color-separator);
+  border-radius: 24rpx;
+  background-color: var(--color-bg-subtle);
+  transition: background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.field--focus {
+  border-color: rgba(22, 119, 255, 0.45);
+  background-color: var(--color-bg-elevated);
+  box-shadow: 0 0 0 6rpx rgba(22, 119, 255, 0.08);
+}
+
+.field-label {
+  width: 82rpx;
+  color: var(--color-text-secondary);
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.field-input {
+  flex: 1;
+  height: 94rpx;
+  color: var(--color-text);
+  font-size: 29rpx;
+}
+
+.field-placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.password-toggle {
+  padding: 18rpx 4rpx 18rpx 22rpx;
+  color: var(--color-primary);
+  font-size: 24rpx;
+  font-weight: 600;
+  transform: scale(1);
+  transition: transform 100ms ease-out, opacity 100ms ease-out;
+}
+
+.password-toggle--pressed {
+  opacity: 0.68;
+  transform: scale(0.93);
+}
+
+.inline-error {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+  font-size: 23rpx;
+  line-height: 1.5;
+  animation-name: error-in;
+  animation-duration: 220ms;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+.error-dot {
+  flex: none;
+  width: 10rpx;
+  height: 10rpx;
+  margin: 12rpx 14rpx 0 0;
+  border-radius: 50%;
+  background-color: var(--color-danger);
+}
+
+.login-button {
+  margin-top: 28rpx;
+}
+
+.privacy-note {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-top: 24rpx;
+  color: var(--color-text-tertiary);
+  font-size: 21rpx;
+  line-height: 1.55;
+}
+
+.privacy-glyph {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 30rpx;
+  height: 30rpx;
+  margin: 2rpx 12rpx 0 0;
+  border: 2rpx solid var(--color-text-tertiary);
+  border-radius: 50%;
+  font-size: 18rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.session-note {
+  display: block;
+  margin-top: 30rpx;
+  color: var(--color-text-tertiary);
+  font-size: 21rpx;
+  text-align: center;
+}
+
+@keyframes error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

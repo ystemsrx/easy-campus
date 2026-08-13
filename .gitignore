@@ -1,0 +1,12 @@
+node_modules/
+miniprogram_npm/
+.DS_Store
+Thumbs.db
+project.private.config.json
+*.log
+.eslintcache
+coverage/
+dist/
+.env
+.env.*
+!.env.example

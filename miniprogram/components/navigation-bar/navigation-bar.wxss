@@ -1,0 +1,119 @@
+.nav-spacer {
+  width: 100%;
+  flex: none;
+}
+
+.nav-shell {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 800;
+  color: #172033;
+  transition: background-color 240ms ease, box-shadow 240ms ease;
+}
+
+.nav-shell--dark {
+  color: #f5f7fb;
+}
+
+.nav-shell--transparent {
+  background: rgba(255, 255, 255, 0);
+}
+
+.nav-shell--material {
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12rpx 30rpx rgba(35, 49, 76, 0.06);
+  backdrop-filter: blur(24px);
+}
+
+.nav-shell--dark.nav-shell--material {
+  background: rgba(14, 17, 24, 0.84);
+  box-shadow: 0 12rpx 30rpx rgba(0, 0, 0, 0.18);
+}
+
+.nav-content {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.nav-side {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.nav-side--left {
+  left: 0;
+  justify-content: flex-start;
+  padding-left: 20rpx;
+}
+
+.nav-side--right {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 20rpx;
+}
+
+.back-button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  transform: scale(1);
+  transition: transform 100ms ease-out, background-color 140ms ease;
+}
+
+.nav-button--pressed {
+  background: rgba(128, 138, 155, 0.14);
+  transform: scale(0.9);
+}
+
+.back-glyph {
+  width: 24rpx;
+  height: 24rpx;
+  margin-left: 8rpx;
+  border-bottom: 4rpx solid currentColor;
+  border-left: 4rpx solid currentColor;
+  border-radius: 3rpx;
+  transform: rotate(45deg);
+}
+
+.nav-title-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 420rpx;
+  height: 100%;
+}
+
+.nav-title {
+  width: 100%;
+  color: currentColor;
+  font-size: 31rpx;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+  letter-spacing: -0.4rpx;
+}
+
+.nav-subtitle {
+  width: 100%;
+  margin-top: 1rpx;
+  color: #8a93a3;
+  font-size: 19rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+}

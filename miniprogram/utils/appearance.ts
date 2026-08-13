@@ -1,0 +1,28 @@
+import type { AppPreferences } from "../types/app";
+
+export interface PageAppearance {
+  theme: "light" | "dark";
+  themeClass: "theme-light" | "theme-dark";
+  motionClass: "motion-normal" | "motion-reduced";
+}
+
+function getSystemTheme(): "light" | "dark" {
+  try {
+    return wx.getAppBaseInfo().theme === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+export function resolveAppearance(
+  preferences?: AppPreferences,
+): PageAppearance {
+  const current = preferences || getApp<IAppOption>().globalData.preferences;
+  const theme = current.theme === "system" ? getSystemTheme() : current.theme;
+
+  return {
+    theme,
+    themeClass: theme === "dark" ? "theme-dark" : "theme-light",
+    motionClass: current.reducedMotion ? "motion-reduced" : "motion-normal",
+  };
+}
