@@ -29,7 +29,20 @@ export function loadSession(): Session | null {
     return null;
   }
 
-  return stored;
+  const credential = stored.credential;
+  const normalized: Session = {
+    ...stored,
+    loginMode: stored.loginMode === "local" ? "local" : "campus",
+    credential:
+      credential &&
+      ["verified", "pending", "invalid", "unavailable"].includes(
+        credential.status,
+      )
+        ? credential
+        : { status: "verified", checkedAt: null, errorCode: null },
+  };
+  wx.setStorageSync(SESSION_KEY, normalized);
+  return normalized;
 }
 
 export function saveSession(loginData: LoginData): Session {
@@ -40,6 +53,16 @@ export function saveSession(loginData: LoginData): Session {
   wx.setStorageSync(SESSION_KEY, session);
   getApp<IAppOption>().globalData.session = session;
   return session;
+}
+
+export function updateSessionCredential(
+  credential: Session["credential"],
+): void {
+  const session = getSession();
+  if (!session) return;
+  const updated = { ...session, credential };
+  wx.setStorageSync(SESSION_KEY, updated);
+  getApp<IAppOption>().globalData.session = updated;
 }
 
 export function getSession(): Session | null {

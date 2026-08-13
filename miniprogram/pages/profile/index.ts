@@ -1,7 +1,7 @@
 import { getApiOrigin } from "../../config/index";
-import { getCurrentUser } from "../../services/auth";
+import { getCurrentUser, logout as logoutSession } from "../../services/auth";
 import { getErrorMessage } from "../../services/request";
-import { clearSession, getSession, loadCurrentUser } from "../../store/session";
+import { getSession, loadCurrentUser } from "../../store/session";
 import { updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
@@ -194,14 +194,16 @@ Page({
   logout() {
     wx.showModal({
       title: "退出登录？",
-      content: "本机将移除登录会话。再次使用时需要重新输入学号和密码。",
+      content:
+        "只撤销当前登录会话。服务器上的个人资料、成绩及最近三条消息与通知都会保留，重新登录后可快速恢复。",
       confirmText: "退出登录",
       confirmColor: "#e64b5d",
       success: (result) => {
         if (!result.confirm) return;
         haptic("heavy");
-        clearSession();
-        wx.reLaunch({ url: "/pages/login/index" });
+        void logoutSession()
+          .catch(() => undefined)
+          .finally(() => wx.reLaunch({ url: "/pages/login/index" }));
       },
     });
   },

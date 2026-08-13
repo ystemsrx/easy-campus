@@ -117,10 +117,7 @@
         <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>全部</text></view>
       </view>
 
-      <view wx:if="{{loading}}" class="feed-card card stagger-item stagger-3">
-        <loading-view compact label="正在读取最新消息"></loading-view>
-      </view>
-      <view wx:elif="{{messages.length}}" class="feed-card card stagger-item stagger-3">
+      <view wx:if="{{messages.length}}" class="feed-card card stagger-item stagger-3">
         <view
           wx:for="{{messages}}"
           wx:key="id"
@@ -136,7 +133,7 @@
           <text class="feed-time">{{item.time}}</text>
         </view>
       </view>
-      <view wx:else class="feed-card card stagger-item stagger-3">
+      <view wx:elif="{{loaded}}" class="feed-card card stagger-item stagger-3">
         <empty-state compact glyph="讯" title="暂无新消息" description="有调课或补课安排时会出现在这里"></empty-state>
       </view>
 
@@ -166,7 +163,7 @@
           <text class="notice-chevron">›</text>
         </view>
       </view>
-      <view wx:elif="{{!loading}}" class="notice-card card stagger-item stagger-4">
+      <view wx:elif="{{loaded}}" class="notice-card card stagger-item stagger-4">
         <empty-state compact glyph="告" title="暂无通知" description="学校发布新通知后会及时显示"></empty-state>
       </view>
 

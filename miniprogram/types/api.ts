@@ -37,6 +37,8 @@ export interface Session {
   tokenType: "Bearer";
   expiresIn: 7776000;
   sliding: true;
+  loginMode: "local" | "campus";
+  credential: CredentialState;
   user: {
     id: string;
     account: string;
@@ -50,13 +52,25 @@ export interface LoginData {
   tokenType: "Bearer";
   expiresIn: 7776000;
   sliding: true;
+  loginMode: "local" | "campus";
+  credential: CredentialState;
   user: Session["user"];
+}
+
+export type CredentialStatus =
+  "verified" | "pending" | "invalid" | "unavailable";
+
+export interface CredentialState {
+  status: CredentialStatus;
+  checkedAt: string | null;
+  errorCode: string | null;
 }
 
 export interface CurrentUserData {
   id: string;
   account: string;
   name: string;
+  credential: CredentialState;
   profile: {
     name?: string;
     accountId?: string;
@@ -336,6 +350,7 @@ export interface Exam {
 export interface QueryMeta {
   cached: boolean;
   fetchedAt?: string;
+  refreshing?: boolean;
 }
 
 export interface MessagesQuery {

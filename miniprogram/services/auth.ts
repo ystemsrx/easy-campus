@@ -1,6 +1,16 @@
 import { apiRequest } from "./request";
-import { saveCurrentUser, saveSession } from "../store/session";
-import type { CurrentUserData, LoginData, Session } from "../types/api";
+import {
+  clearSession,
+  saveCurrentUser,
+  saveSession,
+  updateSessionCredential,
+} from "../store/session";
+import type {
+  CredentialState,
+  CurrentUserData,
+  LoginData,
+  Session,
+} from "../types/api";
 
 export async function login(
   account: string,
@@ -19,5 +29,26 @@ export async function login(
 export async function getCurrentUser(): Promise<CurrentUserData> {
   const data = await apiRequest<CurrentUserData>("/auth/me");
   saveCurrentUser(data);
+  updateSessionCredential(data.credential);
   return data;
+}
+
+export async function getCredentialStatus(): Promise<CredentialState> {
+  const data = await apiRequest<CredentialState>("/auth/status", {
+    retry: false,
+  });
+  updateSessionCredential(data);
+  return data;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await apiRequest<{ loggedOut: true; dataRetained: true }>("/auth/logout", {
+      method: "POST",
+      data: {},
+      retry: false,
+    });
+  } finally {
+    clearSession();
+  }
 }

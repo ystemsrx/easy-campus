@@ -22,7 +22,12 @@ interface SuccessEnvelope<T> extends ApiSuccess<T> {
   meta?: QueryMeta;
 }
 
-const AUTH_ERROR_CODES = new Set(["INVALID_TOKEN", "USER_NOT_FOUND"]);
+const AUTH_ERROR_CODES = new Set([
+  "INVALID_TOKEN",
+  "USER_NOT_FOUND",
+  "SWU_AUTH_FAILED",
+  "SWU_CREDENTIAL_INVALID",
+]);
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
 const RETRYABLE_STATUS_CODES = new Set([429, 502, 503]);
 let redirectingToLogin = false;

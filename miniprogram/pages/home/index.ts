@@ -1,4 +1,8 @@
-import { getCurrentUser } from "../../services/auth";
+import {
+  getCredentialStatus,
+  getCurrentUser,
+  logout as logoutSession,
+} from "../../services/auth";
 import {
   downloadPublicationMedia,
   getPublicationFeed,
@@ -7,13 +11,23 @@ import {
 } from "../../services/content";
 import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import { getSession } from "../../store/session";
+import {
+  loadTeachingPreview,
+  saveTeachingPreview,
+} from "../../store/teaching-preview";
 import {
   coursePreview,
   formatClock,
   remainingCourses,
   type TimetableCourse,
 } from "../../data/timetable";
-import type { Notice, Publication, TeachingMessage } from "../../types/api";
+import type {
+  CredentialState,
+  Notice,
+  Publication,
+  TeachingMessage,
+} from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import {
   currentLocalHour,
@@ -61,6 +75,11 @@ let publicationRequestInFlight = false;
 let homeVisible = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
+let dashboardRequestInFlight = false;
+let dashboardRefreshQueued = false;
+let credentialPollTimer: number | undefined;
+let credentialExitInFlight = false;
+let hydratedAccount = "";
 
 function publicationPreview(
   publication: Publication,
@@ -183,7 +202,7 @@ Page({
     themeClass: "theme-light",
     motionClass: "motion-normal",
     headerScrolled: false,
-    loading: true,
+    loading: false,
     refreshing: false,
     loaded: false,
     errorMessage: "",
@@ -253,6 +272,8 @@ Page({
     ],
   },
   onLoad() {
+    hydratedAccount = "";
+    credentialExitInFlight = false;
     this.applyAppearance();
   },
   onShow() {
@@ -262,6 +283,7 @@ Page({
     homeVisible = true;
     automaticPopupsThisEntry = new Set<string>();
     this.applyAppearance();
+    this.hydrateCachedDashboard();
     this.getTabBar().setData({
       selected: 0,
       themeClass: this.data.themeClass,
@@ -279,11 +301,13 @@ Page({
   onHide() {
     homeVisible = false;
     this.stopCourseClock();
+    this.stopCredentialPoll();
     this.resetPublicationLayers();
   },
   onUnload() {
     homeVisible = false;
     this.stopCourseClock();
+    this.stopCredentialPoll();
     this.resetPublicationLayers();
   },
   stopCourseClock() {
@@ -305,6 +329,73 @@ Page({
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  hydrateCachedDashboard() {
+    const account = getSession()?.user.account || "";
+    if (!account || hydratedAccount === account) return;
+    const changedAccount = Boolean(
+      hydratedAccount && hydratedAccount !== account,
+    );
+    hydratedAccount = account;
+    const cached = loadTeachingPreview(account);
+    const messages = (cached?.messages || []).map(toMessagePreview);
+    const notices = (cached?.notices || []).map(toNoticePreview);
+    this.setData({
+      messages,
+      notices,
+      loaded: messages.length > 0 || notices.length > 0,
+      ...(changedAccount ? { errorMessage: "" } : {}),
+    });
+  },
+  stopCredentialPoll() {
+    if (credentialPollTimer !== undefined) {
+      clearTimeout(credentialPollTimer);
+      credentialPollTimer = undefined;
+    }
+  },
+  handleCredentialState(credential: CredentialState) {
+    if (credential.status === "invalid") {
+      this.exitInvalidCredential();
+      return;
+    }
+    if (credential.status === "pending") {
+      this.scheduleCredentialPoll();
+      return;
+    }
+    this.stopCredentialPoll();
+    if (credential.status === "unavailable") {
+      this.setData({
+        serviceHealthy: false,
+        serviceLabel: "校园验证暂不可用，正在显示缓存",
+      });
+    }
+  },
+  scheduleCredentialPoll() {
+    if (credentialPollTimer !== undefined || !homeVisible) return;
+    credentialPollTimer = setTimeout(async () => {
+      credentialPollTimer = undefined;
+      if (!homeVisible) return;
+      try {
+        this.handleCredentialState(await getCredentialStatus());
+      } catch {
+        // 普通网络失败不应清除仍然有效的本地会话。
+      }
+    }, 1800) as unknown as number;
+  },
+  exitInvalidCredential() {
+    if (credentialExitInFlight) return;
+    credentialExitInFlight = true;
+    this.stopCredentialPoll();
+    void logoutSession()
+      .catch(() => undefined)
+      .finally(() => {
+        wx.showToast({
+          title: "校园密码已变更，请重新登录",
+          icon: "none",
+          duration: 1800,
+        });
+        setTimeout(() => wx.reLaunch({ url: "/pages/login/index" }), 360);
+      });
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const scrolled = event.detail.scrollTop > 18;
@@ -518,12 +609,14 @@ Page({
     }, 280) as unknown as number;
   },
   async loadDashboard(refresh: boolean) {
-    if (this.data.loading && this.data.loaded && !refresh) {
+    if (dashboardRequestInFlight) {
+      if (refresh) dashboardRefreshQueued = true;
       return;
     }
+    dashboardRequestInFlight = true;
 
     this.setData({
-      loading: !this.data.loaded,
+      loading: false,
       refreshing: false,
       errorMessage: "",
       greeting: getGreeting(),
@@ -551,14 +644,21 @@ Page({
       patch.userName = userResult.value.name || "同学";
       patch.organizationName =
         userResult.value.profile.organizationName || "西南大学";
+      this.handleCredentialState(userResult.value.credential);
     }
     if (messageResult.status === "fulfilled") {
+      saveTeachingPreview(getSession()?.user.account || "", {
+        messages: messageResult.value.data.items,
+      });
       patch.messages = mergeMessagePreviews(
         messageResult.value.data.items.map(toMessagePreview),
         this.data.messages,
       );
     }
     if (noticeResult.status === "fulfilled") {
+      saveTeachingPreview(getSession()?.user.account || "", {
+        notices: noticeResult.value.data.items,
+      });
       patch.notices = mergeNoticePreviews(
         noticeResult.value.data.items.map(toNoticePreview),
         this.data.notices,
@@ -574,6 +674,17 @@ Page({
       );
     }
     this.setData(patch);
+    const needsFreshResult =
+      !refresh &&
+      ((messageResult.status === "fulfilled" &&
+        messageResult.value.meta.refreshing) ||
+        (noticeResult.status === "fulfilled" &&
+          noticeResult.value.meta.refreshing));
+    dashboardRequestInFlight = false;
+    if (needsFreshResult || dashboardRefreshQueued) {
+      dashboardRefreshQueued = false;
+      setTimeout(() => void this.loadDashboard(true), 0);
+    }
   },
   onRefresh() {
     haptic("light");

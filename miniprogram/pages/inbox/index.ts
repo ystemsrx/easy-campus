@@ -1,5 +1,10 @@
 import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import { getSession } from "../../store/session";
+import {
+  loadTeachingPreview,
+  saveTeachingPreview,
+} from "../../store/teaching-preview";
 import type { MessageType, Notice, TeachingMessage } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { formatDateTime } from "../../utils/date";
@@ -32,6 +37,7 @@ interface NoticeView extends Notice {
 const PAGE_SIZE = 20;
 let messageRequestSequence = 0;
 let noticeRequestSequence = 0;
+let hydratedInboxAccount = "";
 
 function scheduleView(schedule: {
   weekStart: number;
@@ -135,6 +141,8 @@ Page({
     noticeTotalPages: 1,
     messageLoading: false,
     noticeLoading: false,
+    messageLoaded: false,
+    noticeLoaded: false,
     messageRefreshing: false,
     noticeRefreshing: false,
     messageLoadingMore: false,
@@ -159,6 +167,7 @@ Page({
     ],
   },
   onLoad() {
+    hydratedInboxAccount = "";
     this.applyAppearance();
   },
   onShow() {
@@ -166,6 +175,7 @@ Page({
       return;
     }
     this.applyAppearance();
+    this.hydrateCachedPreview();
     this.getTabBar().setData({
       selected: 1,
       themeClass: this.data.themeClass,
@@ -188,6 +198,23 @@ Page({
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  hydrateCachedPreview() {
+    const account = getSession()?.user.account || "";
+    if (!account || hydratedInboxAccount === account) return;
+    hydratedInboxAccount = account;
+    const cached = loadTeachingPreview(account);
+    const messageItems = (cached?.messages || []).map(toMessageView);
+    const noticeItems = (cached?.notices || []).map((notice) => ({
+      ...notice,
+      displayTime: formatDateTime(notice.publishedAt),
+    }));
+    this.setData({
+      messageItems,
+      noticeItems,
+      messageLoaded: messageItems.length > 0,
+      noticeLoaded: noticeItems.length > 0,
+    });
   },
   onTabTap(event: WechatMiniprogram.TouchEvent) {
     const index = Number(event.currentTarget.dataset.index);
@@ -240,6 +267,16 @@ Page({
         return;
       }
       const incoming = result.data.items.map(toMessageView);
+      if (
+        page === 1 &&
+        !this.data.messageType &&
+        !this.data.from &&
+        !this.data.to
+      ) {
+        saveTeachingPreview(getSession()?.user.account || "", {
+          messages: result.data.items,
+        });
+      }
       this.setData({
         messageItems: reset
           ? mergeFresh
@@ -248,7 +285,11 @@ Page({
           : mergeMessages(this.data.messageItems, incoming),
         messagePage: result.data.pagination.page,
         messageTotalPages: result.data.pagination.totalPages,
+        messageLoaded: true,
       });
+      if (!refresh && result.meta.refreshing) {
+        setTimeout(() => void this.loadMessages(true, true, true), 0);
+      }
     } catch (error) {
       if (sequence === messageRequestSequence) {
         this.setData({ messageError: getErrorMessage(error) });
@@ -289,6 +330,11 @@ Page({
         ...notice,
         displayTime: formatDateTime(notice.publishedAt),
       }));
+      if (page === 1 && !this.data.noticeQuery.trim()) {
+        saveTeachingPreview(getSession()?.user.account || "", {
+          notices: result.data.items,
+        });
+      }
       this.setData({
         noticeItems: reset
           ? mergeFresh
@@ -297,7 +343,11 @@ Page({
           : mergeNotices(this.data.noticeItems, incoming),
         noticePage: result.data.pagination.page,
         noticeTotalPages: result.data.pagination.totalPages,
+        noticeLoaded: true,
       });
+      if (!refresh && result.meta.refreshing) {
+        setTimeout(() => void this.loadNotices(true, true, true), 0);
+      }
     } catch (error) {
       if (sequence === noticeRequestSequence) {
         this.setData({ noticeError: getErrorMessage(error) });

@@ -69,9 +69,7 @@
             </view>
           </view>
 
-          <loading-view wx:if="{{messageLoading}}" label="正在整理教务消息"></loading-view>
-
-          <view wx:elif="{{messageItems.length}}" class="message-list">
+          <view wx:if="{{messageItems.length}}" class="message-list">
             <view
               wx:for="{{messageItems}}"
               wx:key="id"
@@ -123,7 +121,16 @@
           </view>
 
           <empty-state
-            wx:elif="{{!messageError}}"
+            wx:elif="{{messageError}}"
+            glyph="!"
+            title="消息加载失败"
+            description="{{messageError}}"
+            action-text="重新加载"
+            bindaction="refreshMessages"
+          ></empty-state>
+
+          <empty-state
+            wx:elif="{{messageLoaded}}"
             glyph="讯"
             title="没有符合条件的消息"
             description="更换筛选条件，或下拉刷新后再看看"
@@ -131,14 +138,6 @@
             bindaction="openMessageFilter"
           ></empty-state>
 
-          <empty-state
-            wx:else
-            glyph="!"
-            title="消息加载失败"
-            description="{{messageError}}"
-            action-text="重新加载"
-            bindaction="refreshMessages"
-          ></empty-state>
         </view>
       </scroll-view>
     </swiper-item>
@@ -179,12 +178,10 @@
 
           <view class="notice-source">
             <view class="source-dot"></view>
-            <text>数据来自学校教务系统，每次打开实时更新</text>
+            <text>先显示最近缓存，随后静默更新</text>
           </view>
 
-          <loading-view wx:if="{{noticeLoading}}" label="正在读取最新通知"></loading-view>
-
-          <view wx:elif="{{noticeItems.length}}" class="notice-list">
+          <view wx:if="{{noticeItems.length}}" class="notice-list">
             <view
               wx:for="{{noticeItems}}"
               wx:key="link"
@@ -208,7 +205,16 @@
           </view>
 
           <empty-state
-            wx:elif="{{!noticeError}}"
+            wx:elif="{{noticeError}}"
+            glyph="!"
+            title="通知加载失败"
+            description="{{noticeError}}"
+            action-text="重新加载"
+            bindaction="refreshNotices"
+          ></empty-state>
+
+          <empty-state
+            wx:elif="{{noticeLoaded}}"
             glyph="告"
             title="没有找到通知"
             description="尝试更换关键词，或清空搜索条件"
@@ -216,14 +222,6 @@
             bindaction="clearNoticeQuery"
           ></empty-state>
 
-          <empty-state
-            wx:else
-            glyph="!"
-            title="通知加载失败"
-            description="{{noticeError}}"
-            action-text="重新加载"
-            bindaction="refreshNotices"
-          ></empty-state>
         </view>
       </scroll-view>
     </swiper-item>
