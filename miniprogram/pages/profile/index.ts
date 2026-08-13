@@ -6,13 +6,24 @@ import { updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { getUserTimeZoneLabel } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
 
 interface ProfileRow {
   label: string;
   value: string;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function getUserTimeZoneLabel(): string {
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  if (offsetMinutes === 0) return "UTC";
+  const sign = offsetMinutes > 0 ? "+" : "−";
+  const absolute = Math.abs(offsetMinutes);
+  return `UTC${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
 }
 
 function buildProfileRows(user: CurrentUserData): ProfileRow[] {

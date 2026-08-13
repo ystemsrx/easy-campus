@@ -83,14 +83,6 @@ export function localDateKey(value: string): string {
   return parsed ? toDateString(parsed) : "";
 }
 
-export function getUserTimeZoneLabel(): string {
-  const offsetMinutes = -new Date().getTimezoneOffset();
-  if (offsetMinutes === 0) return "UTC";
-  const sign = offsetMinutes > 0 ? "+" : "−";
-  const absolute = Math.abs(offsetMinutes);
-  return `UTC${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
-}
-
 export function formatMessageWeekday(value: number): string {
   return MESSAGE_WEEKDAYS[value] || `周${value}`;
 }
