@@ -20,19 +20,41 @@
 
           <view wx:if="{{messageItems.length}}" class="message-list">
             <view wx:for="{{messageItems}}" wx:key="id" class="message-card card stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;">
-              <view class="message-head">
+              <view class="message-meta-row">
                 <text class="message-badge message-badge--{{item.tone}}">{{item.label}}</text>
-                <text class="message-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
                 <text class="message-time">{{item.createdAt}}</text>
               </view>
-              <text wx:if="{{item.teacher}}" class="message-teacher">{{item.teacher}}</text>
-              <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-chips">
-                <view class="schedule-chip schedule-chip--old"><text class="schedule-chip-label">原</text><text>{{item.original.primary}} · {{item.original.location}}</text></view>
-                <lucide-icon name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
-                <view class="schedule-chip schedule-chip--new message-badge--{{item.tone}}"><text class="schedule-chip-label">新</text><text>{{item.current.primary}} · {{item.current.location}}</text></view>
+              <view class="message-course-row">
+                <text class="message-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
+                <text wx:if="{{item.teacher}}" class="message-teacher" overflow="ellipsis" max-lines="1">（{{item.teacher}}）</text>
               </view>
-              <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-chips"><view class="schedule-chip schedule-chip--new message-badge--{{item.tone}}"><text class="schedule-chip-label">补</text><text>{{item.current.primary}} · {{item.current.location}}</text></view></view>
-              <view wx:elif="{{item.type === 'course_cancelled'}}" class="schedule-chips"><view class="schedule-chip schedule-chip--old"><text class="schedule-chip-label">原</text><text>{{item.original.primary}} · {{item.original.location}}</text></view></view>
+              <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-flow schedule-flow--rescheduled">
+                <view class="schedule-panel schedule-panel--old">
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--old">原安排</text><text class="schedule-time-label">{{item.original.primary}}</text></view>
+                  <view class="schedule-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view>
+                </view>
+                <view class="reschedule-connector">
+                  <view class="reschedule-connector-line"></view>
+                  <view class="reschedule-connector-label"><view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="amber" size="{{19}}"></lucide-icon></view><text>调整至</text></view>
+                  <view class="reschedule-connector-line"></view>
+                </view>
+                <view class="schedule-panel schedule-panel--new">
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><text class="schedule-time-label">{{item.current.primary}}</text></view>
+                  <view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view>
+                </view>
+              </view>
+              <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-flow">
+                <view class="schedule-panel schedule-panel--makeup">
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--makeup">补课安排</text><text class="schedule-time-label">{{item.current.primary}}</text></view>
+                  <view class="schedule-location"><lucide-icon name="map-pin" tone="sage" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view>
+                </view>
+              </view>
+              <view wx:elif="{{item.type === 'course_cancelled'}}" class="schedule-flow">
+                <view class="schedule-panel schedule-panel--cancelled">
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--cancelled">停课安排</text><text class="schedule-time-label">{{item.original.primary}}</text></view>
+                  <view class="schedule-location"><lucide-icon name="map-pin" tone="coral" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view>
+                </view>
+              </view>
               <text wx:else class="message-content">{{item.content}}</text>
             </view>
             <view wx:if="{{messageLoadingMore}}" class="load-more"><text>正在载入更多…</text></view>

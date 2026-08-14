@@ -17,20 +17,34 @@
 .message-list,
 .notice-list { display: flex; flex-direction: column; gap: 18rpx; }
 .message-card { padding: 28rpx; }
-.message-head { display: flex; flex-direction: row; align-items: center; gap: 14rpx; min-width: 0; }
+.message-meta-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 18rpx; }
 .message-badge { flex: none; padding: 6rpx 16rpx; border-radius: 999rpx; color: #8b8b94; background: #f1f1f3; font-size: 20rpx; font-weight: 800; }
 .message-badge--blue { color: #a66f1f; background: #f8eedd; }
 .message-badge--green { color: #5f7350; background: #edf1e6; }
 .message-badge--orange { color: #c0452d; background: #f9e7e0; }
-.message-title { flex: 1; min-width: 0; color: var(--color-text); font-size: 27rpx; font-weight: 750; }
+.message-course-row { display: flex; flex-direction: row; align-items: baseline; gap: 7rpx; min-width: 0; margin-top: 14rpx; }
+.message-title { flex: 0 1 auto; min-width: 0; color: var(--color-text); font-size: 29rpx; font-weight: 750; }
 .message-time { flex: none; max-width: 145rpx; color: #b5b0a3; font-size: 18rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.message-teacher { display: block; margin-top: 7rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
-.schedule-chips { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10rpx; margin-top: 20rpx; }
-.schedule-chip { display: flex; flex-direction: row; align-items: baseline; gap: 10rpx; max-width: 100%; padding: 10rpx 18rpx; border-radius: 999rpx; color: #6b6558; background: #f6f3ec; font-size: 20rpx; font-weight: 650; }
-.schedule-chip--new.message-badge--blue { color: #a66f1f; background: #f8eedd; }
-.schedule-chip--new.message-badge--green { color: #5f7350; background: #edf1e6; }
-.schedule-chip--new.message-badge--orange { color: #c0452d; background: #f9e7e0; }
-.schedule-chip-label { font-size: 17rpx; font-weight: 800; opacity: 0.7; }
+.message-teacher { flex: none; max-width: 250rpx; color: var(--color-text-tertiary); font-size: 21rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-flow { margin-top: 20rpx; }
+.schedule-panel { padding: 20rpx 22rpx; border: 1rpx solid rgba(43, 38, 32, 0.04); border-radius: 30rpx; background: #f6f3ec; }
+.schedule-panel--new { border-color: rgba(166, 111, 31, 0.14); background: #fdf7e9; }
+.schedule-panel--makeup { border-color: rgba(95, 115, 80, 0.14); background: #f2f6ee; }
+.schedule-panel--cancelled { border-color: rgba(192, 69, 45, 0.12); background: #fdf1ec; }
+.schedule-panel-head { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16rpx; min-width: 0; }
+.schedule-state { flex: none; font-size: 18rpx; font-weight: 800; }
+.schedule-state--old { color: #8b8578; }
+.schedule-state--new { color: #a66f1f; }
+.schedule-state--makeup { color: #5f7350; }
+.schedule-state--cancelled { color: #c0452d; }
+.schedule-time-label { flex: none; padding: 7rpx 14rpx; border-radius: 999rpx; color: #3a352d; background: rgba(255, 255, 255, 0.76); font-size: 19rpx; font-weight: 700; white-space: nowrap; }
+.schedule-location { display: flex; flex-direction: row; align-items: center; gap: 8rpx; min-width: 0; margin-top: 12rpx; color: #8b8578; font-size: 20rpx; }
+.schedule-location > text { flex: 1; min-width: 0; }
+.schedule-location--new { color: #8b6d38; }
+.reschedule-connector { display: flex; flex-direction: row; align-items: center; gap: 11rpx; padding: 8rpx 18rpx; }
+.reschedule-connector-line { flex: 1; height: 1rpx; background: rgba(166, 111, 31, 0.15); }
+.reschedule-connector-label { display: flex; flex: none; flex-direction: row; align-items: center; gap: 5rpx; color: #a66f1f; font-size: 17rpx; font-weight: 750; }
+.reschedule-arrow { display: flex; transform: rotate(90deg); }
 .message-content { display: block; margin-top: 18rpx; color: #8b8578; font-size: 23rpx; line-height: 1.65; }
 
 .notice-search { gap: 18rpx; margin-bottom: 18rpx; }
@@ -70,3 +84,8 @@
 
 .theme-dark .segment-indicator { background: #3a3730; }
 .theme-dark .segment-item--active { color: #f7f3e9; }
+.theme-dark .schedule-panel { border-color: rgba(255, 255, 255, 0.05); background: #2d2a24; }
+.theme-dark .schedule-panel--new { border-color: rgba(229, 184, 110, 0.18); background: rgba(166, 111, 31, 0.16); }
+.theme-dark .schedule-panel--makeup { border-color: rgba(172, 190, 151, 0.16); background: rgba(95, 115, 80, 0.16); }
+.theme-dark .schedule-panel--cancelled { border-color: rgba(217, 119, 87, 0.17); background: rgba(192, 69, 45, 0.14); }
+.theme-dark .schedule-time-label { color: #f7f3e9; background: rgba(255, 255, 255, 0.07); }

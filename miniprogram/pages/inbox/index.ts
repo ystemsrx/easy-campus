@@ -53,20 +53,34 @@ function scheduleView(schedule: {
   };
 }
 
+function teacherLabel(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+  return normalized.endsWith("老师") ? normalized : `${normalized}老师`;
+}
+
 function toMessageView(message: TeachingMessage): MessageView {
   switch (message.type) {
-    case "course_rescheduled":
+    case "course_rescheduled": {
+      const originalTeacher = teacherLabel(message.teacherName);
+      const currentTeacher = teacherLabel(message.newTeacherName);
       return {
         id: message.id,
         type: message.type,
         label: "调课",
         tone: "blue",
         title: message.courseName,
-        teacher: `${message.teacherName}${message.newTeacherName !== message.teacherName ? ` → ${message.newTeacherName}` : ""}`,
+        teacher:
+          originalTeacher &&
+          currentTeacher &&
+          originalTeacher !== currentTeacher
+            ? `${originalTeacher} → ${currentTeacher}`
+            : currentTeacher || originalTeacher,
         createdAt: formatDateTime(message.createdAt),
         original: scheduleView(message.originalSchedule),
         current: scheduleView(message.newSchedule),
       };
+    }
     case "makeup_class":
       return {
         id: message.id,
@@ -74,7 +88,7 @@ function toMessageView(message: TeachingMessage): MessageView {
         label: "补课",
         tone: "green",
         title: message.courseName,
-        teacher: message.teacherName,
+        teacher: teacherLabel(message.teacherName),
         createdAt: formatDateTime(message.createdAt),
         current: scheduleView(message.schedule),
       };
@@ -85,7 +99,7 @@ function toMessageView(message: TeachingMessage): MessageView {
         label: "停课",
         tone: "orange",
         title: message.courseName,
-        teacher: message.teacherName,
+        teacher: teacherLabel(message.teacherName),
         createdAt: formatDateTime(message.createdAt),
         original: scheduleView(message.schedule),
       };
