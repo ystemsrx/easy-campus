@@ -33,33 +33,50 @@
         </view>
       </view>
 
-      <view class="today-card pressable stagger-item stagger-1" bindtap="openTimetable" hover-class="today-card--pressed">
-        <view class="ambient-blob today-blob today-blob--one"></view>
-        <view class="ambient-blob today-blob today-blob--two"></view>
-        <view class="today-content">
-          <view class="today-head">
-            <view>
-              <text class="today-kicker">今日课程</text>
-              <view class="today-count-row"><text class="today-count tnum">{{todayCourses.length}}</text><text class="today-unit">节课</text></view>
-            </view>
-            <view class="timetable-pill"><text>完整课表</text><lucide-icon name="chevron-right" tone="white" size="{{24}}"></lucide-icon></view>
-          </view>
-          <view wx:if="{{todayCourses.length}}" class="today-course-list">
-            <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
-              <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text></view>
-              <view class="today-course-copy">
-                <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
-                <view class="today-course-meta"><lucide-icon name="map-pin" tone="white" size="{{17}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
+      <open-container
+        id="timetable-open-container"
+        class="timetable-open-container"
+        closed-color="#d97757"
+        middle-color="{{theme === 'dark' ? '#8c5948' : '#eba97f'}}"
+        open-color="{{theme === 'dark' ? '#171613' : '#f7f5ef'}}"
+        closed-elevation="{{0}}"
+        closed-border-radius="{{timetableCardRadius}}"
+        open-elevation="{{0}}"
+        open-border-radius="{{0}}"
+        transition-type="fadeThrough"
+        transition-duration="{{380}}"
+        bind:tap="openTimetable"
+        aria-role="button"
+        aria-label="展开完整课表"
+      >
+        <view class="today-card pressable stagger-item stagger-1" hover-class="today-card--pressed">
+          <view class="ambient-blob today-blob today-blob--one"></view>
+          <view class="ambient-blob today-blob today-blob--two"></view>
+          <view class="today-content">
+            <view class="today-head">
+              <view>
+                <text class="today-kicker">今日课程</text>
+                <view class="today-count-row"><text class="today-count tnum">{{todayCourses.length}}</text><text class="today-unit">节课</text></view>
               </view>
-              <view class="course-status {{item.current ? 'course-status--current' : ''}}"><text>{{item.statusLabel}}</text></view>
+              <view class="timetable-pill"><text>完整课表</text><lucide-icon name="chevron-right" tone="white" size="{{24}}"></lucide-icon></view>
             </view>
-          </view>
-          <view wx:else class="today-empty">
-            <text class="today-empty-title">今天的课程已结束</text>
-            <text class="today-empty-caption">去完整课表看看本周安排</text>
+            <view wx:if="{{todayCourses.length}}" class="today-course-list">
+              <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
+                <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text></view>
+                <view class="today-course-copy">
+                  <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
+                  <view class="today-course-meta"><lucide-icon name="map-pin" tone="white" size="{{17}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
+                </view>
+                <view class="course-status {{item.current ? 'course-status--current' : ''}}"><text>{{item.statusLabel}}</text></view>
+              </view>
+            </view>
+            <view wx:else class="today-empty">
+              <text class="today-empty-title">今天的课程已结束</text>
+              <text class="today-empty-caption">去完整课表看看本周安排</text>
+            </view>
           </view>
         </view>
-      </view>
+      </open-container>
 
       <view class="feature-grid stagger-item stagger-2">
         <view class="feature-card feature-card--grades pressable" data-route="/pages/grades/index" bindtap="onQuickAction" hover-class="feature-card--pressed">

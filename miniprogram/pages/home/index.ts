@@ -94,6 +94,15 @@ let dashboardStableRefreshQueued = false;
 let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
+let timetableRouteOpening = false;
+
+function getTimetableCardRadius(): number {
+  try {
+    return (wx.getWindowInfo().windowWidth * 56) / 750;
+  } catch {
+    return 28;
+  }
+}
 
 function publicationPreview(
   publication: Publication,
@@ -271,6 +280,7 @@ Page({
     currentTime: formatClock(),
     todayCourses: todayCoursePreview(),
     remainingCourseCount: remainingCourses().length,
+    timetableCardRadius: getTimetableCardRadius(),
     gradeAverageLabel: "—",
     gradeCourseCount: 0,
     plans: [] as PlanPreview[],
@@ -763,8 +773,36 @@ Page({
     }
   },
   openTimetable() {
+    if (timetableRouteOpening) return;
+    timetableRouteOpening = true;
     haptic("light");
-    void navigateTo("/pages/timetable/index");
+    const fallback = () => {
+      void navigateTo("/pages/timetable/index", "wx://zoom").finally(() => {
+        timetableRouteOpening = false;
+      });
+    };
+
+    try {
+      this.createSelectorQuery()
+        .select("#timetable-open-container")
+        .node((result) => {
+          if (!result?.node) {
+            fallback();
+            return;
+          }
+          wx.navigateTo({
+            url: "/pages/timetable/index",
+            withOpenContainer: result.node,
+            success: () => {
+              timetableRouteOpening = false;
+            },
+            fail: fallback,
+          });
+        })
+        .exec();
+    } catch {
+      fallback();
+    }
   },
   openMessages() {
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
