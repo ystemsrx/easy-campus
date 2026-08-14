@@ -1,8 +1,13 @@
 import { getGrades } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
-import type { GradeCourse, GradeSummary, GradesQuery } from "../../types/api";
+import type {
+  AcademicSemesterOption,
+  GradeCourse,
+  GradeSummary,
+  GradesQuery,
+} from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime, getDefaultAcademicPeriod } from "../../utils/date";
+import { academicTermLabel, formatDateTime } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
@@ -26,6 +31,11 @@ interface YearOption {
   label: string;
 }
 
+interface TermOption {
+  value: number;
+  label: string;
+}
+
 const PAGE_SIZE = 50;
 let requestSequence = 0;
 
@@ -36,7 +46,7 @@ function toGradeView(course: GradeCourse): GradeView {
     scoreTone: scoreTone(course.finalScore),
     isTextGrade: typeof course.finalScore === "string",
     creditsLabel: formatCredits(course.credits),
-    termLabel: course.term ? `第 ${course.term} 学期` : "学期未知",
+    termLabel: academicTermLabel(course.term),
     componentPreview: course.components.slice(0, 3).map((component) => ({
       name: component.name,
       score: formatScore(component.score),
@@ -44,13 +54,40 @@ function toGradeView(course: GradeCourse): GradeView {
   };
 }
 
-function academicYearOptions(): YearOption[] {
-  const current = getDefaultAcademicPeriod().academicYear;
-  const options: YearOption[] = [{ value: 0, label: "全部学年" }];
-  for (let year = current; year >= current - 8; year -= 1) {
-    options.push({ value: year, label: `${year}-${year + 1}` });
-  }
-  return options;
+function buildAcademicYearOptions(
+  semesters: AcademicSemesterOption[],
+): YearOption[] {
+  const years = [
+    ...new Map(
+      semesters.map((semester) => [semester.academicYear, semester]),
+    ).values(),
+  ];
+  return [
+    { value: 0, label: "全部学年" },
+    ...years.map((semester) => ({
+      value: semester.academicYear,
+      label: semester.academicYearLabel,
+    })),
+  ];
+}
+
+function buildTermOptions(
+  semesters: AcademicSemesterOption[],
+  academicYear = 0,
+): TermOption[] {
+  const terms = [
+    ...new Set(
+      semesters
+        .filter(
+          (semester) => !academicYear || semester.academicYear === academicYear,
+        )
+        .map((semester) => semester.term),
+    ),
+  ].sort((left, right) => left - right);
+  return [
+    { value: 0, label: "全部" },
+    ...terms.map((term) => ({ value: term, label: academicTermLabel(term) })),
+  ];
 }
 
 function summaryDefaults(): GradeSummary {
@@ -99,13 +136,9 @@ Page({
     sourceLabel: "每日自动更新",
     cached: false,
     fetchedAt: "",
-    academicYearOptions: academicYearOptions(),
-    termOptions: [
-      { value: 0, label: "全部" },
-      { value: 1, label: "第一学期" },
-      { value: 2, label: "第二学期" },
-      { value: 3, label: "第三学期" },
-    ],
+    availableSemesters: [] as AcademicSemesterOption[],
+    academicYearOptions: [{ value: 0, label: "全部学年" }] as YearOption[],
+    termOptions: [{ value: 0, label: "全部" }] as TermOption[],
     sortOptions: [
       { value: "academicYear", label: "按学期" },
       { value: "courseName", label: "按课程名" },
@@ -139,7 +172,7 @@ Page({
       parts.push(`${this.data.academicYear}-${this.data.academicYear + 1}`);
     }
     if (this.data.term) {
-      parts.push(`第 ${this.data.term} 学期`);
+      parts.push(academicTermLabel(this.data.term));
     }
     return parts.length ? parts.join(" · ") : "全部成绩";
   },
@@ -187,6 +220,12 @@ Page({
         page: result.data.pagination.page,
         totalPages: result.data.pagination.totalPages,
         total: result.data.pagination.total,
+        availableSemesters: result.data.semesters,
+        academicYearOptions: buildAcademicYearOptions(result.data.semesters),
+        termOptions: buildTermOptions(
+          result.data.semesters,
+          this.data.academicYear,
+        ),
         loaded: true,
         cached: result.meta.cached,
         fetchedAt,
@@ -242,6 +281,10 @@ Page({
       draftTerm: this.data.term,
       draftSort: this.data.sort,
       draftOrder: this.data.order,
+      termOptions: buildTermOptions(
+        this.data.availableSemesters,
+        this.data.academicYear,
+      ),
     });
   },
   closeFilter() {
@@ -249,8 +292,18 @@ Page({
   },
   selectDraftAcademicYear(event: WechatMiniprogram.TouchEvent) {
     haptic("light");
+    const draftAcademicYear = Number(event.currentTarget.dataset.value);
+    const termOptions = buildTermOptions(
+      this.data.availableSemesters,
+      draftAcademicYear,
+    );
+    const validTerms = termOptions.map((option) => option.value);
     this.setData({
-      draftAcademicYear: Number(event.currentTarget.dataset.value),
+      draftAcademicYear,
+      draftTerm: validTerms.includes(this.data.draftTerm)
+        ? this.data.draftTerm
+        : 0,
+      termOptions,
     });
   },
   selectDraftTerm(event: WechatMiniprogram.TouchEvent) {
@@ -277,6 +330,7 @@ Page({
       draftTerm: 0,
       draftSort: "academicYear",
       draftOrder: "desc",
+      termOptions: buildTermOptions(this.data.availableSemesters),
     });
   },
   applyFilter() {

@@ -87,21 +87,9 @@ export function formatMessageWeekday(value: number): string {
   return MESSAGE_WEEKDAYS[value] || `周${value}`;
 }
 
-export function getDefaultAcademicPeriod(): {
-  academicYear: number;
-  term: 1 | 2 | 3;
-} {
-  const [year, month] = today().split("-").map(Number);
-
-  if (month >= 8) {
-    return { academicYear: year, term: 1 };
-  }
-  if (month === 7) {
-    return { academicYear: year - 1, term: 3 };
-  }
-  return { academicYear: year - 1, term: 2 };
-}
-
-export function academicYearLabel(startYear: number): string {
-  return `${startYear}-${startYear + 1}`;
+export function academicTermLabel(term?: number | null): string {
+  if (term === 1) return "第一学期";
+  if (term === 2) return "第二学期";
+  if (term === 3) return "第三学期";
+  return "学期未知";
 }

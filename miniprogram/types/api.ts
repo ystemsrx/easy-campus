@@ -210,7 +210,7 @@ export interface GradeComponent {
 export interface GradeCourse {
   id: string;
   academicYear: string;
-  term: number | null;
+  term: 1 | 2 | 3 | null;
   courseCode: string;
   courseName: string;
   teachingClass: string;
@@ -228,8 +228,17 @@ export interface GradeSummary {
   numericWeightedAverage: number | null;
 }
 
+export interface AcademicSemesterOption {
+  id: string;
+  academicYear: number;
+  academicYearLabel: string;
+  term: 1 | 2 | 3;
+  label: string;
+}
+
 export interface GradesData extends Paginated<GradeCourse> {
   summary: GradeSummary;
+  semesters: AcademicSemesterOption[];
 }
 
 export interface SelectOption {
@@ -297,21 +306,13 @@ export interface RoomsData extends Paginated<EmptyRoom> {
   };
 }
 
-export interface ExamOption {
-  value: string;
-  label: string;
-}
-
-export interface TermOption extends ExamOption {
-  term: 1 | 2 | 3 | null;
-}
-
 export interface ExamOptionsData {
-  academicYears: ExamOption[];
-  terms: TermOption[];
-  examNames: ExamOption[];
-  departments: ExamOption[];
+  semesters: AcademicSemesterOption[];
+  defaultSemester: AcademicSemesterOption | null;
 }
+
+export type ExamArrangementType =
+  "regular" | "makeup" | "deferred" | "makeup_deferred";
 
 export interface ExamTime {
   date: string;
@@ -325,7 +326,9 @@ export interface ExamTime {
 export interface Exam {
   id: string;
   academicYear: string;
-  term?: number;
+  term?: 1 | 2 | 3;
+  arrangementType: ExamArrangementType;
+  arrangementTypeLabel: string;
   examName: string;
   course: {
     code: string;
@@ -345,6 +348,20 @@ export interface Exam {
   department: string;
   teacherNames: string[];
   note?: string;
+}
+
+export interface ExamSummary {
+  total: number;
+  regular: number;
+  makeup: number;
+  deferred: number;
+  makeupDeferred: number;
+}
+
+export interface ExamsData extends Paginated<Exam> {
+  semester: AcademicSemesterOption | null;
+  semesters: AcademicSemesterOption[];
+  summary: ExamSummary;
 }
 
 export interface QueryMeta {
@@ -391,14 +408,7 @@ export interface RoomsQuery {
 }
 
 export interface ExamsQuery {
-  academicYear: number;
-  term: 1 | 2 | 3;
-  startDate?: string;
-  endDate?: string;
-  q?: string;
-  examNameId?: string;
-  departmentId?: string;
-  order?: "asc" | "desc";
+  semester?: string;
   page?: number;
   pageSize?: number;
   refresh?: boolean;

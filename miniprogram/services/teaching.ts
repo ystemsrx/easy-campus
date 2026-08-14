@@ -2,9 +2,9 @@ import { getApiBaseUrl } from "../config/index";
 import { getSession } from "../store/session";
 import type {
   CalendarData,
+  ExamsData,
   ExamOptionsData,
   ExamsQuery,
-  Exam,
   GradesData,
   GradesQuery,
   MessagesQuery,
@@ -83,19 +83,14 @@ export function getRooms(
   );
 }
 
-export function getExamOptions(
-  academicYear: number,
-  term: 1 | 2 | 3,
-): Promise<TeachingResult<ExamOptionsData>> {
-  return teachingRequest<ExamOptionsData>(
-    `/teaching/exams/options${buildQuery({ academicYear, term })}`,
-  );
+export function getExamOptions(): Promise<TeachingResult<ExamOptionsData>> {
+  return teachingRequest<ExamOptionsData>("/teaching/exams/options");
 }
 
 export function getExams(
   query: ExamsQuery,
-): Promise<TeachingResult<Paginated<Exam>>> {
-  return teachingRequest<Paginated<Exam>>(
+): Promise<TeachingResult<ExamsData>> {
+  return teachingRequest<ExamsData>(
     `/teaching/exams${buildQuery(asQuery(query))}`,
   );
 }

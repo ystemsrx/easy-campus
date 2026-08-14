@@ -1,5 +1,6 @@
 import type { GradeCourse } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
+import { academicTermLabel } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
 
 interface ComponentView {
@@ -65,7 +66,7 @@ Page({
       { label: "教学班", value: course.teachingClass || "—" },
       { label: "开课学院", value: course.department || "—" },
       { label: "学年", value: course.academicYear || "—" },
-      { label: "学期", value: course.term ? `第 ${course.term} 学期` : "—" },
+      { label: "学期", value: academicTermLabel(course.term) },
       {
         label: "学分",
         value:
@@ -80,7 +81,7 @@ Page({
       scoreTone: scoreTone(course.finalScore),
       scoreIsText: typeof course.finalScore === "string",
       creditsLabel: formatCredits(course.credits),
-      termLabel: course.term ? `第 ${course.term} 学期` : "学期未知",
+      termLabel: academicTermLabel(course.term),
       components,
       detailRows: rows,
     });
