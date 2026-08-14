@@ -5,6 +5,7 @@ import {
   formatClock,
   timeToMinutes,
   type TimetableCourse,
+  TIMETABLE_PLACEHOLDER,
 } from "../../data/timetable";
 import { resolveAppearance } from "../../utils/appearance";
 import { formatFriendlyDate, toDateString } from "../../utils/date";
@@ -25,7 +26,27 @@ interface CourseView extends TimetableCourse {
   stateLabel: string;
 }
 
+interface GridCourse extends TimetableCourse {
+  top: number;
+  height: number;
+}
+
+interface GridDay extends DayOption {
+  courses: GridCourse[];
+}
+
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+const GRID_START = 8 * 60;
+
+function toGridCourse(course: TimetableCourse): GridCourse {
+  const start = timeToMinutes(course.startTime);
+  const end = timeToMinutes(course.endTime);
+  return {
+    ...course,
+    top: Math.max(0, start - GRID_START),
+    height: Math.max(58, end - start),
+  };
+}
 let clockTimer: number | undefined;
 
 function mondayOf(date: Date): Date {
@@ -86,12 +107,24 @@ Page({
     selectedDateLabel: "",
     courses: [] as CourseView[],
     courseCount: 0,
+    gridDays: [] as GridDay[],
+    gridHeight: 870,
+    selectedCourse: null as TimetableCourse | null,
+    courseSheetVisible: false,
   },
   onLoad() {
     this.setData(resolveAppearance());
     const now = new Date();
     const days = buildDays(now);
-    this.setData({ days });
+    this.setData({
+      days,
+      gridDays: days.map((day) => ({
+        ...day,
+        courses: TIMETABLE_PLACEHOLDER.filter(
+          (course) => course.weekday === day.weekday,
+        ).map(toGridCourse),
+      })),
+    });
     this.applyDay(currentIsoWeekday(now), now);
   },
   onShow() {
@@ -119,7 +152,16 @@ Page({
   updateClock() {
     const now = new Date();
     const days = buildDays(now);
-    this.setData({ currentTime: formatClock(now), days });
+    this.setData({
+      currentTime: formatClock(now),
+      days,
+      gridDays: days.map((day) => ({
+        ...day,
+        courses: TIMETABLE_PLACEHOLDER.filter(
+          (course) => course.weekday === day.weekday,
+        ).map(toGridCourse),
+      })),
+    });
     this.applyDay(this.data.selectedWeekday, now);
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
@@ -153,5 +195,15 @@ Page({
   goToday() {
     haptic("light");
     this.applyDay(currentIsoWeekday(), new Date());
+  },
+  openCourse(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    const course = TIMETABLE_PLACEHOLDER.find((item) => item.id === id);
+    if (!course) return;
+    haptic("light");
+    this.setData({ selectedCourse: course, courseSheetVisible: true });
+  },
+  closeCourse() {
+    this.setData({ courseSheetVisible: false, selectedCourse: null });
   },
 });

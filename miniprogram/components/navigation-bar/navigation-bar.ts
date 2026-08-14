@@ -23,7 +23,7 @@ Component({
         const windowInfo = wx.getWindowInfo();
         const statusBarHeight = windowInfo.statusBarHeight || menu.top;
         const contentHeight = Math.max(
-          44,
+          50,
           (menu.top - statusBarHeight) * 2 + menu.height,
         );
         this.setData({

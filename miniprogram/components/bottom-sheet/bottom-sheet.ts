@@ -31,7 +31,7 @@ Component({
         if (!this.data.visible) {
           this.setData({ mounted: false });
         }
-      }, 280);
+      }, 380);
     },
     onMaskTap() {
       if (this.data.closeOnMask) {

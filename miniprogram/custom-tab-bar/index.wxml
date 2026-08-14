@@ -16,8 +16,10 @@
       <view class="tabbar-glyph tabbar-glyph--{{item.glyph}}">
         <view wx:if="{{item.glyph === 'home'}}" class="home-roof"></view>
         <view wx:if="{{item.glyph === 'home'}}" class="home-body"></view>
-        <view wx:if="{{item.glyph === 'inbox'}}" class="inbox-body"></view>
-        <view wx:if="{{item.glyph === 'inbox'}}" class="inbox-line"></view>
+        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-body"></view>
+        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-line"></view>
+        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-ring schedule-ring--left"></view>
+        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-ring schedule-ring--right"></view>
         <view wx:if="{{item.glyph === 'profile'}}" class="profile-head"></view>
         <view wx:if="{{item.glyph === 'profile'}}" class="profile-body"></view>
       </view>

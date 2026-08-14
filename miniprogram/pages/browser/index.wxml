@@ -1,65 +1,19 @@
 <view class="page notice-detail-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-    <navigation-bar title="通知详情" back theme="{{theme}}"></navigation-bar>
-
+    <navigation-bar title="通知详情" subtitle="已整理为易读正文" back transparent theme="{{theme}}"></navigation-bar>
     <view class="notice-detail-content page-content page-enter">
-      <view class="notice-heading card">
-        <view class="notice-heading-topline">
-          <view class="notice-kind">
-            <view class="notice-kind-dot"></view>
-            <text>教务通知</text>
-          </view>
-          <text wx:if="{{cached}}" class="cache-label">共享缓存</text>
-        </view>
-        <text class="notice-heading-title" selectable user-select>{{title}}</text>
-        <view wx:if="{{displayTime || publisher}}" class="notice-meta">
-          <text wx:if="{{displayTime}}">{{displayTime}}</text>
-          <view wx:if="{{displayTime && publisher}}" class="notice-meta-dot"></view>
-          <text wx:if="{{publisher}}">{{publisher}}</text>
-        </view>
+      <view class="notice-heading">
+        <view class="notice-kind"><view class="notice-kind-icon"><view class="mini-megaphone"><view></view></view></view><text>教务通知</text><text wx:if="{{cached}}" class="cache-label">共享缓存</text></view>
+        <text class="notice-heading-title display-title" selectable user-select>{{title}}</text>
+        <view wx:if="{{displayTime || publisher}}" class="notice-meta"><text wx:if="{{displayTime}}">{{displayTime}}</text><view wx:if="{{displayTime && publisher}}"></view><text wx:if="{{publisher}}">{{publisher}}</text></view>
       </view>
 
-      <view wx:if="{{contentHtml}}" class="notice-article card">
-        <rich-text class="notice-rich-text" nodes="{{contentHtml}}"></rich-text>
-      </view>
-
-      <view wx:elif="{{loading}}" class="notice-article notice-skeleton card" aria-label="正在整理通知正文">
-        <view class="skeleton-line skeleton-line--wide"></view>
-        <view class="skeleton-line"></view>
-        <view class="skeleton-line skeleton-line--short"></view>
-        <view class="skeleton-section"></view>
-        <view class="skeleton-line"></view>
-        <view class="skeleton-line skeleton-line--medium"></view>
-        <view class="skeleton-section skeleton-section--small"></view>
-        <view class="skeleton-line"></view>
-      </view>
-
-      <view wx:elif="{{loaded && errorMessage}}" class="notice-error card">
-        <view class="notice-error-glyph"><text>!</text></view>
-        <text class="notice-error-title">正文暂时无法显示</text>
-        <text class="notice-error-copy">{{errorMessage}}</text>
-        <button class="secondary-button notice-retry" hover-class="button-pressed" bindtap="retry">重新加载</button>
-      </view>
-
-      <view wx:if="{{contentHtml && errorMessage}}" class="inline-refresh-error pressable" bindtap="retry" hover-class="pressing">
-        <text>{{errorMessage}}</text>
-        <text class="inline-refresh-action">重试</text>
-      </view>
-
-      <view wx:if="{{url}}" class="notice-source card">
-        <view class="notice-source-copy">
-          <text class="notice-source-label">原始来源</text>
-          <text class="notice-source-domain">{{domain}}</text>
-        </view>
-        <view class="notice-copy-link pressable" bindtap="copyLink" hover-class="pressing" aria-role="button" aria-label="复制原始通知链接">
-          <text>复制链接</text>
-        </view>
-      </view>
-
-      <view class="notice-footnote">
-        <view class="notice-footnote-line"></view>
-        <text>正文已在服务端清理危险标签，并将常见章节、编号和项目符号整理为易读层级。</text>
-      </view>
+      <view wx:if="{{contentHtml}}" class="notice-article card"><rich-text class="notice-rich-text" nodes="{{contentHtml}}"></rich-text></view>
+      <view wx:elif="{{loading}}" class="notice-article notice-skeleton card" aria-label="正在整理通知正文"><view class="skeleton-line skeleton-line--wide"></view><view class="skeleton-line"></view><view class="skeleton-line skeleton-line--short"></view><view class="skeleton-section"></view><view class="skeleton-line"></view><view class="skeleton-line skeleton-line--medium"></view><view class="skeleton-section skeleton-section--small"></view><view class="skeleton-line"></view></view>
+      <view wx:elif="{{loaded && errorMessage}}" class="notice-error card"><view class="notice-error-glyph"><text>!</text></view><text class="notice-error-title">正文暂时无法显示</text><text class="notice-error-copy">{{errorMessage}}</text><button class="secondary-button notice-retry" hover-class="button-pressed" bindtap="retry">重新加载</button></view>
+      <view wx:if="{{contentHtml && errorMessage}}" class="inline-refresh-error pressable" bindtap="retry" hover-class="pressing"><text>{{errorMessage}}</text><text>重试</text></view>
+      <view wx:if="{{url}}" class="notice-source card"><view><text class="notice-source-label">原始来源</text><text class="notice-source-domain">{{domain}}</text></view><view class="notice-copy-link pressable" bindtap="copyLink" hover-class="pressing"><text>复制链接</text></view></view>
+      <view class="notice-footnote"><view></view><text>正文已在服务端清理危险标签，并将常见章节、编号和项目符号整理为易读层级。</text></view>
     </view>
   </scroll-view>
 </view>

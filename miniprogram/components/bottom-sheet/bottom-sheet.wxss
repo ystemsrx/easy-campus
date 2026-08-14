@@ -1,23 +1,17 @@
 .sheet-layer {
-  --sheet-bg: rgba(255, 255, 255, 0.96);
-  --sheet-text: #172033;
-  --sheet-secondary: #657086;
-  --sheet-close: #edf1f7;
-
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
   z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: #16161a;
 }
 
-.sheet-layer--dark {
-  --sheet-bg: rgba(24, 29, 39, 0.97);
-  --sheet-text: #f5f7fb;
-  --sheet-secondary: #a9b2c2;
-  --sheet-close: #2a3241;
-}
+.sheet-layer--dark { color: #f7f3e9; }
 
 .sheet-scrim {
   position: absolute;
@@ -25,108 +19,107 @@
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(8, 13, 23, 0.42);
   opacity: 0;
-  transition: opacity 240ms ease;
+  background: rgba(24, 21, 18, 0.36);
+  transition: opacity 300ms ease;
 }
 
-.sheet-scrim--active {
-  opacity: 1;
-}
+.sheet-scrim--active { opacity: 1; }
 
 .sheet-card {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  max-height: 88%;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 86vh;
   padding-bottom: env(safe-area-inset-bottom);
   overflow: hidden;
-  border-radius: 40rpx 40rpx 0 0;
-  color: var(--sheet-text);
-  background-color: var(--sheet-bg);
-  box-shadow: 0 -24rpx 70rpx rgba(12, 21, 38, 0.2);
-  backdrop-filter: blur(28px);
-  opacity: 0.7;
-  transform: translateY(102%) scale(0.98);
-  transform-origin: 50% 100%;
-  transition: transform 320ms cubic-bezier(0.2, 0.82, 0.2, 1), opacity 220ms ease;
+  border-radius: 56rpx 56rpx 0 0;
+  background: #fbf9f4;
+  box-shadow: 0 -22rpx 80rpx rgba(20, 20, 30, 0.18);
+  transform: translateY(105%);
+  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.sheet-card--active {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
+.sheet-layer--dark .sheet-card { background: #211f1b; }
+.sheet-card--active { transform: translateY(0); }
 
-.motion-reduced .sheet-scrim,
-.motion-reduced .sheet-card,
-.motion-reduced .sheet-close {
-  transition-duration: 1ms;
+.sheet-handle {
+  position: absolute;
+  top: 14rpx;
+  left: 50%;
+  z-index: 3;
+  width: 70rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: rgba(43, 38, 32, 0.15);
+  transform: translateX(-50%);
 }
 
 .sheet-header {
+  position: relative;
+  z-index: 2;
   display: flex;
+  flex: none;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  min-height: 116rpx;
-  padding: 26rpx 30rpx 18rpx 36rpx;
+  min-height: 100rpx;
+  padding: 30rpx 38rpx 12rpx 44rpx;
+  background: rgba(251, 249, 244, 0.92);
+  backdrop-filter: blur(16px);
 }
 
-.sheet-title-wrap {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
+.sheet-layer--dark .sheet-header { background: rgba(33, 31, 27, 0.92); }
+
+.sheet-title-wrap { min-width: 0; }
 
 .sheet-title {
-  color: var(--sheet-text);
-  font-size: 36rpx;
-  font-weight: 700;
+  display: block;
+  color: currentColor;
+  font-size: 34rpx;
+  font-weight: 750;
   line-height: 1.2;
-  letter-spacing: -0.6rpx;
 }
 
 .sheet-close {
   position: relative;
-  width: 62rpx;
-  height: 62rpx;
-  margin-left: 20rpx;
+  width: 60rpx;
+  height: 60rpx;
   border-radius: 50%;
-  background-color: var(--sheet-close);
-  transform: scale(1);
-  transition: transform 100ms ease-out, opacity 100ms ease-out;
+  background: rgba(43, 38, 32, 0.06);
+  transition: transform 110ms ease-out, opacity 110ms ease-out;
 }
 
-.sheet-close--pressed {
-  opacity: 0.72;
-  transform: scale(0.9);
-}
+.sheet-layer--dark .sheet-close { background: rgba(255, 255, 255, 0.08); }
+.sheet-close--pressed { transform: scale(0.9); opacity: 0.72; }
 
 .sheet-close-line {
   position: absolute;
   top: 29rpx;
-  left: 18rpx;
-  width: 26rpx;
+  left: 19rpx;
+  width: 22rpx;
   height: 3rpx;
   border-radius: 3rpx;
-  background-color: var(--sheet-secondary);
+  background: #8b8578;
 }
 
-.sheet-close-line--a {
-  transform: rotate(45deg);
-}
-
-.sheet-close-line--b {
-  transform: rotate(-45deg);
-}
+.sheet-close-line--a { transform: rotate(45deg); }
+.sheet-close-line--b { transform: rotate(-45deg); }
 
 .sheet-content {
-  max-height: 62vh;
-  padding: 0 36rpx 24rpx;
-  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  padding: 6rpx 40rpx 24rpx;
 }
 
 .sheet-footer {
-  padding: 16rpx 36rpx 26rpx;
+  flex: none;
+  padding: 16rpx 40rpx 28rpx;
 }
+
+.sheet-footer:empty { display: none; }
+
+.motion-reduced .sheet-scrim,
+.motion-reduced .sheet-card { transition-duration: 1ms; }

@@ -20,8 +20,8 @@
     </view>
 
     <view class="nav-title-wrap">
-      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
       <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
+      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
       <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
     </view>
 

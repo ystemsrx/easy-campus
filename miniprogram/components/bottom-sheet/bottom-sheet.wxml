@@ -5,6 +5,7 @@
     catchtouchmove="noop"
   ></view>
   <view class="sheet-card {{active ? 'sheet-card--active' : ''}}" catchtouchmove="noop">
+    <view class="sheet-handle"></view>
     <view class="sheet-header">
       <view class="sheet-title-wrap">
         <text class="sheet-title">{{title}}</text>
@@ -22,9 +23,9 @@
         <view class="sheet-close-line sheet-close-line--b"></view>
       </view>
     </view>
-    <view class="sheet-content">
+    <scroll-view class="sheet-content" type="list" scroll-y enhanced show-scrollbar="{{false}}">
       <slot></slot>
-    </view>
+    </scroll-view>
     <view class="sheet-footer">
       <slot name="footer"></slot>
     </view>

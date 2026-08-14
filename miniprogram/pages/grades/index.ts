@@ -36,6 +36,13 @@ interface TermOption {
   label: string;
 }
 
+interface SemesterChip {
+  id: string;
+  label: string;
+  academicYear: number;
+  term: number;
+}
+
 const PAGE_SIZE = 50;
 let requestSequence = 0;
 
@@ -90,6 +97,17 @@ function buildTermOptions(
   ];
 }
 
+function buildSemesterChips(
+  semesters: AcademicSemesterOption[],
+): SemesterChip[] {
+  return semesters.map((semester) => ({
+    id: `${semester.academicYear}-${semester.term}`,
+    label: `${semester.academicYearLabel} · ${academicTermLabel(semester.term)}`,
+    academicYear: semester.academicYear,
+    term: semester.term,
+  }));
+}
+
 function summaryDefaults(): GradeSummary {
   return {
     courseCount: 0,
@@ -137,6 +155,8 @@ Page({
     cached: false,
     fetchedAt: "",
     availableSemesters: [] as AcademicSemesterOption[],
+    semesterChips: [] as SemesterChip[],
+    activeSemesterId: "all",
     academicYearOptions: [{ value: 0, label: "全部学年" }] as YearOption[],
     termOptions: [{ value: 0, label: "全部" }] as TermOption[],
     sortOptions: [
@@ -221,6 +241,11 @@ Page({
         totalPages: result.data.pagination.totalPages,
         total: result.data.pagination.total,
         availableSemesters: result.data.semesters,
+        semesterChips: buildSemesterChips(result.data.semesters),
+        activeSemesterId:
+          this.data.academicYear && this.data.term
+            ? `${this.data.academicYear}-${this.data.term}`
+            : "all",
         academicYearOptions: buildAcademicYearOptions(result.data.semesters),
         termOptions: buildTermOptions(
           result.data.semesters,
@@ -251,6 +276,26 @@ Page({
   onRefresh() {
     haptic("medium");
     void this.loadGrades(true, true);
+  },
+  selectSemesterQuick(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "all");
+    if (id === this.data.activeSemesterId) return;
+    haptic("light");
+    if (id === "all") {
+      this.setData({ academicYear: 0, term: 0, activeSemesterId: "all" });
+    } else {
+      const chip = this.data.semesterChips.find((item) => item.id === id);
+      if (!chip) return;
+      this.setData({
+        academicYear: chip.academicYear,
+        term: chip.term,
+        activeSemesterId: chip.id,
+      });
+    }
+    wx.nextTick(() => {
+      this.setData({ filterLabel: this.buildFilterLabel() });
+      void this.loadGrades(true, false);
+    });
   },
   loadMore() {
     if (this.data.page < this.data.totalPages) {
@@ -341,6 +386,10 @@ Page({
       sort: this.data.draftSort,
       order: this.data.draftOrder,
       filterVisible: false,
+      activeSemesterId:
+        this.data.draftAcademicYear && this.data.draftTerm
+          ? `${this.data.draftAcademicYear}-${this.data.draftTerm}`
+          : "all",
     });
     wx.nextTick(() => {
       this.setData({ filterLabel: this.buildFilterLabel() });

@@ -9,7 +9,7 @@ import {
   markPublicationRead,
   recordAnnouncementPopup,
 } from "../../services/content";
-import { getMessages, getNotices } from "../../services/teaching";
+import { getGrades, getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import { getSession } from "../../store/session";
 import {
@@ -60,6 +60,17 @@ interface NoticePreview {
 interface TodayCoursePreview extends TimetableCourse {
   statusLabel: string;
   current: boolean;
+}
+
+interface PlanPreview {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  done: boolean;
+  dateLabel: string;
+  timeLabel: string;
 }
 
 interface PublicationPreview extends Publication {
@@ -182,6 +193,35 @@ function noticeSourceIdFromLink(link: string): string {
   }
 }
 
+function loadPlanPreviews(): PlanPreview[] {
+  const stored = wx.getStorageSync("easy-swu:schedule-plans");
+  if (!Array.isArray(stored)) return [];
+  const todayKey = today();
+  return (
+    stored as Array<{
+      id: string;
+      title: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      done: boolean;
+    }>
+  )
+    .filter((plan) => !plan.done && plan.date >= todayKey)
+    .sort((left, right) =>
+      `${left.date} ${left.startTime}`.localeCompare(
+        `${right.date} ${right.startTime}`,
+      ),
+    )
+    .slice(0, 3)
+    .map((plan) => ({
+      ...plan,
+      dateLabel:
+        plan.date === todayKey ? "今天" : formatFriendlyDate(plan.date),
+      timeLabel: `${plan.startTime}–${plan.endTime}`,
+    }));
+}
+
 function mergeMessagePreviews(
   incoming: MessagePreview[],
   existing: MessagePreview[],
@@ -230,6 +270,9 @@ Page({
     currentTime: formatClock(),
     todayCourses: todayCoursePreview(),
     remainingCourseCount: remainingCourses().length,
+    gradeAverageLabel: "—",
+    gradeCourseCount: 0,
+    plans: [] as PlanPreview[],
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
     announcements: [] as PublicationPreview[],
@@ -241,47 +284,26 @@ Page({
     announcementModalMounted: false,
     announcementModalOpen: false,
     activeAnnouncement: null as PublicationPreview | null,
-    quickActions: [
-      {
-        title: "成绩",
-        caption: "明细与分项",
-        glyph: "绩",
-        tone: "blue",
-        route: "/pages/grades/index",
-      },
-      {
-        title: "空教室",
-        caption: "按节次查找",
-        glyph: "室",
-        tone: "cyan",
-        route: "/pages/rooms/index",
-      },
+    supportActions: [
       {
         title: "考试",
-        caption: "时间与座位",
+        caption: "安排与座位",
         glyph: "考",
-        tone: "purple",
+        tone: "amber",
         route: "/pages/exams/index",
       },
       {
         title: "校历",
         caption: "查看最新校历",
         glyph: "历",
-        tone: "green",
+        tone: "sage",
         route: "/pages/calendar/index",
       },
       {
-        title: "课表",
-        caption: "查看本周课程",
-        glyph: "课",
-        tone: "orange",
-        route: "/pages/timetable/index",
-      },
-      {
-        title: "全部动态",
-        caption: "消息和通知",
+        title: "校园消息",
+        caption: "通知与教务",
         glyph: "讯",
-        tone: "pink",
+        tone: "rose",
         route: "inbox",
       },
     ],
@@ -305,6 +327,7 @@ Page({
       motionClass: this.data.motionClass,
     });
     this.updateTodayCourses();
+    this.setData({ plans: loadPlanPreviews() });
     this.stopCourseClock();
     courseClockTimer = setInterval(
       () => this.updateTodayCourses(),
@@ -638,16 +661,19 @@ Page({
       dateLabel: formatFriendlyDate(today()),
     });
 
-    const [userResult, messageResult, noticeResult] = await Promise.allSettled([
-      getCurrentUser(),
-      getMessages({ page: 1, pageSize: 3, refresh }),
-      getNotices({ page: 1, pageSize: 3, refresh }),
-    ]);
+    const [userResult, messageResult, noticeResult, gradeResult] =
+      await Promise.allSettled([
+        getCurrentUser(),
+        getMessages({ page: 1, pageSize: 3, refresh }),
+        getNotices({ page: 1, pageSize: 3, refresh }),
+        getGrades({ page: 1, pageSize: 1, refresh }),
+      ]);
 
     const serviceHealthy =
       userResult.status === "fulfilled" ||
       messageResult.status === "fulfilled" ||
-      noticeResult.status === "fulfilled";
+      noticeResult.status === "fulfilled" ||
+      gradeResult.status === "fulfilled";
     const patch: Record<string, unknown> = {
       loading: false,
       refreshing: false,
@@ -678,6 +704,16 @@ Page({
         noticeResult.value.data.items.map(toNoticePreview),
         this.data.notices,
       );
+    }
+    if (gradeResult.status === "fulfilled") {
+      const average = gradeResult.value.data.summary.numericWeightedAverage;
+      patch.gradeAverageLabel =
+        average === null
+          ? "—"
+          : Number.isInteger(average)
+            ? String(average)
+            : average.toFixed(1);
+      patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
     }
     if (
       messageResult.status === "rejected" &&
@@ -711,7 +747,7 @@ Page({
     haptic("light");
     if (route === "inbox") {
       wx.setStorageSync("easy-swu:inbox-tab", "messages");
-      wx.switchTab({ url: "/pages/inbox/index" });
+      void navigateTo("/pages/inbox/index", "wx://upwards");
       return;
     }
     if (route) {
@@ -724,11 +760,15 @@ Page({
   },
   openMessages() {
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
-    wx.switchTab({ url: "/pages/inbox/index" });
+    void navigateTo("/pages/inbox/index", "wx://upwards");
   },
   openNotices() {
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
-    wx.switchTab({ url: "/pages/inbox/index" });
+    void navigateTo("/pages/inbox/index", "wx://upwards");
+  },
+  openSchedule() {
+    haptic("light");
+    wx.switchTab({ url: "/pages/schedule/index" });
   },
   openNotice(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");

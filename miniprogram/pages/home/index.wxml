@@ -15,9 +15,11 @@
     <view class="home-content page-content page-content--tab page-enter">
       <view class="welcome-row">
         <view class="welcome-copy">
-          <text class="eyebrow">{{greeting}}</text>
-          <text class="welcome-name">{{userName}}</text>
-          <text class="welcome-date">{{dateLabel}} · {{organizationName || '西南大学'}}</text>
+          <text class="welcome-date">{{dateLabel}}</text>
+          <view class="welcome-title-row">
+            <text class="welcome-title display-title">{{greeting}}，</text>
+            <text class="welcome-name display-title">{{userName}}</text>
+          </view>
         </view>
         <view
           class="publication-bell pressable"
@@ -26,286 +28,142 @@
           aria-role="button"
           aria-label="公告与通知，{{publicationUnreadCount}} 条未读"
         >
-          <view class="bell-glyph">
-            <view class="bell-dome"></view>
-            <view class="bell-clapper"></view>
-          </view>
-          <view wx:if="{{publicationUnreadCount}}" class="publication-badge">
-            <text>{{publicationUnreadLabel}}</text>
-          </view>
+          <view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view>
+          <view wx:if="{{publicationUnreadCount}}" class="publication-badge"><text>{{publicationUnreadLabel}}</text></view>
         </view>
       </view>
 
-      <view
-        class="hero-card pressable stagger-item stagger-1"
-        bindtap="openTimetable"
-        hover-class="hero-card--pressed"
-        aria-role="button"
-        aria-label="今日课程，当前时间 {{currentTime}}"
-      >
-        <view class="hero-glow"></view>
-        <view class="hero-topline">
-          <view>
-            <text class="hero-kicker">TODAY</text>
-            <text class="hero-title">今日课程</text>
-          </view>
-          <view class="hero-clock"><text>{{currentTime}}</text></view>
-        </view>
-
-        <view wx:if="{{todayCourses.length}}" class="hero-course-list">
-          <view
-            wx:for="{{todayCourses}}"
-            wx:key="id"
-            class="hero-course-row {{index < todayCourses.length - 1 ? 'hero-course-row--divided' : ''}}"
-          >
-            <view class="hero-course-status {{item.current ? 'hero-course-status--current' : ''}}">
-              <view wx:if="{{item.current}}" class="hero-current-dot"></view>
-              <text>{{item.statusLabel}}</text>
+      <view class="today-card pressable stagger-item stagger-1" bindtap="openTimetable" hover-class="today-card--pressed">
+        <view class="ambient-blob today-blob today-blob--one"></view>
+        <view class="ambient-blob today-blob today-blob--two"></view>
+        <view class="today-content">
+          <view class="today-head">
+            <view>
+              <text class="today-kicker">今日课程</text>
+              <view class="today-count-row"><text class="today-count tnum">{{todayCourses.length}}</text><text class="today-unit">节课</text></view>
             </view>
-            <view class="hero-course-copy">
-              <text class="hero-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
-              <text class="hero-course-location" overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text>
+            <view class="timetable-pill"><text>完整课表</text><text class="pill-arrow">›</text></view>
+          </view>
+          <view wx:if="{{todayCourses.length}}" class="today-course-list">
+            <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
+              <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text><text class="course-slot-label">节次</text></view>
+              <view class="today-course-copy">
+                <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
+                <view class="today-course-meta"><view class="tiny-pin"><view></view></view><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
+              </view>
+              <view class="course-status {{item.current ? 'course-status--current' : ''}}"><text>{{item.statusLabel}}</text></view>
             </view>
-            <text class="hero-course-chevron">›</text>
           </view>
-        </view>
-
-        <view wx:else class="hero-course-empty">
-          <text class="hero-course-empty-title">今天的课程已结束</text>
-          <text class="hero-course-empty-caption">可以进入课表查看本周安排</text>
-        </view>
-
-        <view class="hero-foot">
-          <text>{{remainingCourseCount ? '还有 ' + remainingCourseCount + ' 门课程' : '查看完整课表'}}</text>
-          <view class="hero-foot-action"><text>本周课表</text><text class="hero-arrow">›</text></view>
+          <view wx:else class="today-empty">
+            <text class="today-empty-title">今天的课程已结束</text>
+            <text class="today-empty-caption">去完整课表看看本周安排</text>
+          </view>
         </view>
       </view>
 
-      <view class="section-header stagger-item stagger-2">
-        <view>
-          <text class="section-title">常用功能</text>
-          <text class="section-caption">少一点层级，快一点到达</text>
+      <view class="feature-grid stagger-item stagger-2">
+        <view class="feature-card feature-card--grades pressable" data-route="/pages/grades/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
+          <view class="ambient-blob feature-blob"></view>
+          <text class="feature-kicker">加权平均分</text>
+          <view class="score-ring"><text class="score-ring-value tnum">{{gradeAverageLabel}}</text></view>
+          <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程' : '查看成绩明细'}}</text>
+        </view>
+        <view class="feature-card feature-card--rooms pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
+          <view class="ambient-blob feature-blob feature-blob--rooms"></view>
+          <text class="feature-kicker">空教室</text>
+          <text class="rooms-main">实时</text>
+          <text class="rooms-copy">按日期、节次和楼栋查询</text>
+          <view class="feature-action"><view class="spark-icon">✦</view><text>立即查询</text></view>
         </view>
       </view>
 
-      <view class="quick-grid stagger-item stagger-2">
-        <view
-          wx:for="{{quickActions}}"
-          wx:key="title"
-          class="quick-card card pressable"
-          data-route="{{item.route}}"
-          bindtap="onQuickAction"
-          hover-class="pressing"
-          hover-stay-time="90"
-          aria-role="button"
-          aria-label="{{item.title}}，{{item.caption}}"
-        >
-          <view class="quick-glyph quick-glyph--{{item.tone}}"><text>{{item.glyph}}</text></view>
-          <view class="quick-copy">
-            <text class="quick-title">{{item.title}}</text>
-            <text class="quick-caption">{{item.caption}}</text>
-          </view>
-          <text class="quick-chevron">›</text>
+      <view class="support-row stagger-item stagger-2">
+        <view wx:for="{{supportActions}}" wx:key="title" class="support-card support-card--{{item.tone}} pressable" data-route="{{item.route}}" bindtap="onQuickAction" hover-class="pressing">
+          <view class="support-glyph"><text>{{item.glyph}}</text></view>
+          <view class="support-copy"><text class="support-title">{{item.title}}</text><text class="support-caption">{{item.caption}}</text></view>
         </view>
       </view>
 
       <view class="section-header stagger-item stagger-3">
-        <view>
-          <text class="section-title">教务消息</text>
-          <text class="section-caption">调课、补课与停课提醒</text>
-        </view>
-        <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>全部</text></view>
+        <view><text class="section-title">接下来</text></view>
+        <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程 ›</text></view>
       </view>
-
-      <view wx:if="{{messages.length}}" class="feed-card card stagger-item stagger-3">
-        <view
-          wx:for="{{messages}}"
-          wx:key="id"
-          class="feed-row pressable {{index < messages.length - 1 ? 'feed-row--divided' : ''}}"
-          bindtap="openMessages"
-          hover-class="pressing"
-        >
-          <view class="feed-badge feed-badge--{{item.tone}}"><text>{{item.label}}</text></view>
-          <view class="feed-copy">
-            <text class="feed-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
-            <text class="feed-subtitle" overflow="ellipsis" max-lines="1">{{item.subtitle}}</text>
+      <view class="plan-card card stagger-item stagger-3">
+        <view wx:if="{{plans.length}}">
+          <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}}">
+            <view class="plan-circle"></view>
+            <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
+            <text class="plan-tag">日程</text>
           </view>
-          <text class="feed-time">{{item.time}}</text>
         </view>
-      </view>
-      <view wx:elif="{{loaded}}" class="feed-card card stagger-item stagger-3">
-        <empty-state compact glyph="讯" title="暂无新消息" description="有调课或补课安排时会出现在这里"></empty-state>
+        <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing"><text>还没有待办，给今天留一点计划 ✦</text></view>
       </view>
 
       <view class="section-header stagger-item stagger-4">
-        <view>
-          <text class="section-title">最新通知</text>
-          <text class="section-caption">来自学校教务系统</text>
-        </view>
-        <view class="section-action pressable" bindtap="openNotices" hover-class="pressing"><text>全部</text></view>
+        <view><text class="section-title">校园消息</text></view>
+        <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部 ›</text></view>
       </view>
-
-      <view wx:if="{{notices.length}}" class="notice-card card stagger-item stagger-4">
-        <view
-          wx:for="{{notices}}"
-          wx:key="title"
-          class="notice-row pressable {{index < notices.length - 1 ? 'notice-row--divided' : ''}}"
-          data-id="{{item.id}}"
-          data-link="{{item.link}}"
-          data-title="{{item.title}}"
-          data-published-at="{{item.publishedAt}}"
-          bindtap="openNotice"
-          hover-class="pressing"
-        >
-          <view class="notice-dot"></view>
-          <view class="notice-copy">
-            <text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text>
-            <text class="notice-time">{{item.time}}</text>
+      <view class="campus-stack stagger-item stagger-4">
+        <view class="campus-card card pressable" bindtap="openNotices" hover-class="pressing">
+          <view class="ambient-blob campus-blob campus-blob--notice"></view>
+          <view class="campus-card-head"><view class="campus-icon campus-icon--notice"><view class="mini-megaphone"><view></view></view></view><text>学校通知</text><view wx:if="{{notices.length}}" class="campus-dot"></view></view>
+          <view wx:if="{{notices.length}}" class="campus-list">
+            <view wx:for="{{notices}}" wx:key="id" class="campus-line"><view class="campus-bullet"></view><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
           </view>
-          <text class="notice-chevron">›</text>
+          <text wx:else class="campus-empty-copy">暂时没有新通知</text>
+        </view>
+        <view class="campus-card card pressable" bindtap="openMessages" hover-class="pressing">
+          <view class="ambient-blob campus-blob campus-blob--message"></view>
+          <view class="campus-card-head"><view class="campus-icon campus-icon--message"><view class="mini-calendar"><view></view></view></view><text>教务消息</text><view wx:if="{{messages.length}}" class="campus-dot"></view></view>
+          <view wx:if="{{messages.length}}" class="campus-list">
+            <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+          </view>
+          <text wx:else class="campus-empty-copy">暂时没有新消息</text>
         </view>
       </view>
-      <view wx:elif="{{loaded}}" class="notice-card card stagger-item stagger-4">
-        <empty-state compact glyph="告" title="暂无通知" description="学校发布新通知后会及时显示"></empty-state>
-      </view>
 
-      <view wx:if="{{errorMessage}}" class="dashboard-error" bindtap="onRefresh" hover-class="dashboard-error--pressed">
-        <text>{{errorMessage}}</text>
-        <text class="retry-text">重新加载</text>
-      </view>
+      <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="onRefresh" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
     </view>
   </scroll-view>
 
-  <view
-    wx:if="{{publicationPanelMounted}}"
-    class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}"
-  >
+  <view wx:if="{{publicationPanelMounted}}" class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}">
     <view class="publication-popover-dismiss" catchtap="closePublicationPanel"></view>
     <view class="publication-popover" catchtap="stopPropagation">
       <view class="publication-popover-header">
-        <view>
-          <text class="publication-popover-eyebrow">INBOX</text>
-          <text class="publication-popover-title">公告与通知</text>
-        </view>
-        <view wx:if="{{publicationUnreadCount}}" class="publication-unread-summary">
-          <text>{{publicationUnreadCount}} 条未读</text>
-        </view>
-        <view wx:else class="publication-unread-summary publication-unread-summary--clear">
-          <text>已全部读完</text>
-        </view>
+        <text class="publication-popover-title display-title">消息</text>
+        <text class="publication-summary">{{publicationUnreadCount ? publicationUnreadCount + ' 条未读' : '已全部读完'}}</text>
       </view>
-
-      <scroll-view
-        class="publication-popover-scroll"
-        type="list"
-        scroll-y
-        enhanced
-        show-scrollbar="{{false}}"
-      >
+      <scroll-view class="publication-popover-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
         <view wx:if="{{announcements.length}}" class="publication-group">
-          <view class="publication-group-header">
-            <text>公告</text>
-            <text>{{announcements.length}}</text>
-          </view>
+          <view class="publication-group-header"><text>公告</text><text>{{announcements.length}}</text></view>
           <view class="publication-group-card">
-            <view
-              wx:for="{{announcements}}"
-              wx:key="id"
-              class="platform-announcement-row pressable {{!item.isRead ? 'publication-row--unread' : ''}} {{index < announcements.length - 1 ? 'publication-row--divided' : ''}}"
-              data-id="{{item.id}}"
-              catchtap="onAnnouncementTap"
-              hover-class="publication-row--pressed"
-            >
-              <view class="publication-tone publication-tone--{{item.iconTone}}" style="color: {{item.accentColor}};">
-                <view class="mini-megaphone"><view></view></view>
-              </view>
-              <text class="platform-announcement-title" overflow="ellipsis" max-lines="2">{{item.title}}</text>
-              <view wx:if="{{!item.isRead}}" class="publication-unread-dot"></view>
-              <text class="publication-row-chevron">›</text>
+            <view wx:for="{{announcements}}" wx:key="id" class="publication-row pressable {{!item.isRead ? 'publication-row--unread' : ''}}" data-id="{{item.id}}" catchtap="onAnnouncementTap" hover-class="publication-row--pressed">
+              <view class="publication-icon publication-icon--announcement"><view class="mini-megaphone"><view></view></view><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
+              <view class="publication-copy"><view class="publication-title-line"><text class="publication-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="publication-time">{{item.timeLabel}}</text></view><text class="publication-preview" overflow="ellipsis" max-lines="1">{{item.previewText}}</text><text class="publication-type">公告 · 点击查看全文</text></view>
             </view>
           </view>
         </view>
-
         <view wx:if="{{platformNotifications.length}}" class="publication-group">
-          <view class="publication-group-header">
-            <text>通知</text>
-            <text>{{platformNotifications.length}}</text>
-          </view>
+          <view class="publication-group-header"><text>通知</text><text>{{platformNotifications.length}}</text></view>
           <view class="publication-group-card">
-            <view
-              wx:for="{{platformNotifications}}"
-              wx:key="id"
-              class="platform-notification-row pressable {{!item.isRead ? 'publication-row--unread' : ''}} {{index < platformNotifications.length - 1 ? 'publication-row--divided' : ''}}"
-              data-id="{{item.id}}"
-              catchtap="onPlatformNotificationTap"
-              hover-class="publication-row--pressed"
-            >
-              <view class="platform-notification-head">
-                <view class="publication-tone publication-tone--{{item.iconTone}}" style="color: {{item.accentColor}};">
-                  <view class="mini-bell"><view></view></view>
-                </view>
-                <view class="platform-notification-copy">
-                  <view class="platform-notification-title-row">
-                    <text class="platform-notification-title">{{item.title}}</text>
-                    <view wx:if="{{!item.isRead}}" class="publication-unread-dot"></view>
-                  </view>
-                  <text class="platform-notification-time">{{item.timeLabel}}</text>
-                </view>
-              </view>
-              <view class="platform-notification-body {{item.expanded ? 'platform-notification-body--expanded' : ''}}">
-                <rich-text wx:if="{{item.expanded}}" nodes="{{item.contentHtml}}"></rich-text>
-                <text wx:else overflow="ellipsis" max-lines="2">{{item.previewText}}</text>
-              </view>
-              <text wx:if="{{item.isLong}}" class="platform-notification-expand">{{item.expanded ? '收起' : '展开'}}</text>
+            <view wx:for="{{platformNotifications}}" wx:key="id" class="publication-row pressable {{!item.isRead ? 'publication-row--unread' : ''}}" data-id="{{item.id}}" catchtap="onPlatformNotificationTap" hover-class="publication-row--pressed">
+              <view class="publication-icon publication-icon--notification"><view class="mini-bell"><view></view></view><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
+              <view class="publication-copy"><view class="publication-title-line"><text class="publication-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="publication-time">{{item.timeLabel}}</text></view><view class="publication-body {{item.expanded ? 'publication-body--expanded' : ''}}"><rich-text wx:if="{{item.expanded}}" nodes="{{item.contentHtml}}"></rich-text><text wx:else overflow="ellipsis" max-lines="1">{{item.previewText}}</text></view><text class="publication-type">{{item.isLong ? (item.expanded ? '收起' : '通知 · 点击展开') : '通知'}}</text></view>
             </view>
           </view>
         </view>
-
-        <view wx:if="{{!announcements.length && !platformNotifications.length}}" class="publication-empty">
-          <view class="publication-empty-bell">
-            <view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view>
-          </view>
-          <text class="publication-empty-title">暂时没有新内容</text>
-          <text class="publication-empty-caption">公告和通知会在这里集中显示</text>
-        </view>
+        <view wx:if="{{!announcements.length && !platformNotifications.length}}" class="publication-empty"><view class="publication-empty-bell"><view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view></view><text class="publication-empty-title">暂时没有新内容</text><text class="publication-empty-caption">公告和通知会在这里集中显示</text></view>
       </scroll-view>
     </view>
   </view>
 
-  <view
-    wx:if="{{announcementModalMounted && activeAnnouncement}}"
-    class="announcement-modal-layer {{announcementModalOpen ? 'announcement-modal-layer--open' : ''}}"
-  >
+  <view wx:if="{{announcementModalMounted && activeAnnouncement}}" class="announcement-modal-layer {{announcementModalOpen ? 'announcement-modal-layer--open' : ''}}">
     <view class="announcement-modal-backdrop" catchtap="closeAnnouncementModal"></view>
     <view class="announcement-modal" catchtap="stopPropagation">
-      <view class="announcement-accent" style="background-color: {{activeAnnouncement.accentColor}};"></view>
-      <view class="announcement-header">
-        <view class="announcement-icon publication-tone--{{activeAnnouncement.iconTone}}" style="color: {{activeAnnouncement.accentColor}};">
-          <view class="mini-megaphone"><view></view></view>
-        </view>
-        <view class="announcement-heading">
-          <text class="announcement-label">公告</text>
-          <text class="announcement-title">{{activeAnnouncement.title}}</text>
-          <text class="announcement-time">{{activeAnnouncement.timeLabel}}</text>
-        </view>
-        <view class="announcement-close pressable" catchtap="closeAnnouncementModal" hover-class="announcement-close--pressed">
-          <text>×</text>
-        </view>
-      </view>
-      <scroll-view
-        class="announcement-content"
-        type="list"
-        scroll-y
-        enhanced
-        show-scrollbar="{{false}}"
-      >
-        <rich-text nodes="{{activeAnnouncement.contentHtml}}"></rich-text>
-      </scroll-view>
-      <view class="announcement-footer">
-        <view class="announcement-confirm pressable" style="background-color: {{activeAnnouncement.accentColor}};" catchtap="closeAnnouncementModal" hover-class="announcement-confirm--pressed">
-          <text>知道了</text>
-        </view>
-      </view>
+      <view class="announcement-handle"></view>
+      <view class="announcement-header"><view class="announcement-heading"><text class="announcement-label">公告</text><text class="announcement-title display-title">{{activeAnnouncement.title}}</text><text class="announcement-time">{{activeAnnouncement.timeLabel}}</text></view><view class="announcement-close pressable" catchtap="closeAnnouncementModal" hover-class="announcement-close--pressed"><text>×</text></view></view>
+      <scroll-view class="announcement-content" type="list" scroll-y enhanced show-scrollbar="{{false}}"><view class="announcement-article"><rich-text nodes="{{activeAnnouncement.contentHtml}}"></rich-text></view></scroll-view>
+      <view class="announcement-footer"><view class="announcement-confirm pressable" catchtap="closeAnnouncementModal" hover-class="announcement-confirm--pressed"><text>知道了</text></view></view>
     </view>
   </view>
 </view>

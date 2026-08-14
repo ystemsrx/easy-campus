@@ -1,31 +1,30 @@
 <view class="page login-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="login-stage">
-      <view class="ambient ambient--one"></view>
-      <view class="ambient ambient--two"></view>
+      <view class="ambient-blob login-blob login-blob--one"></view>
+      <view class="ambient-blob login-blob login-blob--two"></view>
+      <view class="ambient-blob login-blob login-blob--three"></view>
       <navigation-bar transparent theme="{{theme}}"></navigation-bar>
 
-      <view class="login-content page-enter">
-        <view class="brand-block">
-          <view class="brand-mark"><text>易</text></view>
-          <text class="brand-name">Easy SWU</text>
-          <text class="brand-tagline">把教务信息，整理得更简单。</text>
+      <view class="brand-block page-enter">
+        <view class="brand-mark">
+          <view class="ambient-blob brand-blob"></view>
+          <view class="brand-calendar"><view class="brand-calendar-line"></view><view class="brand-calendar-ring brand-calendar-ring--left"></view><view class="brand-calendar-ring brand-calendar-ring--right"></view></view>
         </view>
+        <text class="brand-name display-title">校园通</text>
+        <text class="brand-tagline">课表 · 成绩 · 日程 · 空教室，一应俱全</text>
+      </view>
 
-        <form class="login-card material-card" bindsubmit="onSubmit">
-          <view class="form-heading">
-            <text class="form-title">欢迎回来</text>
-            <text class="form-subtitle">使用西南大学统一身份认证登录</text>
-          </view>
-
+      <view class="login-panel">
+        <form class="login-card" bindsubmit="onSubmit">
           <view class="field {{accountFocused ? 'field--focus' : ''}}">
-            <text class="field-label">学号</text>
+            <view class="field-icon field-icon--user"><view class="user-head"></view><view class="user-body"></view></view>
             <input
               class="field-input"
               value="{{account}}"
               type="text"
               maxlength="64"
-              placeholder="请输入学号"
+              placeholder="学号 / 用户名"
               placeholder-class="field-placeholder"
               bindinput="onAccountInput"
               bindfocus="onAccountFocus"
@@ -36,13 +35,13 @@
           </view>
 
           <view class="field {{passwordFocused ? 'field--focus' : ''}}">
-            <text class="field-label">密码</text>
+            <view class="field-icon field-icon--lock"><view class="lock-loop"></view><view class="lock-body"></view></view>
             <input
-              class="field-input"
+              class="field-input field-input--password"
               value="{{password}}"
               password="{{!passwordVisible}}"
               maxlength="255"
-              placeholder="请输入密码"
+              placeholder="密码"
               placeholder-class="field-placeholder"
               bindinput="onPasswordInput"
               bindfocus="onPasswordFocus"
@@ -51,39 +50,23 @@
               confirm-type="done"
               aria-label="统一身份认证密码"
             />
-            <view
-              class="password-toggle"
-              bindtap="togglePassword"
-              hover-class="password-toggle--pressed"
-              aria-role="button"
-              aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}"
-            >
-              <text>{{passwordVisible ? '隐藏' : '显示'}}</text>
+            <view class="password-toggle pressable" bindtap="togglePassword" hover-class="pressing" aria-role="button" aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}">
+              <view class="eye-icon {{passwordVisible ? 'eye-icon--visible' : ''}}"><view class="eye-core"></view><view wx:if="{{!passwordVisible}}" class="eye-slash"></view></view>
             </view>
           </view>
 
-          <view wx:if="{{errorMessage}}" class="inline-error" aria-role="alert">
-            <view class="error-dot"></view>
-            <text>{{errorMessage}}</text>
-          </view>
+          <view wx:if="{{errorMessage}}" class="inline-error" aria-role="alert"><view class="error-dot"></view><text>{{errorMessage}}</text></view>
 
-          <button
-            class="primary-button login-button {{loading ? 'primary-button--disabled' : ''}}"
-            form-type="submit"
-            disabled="{{loading}}"
-            hover-class="button-pressed"
-            loading="{{loading}}"
-          >
-            {{loading ? '正在安全连接…' : '登录'}}
+          <button class="login-button {{loading ? 'login-button--loading' : ''}}" form-type="submit" disabled="{{loading}}" hover-class="login-button--pressed">
+            <view wx:if="{{loading}}" class="login-spinner"></view>
+            <text>{{loading ? '正在进入…' : '登录'}}</text>
           </button>
 
-          <view class="privacy-note">
-            <view class="privacy-glyph"><text>i</text></view>
-            <view class="privacy-copy"><text>{{privacyNotice}}</text></view>
-          </view>
+          <view class="privacy-note"><view class="privacy-glyph"><text>i</text></view><text>{{privacyNotice}}</text></view>
         </form>
 
         <text class="session-note">登录会话 90 天滑动有效 · 每次使用自动续期</text>
+        <text class="agreement-note">登录即代表你已了解账号凭据的保存与使用方式</text>
       </view>
     </view>
   </scroll-view>

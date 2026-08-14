@@ -187,11 +187,6 @@ Page({
     }
     this.applyAppearance();
     this.hydrateCachedPreview();
-    this.getTabBar().setData({
-      selected: 1,
-      themeClass: this.data.themeClass,
-      motionClass: this.data.motionClass,
-    });
     const requestedTab = wx.getStorageSync("easy-swu:inbox-tab");
     wx.removeStorageSync("easy-swu:inbox-tab");
     const activeTab =

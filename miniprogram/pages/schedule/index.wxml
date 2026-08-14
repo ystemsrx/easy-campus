@@ -1,0 +1,104 @@
+<view class="page schedule-page {{themeClass}} {{motionClass}}">
+  <scroll-view
+    class="page-scroll"
+    type="list"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+    bindscroll="onScroll"
+  >
+    <navigation-bar transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <view class="schedule-content page-content page-content--tab page-enter">
+      <view class="schedule-header">
+        <view>
+          <text class="schedule-eyebrow">第 2 教学周 · {{monthLabel}}</text>
+          <text class="schedule-title display-title">日程</text>
+        </view>
+        <view class="schedule-header-actions">
+          <view class="round-action pressable" bindtap="openTimetable" hover-class="pressing" aria-role="button" aria-label="查看完整课表">
+            <view class="calendar-icon"><view class="calendar-icon-line"></view></view>
+          </view>
+          <view class="round-action round-action--dark pressable" bindtap="openCreator" hover-class="pressing" aria-role="button" aria-label="添加待办">
+            <view class="plus-icon"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="week-strip">
+        <view
+          wx:for="{{days}}"
+          wx:key="weekday"
+          class="week-day pressable {{selectedWeekday === item.weekday ? 'week-day--active' : ''}}"
+          data-weekday="{{item.weekday}}"
+          bindtap="selectDay"
+          hover-class="week-day--pressed"
+        >
+          <text class="week-day-name">{{item.isToday ? '今' : item.shortLabel}}</text>
+          <text class="week-day-date tnum">{{item.dateLabel}}</text>
+          <view wx:if="{{item.hasEntries}}" class="week-day-dot"></view>
+        </view>
+      </view>
+
+      <view class="timeline-heading">
+        <view>
+          <text class="timeline-title">{{selectedDateLabel}}</text>
+          <text class="timeline-caption">{{entries.length ? entries.length + ' 项安排' : '今天很从容'}}</text>
+        </view>
+        <view class="today-chip pressable" bindtap="goToday" hover-class="pressing"><text>今天</text></view>
+      </view>
+
+      <view wx:if="{{entries.length}}" class="timeline-card card stagger-item">
+        <view class="timeline-scale" style="height: {{timelineHeight}}rpx;">
+          <view class="hour-line hour-line--9"><text>09:00</text><view></view></view>
+          <view class="hour-line hour-line--12"><text>12:00</text><view></view></view>
+          <view class="hour-line hour-line--15"><text>15:00</text><view></view></view>
+          <view class="hour-line hour-line--18"><text>18:00</text><view></view></view>
+          <view class="hour-line hour-line--21"><text>21:00</text><view></view></view>
+          <view
+            wx:for="{{entries}}"
+            wx:key="id"
+            class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} stagger-item"
+            style="top: {{item.top}}rpx; height: {{item.height}}rpx; animation-delay: {{index < 7 ? index * 45 : 0}}ms;"
+          >
+            <view wx:if="{{item.kind === 'plan'}}" class="plan-check" data-id="{{item.id}}" catchtap="togglePlan">
+              <view wx:if="{{item.done}}" class="plan-check-mark"></view>
+            </view>
+            <view class="entry-copy">
+              <text class="entry-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
+              <text class="entry-meta" overflow="ellipsis" max-lines="1">{{item.timeLabel}} · {{item.subtitle}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="timeline-legend">
+          <view><view class="legend-square legend-square--course"></view><text>课堂</text></view>
+          <view><view class="legend-square legend-square--plan"></view><text>我的安排</text></view>
+          <text class="legend-note">当前为占位课表</text>
+        </view>
+      </view>
+
+      <view wx:else class="schedule-empty card stagger-item">
+        <view class="empty-orbit"><text>✦</text></view>
+        <text class="schedule-empty-title">这一天还没有安排</text>
+        <text class="schedule-empty-caption">给自己留白，或添加一点计划</text>
+        <view class="schedule-empty-action pressable" bindtap="openCreator" hover-class="pressing"><text>添加待办</text></view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <bottom-sheet visible="{{creating}}" title="添加待办" theme="{{theme}}" bindclose="closeCreator">
+    <view class="creator-form">
+      <input class="creator-title" value="{{title}}" placeholder="要做什么？" placeholder-class="creator-placeholder" maxlength="80" bindinput="onTitleInput" />
+      <text class="creator-label">开始</text>
+      <view class="creator-grid">
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange"><view class="creator-value tnum"><text>{{startDate}}</text></view></picker>
+        <picker mode="time" value="{{startTime}}" bindchange="onStartTimeChange"><view class="creator-value tnum"><text>{{startTime}}</text></view></picker>
+      </view>
+      <text class="creator-label">结束 <text class="creator-hint">· 默认晚 1 小时</text></text>
+      <view class="creator-grid">
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange"><view class="creator-value tnum"><text>{{endDate}}</text></view></picker>
+        <picker mode="time" value="{{endTime}}" bindchange="onEndTimeChange"><view class="creator-value tnum"><text>{{endTime}}</text></view></picker>
+      </view>
+    </view>
+    <button slot="footer" class="primary-button" hover-class="button-pressed" bindtap="addPlan">添加到日程</button>
+  </bottom-sheet>
+</view>

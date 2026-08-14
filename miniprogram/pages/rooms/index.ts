@@ -203,6 +203,62 @@ Page({
       hasQueried: false,
     });
   },
+  selectCampusInline(event: WechatMiniprogram.TouchEvent) {
+    const campusId = String(event.currentTarget.dataset.value || "");
+    if (!campusId || campusId === this.data.campusId) return;
+    haptic("light");
+    void this.loadBuildings(campusId);
+    this.setData({ hasQueried: false, roomItems: [] });
+  },
+  toggleBuildingInline(event: WechatMiniprogram.TouchEvent) {
+    const value = String(event.currentTarget.dataset.value || "");
+    if (!value) return;
+    if (
+      !this.data.selectedBuildingIds.includes(value) &&
+      this.data.selectedBuildingIds.length >= MAX_BUILDINGS
+    ) {
+      wx.showToast({ title: `最多选择 ${MAX_BUILDINGS} 栋楼`, icon: "none" });
+      return;
+    }
+    const selectedBuildingIds = this.data.selectedBuildingIds.includes(value)
+      ? this.data.selectedBuildingIds.filter((item) => item !== value)
+      : [...this.data.selectedBuildingIds, value];
+    haptic("light");
+    this.setData({
+      selectedBuildingIds,
+      draftBuildingIds: selectedBuildingIds,
+      buildingLabel: selectedBuildingIds.length
+        ? selectedLabels(this.data.buildings, selectedBuildingIds)
+        : "选择楼栋",
+      buildings: this.data.buildings.map((item) => ({
+        ...item,
+        selected: selectedBuildingIds.includes(item.value),
+      })),
+      hasQueried: false,
+    });
+  },
+  togglePeriodInline(event: WechatMiniprogram.TouchEvent) {
+    const period = Number(event.currentTarget.dataset.period);
+    if (!period) return;
+    const selectedPeriods = this.data.selectedPeriods.includes(period)
+      ? this.data.selectedPeriods.filter((item) => item !== period)
+      : [...this.data.selectedPeriods, period].sort((a, b) => a - b);
+    haptic("light");
+    this.setData({
+      selectedPeriods,
+      draftPeriods: selectedPeriods,
+      periodLabel: selectedPeriods.length
+        ? selectedPeriods.length === 1
+          ? `第 ${selectedPeriods[0]} 节`
+          : `第 ${selectedPeriods.join("、")} 节`
+        : "选择节次",
+      periods: this.data.periods.map((item) => ({
+        ...item,
+        selected: selectedPeriods.includes(item.period),
+      })),
+      hasQueried: false,
+    });
+  },
   openCampusPicker() {
     haptic("light");
     this.setData({

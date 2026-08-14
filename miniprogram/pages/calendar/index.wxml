@@ -1,96 +1,32 @@
 <view class="page calendar-page {{themeClass}} {{motionClass}}">
-  <scroll-view
-    class="page-scroll"
-    type="list"
-    scroll-y
-    enhanced
-    show-scrollbar="{{false}}"
-    refresher-enabled
-    refresher-default-style="none"
-    refresher-triggered="{{refreshing}}"
-    bindrefresherrefresh="onRefresh"
-    bindscroll="onScroll"
-  >
-    <navigation-bar title="教学日历" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscroll="onScroll">
+    <navigation-bar title="教学日历" subtitle="每日同步官方最新校历" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
     <view class="calendar-content page-content page-enter">
-      <view class="calendar-heading">
-        <view>
-          <text class="calendar-eyebrow">ACADEMIC CALENDAR</text>
-          <text class="calendar-title">{{yearLabel}}</text>
-          <text class="calendar-caption">每日自动检查官方最新一张校历</text>
-        </view>
-        <view class="calendar-year-button pressable" bindtap="openYearPicker" hover-class="pressing" aria-role="button" aria-label="切换学年">
-          <text>切换</text>
-          <text class="year-chevron">⌄</text>
-        </view>
+      <view class="calendar-hero stagger-item stagger-1">
+        <view class="ambient-blob calendar-blob calendar-blob--one"></view><view class="ambient-blob calendar-blob calendar-blob--two"></view>
+        <text class="calendar-kicker">ACADEMIC CALENDAR</text>
+        <text class="calendar-title display-title">{{yearLabel}}</text>
+        <text class="calendar-caption">每天自动检查官方最新一张校历</text>
+        <view class="calendar-symbol"><view class="calendar-symbol-line"></view><text>历</text></view>
       </view>
 
-      <view class="calendar-meta-card card">
-        <view class="calendar-meta-item">
-          <text class="calendar-meta-label">发布</text>
-          <text class="calendar-meta-value">{{publishedLabel}}</text>
-        </view>
-        <view class="calendar-meta-divider"></view>
-        <view class="calendar-meta-item">
-          <text class="calendar-meta-label">原图</text>
-          <text class="calendar-meta-value">{{sizeLabel}}</text>
-        </view>
-        <view class="calendar-meta-divider"></view>
-        <view class="calendar-meta-item">
-          <text class="calendar-meta-label">来源</text>
-          <text class="calendar-meta-value">官方</text>
-        </view>
+      <view class="calendar-meta card stagger-item stagger-2">
+        <view><text>{{publishedLabel}}</text><text>发布时间</text></view><view class="meta-divider"></view><view><text>{{sizeLabel}}</text><text>原图尺寸</text></view><view class="meta-divider"></view><view><text>官方</text><text>数据来源</text></view>
       </view>
+      <view class="year-switch card pressable stagger-item stagger-2" bindtap="openYearPicker" hover-class="pressing"><view class="year-switch-icon"><view></view></view><view><text>当前学年</text><text>{{yearLabel}}</text></view><text class="year-switch-action">切换 ›</text></view>
 
       <loading-view wx:if="{{loading || imageLoading}}" label="正在下载校历原图"></loading-view>
-
-      <view wx:elif="{{imagePath}}" class="calendar-image-card card">
-        <view class="image-toolbar">
-          <view class="image-status"><view class="image-status-dot"></view><text>已安全下载</text></view>
-          <view class="image-actions">
-            <view class="image-action pressable" bindtap="saveImage" hover-class="pressing" aria-role="button"><text>保存</text></view>
-            <view class="image-action image-action--primary pressable" bindtap="previewImage" hover-class="pressing" aria-role="button"><text>全屏查看</text></view>
-          </view>
-        </view>
-        <view class="calendar-image-wrap pressable" bindtap="previewImage" hover-class="image-pressing" aria-role="button" aria-label="全屏查看校历">
-          <image class="calendar-image" src="{{imagePath}}" mode="widthFix" fade-in="{{motionClass !== 'motion-reduced'}}" show-menu-by-longpress aria-label="{{yearLabel}}教学日历原图"></image>
-          <view class="zoom-hint"><view class="zoom-glyph"></view><text>轻点放大</text></view>
-        </view>
+      <view wx:elif="{{imagePath}}" class="calendar-image-card card stagger-item stagger-3">
+        <view class="image-toolbar"><view class="image-status"><view></view><text>已安全下载</text></view><view class="image-actions"><view class="image-action pressable" bindtap="saveImage" hover-class="pressing"><text>保存</text></view><view class="image-action image-action--primary pressable" bindtap="previewImage" hover-class="pressing"><text>全屏查看</text></view></view></view>
+        <view class="calendar-image-wrap pressable" bindtap="previewImage" hover-class="image-pressing"><image class="calendar-image" src="{{imagePath}}" mode="widthFix" fade-in="{{motionClass !== 'motion-reduced'}}" show-menu-by-longpress aria-label="{{yearLabel}}教学日历原图"></image><view class="zoom-hint"><view class="zoom-glyph"></view><text>轻点放大</text></view></view>
       </view>
-
-      <empty-state
-        wx:elif="{{errorMessage}}"
-        glyph="历"
-        title="校历加载失败"
-        description="{{errorMessage}}"
-        action-text="重新加载"
-        bindaction="onRefresh"
-      ></empty-state>
-
-      <view class="calendar-note">
-        <view class="calendar-note-icon"><text>i</text></view>
-        <text>校历图片存放于后端 MinIO。只有已登录用户可以下载，前端会在本机按学年与文件版本缓存。</text>
-      </view>
+      <empty-state wx:elif="{{errorMessage}}" glyph="历" title="校历加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>
+      <view class="calendar-note"><view class="calendar-note-icon"><text>i</text></view><text>校历图片存放于后端 MinIO。只有已登录用户可以下载，前端会按学年与文件版本在本机缓存。</text></view>
     </view>
   </scroll-view>
 
   <bottom-sheet visible="{{yearPickerVisible}}" title="选择学年" theme="{{theme}}" bindclose="closeYearPicker">
-    <view class="calendar-year-options">
-      <view
-        wx:for="{{yearOptions}}"
-        wx:key="value"
-        class="calendar-year-option {{draftAcademicYear === item.value ? 'calendar-year-option--active' : ''}}"
-        data-value="{{item.value}}"
-        bindtap="selectYear"
-        hover-class="calendar-year-option--pressed"
-      >
-        <view class="year-radio"><view wx:if="{{draftAcademicYear === item.value}}" class="year-radio-core"></view></view>
-        <view class="year-option-copy">
-          <text class="year-option-title">{{item.label}} 学年度</text>
-          <text class="year-option-caption">{{index === 0 ? '最新已同步' : '历史校历'}}</text>
-        </view>
-      </view>
-    </view>
-    <button slot="footer" class="primary-button" hover-class="button-pressed" bindtap="applyYear">查看该学年</button>
+    <view class="calendar-year-options"><view wx:for="{{yearOptions}}" wx:key="value" class="calendar-year-option {{draftAcademicYear === item.value ? 'calendar-year-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectYear" hover-class="calendar-year-option--pressed"><view class="year-radio"><view wx:if="{{draftAcademicYear === item.value}}"></view></view><view><text class="year-option-title">{{item.label}} 学年度</text><text class="year-option-caption">{{index === 0 ? '最新已同步' : '历史校历'}}</text></view></view></view>
+    <button slot="footer" class="primary-button calendar-apply" hover-class="button-pressed" bindtap="applyYear">查看该学年</button>
   </bottom-sheet>
 </view>
