@@ -205,6 +205,10 @@ page {
 }
 
 .section-action {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3rpx;
   min-height: 52rpx;
   padding: 8rpx 0 7rpx 22rpx;
   color: var(--color-text-tertiary);
@@ -300,27 +304,6 @@ page {
 
 .search-field--focus {
   box-shadow: 0 0 0 5rpx rgba(217, 119, 87, 0.12), var(--shadow-card);
-}
-
-.search-glyph {
-  position: relative;
-  width: 27rpx;
-  height: 27rpx;
-  margin-right: 18rpx;
-  border: 3rpx solid var(--color-text-tertiary);
-  border-radius: 50%;
-}
-
-.search-glyph::after {
-  position: absolute;
-  right: -10rpx;
-  bottom: -7rpx;
-  width: 13rpx;
-  height: 3rpx;
-  border-radius: 2rpx;
-  background-color: var(--color-text-tertiary);
-  content: "";
-  transform: rotate(45deg);
 }
 
 .search-input {

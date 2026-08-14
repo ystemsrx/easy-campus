@@ -1,5 +1,8 @@
 <view class="empty {{compact ? 'empty--compact' : ''}}">
-  <view class="empty-glyph"><text>{{glyph}}</text></view>
+  <view class="empty-glyph">
+    <lucide-icon wx:if="{{icon}}" name="{{icon}}" tone="{{iconTone}}" size="{{44}}"></lucide-icon>
+    <text wx:else>{{glyph}}</text>
+  </view>
   <text class="empty-title">{{title}}</text>
   <text class="empty-description">{{description}}</text>
   <view

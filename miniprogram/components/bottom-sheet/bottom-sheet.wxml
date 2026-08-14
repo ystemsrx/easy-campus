@@ -19,8 +19,7 @@
         aria-role="button"
         aria-label="关闭"
       >
-        <view class="sheet-close-line sheet-close-line--a"></view>
-        <view class="sheet-close-line sheet-close-line--b"></view>
+        <lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon>
       </view>
     </view>
     <scroll-view class="sheet-content" type="list" scroll-y enhanced show-scrollbar="{{false}}">

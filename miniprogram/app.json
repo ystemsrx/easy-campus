@@ -14,6 +14,7 @@
     "pages/browser/index"
   ],
   "usingComponents": {
+    "lucide-icon": "/components/lucide-icon/lucide-icon",
     "navigation-bar": "/components/navigation-bar/navigation-bar",
     "bottom-sheet": "/components/bottom-sheet/bottom-sheet",
     "empty-state": "/components/empty-state/empty-state",

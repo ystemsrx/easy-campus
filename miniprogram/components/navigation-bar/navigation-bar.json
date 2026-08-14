@@ -1,4 +1,7 @@
 {
   "component": true,
-  "styleIsolation": "shared"
+  "styleIsolation": "shared",
+  "usingComponents": {
+    "lucide-icon": "/components/lucide-icon/lucide-icon"
+  }
 }

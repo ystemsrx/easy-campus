@@ -1,0 +1,4 @@
+.lucide-icon {
+  display: block;
+  flex: none;
+}

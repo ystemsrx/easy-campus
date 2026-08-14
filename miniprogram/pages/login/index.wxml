@@ -9,7 +9,7 @@
       <view class="brand-block page-enter">
         <view class="brand-mark">
           <view class="ambient-blob brand-blob"></view>
-          <view class="brand-calendar"><view class="brand-calendar-line"></view><view class="brand-calendar-ring brand-calendar-ring--left"></view><view class="brand-calendar-ring brand-calendar-ring--right"></view></view>
+          <lucide-icon name="calendar-days" tone="white" size="{{80}}"></lucide-icon>
         </view>
         <text class="brand-name display-title">校园通</text>
         <text class="brand-tagline">课表 · 成绩 · 日程 · 空教室，一应俱全</text>
@@ -18,7 +18,7 @@
       <view class="login-panel">
         <form class="login-card" bindsubmit="onSubmit">
           <view class="field {{accountFocused ? 'field--focus' : ''}}">
-            <view class="field-icon field-icon--user"><view class="user-head"></view><view class="user-body"></view></view>
+            <view class="field-icon"><lucide-icon name="user-round" tone="muted" size="{{36}}"></lucide-icon></view>
             <input
               class="field-input"
               value="{{account}}"
@@ -35,7 +35,7 @@
           </view>
 
           <view class="field {{passwordFocused ? 'field--focus' : ''}}">
-            <view class="field-icon field-icon--lock"><view class="lock-loop"></view><view class="lock-body"></view></view>
+            <view class="field-icon"><lucide-icon name="lock-keyhole" tone="muted" size="{{36}}"></lucide-icon></view>
             <input
               class="field-input field-input--password"
               value="{{password}}"
@@ -51,18 +51,18 @@
               aria-label="统一身份认证密码"
             />
             <view class="password-toggle pressable" bindtap="togglePassword" hover-class="pressing" aria-role="button" aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}">
-              <view class="eye-icon {{passwordVisible ? 'eye-icon--visible' : ''}}"><view class="eye-core"></view><view wx:if="{{!passwordVisible}}" class="eye-slash"></view></view>
+              <lucide-icon name="{{passwordVisible ? 'eye-off' : 'eye'}}" tone="muted" size="{{32}}"></lucide-icon>
             </view>
           </view>
 
-          <view wx:if="{{errorMessage}}" class="inline-error" aria-role="alert"><view class="error-dot"></view><text>{{errorMessage}}</text></view>
+          <view wx:if="{{errorMessage}}" class="inline-error" aria-role="alert"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
 
           <button class="login-button {{loading ? 'login-button--loading' : ''}}" form-type="submit" disabled="{{loading}}" hover-class="login-button--pressed">
             <view wx:if="{{loading}}" class="login-spinner"></view>
             <text>{{loading ? '正在进入…' : '登录'}}</text>
           </button>
 
-          <view class="privacy-note"><view class="privacy-glyph"><text>i</text></view><text>{{privacyNotice}}</text></view>
+          <view class="privacy-note"><view class="privacy-glyph"><lucide-icon name="shield-check" tone="muted" size="{{25}}"></lucide-icon></view><text>{{privacyNotice}}</text></view>
         </form>
 
         <text class="session-note">登录会话 90 天滑动有效 · 每次使用自动续期</text>

@@ -1,6 +1,6 @@
 <view class="page grades-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onScroll" lower-threshold="180">
-    <navigation-bar title="成绩" subtitle="成绩单 · 含历史学期" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><text>↻</text></view></navigation-bar>
+    <navigation-bar title="成绩" subtitle="成绩单 · 含历史学期" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
     <view class="grades-content page-content page-enter">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
@@ -23,8 +23,8 @@
       </view>
 
       <view class="grade-tools stagger-item stagger-2">
-        <view class="search-field grade-search {{searchFocused ? 'search-field--focus' : ''}}"><view class="search-glyph"></view><input class="search-input" value="{{queryText}}" placeholder="课程、成绩或分项" placeholder-class="grade-placeholder" bindinput="onQueryInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindconfirm="search" confirm-type="search" /><view wx:if="{{queryText}}" class="grade-clear" bindtap="clearSearch"><text>×</text></view></view>
-        <view class="grade-filter-button pressable" bindtap="openFilter" hover-class="pressing"><view class="filter-lines"><view></view><view></view><view></view></view></view>
+        <view class="search-field grade-search {{searchFocused ? 'search-field--focus' : ''}}"><lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon><input class="search-input" value="{{queryText}}" placeholder="课程、成绩或分项" placeholder-class="grade-placeholder" bindinput="onQueryInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindconfirm="search" confirm-type="search" /><view wx:if="{{queryText}}" class="grade-clear" bindtap="clearSearch"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view></view>
+        <view class="grade-filter-button pressable" bindtap="openFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="muted" size="{{31}}"></lucide-icon></view>
       </view>
 
       <view class="result-heading"><view><text class="result-title">各科成绩</text><text class="result-count">{{filterLabel}} · 共 {{total}} 门</text></view><text class="result-sort">{{order === 'desc' ? '降序' : '升序'}}</text></view>
@@ -39,12 +39,12 @@
             <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>
             <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text>{{item.gradeRemark}}</text></view>
           </view>
-          <text class="grade-chevron">›</text>
+          <lucide-icon name="chevron-right" tone="muted" size="{{28}}"></lucide-icon>
         </view>
         <view wx:if="{{loadingMore}}" class="grade-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="grade-end">以上是全部成绩</text>
       </view>
-      <empty-state wx:elif="{{!errorMessage}}" glyph="绩" title="没有找到成绩" description="调整学年、学期或搜索条件后再试" action-text="调整筛选" bindaction="openFilter"></empty-state>
-      <empty-state wx:else glyph="!" title="成绩加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>
+      <empty-state wx:elif="{{!errorMessage}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="没有找到成绩" description="调整学年、学期或搜索条件后再试" action-text="调整筛选" bindaction="openFilter"></empty-state>
+      <empty-state wx:else icon="circle-alert" icon-tone="danger" title="成绩加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>
     </view>
   </scroll-view>
 

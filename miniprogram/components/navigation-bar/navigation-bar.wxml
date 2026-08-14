@@ -14,7 +14,7 @@
         aria-role="button"
         aria-label="返回"
       >
-        <view class="back-glyph"></view>
+        <lucide-icon name="arrow-left" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{34}}" label="返回"></lucide-icon>
       </view>
       <slot wx:else name="left"></slot>
     </view>

@@ -24,7 +24,7 @@
         <view class="identity-main">
           <view class="avatar"><text>{{avatarText}}</text></view>
           <view class="identity-copy"><text class="identity-name display-title">{{userName}}</text><text class="identity-account tnum">{{account || '—'}}</text></view>
-          <view class="verified-pill"><view class="verified-dot"></view><text>已认证</text></view>
+          <view class="verified-pill"><lucide-icon name="circle-check-big" tone="white" size="{{19}}"></lucide-icon><text>已认证</text></view>
         </view>
         <text class="identity-school">{{organizationName}}</text>
         <text wx:if="{{majorName}}" class="identity-major">{{majorName}}</text>
@@ -33,7 +33,7 @@
       <view wx:if="{{loading}}" class="profile-card card"><loading-view compact label="正在读取个人资料"></loading-view></view>
       <view wx:else class="profile-card card stagger-item stagger-2">
         <view class="profile-row pressable profile-row--divided" bindtap="copyAccount" hover-class="pressing">
-          <text class="profile-label">学号</text><view class="profile-value-wrap"><text class="profile-value tnum">{{account || '—'}}</text><text class="copy-hint">复制</text></view>
+          <text class="profile-label">学号</text><view class="profile-value-wrap"><text class="profile-value tnum">{{account || '—'}}</text><lucide-icon name="copy" tone="coral" size="{{22}}"></lucide-icon></view>
         </view>
         <view wx:for="{{profileRows}}" wx:key="label" class="profile-row {{index < profileRows.length - 1 ? 'profile-row--divided' : ''}}">
           <text class="profile-label">{{item.label}}</text><text class="profile-value" overflow="ellipsis" max-lines="2">{{item.value}}</text>
@@ -61,9 +61,9 @@
 
       <view class="section-header"><view><text class="section-title">会话与服务</text></view></view>
       <view class="settings-card card stagger-item">
-        <view class="service-row pressable setting-row--divided" bindtap="showSessionInfo" hover-class="pressing"><view class="service-icon service-icon--session"><view class="session-ring"></view></view><view class="setting-copy"><text class="setting-title">90 天滑动会话</text><text class="setting-caption">访问成功后自动续期</text></view><text class="service-chevron">›</text></view>
-        <view class="service-row setting-row--divided"><view class="service-icon service-icon--time"><view class="clock-face"><view></view></view></view><view class="setting-copy"><text class="setting-title">时间显示</text><text class="setting-caption">设备所在时区 · {{timeZoneLabel}}</text></view></view>
-        <view class="service-row pressable" bindtap="copyApiOrigin" hover-class="pressing"><view class="service-icon service-icon--server"><view class="server-bars"><view></view><view></view></view></view><view class="setting-copy"><text class="setting-title">后端服务</text><text class="setting-caption" overflow="ellipsis" max-lines="1">{{apiOrigin}}</text></view><text class="copy-hint">复制</text></view>
+        <view class="service-row pressable setting-row--divided" bindtap="showSessionInfo" hover-class="pressing"><view class="service-icon service-icon--session"><lucide-icon name="shield-check" tone="coral" size="{{31}}"></lucide-icon></view><view class="setting-copy"><text class="setting-title">90 天滑动会话</text><text class="setting-caption">访问成功后自动续期</text></view><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
+        <view class="service-row setting-row--divided"><view class="service-icon service-icon--time"><lucide-icon name="clock-3" tone="amber" size="{{31}}"></lucide-icon></view><view class="setting-copy"><text class="setting-title">时间显示</text><text class="setting-caption">设备所在时区 · {{timeZoneLabel}}</text></view></view>
+        <view class="service-row pressable" bindtap="copyApiOrigin" hover-class="pressing"><view class="service-icon service-icon--server"><lucide-icon name="server" tone="sage" size="{{31}}"></lucide-icon></view><view class="setting-copy"><text class="setting-title">后端服务</text><text class="setting-caption" overflow="ellipsis" max-lines="1">{{apiOrigin}}</text></view><lucide-icon name="copy" tone="sage" size="{{24}}"></lucide-icon></view>
       </view>
 
       <view class="section-header"><view><text class="section-title">成为开发者</text></view></view>
@@ -76,7 +76,7 @@
       </view>
 
       <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="onRefresh" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
-      <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout">退出登录</button>
+      <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>退出登录</text></button>
       <view class="about-copy"><text>Easy SWU · TypeScript + Skyline</text><text>所有教务数据均来自学校相关系统</text></view>
     </view>
   </scroll-view>

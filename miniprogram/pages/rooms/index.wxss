@@ -19,8 +19,6 @@
 .inline-placeholder { margin-top: 14rpx; padding: 28rpx; border-radius: 26rpx; color: #b5b0a3; background: #f6f3ec; font-size: 22rpx; text-align: center; }
 .date-choice { display: flex; flex-direction: row; align-items: center; gap: 20rpx; margin-top: 14rpx; padding: 16rpx 20rpx; border-radius: 30rpx; background: #f4f3f0; }
 .date-icon { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 66rpx; height: 66rpx; border: 3rpx solid #7d8f6e; border-radius: 20rpx; color: #5f7350; }
-.date-icon view { position: absolute; top: 15rpx; right: 0; left: 0; height: 3rpx; background: #7d8f6e; }
-.date-icon text { margin-top: 12rpx; font-size: 22rpx; font-weight: 800; }
 .date-copy { flex: 1; min-width: 0; }
 .date-copy text:first-child { display: block; color: var(--color-text); font-size: 25rpx; font-weight: 700; }
 .date-copy text:last-child { display: block; margin-top: 2rpx; color: #b5b0a3; font-size: 19rpx; }
@@ -47,9 +45,6 @@
 .room-list { display: flex; flex-direction: column; gap: 18rpx; }
 .room-card { display: flex; flex-direction: row; align-items: center; gap: 22rpx; padding: 26rpx; }
 .room-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 98rpx; height: 98rpx; border-radius: 34rpx; color: #5f7350; background: linear-gradient(135deg, #edf1e6, #dee7d2); }
-.door-icon { position: relative; width: 43rpx; height: 55rpx; border: 4rpx solid currentColor; border-bottom: 0; border-radius: 6rpx 6rpx 0 0; }
-.door-icon::after { position: absolute; right: -10rpx; bottom: -4rpx; left: -10rpx; height: 4rpx; border-radius: 4rpx; background: currentColor; content: ""; }
-.door-icon view { position: absolute; top: 26rpx; right: 7rpx; width: 5rpx; height: 5rpx; border-radius: 50%; background: currentColor; }
 .room-copy { flex: 1; min-width: 0; }
 .room-name { display: block; color: var(--color-text); font-size: 28rpx; font-weight: 750; }
 .room-location { display: block; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 21rpx; }

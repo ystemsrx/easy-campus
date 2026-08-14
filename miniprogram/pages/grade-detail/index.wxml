@@ -14,7 +14,7 @@
         </view>
       </view>
 
-      <view wx:if="{{course.gradeRemark}}" class="detail-remark"><view class="detail-remark-symbol"><text>!</text></view><view><text class="detail-remark-title">成绩备注</text><text class="detail-remark-value">{{course.gradeRemark}}</text></view></view>
+      <view wx:if="{{course.gradeRemark}}" class="detail-remark"><view class="detail-remark-symbol"><lucide-icon name="circle-alert" tone="danger" size="{{29}}"></lucide-icon></view><view><text class="detail-remark-title">成绩备注</text><text class="detail-remark-value">{{course.gradeRemark}}</text></view></view>
 
       <view class="section-header"><view><text class="section-title">成绩组成</text><text class="section-caption">教务系统返回的全部细分项目</text></view></view>
       <view wx:if="{{components.length}}" class="components-card card">
@@ -25,11 +25,11 @@
           <text wx:elif="{{item.isText}}" class="text-status-note">该分项由教务系统以文字状态返回</text>
         </view>
       </view>
-      <empty-state wx:else compact glyph="分" title="暂无分项成绩" description="当前课程只提供总评成绩"></empty-state>
+      <empty-state wx:else compact icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无分项成绩" description="当前课程只提供总评成绩"></empty-state>
 
       <view class="section-header"><view><text class="section-title">课程信息</text><text class="section-caption">只保留查询有用的字段</text></view></view>
       <view class="detail-info-card card"><view wx:for="{{detailRows}}" wx:key="label" class="detail-info-row {{index < detailRows.length - 1 ? 'detail-info-row--divided' : ''}}"><text class="detail-info-label">{{item.label}}</text><text class="detail-info-value" overflow="ellipsis" max-lines="3">{{item.value}}</text></view></view>
-      <view class="accuracy-note"><view class="accuracy-dot"></view><text>数字成绩以数字展示；等级制、缓考及其他文字状态均按教务系统原文保留。</text></view>
+      <view class="accuracy-note"><lucide-icon name="circle-check-big" tone="sage" size="{{25}}"></lucide-icon><text>数字成绩以数字展示；等级制、缓考及其他文字状态均按教务系统原文保留。</text></view>
     </view>
   </scroll-view>
 </view>

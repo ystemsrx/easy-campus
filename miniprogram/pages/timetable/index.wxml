@@ -32,7 +32,7 @@
           <text class="course-state course-state--{{item.state}}">{{item.stateLabel}}</text>
         </view>
       </view>
-      <empty-state wx:else glyph="休" title="今天没有课程" description="可以切换到其他日期查看占位课表" action-text="回到今天" bindaction="goToday"></empty-state>
+      <empty-state wx:else icon="calendar-check" icon-tone="coral" title="今天没有课程" description="可以切换到其他日期查看占位课表" action-text="回到今天" bindaction="goToday"></empty-state>
     </view>
   </scroll-view>
 

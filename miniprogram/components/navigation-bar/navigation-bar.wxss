@@ -63,15 +63,6 @@
 
 .nav-button--pressed { transform: scale(0.93); opacity: 0.82; }
 
-.back-glyph {
-  width: 18rpx;
-  height: 18rpx;
-  border-bottom: 4rpx solid currentColor;
-  border-left: 4rpx solid currentColor;
-  border-radius: 2rpx;
-  transform: rotate(45deg) translate(2rpx, -2rpx);
-}
-
 .nav-title-wrap {
   position: absolute;
   top: 0;

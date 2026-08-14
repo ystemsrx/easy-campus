@@ -12,6 +12,7 @@ const textExtensions = new Set([
   ".js",
   ".json",
   ".md",
+  ".svg",
   ".ts",
   ".wxml",
   ".wxss",

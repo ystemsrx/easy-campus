@@ -28,7 +28,7 @@
           aria-role="button"
           aria-label="公告与通知，{{publicationUnreadCount}} 条未读"
         >
-          <view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view>
+          <lucide-icon name="bell" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{40}}"></lucide-icon>
           <view wx:if="{{publicationUnreadCount}}" class="publication-badge"><text>{{publicationUnreadLabel}}</text></view>
         </view>
       </view>
@@ -42,14 +42,14 @@
               <text class="today-kicker">今日课程</text>
               <view class="today-count-row"><text class="today-count tnum">{{todayCourses.length}}</text><text class="today-unit">节课</text></view>
             </view>
-            <view class="timetable-pill"><text>完整课表</text><text class="pill-arrow">›</text></view>
+            <view class="timetable-pill"><text>完整课表</text><lucide-icon name="chevron-right" tone="white" size="{{24}}"></lucide-icon></view>
           </view>
           <view wx:if="{{todayCourses.length}}" class="today-course-list">
             <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
               <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text><text class="course-slot-label">节次</text></view>
               <view class="today-course-copy">
                 <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
-                <view class="today-course-meta"><view class="tiny-pin"><view></view></view><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
+                <view class="today-course-meta"><lucide-icon name="map-pin" tone="white" size="{{17}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
               </view>
               <view class="course-status {{item.current ? 'course-status--current' : ''}}"><text>{{item.statusLabel}}</text></view>
             </view>
@@ -73,20 +73,20 @@
           <text class="feature-kicker">空教室</text>
           <text class="rooms-main">实时</text>
           <text class="rooms-copy">按日期、节次和楼栋查询</text>
-          <view class="feature-action"><view class="spark-icon">✦</view><text>立即查询</text></view>
+          <view class="feature-action"><lucide-icon name="sparkles" tone="white" size="{{20}}"></lucide-icon><text>立即查询</text></view>
         </view>
       </view>
 
       <view class="support-row stagger-item stagger-2">
         <view wx:for="{{supportActions}}" wx:key="title" class="support-card support-card--{{item.tone}} pressable" data-route="{{item.route}}" bindtap="onQuickAction" hover-class="pressing">
-          <view class="support-glyph"><text>{{item.glyph}}</text></view>
+          <view class="support-glyph"><lucide-icon name="{{item.icon}}" tone="{{item.tone}}" size="{{30}}"></lucide-icon></view>
           <view class="support-copy"><text class="support-title">{{item.title}}</text><text class="support-caption">{{item.caption}}</text></view>
         </view>
       </view>
 
       <view class="section-header stagger-item stagger-3">
         <view><text class="section-title">接下来</text></view>
-        <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程 ›</text></view>
+        <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
       <view class="plan-card card stagger-item stagger-3">
         <view wx:if="{{plans.length}}">
@@ -96,17 +96,17 @@
             <text class="plan-tag">日程</text>
           </view>
         </view>
-        <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing"><text>还没有待办，给今天留一点计划 ✦</text></view>
+        <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing"><text>还没有待办，给今天留一点计划</text><lucide-icon name="sparkles" tone="rose" size="{{24}}"></lucide-icon></view>
       </view>
 
       <view class="section-header stagger-item stagger-4">
         <view><text class="section-title">校园消息</text></view>
-        <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部 ›</text></view>
+        <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
       <view class="campus-stack stagger-item stagger-4">
         <view class="campus-card card pressable" bindtap="openNotices" hover-class="pressing">
           <view class="ambient-blob campus-blob campus-blob--notice"></view>
-          <view class="campus-card-head"><view class="campus-icon campus-icon--notice"><view class="mini-megaphone"><view></view></view></view><text>学校通知</text><view wx:if="{{notices.length}}" class="campus-dot"></view></view>
+          <view class="campus-card-head"><view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view><text>学校通知</text><view wx:if="{{notices.length}}" class="campus-dot"></view></view>
           <view wx:if="{{notices.length}}" class="campus-list">
             <view wx:for="{{notices}}" wx:key="id" class="campus-line"><view class="campus-bullet"></view><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
           </view>
@@ -114,7 +114,7 @@
         </view>
         <view class="campus-card card pressable" bindtap="openMessages" hover-class="pressing">
           <view class="ambient-blob campus-blob campus-blob--message"></view>
-          <view class="campus-card-head"><view class="campus-icon campus-icon--message"><view class="mini-calendar"><view></view></view></view><text>教务消息</text><view wx:if="{{messages.length}}" class="campus-dot"></view></view>
+          <view class="campus-card-head"><view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="amber" size="{{29}}"></lucide-icon></view><text>教务消息</text><view wx:if="{{messages.length}}" class="campus-dot"></view></view>
           <view wx:if="{{messages.length}}" class="campus-list">
             <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
           </view>
@@ -138,7 +138,7 @@
           <view class="publication-group-header"><text>公告</text><text>{{announcements.length}}</text></view>
           <view class="publication-group-card">
             <view wx:for="{{announcements}}" wx:key="id" class="publication-row pressable {{!item.isRead ? 'publication-row--unread' : ''}}" data-id="{{item.id}}" catchtap="onAnnouncementTap" hover-class="publication-row--pressed">
-              <view class="publication-icon publication-icon--announcement"><view class="mini-megaphone"><view></view></view><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
+              <view class="publication-icon publication-icon--announcement"><lucide-icon name="megaphone" tone="amber" size="{{31}}"></lucide-icon><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
               <view class="publication-copy"><view class="publication-title-line"><text class="publication-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="publication-time">{{item.timeLabel}}</text></view><text class="publication-preview" overflow="ellipsis" max-lines="1">{{item.previewText}}</text><text class="publication-type">公告 · 点击查看全文</text></view>
             </view>
           </view>
@@ -147,12 +147,12 @@
           <view class="publication-group-header"><text>通知</text><text>{{platformNotifications.length}}</text></view>
           <view class="publication-group-card">
             <view wx:for="{{platformNotifications}}" wx:key="id" class="publication-row pressable {{!item.isRead ? 'publication-row--unread' : ''}}" data-id="{{item.id}}" catchtap="onPlatformNotificationTap" hover-class="publication-row--pressed">
-              <view class="publication-icon publication-icon--notification"><view class="mini-bell"><view></view></view><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
+              <view class="publication-icon publication-icon--notification"><lucide-icon name="bell" tone="coral" size="{{31}}"></lucide-icon><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
               <view class="publication-copy"><view class="publication-title-line"><text class="publication-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="publication-time">{{item.timeLabel}}</text></view><view class="publication-body {{item.expanded ? 'publication-body--expanded' : ''}}"><rich-text wx:if="{{item.expanded}}" nodes="{{item.contentHtml}}"></rich-text><text wx:else overflow="ellipsis" max-lines="1">{{item.previewText}}</text></view><text class="publication-type">{{item.isLong ? (item.expanded ? '收起' : '通知 · 点击展开') : '通知'}}</text></view>
             </view>
           </view>
         </view>
-        <view wx:if="{{!announcements.length && !platformNotifications.length}}" class="publication-empty"><view class="publication-empty-bell"><view class="bell-glyph"><view class="bell-dome"></view><view class="bell-clapper"></view></view></view><text class="publication-empty-title">暂时没有新内容</text><text class="publication-empty-caption">公告和通知会在这里集中显示</text></view>
+        <view wx:if="{{!announcements.length && !platformNotifications.length}}" class="publication-empty"><view class="publication-empty-bell"><lucide-icon name="bell" tone="muted" size="{{38}}"></lucide-icon></view><text class="publication-empty-title">暂时没有新内容</text><text class="publication-empty-caption">公告和通知会在这里集中显示</text></view>
       </scroll-view>
     </view>
   </view>
@@ -161,7 +161,7 @@
     <view class="announcement-modal-backdrop" catchtap="closeAnnouncementModal"></view>
     <view class="announcement-modal" catchtap="stopPropagation">
       <view class="announcement-handle"></view>
-      <view class="announcement-header"><view class="announcement-heading"><text class="announcement-label">公告</text><text class="announcement-title display-title">{{activeAnnouncement.title}}</text><text class="announcement-time">{{activeAnnouncement.timeLabel}}</text></view><view class="announcement-close pressable" catchtap="closeAnnouncementModal" hover-class="announcement-close--pressed"><text>×</text></view></view>
+      <view class="announcement-header"><view class="announcement-heading"><text class="announcement-label">公告</text><text class="announcement-title display-title">{{activeAnnouncement.title}}</text><text class="announcement-time">{{activeAnnouncement.timeLabel}}</text></view><view class="announcement-close pressable" catchtap="closeAnnouncementModal" hover-class="announcement-close--pressed"><lucide-icon name="x" tone="muted" size="{{30}}"></lucide-icon></view></view>
       <scroll-view class="announcement-content" type="list" scroll-y enhanced show-scrollbar="{{false}}"><view class="announcement-article"><rich-text nodes="{{activeAnnouncement.contentHtml}}"></rich-text></view></scroll-view>
       <view class="announcement-footer"><view class="announcement-confirm pressable" catchtap="closeAnnouncementModal" hover-class="announcement-confirm--pressed"><text>知道了</text></view></view>
     </view>

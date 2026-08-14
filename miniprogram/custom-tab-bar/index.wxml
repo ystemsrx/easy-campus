@@ -13,16 +13,11 @@
       aria-selected="{{selected === index}}"
       aria-label="{{item.text}}"
     >
-      <view class="tabbar-glyph tabbar-glyph--{{item.glyph}}">
-        <view wx:if="{{item.glyph === 'home'}}" class="home-roof"></view>
-        <view wx:if="{{item.glyph === 'home'}}" class="home-body"></view>
-        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-body"></view>
-        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-line"></view>
-        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-ring schedule-ring--left"></view>
-        <view wx:if="{{item.glyph === 'schedule'}}" class="schedule-ring schedule-ring--right"></view>
-        <view wx:if="{{item.glyph === 'profile'}}" class="profile-head"></view>
-        <view wx:if="{{item.glyph === 'profile'}}" class="profile-body"></view>
-      </view>
+      <lucide-icon
+        name="{{item.icon}}"
+        tone="{{selected === index ? (themeClass === 'theme-dark' ? 'ink' : 'white') : 'muted'}}"
+        size="{{36}}"
+      ></lucide-icon>
       <text class="tabbar-label">{{item.text}}</text>
     </view>
   </view>

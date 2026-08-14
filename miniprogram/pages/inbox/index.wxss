@@ -14,11 +14,6 @@
 .list-caption { display: block; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 22rpx; }
 .filter-button { display: flex; flex-direction: row; align-items: center; gap: 10rpx; padding: 13rpx 22rpx; border-radius: 999rpx; color: #8b8578; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; }
 .filter-button--active { color: #b85c38; background: #f9eae2; }
-.filter-lines { display: flex; flex-direction: column; gap: 4rpx; width: 22rpx; }
-.filter-lines view { height: 2rpx; border-radius: 2rpx; background: currentColor; }
-.filter-lines view:nth-child(2) { width: 15rpx; }
-.filter-lines view:nth-child(3) { width: 8rpx; }
-
 .message-list,
 .notice-list { display: flex; flex-direction: column; gap: 18rpx; }
 .message-card { padding: 28rpx; }
@@ -36,18 +31,15 @@
 .schedule-chip--new.message-badge--green { color: #5f7350; background: #edf1e6; }
 .schedule-chip--new.message-badge--orange { color: #c0452d; background: #f9e7e0; }
 .schedule-chip-label { font-size: 17rpx; font-weight: 800; opacity: 0.7; }
-.change-arrow { color: #a66f1f; font-size: 24rpx; font-weight: 800; }
 .message-content { display: block; margin-top: 18rpx; color: #8b8578; font-size: 23rpx; line-height: 1.65; }
 
-.notice-search { margin-bottom: 18rpx; }
+.notice-search { gap: 18rpx; margin-bottom: 18rpx; }
 .notice-placeholder { color: #b5b0a3; }
 .search-clear { display: flex; align-items: center; justify-content: center; width: 48rpx; height: 48rpx; border-radius: 50%; color: #9a9aa3; background: rgba(43, 38, 32, 0.05); font-size: 30rpx; }
 .notice-source { display: flex; flex-direction: row; align-items: center; gap: 9rpx; margin: 0 5rpx 24rpx; color: #a39e92; font-size: 20rpx; }
 .source-dot { width: 10rpx; height: 10rpx; border-radius: 50%; background: #7d8f6e; }
 .notice-item { display: flex; flex-direction: row; align-items: flex-start; gap: 22rpx; padding: 28rpx; }
 .notice-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border-radius: 28rpx; color: #b85c38; background: #f9eae2; }
-.mini-megaphone { position: relative; width: 30rpx; height: 24rpx; border: 3rpx solid currentColor; border-radius: 4rpx; transform: skewY(-16deg); }
-.mini-megaphone view { position: absolute; left: 6rpx; bottom: -14rpx; width: 7rpx; height: 13rpx; border-left: 3rpx solid currentColor; transform: skewY(16deg); }
 .notice-copy { flex: 1; min-width: 0; }
 .notice-title-row { display: flex; flex-direction: row; align-items: baseline; gap: 16rpx; }
 .notice-title { flex: 1; min-width: 0; color: var(--color-text); font-size: 26rpx; font-weight: 750; line-height: 1.45; }

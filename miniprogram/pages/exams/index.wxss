@@ -9,13 +9,10 @@
 .exam-hero-caption { position: relative; display: block; max-width: 500rpx; margin-top: 10rpx; color: rgba(255, 255, 255, 0.8); font-size: 22rpx; }
 .exam-symbol { position: absolute; right: 35rpx; bottom: 30rpx; display: flex; align-items: center; justify-content: center; width: 82rpx; height: 82rpx; border-radius: 28rpx; background: rgba(255, 255, 255, 0.2); font-family: Georgia, "Songti SC", serif; font-size: 34rpx; font-weight: 750; backdrop-filter: blur(8px); }
 .semester-picker { display: flex; flex-direction: row; align-items: center; gap: 22rpx; margin-top: 22rpx; padding: 24rpx 28rpx; }
-.semester-icon { display: flex; flex: none; flex-direction: column; gap: 5rpx; width: 58rpx; padding: 13rpx; border-radius: 20rpx; color: #a55357; background: #f7e9e8; }
-.semester-icon view { height: 3rpx; border-radius: 3rpx; background: currentColor; }
-.semester-icon view:nth-child(2) { width: 22rpx; }.semester-icon view:nth-child(3) { width: 14rpx; }
+.semester-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; background: #f7e9e8; }
 .semester-copy { flex: 1; min-width: 0; }
 .semester-caption { display: block; color: #a39e92; font-size: 20rpx; }
 .semester-value { display: block; margin-top: 3rpx; color: var(--color-text); font-size: 26rpx; font-weight: 700; }
-.semester-chevron { color: #c9c5b8; font-size: 36rpx; }
 .result-heading { display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; margin: 48rpx 2rpx 22rpx; }
 .result-title { display: block; color: var(--color-text); font-size: 38rpx; font-weight: 750; }
 .result-caption { display: block; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
@@ -37,11 +34,8 @@
 .exam-method { color: #8b8b94; background: #f1f1f3; }
 .exam-name { display: block; margin-top: 8rpx; color: var(--color-text); font-size: 27rpx; font-weight: 750; line-height: 1.38; }
 .exam-location { display: flex; flex-direction: row; align-items: center; gap: 8rpx; margin-top: 7rpx; color: var(--color-text-tertiary); font-size: 20rpx; }
-.location-pin { position: relative; flex: none; width: 15rpx; height: 18rpx; border: 2rpx solid currentColor; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
-.location-pin view { position: absolute; top: 4rpx; left: 4rpx; width: 4rpx; height: 4rpx; border-radius: 50%; background: currentColor; }
 .exam-seat { display: flex; flex: none; flex-direction: column; align-items: flex-end; }
 .exam-seat text:first-child { color: #a55357; font-size: 29rpx; font-weight: 800; }.exam-seat text:last-child { color: #b5b0a3; font-size: 17rpx; }
-.exam-chevron { flex: none; color: #d3d0c7; font-size: 32rpx; }
 .exam-load-more,
 .exam-end { display: block; padding: 26rpx; color: #b5b0a3; font-size: 21rpx; text-align: center; }
 

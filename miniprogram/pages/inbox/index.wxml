@@ -15,7 +15,7 @@
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
-            <view class="filter-button pressable {{messageType || from || to ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><view class="filter-lines"><view></view><view></view><view></view></view><text>筛选</text></view>
+            <view class="filter-button pressable {{messageType || from || to ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageType || from || to ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text></view>
           </view>
 
           <view wx:if="{{messageItems.length}}" class="message-list">
@@ -28,7 +28,7 @@
               <text wx:if="{{item.teacher}}" class="message-teacher">{{item.teacher}}</text>
               <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-chips">
                 <view class="schedule-chip schedule-chip--old"><text class="schedule-chip-label">原</text><text>{{item.original.primary}} · {{item.original.location}}</text></view>
-                <text class="change-arrow">→</text>
+                <lucide-icon name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
                 <view class="schedule-chip schedule-chip--new message-badge--{{item.tone}}"><text class="schedule-chip-label">新</text><text>{{item.current.primary}} · {{item.current.location}}</text></view>
               </view>
               <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-chips"><view class="schedule-chip schedule-chip--new message-badge--{{item.tone}}"><text class="schedule-chip-label">补</text><text>{{item.current.primary}} · {{item.current.location}}</text></view></view>
@@ -39,8 +39,8 @@
             <text wx:elif="{{messagePage >= messageTotalPages}}" class="end-caption">以上是全部教务消息</text>
           </view>
           <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息"></loading-view>
-          <empty-state wx:elif="{{messageError}}" glyph="!" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
-          <empty-state wx:elif="{{messageLoaded}}" glyph="讯" title="没有符合条件的消息" description="更换筛选条件，或下拉刷新后再看看" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
+          <empty-state wx:elif="{{messageError}}" icon="circle-alert" icon-tone="danger" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
+          <empty-state wx:elif="{{messageLoaded}}" icon="message-circle-more" title="没有符合条件的消息" description="更换筛选条件，或下拉刷新后再看看" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
         </view>
       </scroll-view>
     </swiper-item>
@@ -49,15 +49,15 @@
       <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices" bindscrolltolower="loadMoreNotices" lower-threshold="180">
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
-            <view class="search-glyph"></view>
+            <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>
             <input class="search-input" value="{{noticeQuery}}" placeholder="搜索通知标题" placeholder-class="notice-placeholder" bindinput="onNoticeQueryInput" bindfocus="onNoticeSearchFocus" bindblur="onNoticeSearchBlur" bindconfirm="searchNotices" confirm-type="search" aria-label="搜索通知标题" />
-            <view wx:if="{{noticeQuery}}" class="search-clear" bindtap="clearNoticeQuery"><text>×</text></view>
+            <view wx:if="{{noticeQuery}}" class="search-clear" bindtap="clearNoticeQuery"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view>
           </view>
           <view class="notice-source"><view class="source-dot"></view><text>先显示最近缓存，随后静默更新</text></view>
 
           <view wx:if="{{noticeItems.length}}" class="notice-list">
             <view wx:for="{{noticeItems}}" wx:key="link" class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
-              <view class="notice-icon"><view class="mini-megaphone"><view></view></view></view>
+              <view class="notice-icon"><lucide-icon name="megaphone" tone="coral" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
                 <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><text class="notice-time">{{item.displayTime}}</text></view>
                 <text class="notice-preview">点击查看已整理的通知正文</text>
@@ -68,8 +68,8 @@
             <text wx:elif="{{noticePage >= noticeTotalPages}}" class="end-caption">以上是全部学校通知</text>
           </view>
           <loading-view wx:elif="{{noticeLoading}}" label="正在读取学校通知"></loading-view>
-          <empty-state wx:elif="{{noticeError}}" glyph="!" title="通知加载失败" description="{{noticeError}}" action-text="重新加载" bindaction="refreshNotices"></empty-state>
-          <empty-state wx:elif="{{noticeLoaded}}" glyph="告" title="没有找到通知" description="尝试更换关键词，或清空搜索条件" action-text="清空搜索" bindaction="clearNoticeQuery"></empty-state>
+          <empty-state wx:elif="{{noticeError}}" icon="circle-alert" icon-tone="danger" title="通知加载失败" description="{{noticeError}}" action-text="重新加载" bindaction="refreshNotices"></empty-state>
+          <empty-state wx:elif="{{noticeLoaded}}" icon="megaphone" title="没有找到通知" description="尝试更换关键词，或清空搜索条件" action-text="清空搜索" bindaction="clearNoticeQuery"></empty-state>
         </view>
       </scroll-view>
     </swiper-item>

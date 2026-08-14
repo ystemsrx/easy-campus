@@ -16,10 +16,10 @@
         </view>
         <view class="schedule-header-actions">
           <view class="round-action pressable" bindtap="openTimetable" hover-class="pressing" aria-role="button" aria-label="查看完整课表">
-            <view class="calendar-icon"><view class="calendar-icon-line"></view></view>
+            <lucide-icon name="calendar-days" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{32}}"></lucide-icon>
           </view>
           <view class="round-action round-action--dark pressable" bindtap="openCreator" hover-class="pressing" aria-role="button" aria-label="添加待办">
-            <view class="plus-icon"></view>
+            <lucide-icon name="plus" tone="white" size="{{32}}"></lucide-icon>
           </view>
         </view>
       </view>
@@ -61,7 +61,7 @@
             style="top: {{item.top}}rpx; height: {{item.height}}rpx; animation-delay: {{index < 7 ? index * 45 : 0}}ms;"
           >
             <view wx:if="{{item.kind === 'plan'}}" class="plan-check" data-id="{{item.id}}" catchtap="togglePlan">
-              <view wx:if="{{item.done}}" class="plan-check-mark"></view>
+              <lucide-icon wx:if="{{item.done}}" name="check" tone="rose" size="{{18}}"></lucide-icon>
             </view>
             <view class="entry-copy">
               <text class="entry-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
@@ -77,7 +77,7 @@
       </view>
 
       <view wx:else class="schedule-empty card stagger-item">
-        <view class="empty-orbit"><text>✦</text></view>
+        <view class="empty-orbit"><lucide-icon name="sparkles" tone="rose" size="{{40}}"></lucide-icon></view>
         <text class="schedule-empty-title">这一天还没有安排</text>
         <text class="schedule-empty-caption">给自己留白，或添加一点计划</text>
         <view class="schedule-empty-action pressable" bindtap="openCreator" hover-class="pressing"><text>添加待办</text></view>

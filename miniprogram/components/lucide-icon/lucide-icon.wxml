@@ -1,0 +1,9 @@
+<image
+  class="lucide-icon"
+  src="/assets/icons/{{name}}-{{tone}}.svg"
+  mode="aspectFit"
+  style="width: {{size}}rpx; height: {{size}}rpx;"
+  draggable="{{false}}"
+  aria-hidden="{{!label}}"
+  aria-label="{{label}}"
+></image>

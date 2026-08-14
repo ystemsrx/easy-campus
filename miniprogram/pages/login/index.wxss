@@ -6,11 +6,6 @@
 .brand-block { position: relative; z-index: 1; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 490rpx; padding: 54rpx 64rpx 32rpx; }
 .brand-mark { position: relative; display: flex; align-items: center; justify-content: center; width: 178rpx; height: 178rpx; overflow: hidden; border-radius: 58rpx; color: #fff; background: linear-gradient(140deg, #d97757, #eba97f); box-shadow: var(--shadow-pop); }
 .brand-blob { top: -26rpx; right: -28rpx; width: 94rpx; height: 88rpx; background: rgba(255, 255, 255, 0.2); }
-.brand-calendar { position: relative; width: 80rpx; height: 72rpx; border: 4rpx solid currentColor; border-radius: 8rpx; }
-.brand-calendar-line { position: absolute; top: 24rpx; right: 0; left: 0; height: 4rpx; background: currentColor; }
-.brand-calendar-ring { position: absolute; top: -16rpx; width: 4rpx; height: 22rpx; border-radius: 4rpx; background: currentColor; }
-.brand-calendar-ring--left { left: 22rpx; }
-.brand-calendar-ring--right { right: 22rpx; }
 .brand-name { margin-top: 42rpx; color: var(--color-text); font-size: 68rpx; font-weight: 700; line-height: 1.15; }
 .brand-tagline { margin-top: 14rpx; color: #a39e92; font-size: 25rpx; font-weight: 550; text-align: center; }
 
@@ -20,26 +15,18 @@
 .field:first-child { margin-top: 0; }
 .field--focus { background: #fff; box-shadow: 0 0 0 4rpx rgba(217, 119, 87, 0.16), var(--shadow-card); }
 .field-icon { position: relative; flex: none; width: 36rpx; height: 36rpx; margin-left: 28rpx; color: #b5b0a3; }
-.user-head { position: absolute; top: 2rpx; left: 11rpx; width: 14rpx; height: 14rpx; border: 3rpx solid currentColor; border-radius: 50%; }
-.user-body { position: absolute; right: 4rpx; bottom: 2rpx; left: 4rpx; height: 15rpx; border: 3rpx solid currentColor; border-bottom: 0; border-radius: 18rpx 18rpx 0 0; }
-.lock-loop { position: absolute; top: 1rpx; left: 8rpx; width: 20rpx; height: 20rpx; border: 3rpx solid currentColor; border-radius: 12rpx 12rpx 0 0; }
-.lock-body { position: absolute; right: 3rpx; bottom: 1rpx; left: 3rpx; height: 23rpx; border: 3rpx solid currentColor; border-radius: 6rpx; background: rgba(255, 255, 255, 0.2); }
 .field-input { flex: 1; height: 96rpx; padding: 0 26rpx 0 18rpx; color: #16161a; font-size: 28rpx; font-weight: 600; }
 .field-input--password { padding-right: 78rpx; }
 .field-placeholder { color: #b5b0a3; font-weight: 500; }
 .password-toggle { position: absolute; top: 18rpx; right: 18rpx; display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; }
-.eye-icon { position: relative; width: 31rpx; height: 22rpx; border: 3rpx solid #b5b0a3; border-radius: 50% 12% / 50% 12%; transform: rotate(45deg); }
-.eye-core { position: absolute; top: 5rpx; left: 9rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #b5b0a3; }
-.eye-slash { position: absolute; top: 8rpx; left: -5rpx; width: 40rpx; height: 3rpx; border-radius: 3rpx; background: #b5b0a3; transform: rotate(-45deg); }
 .inline-error { display: flex; flex-direction: row; align-items: flex-start; gap: 12rpx; margin-top: 20rpx; padding: 18rpx 22rpx; border-radius: 26rpx; color: #c0452d; background: #f9e7e0; font-size: 22rpx; line-height: 1.55; animation-name: error-shake; animation-duration: 420ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
-.error-dot { flex: none; width: 12rpx; height: 12rpx; margin-top: 10rpx; border-radius: 50%; background: #c0452d; }
 .login-button { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 14rpx; width: 100%; min-height: 96rpx; margin-top: 30rpx; padding: 0 32rpx; border: 0; border-radius: 999rpx; color: #fff; background: linear-gradient(135deg, #d97757, #eba97f); box-shadow: 0 18rpx 44rpx rgba(185, 92, 56, 0.27); font-size: 29rpx; font-weight: 750; transition: transform 140ms ease, opacity 140ms ease; }
 .login-button::after { display: none; }
 .login-button--loading { opacity: 0.85; }
 .login-button--pressed { transform: scale(0.97); opacity: 0.87; }
 .login-spinner { width: 30rpx; height: 30rpx; border: 4rpx solid rgba(255, 255, 255, 0.38); border-top-color: #fff; border-radius: 50%; animation-name: login-spin; animation-duration: 760ms; animation-timing-function: linear; animation-iteration-count: infinite; }
 .privacy-note { display: flex; flex-direction: row; align-items: flex-start; gap: 13rpx; margin-top: 24rpx; color: #a39e92; font-size: 19rpx; line-height: 1.55; }
-.privacy-glyph { display: flex; flex: none; align-items: center; justify-content: center; width: 28rpx; height: 28rpx; border: 2rpx solid #c9c5b8; border-radius: 50%; font-family: Georgia, serif; font-size: 18rpx; font-weight: 700; }
+.privacy-glyph { display: flex; flex: none; align-items: center; justify-content: center; width: 28rpx; height: 28rpx; }
 .session-note,
 .agreement-note { display: block; color: #b5b0a3; font-size: 19rpx; text-align: center; }
 .session-note { margin-top: 28rpx; }

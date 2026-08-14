@@ -4,7 +4,7 @@ import { haptic } from "../utils/haptics";
 interface TabItem {
   pagePath: string;
   text: string;
-  glyph: "home" | "schedule" | "profile";
+  icon: "home" | "calendar-days" | "user-round";
 }
 
 Component({
@@ -13,9 +13,13 @@ Component({
     themeClass: "theme-light",
     motionClass: "motion-normal",
     items: [
-      { pagePath: "/pages/home/index", text: "概览", glyph: "home" },
-      { pagePath: "/pages/schedule/index", text: "日程", glyph: "schedule" },
-      { pagePath: "/pages/profile/index", text: "我的", glyph: "profile" },
+      { pagePath: "/pages/home/index", text: "概览", icon: "home" },
+      {
+        pagePath: "/pages/schedule/index",
+        text: "日程",
+        icon: "calendar-days",
+      },
+      { pagePath: "/pages/profile/index", text: "我的", icon: "user-round" },
     ] as TabItem[],
   },
   lifetimes: {

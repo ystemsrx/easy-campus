@@ -2,7 +2,7 @@
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onScroll" lower-threshold="180">
     <navigation-bar title="空教室" subtitle="找个地方自习" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
     <view class="rooms-content page-content page-enter">
-      <view class="source-banner"><view class="source-icon"><text>i</text></view><view><text class="source-title">{{sourceName}}</text><text class="source-caption">{{sourceUpdatedAt ? '数据更新于 ' + sourceUpdatedAt : '查询时实时获取最新数据'}}</text></view></view>
+      <view class="source-banner"><view class="source-icon"><lucide-icon name="info" tone="amber" size="{{27}}"></lucide-icon></view><view><text class="source-title">{{sourceName}}</text><text class="source-caption">{{sourceUpdatedAt ? '数据更新于 ' + sourceUpdatedAt : '查询时实时获取最新数据'}}</text></view></view>
 
       <view wx:if="{{optionsLoading && !campuses.length}}" class="rooms-loading card"><loading-view compact label="正在读取校区与节次"></loading-view></view>
       <view wx:else class="query-card card stagger-item stagger-1">
@@ -11,33 +11,33 @@
 
         <text class="query-label query-label--spaced">教学楼 <text class="query-hint">· 可多选</text></text>
         <scroll-view wx:if="{{buildings.length}}" class="building-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-          <view class="building-grid"><view wx:for="{{buildings}}" wx:key="value" class="building-pill pressable {{item.selected ? 'building-pill--active' : ''}}" data-value="{{item.value}}" bindtap="toggleBuildingInline" hover-class="pressing"><text overflow="ellipsis" max-lines="2">{{item.label}}</text><view wx:if="{{item.selected}}" class="building-check"><text>✓</text></view></view></view>
+          <view class="building-grid"><view wx:for="{{buildings}}" wx:key="value" class="building-pill pressable {{item.selected ? 'building-pill--active' : ''}}" data-value="{{item.value}}" bindtap="toggleBuildingInline" hover-class="pressing"><text overflow="ellipsis" max-lines="2">{{item.label}}</text><view wx:if="{{item.selected}}" class="building-check"><lucide-icon name="check" tone="sage" size="{{17}}"></lucide-icon></view></view></view>
         </scroll-view>
         <view wx:else class="inline-placeholder"><text>{{campusId ? '该校区暂未返回楼栋' : '请先选择校区'}}</text></view>
 
         <text class="query-label query-label--spaced">日期</text>
         <picker mode="date" value="{{date}}" start="{{minDate}}" end="{{maxDate}}" bindchange="onDateChange">
-          <view class="date-choice pressable" hover-class="pressing"><view class="date-icon"><view></view><text>{{dateDay}}</text></view><view class="date-copy"><text>{{dateLabel}}</text><text>不可早于今天</text></view><text class="date-chevron">›</text></view>
+          <view class="date-choice pressable" hover-class="pressing"><view class="date-icon"><lucide-icon name="calendar-days" tone="sage" size="{{35}}"></lucide-icon></view><view class="date-copy"><text>{{dateLabel}}</text><text>不可早于今天</text></view><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
         </picker>
 
         <text class="query-label query-label--spaced">时间范围 <text class="query-hint">· 可多选</text></text>
         <view class="period-grid"><view wx:for="{{periods}}" wx:key="period" class="period-pill pressable {{item.selected ? 'period-pill--active' : ''}}" data-period="{{item.period}}" bindtap="togglePeriodInline" hover-class="pressing"><text class="period-number">{{item.period}}</text><text class="period-time">{{item.startTime}}–{{item.endTime}}</text></view></view>
 
-        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="room-query-button--pressed" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
+        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="room-query-button--pressed" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><lucide-icon wx:else name="search" tone="white" size="{{29}}"></lucide-icon><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
       </view>
 
       <view wx:if="{{hasQueried}}" class="room-results-heading"><view><text class="room-results-title">查询结果 <text>{{totalRooms}}</text> 间</text><text class="room-results-caption">{{dateLabel}} · {{periodLabel}}</text></view></view>
       <scroll-view wx:if="{{hasQueried && buildingSummary.length}}" class="building-summary-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="building-summary-row"><view wx:for="{{buildingSummary}}" wx:key="id" class="building-summary-chip"><text>{{item.name}}</text><text>{{item.roomCount}}</text></view></view></scroll-view>
       <view wx:if="{{roomItems.length}}" class="room-list">
         <view wx:for="{{roomItems}}" wx:key="id" class="room-card card stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;">
-          <view class="room-icon"><view class="door-icon"><view></view></view></view>
+          <view class="room-icon"><lucide-icon name="door-open" tone="sage" size="{{49}}"></lucide-icon></view>
           <view class="room-copy"><text class="room-name">{{item.name}}</text><text class="room-location" overflow="ellipsis" max-lines="2">{{item.locationLabel}}</text><text class="room-meta">{{item.metaLabel}}</text></view>
           <view class="capacity-block"><text class="capacity-value tnum">{{item.capacityLabel}}</text><text class="capacity-label">容量</text></view>
         </view>
         <view wx:if="{{loadingMore}}" class="rooms-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="rooms-end">以上是全部可用教室</text>
       </view>
-      <empty-state wx:elif="{{hasQueried && !errorMessage}}" glyph="室" title="该条件下没有空教室" description="尝试减少节次或选择更多楼栋"></empty-state>
-      <empty-state wx:elif="{{errorMessage}}" glyph="!" title="查询失败" description="{{errorMessage}}" action-text="重新查询" bindaction="onQuery"></empty-state>
+      <empty-state wx:elif="{{hasQueried && !errorMessage}}" icon="door-open" icon-tone="sage" title="该条件下没有空教室" description="尝试减少节次或选择更多楼栋"></empty-state>
+      <empty-state wx:elif="{{errorMessage}}" icon="circle-alert" icon-tone="danger" title="查询失败" description="{{errorMessage}}" action-text="重新查询" bindaction="onQuery"></empty-state>
     </view>
   </scroll-view>
 </view>

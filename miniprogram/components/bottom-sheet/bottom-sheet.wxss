@@ -85,6 +85,9 @@
 
 .sheet-close {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 60rpx;
   height: 60rpx;
   border-radius: 50%;
@@ -94,19 +97,6 @@
 
 .sheet-layer--dark .sheet-close { background: rgba(255, 255, 255, 0.08); }
 .sheet-close--pressed { transform: scale(0.9); opacity: 0.72; }
-
-.sheet-close-line {
-  position: absolute;
-  top: 29rpx;
-  left: 19rpx;
-  width: 22rpx;
-  height: 3rpx;
-  border-radius: 3rpx;
-  background: #8b8578;
-}
-
-.sheet-close-line--a { transform: rotate(45deg); }
-.sheet-close-line--b { transform: rotate(-45deg); }
 
 .sheet-content {
   flex: 1;

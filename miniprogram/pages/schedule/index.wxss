@@ -40,40 +40,6 @@
 
 .round-action--dark { color: #fff; background: #2b2620; }
 
-.calendar-icon {
-  position: relative;
-  width: 30rpx;
-  height: 28rpx;
-  border: 3rpx solid currentColor;
-  border-radius: 5rpx;
-}
-
-.calendar-icon::before,
-.calendar-icon::after {
-  position: absolute;
-  top: -7rpx;
-  width: 3rpx;
-  height: 9rpx;
-  border-radius: 3rpx;
-  background: currentColor;
-  content: "";
-}
-
-.calendar-icon::before { left: 6rpx; }
-.calendar-icon::after { right: 6rpx; }
-.calendar-icon-line { position: absolute; top: 8rpx; right: 0; left: 0; height: 3rpx; background: currentColor; }
-
-.plus-icon,
-.plus-icon::after {
-  width: 28rpx;
-  height: 3rpx;
-  border-radius: 3rpx;
-  background: currentColor;
-}
-
-.plus-icon { position: relative; }
-.plus-icon::after { position: absolute; content: ""; transform: rotate(90deg); }
-
 .week-strip {
   display: flex;
   flex-direction: row;
@@ -176,7 +142,6 @@
   border-radius: 50%;
 }
 
-.plan-check-mark { width: 14rpx; height: 7rpx; border-bottom: 3rpx solid #a55357; border-left: 3rpx solid #a55357; transform: rotate(-45deg) translateY(-2rpx); }
 .entry-copy { flex: 1; min-width: 0; }
 .entry-title { display: block; color: #3f352e; font-size: 25rpx; font-weight: 750; line-height: 1.2; }
 .timeline-entry--plan .entry-title { color: #8f4c51; }

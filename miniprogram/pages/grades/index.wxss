@@ -21,14 +21,10 @@
 .overview-foot { position: relative; display: flex; flex-direction: row; justify-content: space-between; gap: 18rpx; margin-top: 24rpx; color: rgba(255, 255, 255, 0.7); font-size: 19rpx; }
 
 .grade-tools { display: flex; flex-direction: row; gap: 14rpx; margin-top: 28rpx; }
-.grade-search { flex: 1; min-width: 0; }
+.grade-search { flex: 1; min-width: 0; gap: 18rpx; }
 .grade-placeholder { color: #b5b0a3; }
 .grade-clear { display: flex; align-items: center; justify-content: center; width: 46rpx; height: 46rpx; border-radius: 50%; color: #9a9aa3; background: rgba(43, 38, 32, 0.05); font-size: 30rpx; }
 .grade-filter-button { display: flex; flex: none; align-items: center; justify-content: center; width: 82rpx; height: 82rpx; border-radius: 30rpx; color: #8b8578; background: #fff; box-shadow: var(--shadow-card); }
-.filter-lines { display: flex; flex-direction: column; gap: 6rpx; width: 31rpx; }
-.filter-lines view { height: 3rpx; border-radius: 3rpx; background: currentColor; }
-.filter-lines view:nth-child(2) { width: 22rpx; }
-.filter-lines view:nth-child(3) { width: 13rpx; }
 .result-heading { display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; margin: 48rpx 2rpx 22rpx; }
 .result-title { display: block; color: var(--color-text); font-size: 38rpx; font-weight: 750; }
 .result-count { display: block; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
@@ -54,7 +50,6 @@
 .component-preview text { padding: 5rpx 11rpx; border-radius: 999rpx; color: #8b8578; background: #f6f3ec; font-size: 17rpx; font-weight: 650; }
 .grade-remark { display: flex; flex-direction: row; align-items: center; gap: 8rpx; margin-top: 10rpx; color: #c0452d; font-size: 19rpx; }
 .grade-remark view { width: 8rpx; height: 8rpx; border-radius: 50%; background: currentColor; }
-.grade-chevron { flex: none; color: #d3d0c7; font-size: 34rpx; }
 .grade-load-more,
 .grade-end { display: block; padding: 26rpx; color: #b5b0a3; font-size: 21rpx; text-align: center; }
 
