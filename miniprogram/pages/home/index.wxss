@@ -67,7 +67,8 @@
 .support-title { display: block; color: var(--color-text); font-size: 23rpx; font-weight: 750; }
 .support-caption { display: block; margin-top: 2rpx; color: var(--color-text-tertiary); font-size: 18rpx; }
 
-.plan-card { overflow: hidden; }
+.plan-card { min-height: 224rpx; overflow: hidden; }
+.plan-list { display: flex; flex-direction: column; justify-content: center; min-height: 224rpx; }
 .plan-row { display: flex; flex-direction: row; align-items: center; gap: 22rpx; min-height: 104rpx; padding: 20rpx 28rpx; }
 .plan-row--divided { border-bottom: 1rpx solid var(--color-separator); }
 .plan-circle { flex: none; width: 37rpx; height: 37rpx; border: 3rpx solid #c9c9d2; border-radius: 50%; }
@@ -75,19 +76,21 @@
 .plan-title { display: block; color: var(--color-text); font-size: 27rpx; font-weight: 700; }
 .plan-time { display: block; margin-top: 3rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
 .plan-tag { flex: none; padding: 7rpx 16rpx; border-radius: 999rpx; color: #a55357; background: #f7e9e8; font-size: 19rpx; font-weight: 700; }
-.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10rpx; padding: 42rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; }
+.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; box-sizing: border-box; gap: 10rpx; min-height: 224rpx; padding: 42rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; }
 
-.campus-stack { display: flex; flex-direction: column; gap: 20rpx; }
-.campus-card { position: relative; padding: 28rpx; }
+.campus-stack { display: flex; flex-direction: column; gap: 30rpx; }
+.campus-group { display: flex; flex-direction: column; gap: 16rpx; }
+.campus-card { position: relative; padding: 30rpx 30rpx 40rpx; }
 .campus-blob { width: 190rpx; height: 170rpx; opacity: 0.72; }
 .campus-blob--notice { top: -70rpx; right: -54rpx; background: #f9eae2; }
 .campus-blob--message { bottom: -76rpx; left: -58rpx; background: #f8eedd; }
-.campus-card-head { position: relative; display: flex; flex-direction: row; align-items: center; gap: 14rpx; color: var(--color-text); font-size: 26rpx; font-weight: 750; }
+.campus-card-head { position: relative; display: flex; flex-direction: row; align-items: center; gap: 22rpx; min-height: 50rpx; padding: 0 8rpx; color: var(--color-text); font-size: 26rpx; font-weight: 750; }
+.campus-card-title { flex: none; }
 .campus-icon { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx; border-radius: 18rpx; }
 .campus-icon--notice { color: #b85c38; background: #f9eae2; }
 .campus-icon--message { color: #a66f1f; background: #f8eedd; }
 .campus-dot { width: 14rpx; height: 14rpx; margin-left: auto; border-radius: 50%; background: #c0452d; }
-.campus-list { position: relative; display: flex; flex-direction: column; gap: 14rpx; margin-top: 20rpx; }
+.campus-list { position: relative; display: flex; flex-direction: column; gap: 16rpx; }
 .campus-line { display: flex; flex-direction: row; align-items: baseline; gap: 14rpx; min-width: 0; }
 .campus-bullet { flex: none; width: 7rpx; height: 7rpx; margin-top: 8rpx; border-radius: 50%; background: #d97757; }
 .campus-line-title { flex: 1; min-width: 0; color: var(--color-text-secondary); font-size: 23rpx; font-weight: 600; }
@@ -96,7 +99,7 @@
 .message-kind--blue { color: #a66f1f; background: #f8eedd; }
 .message-kind--green { color: #5f7350; background: #edf1e6; }
 .message-kind--orange { color: #c0452d; background: #f9e7e0; }
-.campus-empty-copy { position: relative; display: block; margin-top: 18rpx; color: var(--color-text-tertiary); font-size: 23rpx; }
+.campus-empty-copy { position: relative; display: block; color: var(--color-text-tertiary); font-size: 23rpx; }
 .dashboard-error { display: flex; flex-direction: row; justify-content: space-between; gap: 20rpx; margin-top: 26rpx; padding: 20rpx 24rpx; border-radius: 28rpx; color: #c0452d; background: #f9e7e0; font-size: 22rpx; }
 
 .publication-popover-layer { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1000; opacity: 0; transition: opacity 260ms ease; pointer-events: none; }

@@ -106,7 +106,7 @@
         <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
       <view class="plan-card card stagger-item stagger-3">
-        <view wx:if="{{plans.length}}">
+        <view wx:if="{{plans.length}}" class="plan-list">
           <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}}">
             <view class="plan-circle"></view>
             <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
@@ -121,21 +121,33 @@
         <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
       <view class="campus-stack stagger-item stagger-4">
-        <view class="campus-card card pressable" bindtap="openNotices" hover-class="pressing">
-          <view class="ambient-blob campus-blob campus-blob--notice"></view>
-          <view class="campus-card-head"><view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view><text>学校通知</text><view wx:if="{{notices.length}}" class="campus-dot"></view></view>
-          <view wx:if="{{notices.length}}" class="campus-list">
-            <view wx:for="{{notices}}" wx:key="id" class="campus-line"><view class="campus-bullet"></view><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+        <view class="campus-group">
+          <view class="campus-card-head pressable" bindtap="openNotices" hover-class="pressing">
+            <view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view>
+            <text class="campus-card-title">学校通知</text>
+            <view wx:if="{{notices.length}}" class="campus-dot"></view>
           </view>
-          <text wx:else class="campus-empty-copy">暂时没有新通知</text>
+          <view class="campus-card card pressable" bindtap="openNotices" hover-class="pressing">
+            <view class="ambient-blob campus-blob campus-blob--notice"></view>
+            <view wx:if="{{notices.length}}" class="campus-list">
+              <view wx:for="{{notices}}" wx:key="id" class="campus-line"><view class="campus-bullet"></view><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+            </view>
+            <text wx:else class="campus-empty-copy">暂时没有新通知</text>
+          </view>
         </view>
-        <view class="campus-card card pressable" bindtap="openMessages" hover-class="pressing">
-          <view class="ambient-blob campus-blob campus-blob--message"></view>
-          <view class="campus-card-head"><view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="amber" size="{{29}}"></lucide-icon></view><text>教务消息</text><view wx:if="{{messages.length}}" class="campus-dot"></view></view>
-          <view wx:if="{{messages.length}}" class="campus-list">
-            <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+        <view class="campus-group">
+          <view class="campus-card-head pressable" bindtap="openMessages" hover-class="pressing">
+            <view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="amber" size="{{29}}"></lucide-icon></view>
+            <text class="campus-card-title">教务消息</text>
+            <view wx:if="{{messages.length}}" class="campus-dot"></view>
           </view>
-          <text wx:else class="campus-empty-copy">暂时没有新消息</text>
+          <view class="campus-card card pressable" bindtap="openMessages" hover-class="pressing">
+            <view class="ambient-blob campus-blob campus-blob--message"></view>
+            <view wx:if="{{messages.length}}" class="campus-list">
+              <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+            </view>
+            <text wx:else class="campus-empty-copy">暂时没有新消息</text>
+          </view>
         </view>
       </view>
 
