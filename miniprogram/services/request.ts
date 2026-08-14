@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "../config/index";
+import { getApiUrl } from "../config/index";
 import { clearSession, getSession } from "../store/session";
 import type {
   ApiErrorPayload,
@@ -29,7 +29,7 @@ const AUTH_ERROR_CODES = new Set([
   "SWU_CREDENTIAL_INVALID",
 ]);
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
-const RETRYABLE_STATUS_CODES = new Set([429, 502, 503]);
+const RETRYABLE_STATUS_CODES = new Set([429, 503]);
 let redirectingToLogin = false;
 
 export class ApiClientError extends Error {
@@ -124,7 +124,7 @@ function requestOnce<T>(
 
   return new Promise((resolve, reject) => {
     wx.request({
-      url: `${getApiBaseUrl()}${path}`,
+      url: getApiUrl(path),
       method: options.method || "GET",
       data: options.data,
       timeout: options.timeout || 30000,

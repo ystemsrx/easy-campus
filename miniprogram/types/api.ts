@@ -7,6 +7,8 @@ export interface TeachingSuccess<T> extends ApiSuccess<T> {
   meta: {
     cached: boolean;
     fetchedAt?: string;
+    refreshing?: boolean;
+    stale?: boolean;
   };
 }
 
@@ -374,6 +376,7 @@ export interface QueryMeta {
   cached: boolean;
   fetchedAt?: string;
   refreshing?: boolean;
+  stale?: boolean;
 }
 
 export interface MessagesQuery {

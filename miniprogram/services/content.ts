@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "../config/index";
+import { getApiUrl } from "../config/index";
 import { getSession } from "../store/session";
 import type { PublicationFeed, PublicationMedia } from "../types/api";
 import { apiRequest } from "./request";
@@ -6,14 +6,14 @@ import { apiRequest } from "./request";
 const mediaCache = new Map<string, string>();
 
 export function getPublicationFeed(): Promise<PublicationFeed> {
-  return apiRequest<PublicationFeed>("/api/v1/content/feed");
+  return apiRequest<PublicationFeed>("/content/feed");
 }
 
 export function markPublicationRead(
   publicationId: string,
 ): Promise<{ read: true; readAt: string }> {
   return apiRequest<{ read: true; readAt: string }>(
-    `/api/v1/content/publications/${publicationId}/read`,
+    `/content/publications/${publicationId}/read`,
     {
       method: "POST",
       data: {},
@@ -26,7 +26,7 @@ export function recordAnnouncementPopup(
   publicationId: string,
 ): Promise<{ recorded: true }> {
   return apiRequest<{ recorded: true }>(
-    `/api/v1/content/publications/${publicationId}/popup`,
+    `/content/publications/${publicationId}/popup`,
     {
       method: "POST",
       data: {},
@@ -45,7 +45,7 @@ export function downloadPublicationMedia(
 
   return new Promise((resolve) => {
     wx.downloadFile({
-      url: `${getApiBaseUrl()}${media.url}`,
+      url: getApiUrl(media.url),
       header: {
         Authorization: `Bearer ${session.token}`,
       },

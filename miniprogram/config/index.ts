@@ -41,6 +41,17 @@ export function getApiBaseUrl(): string {
   return `${getApiOrigin()}/api/v1`;
 }
 
+export function getApiUrl(path: string): string {
+  const normalizedPath = path.trim();
+  if (/^https?:\/\//.test(normalizedPath)) {
+    return normalizedPath;
+  }
+  if (normalizedPath === "/api/v1" || normalizedPath.startsWith("/api/v1/")) {
+    return `${getApiOrigin()}${normalizedPath}`;
+  }
+  return `${getApiBaseUrl()}/${normalizedPath.replace(/^\/+/, "")}`;
+}
+
 export function setDevelopmentApiOrigin(origin: string): void {
   const normalized = normalizeOrigin(origin);
   if (!/^https?:\/\//.test(normalized)) {

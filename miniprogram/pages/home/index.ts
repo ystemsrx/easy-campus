@@ -90,6 +90,7 @@ let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
 let dashboardRequestInFlight = false;
 let dashboardRefreshQueued = false;
+let dashboardStableRefreshQueued = false;
 let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
@@ -646,9 +647,12 @@ Page({
       setTimeout(() => this.showNextQueuedAnnouncement(), 90);
     }, 280) as unknown as number;
   },
-  async loadDashboard(refresh: boolean) {
+  async loadDashboard(refresh: boolean, includeStableData = true) {
     if (dashboardRequestInFlight) {
-      if (refresh) dashboardRefreshQueued = true;
+      if (refresh) {
+        dashboardRefreshQueued = true;
+        if (includeStableData) dashboardStableRefreshQueued = true;
+      }
       return;
     }
     dashboardRequestInFlight = true;
@@ -663,17 +667,19 @@ Page({
 
     const [userResult, messageResult, noticeResult, gradeResult] =
       await Promise.allSettled([
-        getCurrentUser(),
+        includeStableData ? getCurrentUser() : Promise.resolve(null),
         getMessages({ page: 1, pageSize: 3, refresh }),
         getNotices({ page: 1, pageSize: 3, refresh }),
-        getGrades({ page: 1, pageSize: 1, refresh }),
+        includeStableData
+          ? getGrades({ page: 1, pageSize: 1, refresh })
+          : Promise.resolve(null),
       ]);
 
     const serviceHealthy =
-      userResult.status === "fulfilled" ||
+      (includeStableData && userResult.status === "fulfilled") ||
       messageResult.status === "fulfilled" ||
       noticeResult.status === "fulfilled" ||
-      gradeResult.status === "fulfilled";
+      (includeStableData && gradeResult.status === "fulfilled");
     const patch: Record<string, unknown> = {
       loading: false,
       refreshing: false,
@@ -681,7 +687,7 @@ Page({
       serviceHealthy,
       serviceLabel: serviceHealthy ? "服务连接正常" : "服务连接异常",
     };
-    if (userResult.status === "fulfilled") {
+    if (userResult.status === "fulfilled" && userResult.value) {
       patch.userName = userResult.value.name || "同学";
       patch.organizationName =
         userResult.value.profile.organizationName || "西南大学";
@@ -705,7 +711,7 @@ Page({
         this.data.notices,
       );
     }
-    if (gradeResult.status === "fulfilled") {
+    if (gradeResult.status === "fulfilled" && gradeResult.value) {
       const average = gradeResult.value.data.summary.numericWeightedAverage;
       patch.gradeAverageLabel =
         average === null
@@ -733,8 +739,10 @@ Page({
           noticeResult.value.meta.refreshing));
     dashboardRequestInFlight = false;
     if (needsFreshResult || dashboardRefreshQueued) {
+      const includeStableRefresh = dashboardStableRefreshQueued;
       dashboardRefreshQueued = false;
-      setTimeout(() => void this.loadDashboard(true), 0);
+      dashboardStableRefreshQueued = false;
+      setTimeout(() => void this.loadDashboard(true, includeStableRefresh), 0);
     }
   },
   onRefresh() {
