@@ -35,7 +35,7 @@ import {
   formatFriendlyDate,
   today,
 } from "../../utils/date";
-import { formatSchedule } from "../../utils/format";
+import { formatSchedule, formatScheduleDate } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
@@ -44,7 +44,7 @@ interface MessagePreview {
   id: string;
   title: string;
   subtitle: string;
-  time: string;
+  dateLabel: string;
   label: string;
   tone: string;
 }
@@ -149,7 +149,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: `调整至 ${formatSchedule(message.newSchedule)}`,
-        time: formatDateTime(message.createdAt),
+        dateLabel: formatScheduleDate(message.newSchedule),
         label: "调课",
         tone: "blue",
       };
@@ -158,7 +158,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: formatSchedule(message.schedule),
-        time: formatDateTime(message.createdAt),
+        dateLabel: formatScheduleDate(message.schedule),
         label: "补课",
         tone: "green",
       };
@@ -167,7 +167,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: formatSchedule(message.schedule),
-        time: formatDateTime(message.createdAt),
+        dateLabel: formatScheduleDate(message.schedule),
         label: "停课",
         tone: "orange",
       };
@@ -176,7 +176,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.title,
         subtitle: message.content,
-        time: formatDateTime(message.createdAt),
+        dateLabel: "",
         label: "消息",
         tone: "gray",
       };

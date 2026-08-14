@@ -144,7 +144,7 @@
           <view class="campus-card card pressable" bindtap="openMessages" hover-class="pressing">
             <view class="ambient-blob campus-blob campus-blob--message"></view>
             <view wx:if="{{messages.length}}" class="campus-list">
-              <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+              <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text wx:if="{{item.dateLabel}}" class="campus-line-schedule">{{item.dateLabel}}</text></view>
             </view>
             <text wx:else class="campus-empty-copy">暂时没有新消息</text>
           </view>

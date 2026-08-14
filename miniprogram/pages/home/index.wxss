@@ -95,6 +95,7 @@
 .campus-bullet { flex: none; width: 7rpx; height: 7rpx; margin-top: 8rpx; border-radius: 50%; background: #d97757; }
 .campus-line-title { flex: 1; min-width: 0; color: var(--color-text-secondary); font-size: 23rpx; font-weight: 600; }
 .campus-line-time { flex: none; max-width: 150rpx; color: #b5b0a3; font-size: 18rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.campus-line-schedule { flex: none; color: #b5b0a3; font-size: 18rpx; white-space: nowrap; }
 .message-kind { flex: none; padding: 4rpx 13rpx; border-radius: 999rpx; color: #8b8b94; background: #f1f1f3; font-size: 18rpx; font-weight: 750; }
 .message-kind--blue { color: #a66f1f; background: #f8eedd; }
 .message-kind--green { color: #5f7350; background: #edf1e6; }

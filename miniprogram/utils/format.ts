@@ -45,13 +45,18 @@ export function scoreTone(
 }
 
 export function formatSchedule(schedule: MessageSchedule): string {
-  const week =
-    schedule.weekStart === schedule.weekEnd
-      ? `第${schedule.weekStart}周`
-      : `第${schedule.weekStart}–${schedule.weekEnd}周`;
+  const date = formatScheduleDate(schedule);
   const period =
     schedule.periodStart === schedule.periodEnd
       ? `第${schedule.periodStart}节`
       : `${schedule.periodStart}–${schedule.periodEnd}节`;
-  return `${week} ${formatMessageWeekday(schedule.weekday)} ${period}`;
+  return `${date} ${period}`;
+}
+
+export function formatScheduleDate(schedule: MessageSchedule): string {
+  const week =
+    schedule.weekStart === schedule.weekEnd
+      ? `第${schedule.weekStart}周`
+      : `第${schedule.weekStart}–${schedule.weekEnd}周`;
+  return `${week} ${formatMessageWeekday(schedule.weekday)}`;
 }
