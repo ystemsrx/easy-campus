@@ -24,12 +24,12 @@
 .today-count-row { display: flex; flex-direction: row; align-items: baseline; margin-top: 2rpx; }
 .today-count { font-size: 76rpx; font-weight: 750; line-height: 1; }
 .today-unit { margin-left: 10rpx; color: rgba(255, 255, 255, 0.72); font-size: 28rpx; font-weight: 650; }
-.timetable-pill { display: flex; flex-direction: row; align-items: center; gap: 6rpx; margin-top: 2rpx; padding: 15rpx 24rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); font-size: 23rpx; font-weight: 700; }
+.timetable-pill { display: flex; flex: none; flex-direction: row; align-items: center; gap: 6rpx; margin-top: 2rpx; padding: 15rpx 24rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); font-size: 23rpx; font-weight: 700; white-space: nowrap; }
+.timetable-pill > text { flex: none; white-space: nowrap; }
 .today-course-list { margin-top: 26rpx; }
 .today-course-row { display: flex; flex-direction: row; align-items: center; gap: 20rpx; min-height: 104rpx; margin-top: 14rpx; padding: 15rpx 20rpx; border-radius: 32rpx; background: rgba(255, 255, 255, 0.14); backdrop-filter: blur(8px); }
-.course-slot { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 98rpx; min-height: 74rpx; padding: 8rpx; border-radius: 24rpx; color: #16161a; background: rgba(255, 255, 255, 0.9); }
-.course-slot-value { max-width: 86rpx; font-size: 22rpx; font-weight: 800; text-align: center; }
-.course-slot-label { color: #9a9aa3; font-size: 17rpx; font-weight: 600; }
+.course-slot { display: flex; flex: none; flex-direction: row; align-items: center; justify-content: center; width: 126rpx; min-height: 64rpx; padding: 8rpx 12rpx; border-radius: 999rpx; color: #16161a; background: rgba(255, 255, 255, 0.9); }
+.course-slot-value { display: block; flex: none; font-size: 22rpx; font-weight: 800; line-height: 1; text-align: center; white-space: nowrap; }
 .today-course-copy { flex: 1; min-width: 0; }
 .today-course-name { display: block; font-size: 28rpx; font-weight: 700; }
 .today-course-meta { display: flex; flex-direction: row; align-items: center; gap: 7rpx; margin-top: 4rpx; color: rgba(255, 255, 255, 0.72); font-size: 21rpx; }
@@ -53,6 +53,9 @@
 .rooms-main { position: relative; margin-top: 22rpx; font-size: 58rpx; font-weight: 800; line-height: 1; }
 .rooms-copy { position: relative; margin-top: 10rpx; color: rgba(255, 255, 255, 0.8); font-size: 22rpx; line-height: 1.45; }
 .feature-action { position: relative; display: flex; align-self: flex-start; flex-direction: row; align-items: center; gap: 8rpx; margin-top: auto; padding: 12rpx 20rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); font-size: 21rpx; font-weight: 700; }
+
+.home-page .section-action { flex: none; white-space: nowrap; }
+.home-page .section-action > text { display: block; flex: none; white-space: nowrap; }
 
 .support-row { display: flex; flex-direction: row; gap: 14rpx; margin-top: 20rpx; }
 .support-card { display: flex; flex: 1; flex-basis: 0; flex-direction: column; align-items: center; min-width: 0; padding: 22rpx 8rpx 20rpx; border-radius: 36rpx; background: #fff; box-shadow: var(--shadow-card); }

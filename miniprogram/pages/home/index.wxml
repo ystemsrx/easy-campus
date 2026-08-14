@@ -46,7 +46,7 @@
           </view>
           <view wx:if="{{todayCourses.length}}" class="today-course-list">
             <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
-              <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text><text class="course-slot-label">节次</text></view>
+              <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text></view>
               <view class="today-course-copy">
                 <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
                 <view class="today-course-meta"><lucide-icon name="map-pin" tone="white" size="{{17}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
