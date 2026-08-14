@@ -94,7 +94,7 @@
   color: inherit;
   font-size: 29rpx;
   line-height: 1.8;
-  word-break: break-all;
+  word-break: normal;
 }
 
 .notice-skeleton {
