@@ -776,33 +776,12 @@ Page({
     if (timetableRouteOpening) return;
     timetableRouteOpening = true;
     haptic("light");
-    const fallback = () => {
-      void navigateTo("/pages/timetable/index", "wx://zoom").finally(() => {
+    wx.navigateTo({
+      url: "/pages/timetable/index",
+      complete: () => {
         timetableRouteOpening = false;
-      });
-    };
-
-    try {
-      this.createSelectorQuery()
-        .select("#timetable-open-container")
-        .node((result) => {
-          if (!result?.node) {
-            fallback();
-            return;
-          }
-          wx.navigateTo({
-            url: "/pages/timetable/index",
-            withOpenContainer: result.node,
-            success: () => {
-              timetableRouteOpening = false;
-            },
-            fail: fallback,
-          });
-        })
-        .exec();
-    } catch {
-      fallback();
-    }
+      },
+    });
   },
   openMessages() {
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
