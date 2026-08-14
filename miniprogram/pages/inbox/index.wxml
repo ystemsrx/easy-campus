@@ -14,7 +14,7 @@
       <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages" bindscrolltolower="loadMoreMessages" lower-threshold="180">
         <view class="inbox-content page-content">
           <view class="list-heading">
-            <view><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
+            <view class="list-heading-copy"><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
             <view class="filter-button pressable {{messageType || from || to ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageType || from || to ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text></view>
           </view>
 
@@ -30,29 +30,25 @@
               </view>
               <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-flow schedule-flow--rescheduled">
                 <view class="schedule-panel schedule-panel--old">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--old">原安排</text><text class="schedule-time-label">{{item.original.primary}}</text></view>
-                  <view class="schedule-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--old">原安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view><text class="schedule-time-label">{{item.original.primary}}</text></view></view>
                 </view>
                 <view class="reschedule-connector">
                   <view class="reschedule-connector-line"></view>
-                  <view class="reschedule-connector-label"><view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="amber" size="{{19}}"></lucide-icon></view><text>调整至</text></view>
+                  <view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="amber" size="{{19}}"></lucide-icon></view>
                   <view class="reschedule-connector-line"></view>
                 </view>
                 <view class="schedule-panel schedule-panel--new">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><text class="schedule-time-label">{{item.current.primary}}</text></view>
-                  <view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><view class="schedule-inline"><view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view><text class="schedule-time-label">{{item.current.primary}}</text></view></view>
                 </view>
               </view>
               <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-flow">
                 <view class="schedule-panel schedule-panel--makeup">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--makeup">补课安排</text><text class="schedule-time-label">{{item.current.primary}}</text></view>
-                  <view class="schedule-location"><lucide-icon name="map-pin" tone="sage" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--makeup">补课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="sage" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view><text class="schedule-time-label">{{item.current.primary}}</text></view></view>
                 </view>
               </view>
               <view wx:elif="{{item.type === 'course_cancelled'}}" class="schedule-flow">
                 <view class="schedule-panel schedule-panel--cancelled">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--cancelled">停课安排</text><text class="schedule-time-label">{{item.original.primary}}</text></view>
-                  <view class="schedule-location"><lucide-icon name="map-pin" tone="coral" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--cancelled">停课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="coral" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view><text class="schedule-time-label">{{item.original.primary}}</text></view></view>
                 </view>
               </view>
               <text wx:else class="message-content">{{item.content}}</text>
