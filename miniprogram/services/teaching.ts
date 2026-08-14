@@ -62,9 +62,10 @@ export function getNotices(
 
 export function getNoticeDetail(
   id: string,
+  refresh = false,
 ): Promise<TeachingResult<NoticeDetail>> {
   return teachingRequest<NoticeDetail>(
-    `/teaching/notices/detail${buildQuery({ id })}`,
+    `/teaching/notices/detail${buildQuery({ id, refresh: refresh || undefined })}`,
   );
 }
 

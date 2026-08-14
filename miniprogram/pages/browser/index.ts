@@ -63,7 +63,7 @@ Page({
   onShow() {
     this.setData(resolveAppearance());
   },
-  async loadDetail() {
+  async loadDetail(refresh = false) {
     if (!this.data.id) {
       this.setData({
         loaded: true,
@@ -76,7 +76,7 @@ Page({
       errorMessage: "",
     });
     try {
-      const result = await getNoticeDetail(this.data.id);
+      const result = await getNoticeDetail(this.data.id, refresh);
       const detail = result.data;
       const publishedAt = detail.publishedAt || this.data.publishedAt;
       const url = detail.link || this.data.url;
@@ -91,7 +91,11 @@ Page({
         cached: result.meta.cached,
         loaded: true,
       });
+      if (!refresh && result.meta.refreshing) {
+        void this.loadDetail(true);
+      }
     } catch (error) {
+      if (refresh && this.data.contentHtml) return;
       this.setData({
         loaded: true,
         errorMessage: getErrorMessage(error, "通知正文加载失败，请稍后重试。"),
@@ -102,7 +106,7 @@ Page({
   },
   retry() {
     haptic("light");
-    void this.loadDetail();
+    void this.loadDetail(true);
   },
   copyLink() {
     if (!this.data.url) return;
