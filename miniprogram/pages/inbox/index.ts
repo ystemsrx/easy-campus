@@ -121,10 +121,21 @@ function mergeNotices(
 ): NoticeView[] {
   const seen = new Set<string>();
   return [...incoming, ...existing].filter((item) => {
-    if (seen.has(item.link)) return false;
-    seen.add(item.link);
+    const identity = item.id || item.link;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
     return true;
   });
+}
+
+function noticeSourceIdFromLink(link: string): string {
+  const matched = /[?&]xwbh=([^&]+)/.exec(link);
+  if (!matched) return "";
+  try {
+    return decodeURIComponent(matched[1]);
+  } catch {
+    return matched[1];
+  }
 }
 
 Page({
@@ -448,14 +459,16 @@ Page({
     void this.loadNotices(true, false);
   },
   openNotice(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
     const link = String(event.currentTarget.dataset.link || "");
     const title = String(event.currentTarget.dataset.title || "教务通知");
-    if (!link) {
+    const publishedAt = String(event.currentTarget.dataset.publishedAt || "");
+    if (!id && !link) {
       return;
     }
     haptic("light");
     void navigateTo(
-      `/pages/browser/index?url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}`,
+      `/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
       "wx://upwards",
     );
   },

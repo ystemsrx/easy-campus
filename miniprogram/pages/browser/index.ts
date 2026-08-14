@@ -1,4 +1,7 @@
+import { getNoticeDetail } from "../../services/teaching";
+import { getErrorMessage } from "../../services/request";
 import { resolveAppearance } from "../../utils/appearance";
+import { formatDateTime } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
 
@@ -16,44 +19,96 @@ function domainFromUrl(url: string): string {
   return match?.[1] || "学校教务系统";
 }
 
+function sourceIdFromUrl(url: string): string {
+  const matched = /[?&]xwbh=([^&]+)/.exec(url);
+  if (!matched) return "";
+  return safeDecode(matched[1], matched[1]);
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
+    id: "",
     title: "教务通知",
+    publisher: "",
+    publishedAt: "",
+    displayTime: "",
+    contentHtml: "",
     url: "",
     domain: "学校教务系统",
+    loading: false,
+    loaded: false,
+    errorMessage: "",
+    cached: false,
   },
   onLoad(options: Record<string, string | undefined>) {
     if (!ensureAuthenticated()) return;
     const url = safeDecode(options.url, "");
+    const id = safeDecode(options.id, "") || sourceIdFromUrl(url);
     const title = safeDecode(options.title, "教务通知");
+    const publishedAt = safeDecode(options.publishedAt, "");
     this.setData({
       ...resolveAppearance(),
+      id,
       title,
+      publishedAt,
+      displayTime: publishedAt ? formatDateTime(publishedAt) : "",
       url,
       domain: domainFromUrl(url),
     });
+    void this.loadDetail();
   },
   onShow() {
     this.setData(resolveAppearance());
+  },
+  async loadDetail() {
+    if (!this.data.id) {
+      this.setData({
+        loaded: true,
+        errorMessage: "这条旧缓存缺少通知标识，请返回列表等待静默更新后重试。",
+      });
+      return;
+    }
+    this.setData({
+      loading: !this.data.contentHtml,
+      errorMessage: "",
+    });
+    try {
+      const result = await getNoticeDetail(this.data.id);
+      const detail = result.data;
+      const publishedAt = detail.publishedAt || this.data.publishedAt;
+      const url = detail.link || this.data.url;
+      this.setData({
+        title: detail.title || this.data.title,
+        publisher: detail.publisher || "",
+        publishedAt,
+        displayTime: publishedAt ? formatDateTime(publishedAt) : "",
+        contentHtml: detail.contentHtml,
+        url,
+        domain: domainFromUrl(url),
+        cached: result.meta.cached,
+        loaded: true,
+      });
+    } catch (error) {
+      this.setData({
+        loaded: true,
+        errorMessage: getErrorMessage(error, "通知正文加载失败，请稍后重试。"),
+      });
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
+  retry() {
+    haptic("light");
+    void this.loadDetail();
   },
   copyLink() {
     if (!this.data.url) return;
     wx.setClipboardData({
       data: this.data.url,
       success: () => haptic("medium"),
-    });
-  },
-  showOpenGuide() {
-    haptic("light");
-    wx.showModal({
-      title: "如何打开",
-      content:
-        "通知链接通常需要校园网或学校 VPN，并可能要求教务系统登录。请复制链接后，在已连接相应网络的浏览器中打开。",
-      showCancel: false,
-      confirmText: "知道了",
     });
   },
 });

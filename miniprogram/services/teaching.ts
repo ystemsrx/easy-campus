@@ -9,6 +9,7 @@ import type {
   GradesQuery,
   MessagesQuery,
   Notice,
+  NoticeDetail,
   NoticesQuery,
   Paginated,
   QueryMeta,
@@ -56,6 +57,14 @@ export function getNotices(
 ): Promise<TeachingResult<Paginated<Notice>>> {
   return teachingRequest<Paginated<Notice>>(
     `/teaching/notices${buildQuery(asQuery(query))}`,
+  );
+}
+
+export function getNoticeDetail(
+  id: string,
+): Promise<TeachingResult<NoticeDetail>> {
+  return teachingRequest<NoticeDetail>(
+    `/teaching/notices/detail${buildQuery({ id })}`,
   );
 }
 

@@ -50,9 +50,11 @@ interface MessagePreview {
 }
 
 interface NoticePreview {
+  id: string;
   title: string;
   time: string;
   link: string;
+  publishedAt: string;
 }
 
 interface TodayCoursePreview extends TimetableCourse {
@@ -162,10 +164,22 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
 
 function toNoticePreview(notice: Notice): NoticePreview {
   return {
+    id: notice.id || noticeSourceIdFromLink(notice.link),
     title: notice.title,
     time: formatDateTime(notice.publishedAt),
     link: notice.link,
+    publishedAt: notice.publishedAt,
   };
+}
+
+function noticeSourceIdFromLink(link: string): string {
+  const matched = /[?&]xwbh=([^&]+)/.exec(link);
+  if (!matched) return "";
+  try {
+    return decodeURIComponent(matched[1]);
+  } catch {
+    return matched[1];
+  }
 }
 
 function mergeMessagePreviews(
@@ -189,8 +203,9 @@ function mergeNoticePreviews(
   const seen = new Set<string>();
   return [...incoming, ...existing]
     .filter((item) => {
-      if (seen.has(item.link)) return false;
-      seen.add(item.link);
+      const identity = item.id || item.link;
+      if (seen.has(identity)) return false;
+      seen.add(identity);
       return true;
     })
     .slice(0, 3);
@@ -716,12 +731,14 @@ Page({
     wx.switchTab({ url: "/pages/inbox/index" });
   },
   openNotice(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
     const link = String(event.currentTarget.dataset.link || "");
     const title = String(event.currentTarget.dataset.title || "教务通知");
-    if (!link) return;
+    const publishedAt = String(event.currentTarget.dataset.publishedAt || "");
+    if (!id && !link) return;
     haptic("light");
     void navigateTo(
-      `/pages/browser/index?url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}`,
+      `/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
       "wx://upwards",
     );
   },

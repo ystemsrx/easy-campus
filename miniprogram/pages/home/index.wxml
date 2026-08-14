@@ -150,8 +150,10 @@
           wx:for="{{notices}}"
           wx:key="title"
           class="notice-row pressable {{index < notices.length - 1 ? 'notice-row--divided' : ''}}"
+          data-id="{{item.id}}"
           data-link="{{item.link}}"
           data-title="{{item.title}}"
+          data-published-at="{{item.publishedAt}}"
           bindtap="openNotice"
           hover-class="pressing"
         >

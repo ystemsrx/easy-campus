@@ -155,9 +155,15 @@ export type TeachingMessage =
   | OtherMessage;
 
 export interface Notice {
+  id: string;
   title: string;
   link: string;
   publishedAt: string;
+}
+
+export interface NoticeDetail extends Notice {
+  publisher: string | null;
+  contentHtml: string;
 }
 
 export type PublicationKind = "announcement" | "notification";
