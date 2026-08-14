@@ -90,7 +90,7 @@
 .campus-icon--notice { color: #b85c38; background: #f9eae2; }
 .campus-icon--message { color: #a66f1f; background: #f8eedd; }
 .campus-dot { width: 14rpx; height: 14rpx; margin-left: auto; border-radius: 50%; background: #c0452d; }
-.campus-list { position: relative; display: flex; flex-direction: column; gap: 16rpx; }
+.campus-list { position: relative; display: flex; flex-direction: column; gap: 16rpx; padding-bottom: 28rpx; }
 .campus-line { display: flex; flex-direction: row; align-items: baseline; gap: 14rpx; min-width: 0; }
 .campus-bullet { flex: none; width: 7rpx; height: 7rpx; margin-top: 8rpx; border-radius: 50%; background: #d97757; }
 .campus-line-title { flex: 1; min-width: 0; color: var(--color-text-secondary); font-size: 23rpx; font-weight: 600; }
