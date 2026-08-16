@@ -88,8 +88,30 @@ function campusToday(date: Date): string {
 
 function datesAvailable(data: TimetableData): boolean {
   return Boolean(
-    data.currentSemester && data.currentSemester.id === data.semester.id,
+    (data.semesterCalendar &&
+      data.semesterCalendar.semesterId === data.semester.id &&
+      data.semesterCalendar.weeks.length) ||
+    (data.currentSemester && data.currentSemester.id === data.semester.id),
   );
+}
+
+function weekDateRange(
+  data: TimetableData,
+  week: number,
+): { startDate: string; endDate: string } | null {
+  const calendar = data.semesterCalendar;
+  if (calendar?.semesterId === data.semester.id) {
+    const exact = calendar.weeks.find(
+      (candidate) => candidate.weekNumber === week,
+    );
+    if (exact) return exact;
+  }
+  if (data.currentSemester?.id !== data.semester.id) return null;
+  const startDate = campusDateAt(
+    data.currentSemester.startDate,
+    (week - 1) * 7,
+  );
+  return startDate ? { startDate, endDate: campusDateAt(startDate, 6) } : null;
 }
 
 function occurrenceDate(
@@ -97,11 +119,9 @@ function occurrenceDate(
   week: number,
   weekday: number,
 ): string | null {
-  if (!datesAvailable(data) || !data.currentSemester) return null;
-  return campusDateAt(
-    data.currentSemester.startDate,
-    (week - 1) * 7 + weekday - 1,
-  );
+  if (!datesAvailable(data)) return null;
+  const range = weekDateRange(data, week);
+  return range ? campusDateAt(range.startDate, weekday - 1) : null;
 }
 
 function toCourse(
@@ -202,8 +222,16 @@ export function teachingWeekForDate(
   data: TimetableData | null,
   date = new Date(),
 ): number | null {
-  if (!data?.currentSemester || !datesAvailable(data)) return null;
+  if (!data || !datesAvailable(data)) return null;
   const currentDate = campusToday(date);
+  const calendar = data.semesterCalendar;
+  if (calendar?.semesterId === data.semester.id) {
+    const exact = calendar.weeks.find(
+      (week) => currentDate >= week.startDate && currentDate <= week.endDate,
+    );
+    return exact?.weekNumber ?? null;
+  }
+  if (!data.currentSemester) return null;
   if (
     currentDate < data.currentSemester.startDate ||
     currentDate > data.currentSemester.endDate
@@ -316,20 +344,10 @@ export function weekDateKeys(
   data: TimetableData | null,
   week: number,
 ): string[] {
-  if (!data?.currentSemester || !datesAvailable(data)) return [];
-  const campusThursday = occurrenceDate(data, week, 4);
-  if (!campusThursday) return [];
-  const pivot = new Date(`${campusThursday}T12:00:00${SOURCE_OFFSET}`);
-  if (Number.isNaN(pivot.getTime())) return [];
-  const monday = new Date(
-    pivot.getFullYear(),
-    pivot.getMonth(),
-    pivot.getDate(),
+  if (!data || !datesAvailable(data)) return [];
+  const range = weekDateRange(data, week);
+  if (!range) return [];
+  return Array.from({ length: 7 }, (_, index) =>
+    campusDateAt(range.startDate, index),
   );
-  monday.setDate(monday.getDate() - isoWeekday(monday) + 1);
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
-    return toDateString(date);
-  });
 }

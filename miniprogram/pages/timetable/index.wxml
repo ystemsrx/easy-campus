@@ -78,16 +78,16 @@
                 style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%;"
               >
                 <view
-                  class="grid-course grid-course--{{course.tone}} pressable"
+                  class="grid-course grid-course--{{course.tone}} {{course.densityClass}} pressable"
                   data-id="{{course.id}}"
                   bindtap="openCourse"
                   hover-class="grid-course--pressed"
                   aria-role="button"
                   aria-label="{{course.name}}，{{course.location}}"
                 >
-                  <text class="grid-course-name" overflow="ellipsis" max-lines="2">{{course.name}}</text>
-                  <text wx:if="{{course.showRoom}}" class="grid-course-room" overflow="ellipsis" max-lines="1">@{{course.location}}</text>
-                  <text wx:if="{{course.showTeacher}}" class="grid-course-teacher" overflow="ellipsis" max-lines="1">{{course.teacher}}</text>
+                  <text class="grid-course-name" overflow="ellipsis" max-lines="4">{{course.displayName}}</text>
+                  <text class="grid-course-room" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
+                  <text class="grid-course-teacher" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
                 </view>
               </view>
             </view>
@@ -98,7 +98,9 @@
     </swiper-item>
   </swiper>
 
-  <view wx:else class="timetable-empty"><text>课表正在同步</text><text>完成后会自动显示</text></view>
+  <view wx:else class="timetable-empty">
+    <block wx:if="{{hasHydrated}}"><text>暂无本地课表</text><text>可从左上角菜单手动刷新</text></block>
+  </view>
 
   <view wx:if="{{menuOpen || semesterOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>
 

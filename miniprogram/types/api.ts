@@ -431,6 +431,20 @@ export interface TimetableCurrentSemester extends AcademicSemesterOption {
   endDate: string;
 }
 
+export interface TimetableCalendarWeek {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface TimetableSemesterCalendar {
+  semesterId: string;
+  startDate: string;
+  endDate: string;
+  totalWeeks: number;
+  weeks: TimetableCalendarWeek[];
+}
+
 export interface TimetablePeriod {
   period: number;
   startTime: string;
@@ -498,6 +512,8 @@ export interface TimetableData {
   semester: AcademicSemesterOption;
   semesters: AcademicSemesterOption[];
   currentSemester: TimetableCurrentSemester | null;
+  semesterCalendar: TimetableSemesterCalendar | null;
+  dataSource: "teaching_system" | "one_stop";
   sourceTimeZone: "Asia/Shanghai" | string;
   periods: TimetablePeriod[];
   courses: TimetableCourseData[];

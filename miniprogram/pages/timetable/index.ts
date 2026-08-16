@@ -37,8 +37,10 @@ interface DayOption {
 interface GridCourse extends TimetableCourse {
   topPercent: string;
   heightPercent: string;
-  showRoom: boolean;
-  showTeacher: boolean;
+  displayName: string;
+  displayLocation: string;
+  displayTeacher: string;
+  densityClass: string;
 }
 
 interface GridDay extends DayOption {
@@ -128,13 +130,39 @@ function toGridCourse(course: TimetableCourse, maxPeriod: number): GridCourse {
   const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
   const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
   const span = end - start + 1;
+  const contentLength =
+    Array.from(course.name).length +
+    Array.from(course.location).length +
+    Array.from(course.teacher).length;
   return {
     ...course,
     topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
     heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    showRoom: true,
-    showTeacher: span >= 3,
+    displayName: truncateGridText(course.name, 12),
+    displayLocation: truncateGridText(course.location, 12),
+    displayTeacher: truncateGridText(course.teacher, 6),
+    densityClass:
+      span <= 1
+        ? "grid-course--micro"
+        : span <= 2 || contentLength > 26
+          ? "grid-course--compact"
+          : "grid-course--comfortable",
   };
+}
+
+function truncateGridText(value: string, maxCharacters: number): string {
+  const characters = Array.from(value.trim());
+  return characters.length <= maxCharacters
+    ? characters.join("")
+    : `${characters.slice(0, maxCharacters - 1).join("")}…`;
+}
+
+function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
+  return Boolean(
+    (timetable.semesterCalendar?.semesterId === timetable.semester.id &&
+      timetable.semesterCalendar.weeks.length) ||
+    timetable.currentSemester?.id === timetable.semester.id,
+  );
 }
 
 function monthLabel(days: DayOption[]): string {
@@ -274,6 +302,7 @@ Page({
     periodRows: [] as PeriodRow[],
     selectedCourse: null as TimetableCourse | null,
     courseSheetVisible: false,
+    hasHydrated: false,
   },
   onLoad() {
     activeAccount = "";
@@ -286,22 +315,46 @@ Page({
       ...themePatch(loadThemeId()),
     });
     this.hydrate();
-    void this.loadTimetable(false);
+    this.syncTimetableIfNeeded();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
     this.setData({ ...resolveAppearance(), ...backgroundMetrics() });
     this.hydrate();
-    if (!activeTimetable) void this.loadTimetable(false);
+    this.syncTimetableIfNeeded();
   },
   hydrate() {
     const account = getSession()?.user.account || "";
-    if (!account || account === activeAccount) return;
+    if (!account) return;
+    if (account === activeAccount) {
+      if (!this.data.hasHydrated) this.setData({ hasHydrated: true });
+      return;
+    }
     activeAccount = account;
     activeSnapshot = loadTimetableSnapshot(account);
     activeTimetable = activeSnapshot?.data || null;
     defaultSemesterId = activeTimetable?.semester.id || "";
     if (activeTimetable) this.applyTimetable(activeTimetable, false);
+    this.setData({ hasHydrated: true });
+  },
+  syncTimetableIfNeeded(semester?: string) {
+    if (!activeAccount) return;
+    const snapshot =
+      loadTimetableSnapshot(activeAccount, semester) ||
+      (!semester ? activeSnapshot : null);
+    if (!snapshot) {
+      void this.loadTimetable(false, semester);
+      return;
+    }
+    const needsRefresh =
+      isCacheStale(snapshot, WEEK_MS) ||
+      !hasSelectedSemesterCalendar(snapshot.data);
+    if (
+      needsRefresh &&
+      claimAutomaticRefresh(`timetable:${semester || "default"}`, activeAccount)
+    ) {
+      void this.loadTimetable(true, semester);
+    }
   },
   async loadTimetable(refresh: boolean, semester?: string) {
     if (requestInFlight) return;
@@ -327,9 +380,13 @@ Page({
         loadTimetableSnapshot(activeAccount, semester) || activeSnapshot;
       shouldRefreshAfterward =
         !refresh &&
-        !semester &&
-        isCacheStale(current, WEEK_MS) &&
-        claimAutomaticRefresh("timetable", activeAccount);
+        current !== null &&
+        (isCacheStale(current, WEEK_MS) ||
+          !hasSelectedSemesterCalendar(current.data)) &&
+        claimAutomaticRefresh(
+          `timetable:${semester || "default"}`,
+          activeAccount,
+        );
     } catch {
       if (!activeTimetable) {
         wx.showToast({ title: "课表暂时不可用", icon: "none" });
@@ -337,12 +394,16 @@ Page({
     } finally {
       requestInFlight = false;
       if (shouldRefreshAfterward) {
-        setTimeout(() => void this.loadTimetable(true), 0);
+        setTimeout(() => void this.loadTimetable(true, semester), 0);
       }
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
-    const maxWeek = Math.max(1, timetable.summary.maxWeek);
+    const maxWeek = Math.max(
+      1,
+      timetable.summary.maxWeek,
+      timetable.semesterCalendar?.totalWeeks || 0,
+    );
     const detectedWeek = teachingWeekForDate(timetable);
     const weekNumber = Math.min(
       maxWeek,
@@ -402,6 +463,8 @@ Page({
       activeSnapshot = cached;
       activeTimetable = cached.data;
       this.applyTimetable(cached.data, false);
+      this.syncTimetableIfNeeded(querySemester);
+      return;
     }
     void this.loadTimetable(false, querySemester);
   },

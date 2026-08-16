@@ -101,6 +101,24 @@ const data = {
     startDate: "2026-08-10",
     endDate: "2026-11-29",
   },
+  semesterCalendar: {
+    semesterId: semester.id,
+    startDate: "2026-08-10",
+    endDate: "2026-11-29",
+    totalWeeks: 16,
+    weeks: Array.from({ length: 16 }, (_, index) => {
+      const start = new Date(2026, 7, 10 + index * 7);
+      const end = new Date(2026, 7, 16 + index * 7);
+      const dateKey = (value) =>
+        `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+      return {
+        weekNumber: index + 1,
+        startDate: dateKey(start),
+        endDate: dateKey(end),
+      };
+    }),
+  },
+  dataSource: "teaching_system",
   sourceTimeZone: "Asia/Shanghai",
   periods: periodTimes,
   courses: [
@@ -171,7 +189,20 @@ assert(
 
 assert(
   timetable.teachingWeekForDate(data, duringFirstCourse) === 1,
-  "应根据教务系统学期起止日期计算教学周",
+  "应根据学校返回的结构化周次计算教学周",
+);
+const vacationSelection = {
+  ...data,
+  currentSemester: {
+    ...semester,
+    id: "2025-2",
+    startDate: "2026-03-02",
+    endDate: "2026-08-09",
+  },
+};
+assert(
+  timetable.weekDateKeys(vacationSelection, 1)[0] === "2026-08-10",
+  "假期选中下学期时应使用该学期自己的结构化周次，而不是当前学期",
 );
 assert(
   timetable.coursePreview(null, duringFirstCourse).courses.length === 0,
