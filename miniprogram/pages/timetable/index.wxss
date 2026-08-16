@@ -157,10 +157,9 @@
 .month-head {
   display: flex;
   flex: none;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   width: 56rpx;
-  padding-bottom: 7rpx;
   color: rgba(255, 255, 255, 0.78);
   font-size: 19rpx;
   font-weight: 760;
@@ -171,7 +170,7 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   min-width: 0;
   color: rgba(255, 255, 255, 0.56);
 }
@@ -280,22 +279,22 @@
   min-height: 0;
   padding: 9rpx 7rpx;
   overflow: hidden;
-  border: 2rpx solid rgba(255, 255, 255, 0.45);
+  border: 2rpx solid #fff;
   border-radius: 15rpx;
-  color: #703d2f;
-  background: #f3c4b4;
+  color: #fff;
+  background: #0862ad;
   box-shadow: 0 8rpx 18rpx rgba(0, 31, 75, 0.17);
 }
 
-.grid-course--cyan { color: #315f59; background: #b9ddd7; }
-.grid-course--purple { color: #554569; background: #d8cae5; }
-.grid-course--green { color: #4e623f; background: #ceddbc; }
-.grid-course--orange { color: #815a1d; background: #efd49d; }
+.grid-course--cyan,
+.grid-course--purple,
+.grid-course--green,
+.grid-course--orange { color: #fff; background: #0862ad; }
 .grid-course--pressed { transform: scale(0.94); opacity: 0.86; }
 
 .grid-course-name {
   display: block;
-  font-size: 17rpx;
+  font-size: 19rpx;
   font-weight: 800;
   line-height: 1.25;
   word-break: break-all;
@@ -304,37 +303,16 @@
 .grid-course-room,
 .grid-course-teacher {
   display: block;
-  margin-top: auto;
-  font-size: 14rpx;
+  margin-top: 4rpx;
+  font-size: 15rpx;
   font-weight: 680;
   line-height: 1.2;
-  opacity: 0.78;
+  opacity: 0.86;
   word-break: break-all;
 }
 
 .grid-course-teacher {
-  margin-top: 3rpx;
-  opacity: 0.66;
-}
-
-.week-footer {
-  display: flex;
-  flex: none;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 9rpx;
-  min-height: 35rpx;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 17rpx;
-  font-weight: 560;
-}
-
-.footer-dot {
-  width: 5rpx;
-  height: 5rpx;
-  border-radius: 50%;
-  background: currentColor;
+  opacity: 0.72;
 }
 
 .timetable-empty {

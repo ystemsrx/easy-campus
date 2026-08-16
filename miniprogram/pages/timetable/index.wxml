@@ -85,8 +85,8 @@
                   aria-role="button"
                   aria-label="{{course.name}}，{{course.location}}"
                 >
-                  <text class="grid-course-name" overflow="ellipsis" max-lines="3">{{course.name}}</text>
-                  <text wx:if="{{course.showRoom}}" class="grid-course-room" overflow="ellipsis" max-lines="2">@{{course.location}}</text>
+                  <text class="grid-course-name" overflow="ellipsis" max-lines="2">{{course.name}}</text>
+                  <text wx:if="{{course.showRoom}}" class="grid-course-room" overflow="ellipsis" max-lines="1">@{{course.location}}</text>
                   <text wx:if="{{course.showTeacher}}" class="grid-course-teacher" overflow="ellipsis" max-lines="1">{{course.teacher}}</text>
                 </view>
               </view>
@@ -94,11 +94,6 @@
           </view>
         </view>
 
-        <view class="week-footer">
-          <text class="tnum">{{weekPage.courseCount}} 门课</text>
-          <view class="footer-dot"></view>
-          <text>左右滑动切换教学周</text>
-        </view>
       </view>
     </swiper-item>
   </swiper>

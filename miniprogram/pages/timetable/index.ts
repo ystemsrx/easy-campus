@@ -50,7 +50,6 @@ interface WeekPage {
   monthLabel: string;
   days: DayOption[];
   gridDays: GridDay[];
-  courseCount: number;
 }
 
 interface PeriodRow {
@@ -133,14 +132,15 @@ function toGridCourse(course: TimetableCourse, maxPeriod: number): GridCourse {
     ...course,
     topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
     heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    showRoom: span >= 2,
+    showRoom: true,
     showTeacher: span >= 3,
   };
 }
 
 function monthLabel(days: DayOption[]): string {
-  const first = days.find((day) => day.date)?.date;
-  return first ? `${Number(first.slice(5, 7))}月` : "课表";
+  const datedDays = days.filter((day) => day.date);
+  const displayDate = datedDays[datedDays.length - 1]?.date;
+  return displayDate ? `${Number(displayDate.slice(5, 7))}月` : "课表";
 }
 
 function buildWeekPage(
@@ -160,7 +160,6 @@ function buildWeekPage(
         .filter((course) => courseOccursOnDay(course, day))
         .map((course) => toGridCourse(course, maxPeriod)),
     })),
-    courseCount: courses.length,
   };
 }
 
