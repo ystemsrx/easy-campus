@@ -1,0 +1,80 @@
+<view class="page electricity-page {{themeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscroll="onScroll">
+    <navigation-bar title="电费查询" subtitle="宿舍用电与余额" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <view class="electricity-content page-content page-enter">
+      <view class="electricity-hero stagger-item stagger-1">
+        <view class="ambient-blob electricity-blob electricity-blob--one"></view>
+        <view class="ambient-blob electricity-blob electricity-blob--two"></view>
+        <text class="electricity-kicker">CAMPUS ELECTRICITY</text>
+        <text class="electricity-title display-title">寝室电费</text>
+        <text class="electricity-caption">实时读取校园能源服务</text>
+        <view class="electricity-symbol"><lucide-icon name="zap" tone="white" size="{{58}}"></lucide-icon></view>
+        <view class="tailscale-badge"><view></view><text>仅通过 Tailscale 访问</text></view>
+      </view>
+
+      <empty-state wx:if="{{serviceUnavailable}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
+
+      <block wx:else>
+        <view class="query-card card stagger-item stagger-2">
+          <text class="field-label">宿舍楼</text>
+          <view class="selector-field pressable {{optionsLoading ? 'selector-field--disabled' : ''}}" bindtap="openBuildingPicker" hover-class="pressing">
+            <view class="field-icon field-icon--building"><lucide-icon name="building-2" tone="coral" size="{{31}}"></lucide-icon></view>
+            <view class="selector-copy">
+              <text class="selector-value {{buildingName ? '' : 'selector-placeholder'}}" overflow="ellipsis" max-lines="1">{{buildingName || (optionsLoading ? '正在同步宿舍楼…' : '请选择宿舍楼')}}</text>
+              <text>选项实时来自校园能源系统</text>
+            </view>
+            <lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
+          </view>
+
+          <text class="field-label field-label--spaced">寝室号</text>
+          <view class="room-field">
+            <view class="field-icon field-icon--room"><lucide-icon name="home" tone="amber" size="{{30}}"></lucide-icon></view>
+            <input class="room-input tnum" type="text" value="{{roomNumber}}" maxlength="4" placeholder="例如 0305" placeholder-class="room-placeholder" bindinput="onRoomInput" confirm-type="done" bindconfirm="onQuery" />
+            <text class="room-limit">最多 4 位</text>
+          </view>
+          <text class="room-tip">输入 305 时会按原系统规则查询为 0305</text>
+
+          <button class="electricity-query-button {{optionsLoading || querying || !buildingId || !roomNumber ? 'electricity-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying || !buildingId || !roomNumber}}" hover-class="electricity-query-button--pressed" bindtap="onQuery">
+            <lucide-icon name="zap" tone="white" size="{{27}}"></lucide-icon>
+            <text>{{querying ? '正在读取最新电费…' : '查询电费'}}</text>
+          </button>
+          <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
+        </view>
+
+        <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
+          <view class="section-header result-heading">
+            <view><text class="section-title">查询结果</text><text class="section-caption">{{buildingName}} · {{roomNumber}}</text></view>
+          </view>
+          <view class="balance-card {{account.balanceNegative ? 'balance-card--negative' : ''}}">
+            <view class="balance-copy"><text>目前剩余金额</text><view><text class="balance-value tnum">{{account.remainingAmountLabel}}</text><text class="balance-unit">元</text></view></view>
+            <view class="balance-icon"><lucide-icon name="zap" tone="white" size="{{42}}"></lucide-icon></view>
+          </view>
+          <view class="usage-grid">
+            <view class="usage-card card"><view class="usage-icon usage-icon--power"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{30}}"></lucide-icon></view><text class="usage-label">计费电量</text><view><text class="usage-value tnum">{{account.billedElectricityLabel}}</text><text class="usage-unit">度</text></view></view>
+            <view class="usage-card card"><view class="usage-icon usage-icon--fee"><lucide-icon name="zap" tone="coral" size="{{30}}"></lucide-icon></view><text class="usage-label">电费</text><view><text class="usage-value tnum">{{account.electricityFeeLabel}}</text><text class="usage-unit">元</text></view></view>
+          </view>
+          <view class="date-card card">
+            <view class="date-row"><view class="date-icon"><lucide-icon name="calendar-check" tone="sage" size="{{29}}"></lucide-icon></view><view><text>上次缴费日期</text><text class="tnum">{{account.lastPaymentDateLabel}}</text></view></view>
+            <view class="date-divider"></view>
+            <view class="date-row"><view class="date-icon date-icon--settled"><lucide-icon name="calendar-clock" tone="amber" size="{{29}}"></lucide-icon></view><view><text>最后结算日期</text><text class="tnum">{{account.lastSettlementDateLabel}}</text></view></view>
+          </view>
+        </view>
+
+        <view wx:else class="privacy-note"><lucide-icon name="shield-check" tone="muted" size="{{23}}"></lucide-icon><text>寝室号只用于本次实时查询，不会写入账户资料。</text></view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <bottom-sheet visible="{{buildingPickerVisible}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker">
+    <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="muted" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
+    <view class="building-list">
+      <view wx:for="{{buildings}}" wx:key="id" class="building-option {{draftBuildingId === item.id ? 'building-option--active' : ''}}" data-id="{{item.id}}" bindtap="selectBuilding" hover-class="building-option--pressed">
+        <view class="building-radio"><view wx:if="{{draftBuildingId === item.id}}"></view></view>
+        <text>{{item.name}}</text>
+        <lucide-icon wx:if="{{draftBuildingId === item.id}}" name="check" tone="coral" size="{{24}}"></lucide-icon>
+      </view>
+      <view wx:if="{{!buildings.length}}" class="building-empty"><text>没有匹配的宿舍楼</text></view>
+    </view>
+    <button slot="footer" class="primary-button building-apply {{!draftBuildingId ? 'primary-button--disabled' : ''}}" disabled="{{!draftBuildingId}}" hover-class="button-pressed" bindtap="applyBuilding">确认选择</button>
+  </bottom-sheet>
+</view>

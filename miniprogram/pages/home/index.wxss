@@ -61,6 +61,7 @@
 .support-row { display: flex; flex-direction: row; gap: 14rpx; margin-top: 20rpx; }
 .support-card { display: flex; flex: 1; flex-basis: 0; flex-direction: column; align-items: center; min-width: 0; padding: 22rpx 8rpx 20rpx; border-radius: 36rpx; background: #fff; box-shadow: var(--shadow-card); }
 .support-glyph { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; color: #a66f1f; background: #f8eedd; font-family: Georgia, "Songti SC", serif; font-size: 26rpx; font-weight: 750; }
+.support-card--coral .support-glyph { color: #b85c38; background: #f9eae2; }
 .support-card--sage .support-glyph { color: #5f7350; background: #edf1e6; }
 .support-card--rose .support-glyph { color: #a55357; background: #f7e9e8; }
 .support-copy { min-width: 0; margin-top: 10rpx; text-align: center; }

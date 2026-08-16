@@ -314,6 +314,28 @@ export interface RoomsData extends Paginated<EmptyRoom> {
   };
 }
 
+export interface ElectricityBuilding {
+  id: string;
+  name: string;
+}
+
+export interface ElectricityBuildingsData {
+  buildings: ElectricityBuilding[];
+}
+
+export interface ElectricityAccount {
+  billedElectricityKwh: number;
+  electricityFeeYuan: number;
+  remainingAmountYuan: number;
+  lastPaymentDate: string | null;
+  lastSettlementDate: string | null;
+}
+
+export interface ElectricityQuery {
+  buildingId: string;
+  roomNumber: string;
+}
+
 export interface ExamOptionsData {
   semesters: AcademicSemesterOption[];
   defaultSemester: AcademicSemesterOption | null;

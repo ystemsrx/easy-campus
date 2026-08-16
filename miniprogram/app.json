@@ -10,6 +10,7 @@
     "pages/rooms/index",
     "pages/exams/index",
     "pages/calendar/index",
+    "pages/electricity/index",
     "pages/timetable/index",
     "pages/browser/index"
   ],

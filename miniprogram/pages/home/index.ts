@@ -317,6 +317,13 @@ Page({
         tone: "rose",
         route: "inbox",
       },
+      {
+        title: "电费",
+        caption: "用量与余额",
+        icon: "zap",
+        tone: "coral",
+        route: "/pages/electricity/index",
+      },
     ],
   },
   onLoad() {
