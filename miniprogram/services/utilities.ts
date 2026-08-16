@@ -1,9 +1,10 @@
 import type {
-  ElectricityAccount,
   ElectricityBuildingsData,
+  ElectricityCachedData,
   ElectricityQuery,
 } from "../types/api";
-import { apiRequest } from "./request";
+import { apiRequest, teachingRequest } from "./request";
+import type { TeachingResult } from "./teaching";
 
 export function getElectricityBuildings(): Promise<ElectricityBuildingsData> {
   return apiRequest<ElectricityBuildingsData>(
@@ -14,10 +15,22 @@ export function getElectricityBuildings(): Promise<ElectricityBuildingsData> {
 
 export function queryElectricity(
   query: ElectricityQuery,
-): Promise<ElectricityAccount> {
-  return apiRequest<ElectricityAccount>("/utilities/electricity/query", {
-    method: "POST",
-    data: query,
-    retry: false,
-  });
+): Promise<TeachingResult<ElectricityCachedData>> {
+  return teachingRequest<ElectricityCachedData>(
+    "/utilities/electricity/query",
+    {
+      method: "POST",
+      data: query,
+      retry: false,
+    },
+  );
+}
+
+export function getElectricityAccount(): Promise<
+  TeachingResult<ElectricityCachedData>
+> {
+  return teachingRequest<ElectricityCachedData>(
+    "/utilities/electricity/account",
+    { retry: false },
+  );
 }

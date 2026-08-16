@@ -6,13 +6,28 @@ import {
   timeToMinutes,
   type TimetableCourse,
 } from "../../data/timetable";
-import { getTimetable } from "../../services/teaching";
+import {
+  getLocalSchedule,
+  getTimetable,
+  putLocalSchedule,
+} from "../../services/teaching";
+import {
+  claimAutomaticRefresh,
+  isCacheStale,
+  shouldUseServerSnapshot,
+  WEEK_MS,
+} from "../../store/cache-policy";
+import {
+  loadScheduleData,
+  saveScheduleData,
+  storeScheduleData,
+} from "../../store/schedule";
 import { getSession } from "../../store/session";
 import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
 } from "../../store/timetable";
-import type { TimetableData } from "../../types/api";
+import type { LocalSchedulePlan, TimetableData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { formatFriendlyDate, toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
@@ -25,16 +40,6 @@ interface DayOption {
   date: string;
   isToday: boolean;
   hasEntries: boolean;
-}
-
-interface LocalPlan {
-  id: string;
-  title: string;
-  date: string;
-  startTime: string;
-  endDate: string;
-  endTime: string;
-  done: boolean;
 }
 
 interface ScheduleEntry {
@@ -51,7 +56,6 @@ interface ScheduleEntry {
   height: number;
 }
 
-const STORAGE_KEY = "easy-swu:schedule-plans";
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const DAY_START = 8 * 60;
 const DAY_END = 22 * 60 + 30;
@@ -62,15 +66,6 @@ function mondayOf(date: Date): Date {
   const weekday = date.getDay() || 7;
   monday.setDate(monday.getDate() - weekday + 1);
   return monday;
-}
-
-function loadPlans(): LocalPlan[] {
-  const stored = wx.getStorageSync(STORAGE_KEY);
-  return Array.isArray(stored) ? (stored as LocalPlan[]) : [];
-}
-
-function savePlans(plans: LocalPlan[]) {
-  wx.setStorageSync(STORAGE_KEY, plans);
 }
 
 function entryGeometry(startTime: string, endTime: string) {
@@ -85,7 +80,7 @@ function entryGeometry(startTime: string, endTime: string) {
 function buildEntries(
   timetable: TimetableData | null,
   date: string,
-  plans: LocalPlan[],
+  plans: LocalSchedulePlan[],
 ): ScheduleEntry[] {
   const courses = coursesForDate(timetable, date).map((course) => ({
     id: course.id,
@@ -126,6 +121,7 @@ function buildEntries(
 let activeTimetable: TimetableData | null = null;
 let activeAccount = "";
 let timetableRequestInFlight = false;
+let scheduleSyncInFlight = false;
 
 function addHour(value: string): string {
   const total = timeToMinutes(value) + 60;
@@ -170,6 +166,7 @@ Page({
     this.hydrateTimetable();
     this.rebuildWeek();
     void this.loadTimetable();
+    void this.syncSchedule();
   },
   hydrateTimetable() {
     const account = getSession()?.user.account || "";
@@ -180,16 +177,71 @@ Page({
   async loadTimetable() {
     if (timetableRequestInFlight) return;
     timetableRequestInFlight = true;
+    let shouldRefreshAfterward = false;
     try {
       const result = await getTimetable();
-      activeTimetable = result.data;
-      saveTimetableSnapshot(activeAccount, result.data);
-      this.rebuildWeek();
+      const local = loadTimetableSnapshot(activeAccount);
+      if (shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+        activeTimetable = result.data;
+        saveTimetableSnapshot(activeAccount, result.data, {
+          serverFetchedAt: result.meta.fetchedAt,
+        });
+        this.rebuildWeek();
+      }
+      const current = loadTimetableSnapshot(activeAccount);
+      shouldRefreshAfterward =
+        isCacheStale(current, WEEK_MS) &&
+        claimAutomaticRefresh("timetable", activeAccount);
     } catch {
       // 保留本地课表与用户日程，不用加载态打断当前页面。
     } finally {
       timetableRequestInFlight = false;
+      if (shouldRefreshAfterward) {
+        setTimeout(() => void this.refreshTimetable(), 0);
+      }
     }
+  },
+  async refreshTimetable() {
+    if (timetableRequestInFlight) return;
+    timetableRequestInFlight = true;
+    try {
+      const result = await getTimetable({ refresh: true });
+      activeTimetable = result.data;
+      saveTimetableSnapshot(activeAccount, result.data, {
+        serverFetchedAt: result.meta.fetchedAt,
+      });
+      this.rebuildWeek();
+    } catch {
+      // 周期刷新失败时继续使用旧课表。
+    } finally {
+      timetableRequestInFlight = false;
+    }
+  },
+  async syncSchedule() {
+    if (scheduleSyncInFlight || !activeAccount) return;
+    scheduleSyncInFlight = true;
+    try {
+      const local = loadScheduleData(activeAccount);
+      const result = await getLocalSchedule();
+      if (local.clientUpdatedAt) {
+        if (JSON.stringify(local) !== JSON.stringify(result.data)) {
+          await putLocalSchedule(local);
+        }
+      } else if (result.data.clientUpdatedAt || result.data.plans.length) {
+        storeScheduleData(activeAccount, result.data);
+        this.rebuildWeek();
+      }
+    } catch {
+      // 日程以本地状态为准，服务端暂不可用时等待下次进入再同步。
+    } finally {
+      scheduleSyncInFlight = false;
+    }
+  },
+  persistPlans(plans: LocalSchedulePlan[]) {
+    const data = saveScheduleData(activeAccount, plans);
+    void putLocalSchedule(data).catch(() => {
+      // 本地写入已经完成，服务端将在下次进入页面时追平。
+    });
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const headerScrolled = event.detail.scrollTop > 18;
@@ -198,7 +250,7 @@ Page({
   },
   rebuildWeek() {
     const now = new Date();
-    const plans = loadPlans();
+    const plans = loadScheduleData(activeAccount).plans;
     const monday = mondayOf(now);
     const todayKey = toDateString(now);
     const days = DAY_LABELS.map((shortLabel, index) => {
@@ -233,10 +285,11 @@ Page({
   applyDay(
     weekday: DayOption["weekday"],
     dayOptions?: DayOption[],
-    planOptions?: LocalPlan[],
+    planOptions?: LocalSchedulePlan[],
   ) {
     const days: DayOption[] = dayOptions || this.data.days;
-    const plans: LocalPlan[] = planOptions || loadPlans();
+    const plans: LocalSchedulePlan[] =
+      planOptions || loadScheduleData(activeAccount).plans;
     const selected = days.find((day: DayOption) => day.weekday === weekday);
     if (!selected) return;
     this.setData({
@@ -310,7 +363,7 @@ Page({
       wx.showToast({ title: "结束时间需要晚于开始时间", icon: "none" });
       return;
     }
-    const plans = loadPlans();
+    const plans = loadScheduleData(activeAccount).plans;
     plans.push({
       id: `plan-${Date.now()}`,
       title,
@@ -320,7 +373,7 @@ Page({
       endTime: this.data.endTime,
       done: false,
     });
-    savePlans(plans);
+    this.persistPlans(plans);
     haptic("medium");
     this.setData({ creating: false, selectedDate: this.data.startDate });
     const selectedDate = new Date(`${this.data.startDate}T12:00:00`);
@@ -329,10 +382,10 @@ Page({
   },
   togglePlan(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const plans = loadPlans().map((plan) =>
+    const plans = loadScheduleData(activeAccount).plans.map((plan) =>
       plan.id === id ? { ...plan, done: !plan.done } : plan,
     );
-    savePlans(plans);
+    this.persistPlans(plans);
     haptic("light");
     this.applyDay(this.data.selectedWeekday, this.data.days, plans);
   },

@@ -1,9 +1,14 @@
 import { getExams } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
+import { shouldUseServerSnapshot } from "../../store/cache-policy";
+import { loadExamsSnapshot, saveExamsSnapshot } from "../../store/exams";
+import { getSession } from "../../store/session";
 import type {
   AcademicSemesterOption,
   Exam,
   ExamSummary,
+  ExamsData,
   ExamsQuery,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
@@ -37,6 +42,7 @@ interface SelectedExamDetail {
 
 const PAGE_SIZE = 50;
 let examsSequence = 0;
+let hydratedExamsAccount = "";
 
 function emptySummary(): ExamSummary {
   return {
@@ -150,15 +156,48 @@ Page({
     selectedExam: null as SelectedExamDetail | null,
   },
   onLoad() {
+    hydratedExamsAccount = "";
     this.applyAppearance();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
     this.applyAppearance();
-    if (!this.data.loaded) void this.loadExams(true, false);
+    this.hydrateExams();
+    void this.loadExams(true, false);
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  hydrateExams(semesterId = "default") {
+    const account = getSession()?.user.account || "";
+    if (!account) return;
+    if (
+      semesterId === "default" &&
+      hydratedExamsAccount === account &&
+      this.data.loaded
+    ) {
+      return;
+    }
+    hydratedExamsAccount = account;
+    const cached = loadExamsSnapshot(account, semesterId);
+    if (cached) this.applyExamsData(cached.data);
+  },
+  applyExamsData(data: ExamsData) {
+    const semesterId = data.semester?.id || "";
+    this.setData({
+      examItems: data.items.map(toExamView),
+      semesters: data.semesters,
+      semesterId,
+      draftSemesterId: semesterId,
+      summary: data.summary,
+      summaryLabel: summaryLabel(data.summary),
+      page: data.pagination.page,
+      totalPages: data.pagination.totalPages,
+      total: data.pagination.total,
+      loaded: true,
+      loading: false,
+      filterLabel: data.semester?.label || "暂无可用学期",
+    });
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const scrolled = event.detail.scrollTop > 18;
@@ -188,24 +227,46 @@ Page({
       pageSize: PAGE_SIZE,
       refresh,
     };
+    let shouldRefreshAfterward = false;
     try {
       const result = await getExams(query);
       if (sequence !== examsSequence) return;
-      const incoming = result.data.items.map(toExamView);
-      const semesterId = result.data.semester?.id || "";
-      this.setData({
-        examItems: reset ? incoming : [...this.data.examItems, ...incoming],
-        semesters: result.data.semesters,
-        semesterId,
-        draftSemesterId: semesterId,
-        summary: result.data.summary,
-        summaryLabel: summaryLabel(result.data.summary),
-        page: result.data.pagination.page,
-        totalPages: result.data.pagination.totalPages,
-        total: result.data.pagination.total,
-        loaded: true,
-        filterLabel: result.data.semester?.label || "暂无可用学期",
-      });
+      const session = getSession();
+      const account = session?.user.account || "";
+      const storageSemester = query.semester || "default";
+      const local = loadExamsSnapshot(account, storageSemester);
+      if (
+        !reset ||
+        refresh ||
+        shouldUseServerSnapshot(local, result.meta.fetchedAt)
+      ) {
+        const existingRefreshSession = local?.refreshedForSignInAt || 0;
+        if (reset) {
+          saveExamsSnapshot(account, result.data, {
+            semesterId: storageSemester,
+            serverFetchedAt: result.meta.fetchedAt,
+            refreshedForSignInAt: refresh
+              ? session?.signedInAt
+              : existingRefreshSession,
+          });
+          this.applyExamsData(result.data);
+        } else {
+          this.setData({
+            examItems: [
+              ...this.data.examItems,
+              ...result.data.items.map(toExamView),
+            ],
+            page: result.data.pagination.page,
+            totalPages: result.data.pagination.totalPages,
+            total: result.data.pagination.total,
+          });
+        }
+      }
+      const current = loadExamsSnapshot(account, storageSemester);
+      shouldRefreshAfterward =
+        !refresh &&
+        Boolean(session?.signedInAt) &&
+        current?.refreshedForSignInAt !== session?.signedInAt;
     } catch (error) {
       if (sequence === examsSequence) {
         const message = getErrorMessage(error, "考试信息加载失败。");
@@ -218,6 +279,16 @@ Page({
     } finally {
       if (sequence === examsSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
+        if (shouldRefreshAfterward) {
+          void refreshExamsAfterSignIn().then((snapshot) => {
+            if (!snapshot || sequence !== examsSequence) return;
+            const currentSemester = this.data.semesterId;
+            const refreshedSemester = snapshot.data.semester?.id || "";
+            if (!currentSemester || currentSemester === refreshedSemester) {
+              this.applyExamsData(snapshot.data);
+            }
+          });
+        }
       }
     }
   },
@@ -259,12 +330,8 @@ Page({
     this.setData({
       semesterId,
       filterVisible: false,
-      examItems: [],
-      loaded: false,
-      total: 0,
-      summary: emptySummary(),
-      summaryLabel: "正在读取考试安排",
     });
+    this.hydrateExams(semesterId);
     void this.loadExams(true, false);
   },
   openExam(event: WechatMiniprogram.TouchEvent) {

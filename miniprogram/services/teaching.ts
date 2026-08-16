@@ -19,6 +19,7 @@ import type {
   TeachingMessage,
   TimetableData,
   TimetableQuery,
+  LocalScheduleData,
 } from "../types/api";
 import { buildQuery, type QueryValue } from "../utils/query";
 import {
@@ -113,6 +114,20 @@ export function getTimetable(
   return teachingRequest<TimetableData>(
     `/teaching/timetable${buildQuery(asQuery(query))}`,
   );
+}
+
+export function getLocalSchedule(): Promise<TeachingResult<LocalScheduleData>> {
+  return teachingRequest<LocalScheduleData>("/teaching/schedule");
+}
+
+export function putLocalSchedule(
+  data: LocalScheduleData,
+): Promise<TeachingResult<LocalScheduleData>> {
+  return teachingRequest<LocalScheduleData>("/teaching/schedule", {
+    method: "PUT",
+    data,
+    retry: false,
+  });
 }
 
 export function downloadCalendarImage(

@@ -12,10 +12,10 @@
         <view class="tailscale-badge"><view></view><text>仅通过 Tailscale 访问</text></view>
       </view>
 
-      <empty-state wx:if="{{serviceUnavailable}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
+      <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
 
       <block wx:else>
-        <view class="query-card card stagger-item stagger-2">
+        <view wx:if="{{bindingEditing || !account}}" class="query-card card stagger-item stagger-2">
           <text class="field-label">宿舍楼</text>
           <view class="selector-field pressable {{optionsLoading ? 'selector-field--disabled' : ''}}" bindtap="openBuildingPicker" hover-class="pressing">
             <view class="field-icon field-icon--building"><lucide-icon name="building-2" tone="coral" size="{{31}}"></lucide-icon></view>
@@ -36,15 +36,18 @@
 
           <button class="electricity-query-button {{optionsLoading || querying || !buildingId || !roomNumber ? 'electricity-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying || !buildingId || !roomNumber}}" hover-class="electricity-query-button--pressed" bindtap="onQuery">
             <lucide-icon name="zap" tone="white" size="{{27}}"></lucide-icon>
-            <text>{{querying ? '正在读取最新电费…' : '查询电费'}}</text>
+            <text>{{querying ? '正在读取最新电费…' : '保存绑定并查询'}}</text>
           </button>
+          <button wx:if="{{account && bindingEditing}}" class="binding-cancel" bindtap="cancelRebind">取消换绑</button>
           <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
         </view>
 
         <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
           <view class="section-header result-heading">
-            <view><text class="section-title">查询结果</text><text class="section-caption">{{buildingName}} · {{roomNumber}}</text></view>
+            <view><text class="section-title">寝室电费</text><text class="section-caption">{{buildingName}} · {{roomNumber}} · {{cacheLabel}}</text></view>
+            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="refreshBoundAccount" hover-class="pressing"><lucide-icon name="refresh-cw" tone="amber" size="{{21}}"></lucide-icon><text>刷新</text></view></view>
           </view>
+          <view wx:if="{{serviceUnavailable}}" class="service-warning"><lucide-icon name="circle-alert" tone="danger" size="{{22}}"></lucide-icon><text>校园电费服务暂不可用，当前仍显示上次保存的数据。</text></view>
           <view class="balance-card {{account.balanceNegative ? 'balance-card--negative' : ''}}">
             <view class="balance-copy"><text>目前剩余金额</text><view><text class="balance-value tnum">{{account.remainingAmountLabel}}</text><text class="balance-unit">元</text></view></view>
             <view class="balance-icon"><lucide-icon name="zap" tone="white" size="{{42}}"></lucide-icon></view>
@@ -60,7 +63,7 @@
           </view>
         </view>
 
-        <view wx:else class="privacy-note"><lucide-icon name="shield-check" tone="muted" size="{{23}}"></lucide-icon><text>寝室号只用于本次实时查询，不会写入账户资料。</text></view>
+        <view wx:else class="privacy-note"><lucide-icon name="shield-check" tone="muted" size="{{23}}"></lucide-icon><text>绑定关系会按账号保存在本机与服务器，之后打开即可直接查看。</text></view>
       </block>
     </view>
   </scroll-view>

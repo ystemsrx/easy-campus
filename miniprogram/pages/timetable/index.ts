@@ -9,10 +9,17 @@ import {
   type TimetableCourse,
 } from "../../data/timetable";
 import { getTimetable } from "../../services/teaching";
+import {
+  claimAutomaticRefresh,
+  isCacheStale,
+  shouldUseServerSnapshot,
+  WEEK_MS,
+} from "../../store/cache-policy";
 import { getSession } from "../../store/session";
 import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
+  type TimetableSnapshot,
 } from "../../store/timetable";
 import type { TimetableData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
@@ -55,6 +62,7 @@ let clockTimer: number | undefined;
 let requestInFlight = false;
 let activeAccount = "";
 let defaultSemesterId = "";
+let activeSnapshot: TimetableSnapshot | null = null;
 
 function gridLayout(courses: TimetableCourse[]) {
   const valid = courses.filter(
@@ -188,6 +196,7 @@ Page({
   onLoad() {
     activeAccount = "";
     activeTimetable = null;
+    activeSnapshot = null;
     defaultSemesterId = "";
     this.setData(resolveAppearance());
     this.hydrate();
@@ -215,19 +224,38 @@ Page({
     const account = getSession()?.user.account || "";
     if (!account || account === activeAccount) return;
     activeAccount = account;
-    activeTimetable = loadTimetableSnapshot(account)?.data || null;
+    activeSnapshot = loadTimetableSnapshot(account);
+    activeTimetable = activeSnapshot?.data || null;
     defaultSemesterId = activeTimetable?.semester.id || "";
     if (activeTimetable) this.applyTimetable(activeTimetable, false);
   },
   async loadTimetable(refresh: boolean, semester?: string) {
     if (requestInFlight) return;
     requestInFlight = true;
+    let shouldRefreshAfterward = false;
     try {
       const result = await getTimetable({ semester, refresh });
-      activeTimetable = result.data;
-      if (!semester) defaultSemesterId = result.data.semester.id;
-      saveTimetableSnapshot(activeAccount, result.data, semester);
-      this.applyTimetable(result.data, !semester);
+      const local = loadTimetableSnapshot(activeAccount, semester);
+      if (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+        activeSnapshot = saveTimetableSnapshot(activeAccount, result.data, {
+          semesterId: semester,
+          serverFetchedAt: result.meta.fetchedAt,
+        });
+        activeTimetable = result.data;
+        if (!semester) defaultSemesterId = result.data.semester.id;
+        this.applyTimetable(result.data, !semester);
+      } else if (!activeTimetable && local) {
+        activeSnapshot = local;
+        activeTimetable = local.data;
+        this.applyTimetable(local.data, !semester);
+      }
+      const current =
+        loadTimetableSnapshot(activeAccount, semester) || activeSnapshot;
+      shouldRefreshAfterward =
+        !refresh &&
+        !semester &&
+        isCacheStale(current, WEEK_MS) &&
+        claimAutomaticRefresh("timetable", activeAccount);
     } catch {
       if (!activeTimetable) {
         this.setData({
@@ -237,6 +265,9 @@ Page({
       }
     } finally {
       requestInFlight = false;
+      if (shouldRefreshAfterward) {
+        setTimeout(() => void this.loadTimetable(true), 0);
+      }
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
@@ -348,10 +379,11 @@ Page({
     if (!semester || semester === this.data.semesterId) return;
     haptic("light");
     const querySemester = semester === defaultSemesterId ? undefined : semester;
-    const cached = loadTimetableSnapshot(activeAccount, querySemester)?.data;
+    const cached = loadTimetableSnapshot(activeAccount, querySemester);
     if (cached) {
-      activeTimetable = cached;
-      this.applyTimetable(cached, false);
+      activeSnapshot = cached;
+      activeTimetable = cached.data;
+      this.applyTimetable(cached.data, false);
     }
     void this.loadTimetable(false, querySemester);
   },

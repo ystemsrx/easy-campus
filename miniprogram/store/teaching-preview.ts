@@ -1,12 +1,14 @@
 import type { Notice, TeachingMessage } from "../types/api";
 
 const PREFIX = "easy-swu:teaching-preview:";
-const ITEM_LIMIT = 3;
+const ITEM_LIMIT = 15;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface TeachingPreview {
   messages: TeachingMessage[];
   notices: Notice[];
   updatedAt: number;
+  lastCleanupAt: number;
 }
 
 function storageKey(account: string): string {
@@ -26,6 +28,7 @@ export function loadTeachingPreview(account: string): TeachingPreview | null {
       ? value.notices.slice(0, ITEM_LIMIT)
       : [],
     updatedAt: Number(value.updatedAt) || 0,
+    lastCleanupAt: Number(value.lastCleanupAt) || 0,
   };
 }
 
@@ -38,16 +41,38 @@ export function saveTeachingPreview(
     messages: [],
     notices: [],
     updatedAt: 0,
+    lastCleanupAt: 0,
   };
   try {
     wx.setStorageSync(storageKey(account), {
       messages: (patch.messages || current.messages).slice(0, ITEM_LIMIT),
       notices: (patch.notices || current.notices).slice(0, ITEM_LIMIT),
       updatedAt: Date.now(),
+      lastCleanupAt: current.lastCleanupAt,
     } satisfies TeachingPreview);
   } catch {
     // 本地预览只是加速层，写入失败时服务器持久快照仍然可用。
   }
+}
+
+export function cleanupTeachingPreview(
+  account: string,
+  now = Date.now(),
+): TeachingPreview | null {
+  const current = loadTeachingPreview(account);
+  if (!current || now - current.lastCleanupAt < WEEK_MS) return current;
+  const cleaned: TeachingPreview = {
+    messages: current.messages.slice(0, ITEM_LIMIT),
+    notices: current.notices.slice(0, ITEM_LIMIT),
+    updatedAt: current.updatedAt,
+    lastCleanupAt: now,
+  };
+  try {
+    wx.setStorageSync(storageKey(account), cleaned);
+  } catch {
+    return current;
+  }
+  return cleaned;
 }
 
 export { ITEM_LIMIT as TEACHING_PREVIEW_ITEM_LIMIT };

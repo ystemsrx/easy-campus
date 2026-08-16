@@ -1,4 +1,5 @@
 import { getCurrentUser, login } from "../../services/auth";
+import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
 import { getErrorMessage } from "../../services/request";
 import { isAuthenticated } from "../../store/session";
 import { resolveAppearance } from "../../utils/appearance";
@@ -69,8 +70,9 @@ Page({
 
     this.setData({ loading: true, errorMessage: "" });
     try {
-      await login(account, password);
+      const session = await login(account, password);
       await getCurrentUser().catch(() => undefined);
+      void refreshExamsAfterSignIn(session);
       haptic("medium");
       wx.switchTab({ url: "/pages/home/index" });
     } catch (error) {

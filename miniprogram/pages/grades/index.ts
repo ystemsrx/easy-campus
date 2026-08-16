@@ -1,9 +1,18 @@
 import { getGrades } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import {
+  claimAutomaticRefresh,
+  isCacheStale,
+  shouldUseServerSnapshot,
+  WEEK_MS,
+} from "../../store/cache-policy";
+import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
+import { getSession } from "../../store/session";
 import type {
   AcademicSemesterOption,
   GradeCourse,
   GradeSummary,
+  GradesData,
   GradesQuery,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
@@ -43,8 +52,9 @@ interface SemesterChip {
   term: number;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 200;
 let requestSequence = 0;
+let hydratedGradesAccount = "";
 
 function toGradeView(course: GradeCourse): GradeView {
   return {
@@ -151,7 +161,7 @@ Page({
     draftSort: "academicYear" as NonNullable<GradesQuery["sort"]>,
     draftOrder: "desc" as NonNullable<GradesQuery["order"]>,
     filterLabel: "全部成绩",
-    sourceLabel: "每日自动更新",
+    sourceLabel: "每周按需自动更新",
     cached: false,
     fetchedAt: "",
     availableSemesters: [] as AcademicSemesterOption[],
@@ -166,6 +176,7 @@ Page({
     ],
   },
   onLoad() {
+    hydratedGradesAccount = "";
     this.applyAppearance();
   },
   onShow() {
@@ -173,12 +184,19 @@ Page({
       return;
     }
     this.applyAppearance();
-    if (!this.data.loaded) {
-      void this.loadGrades(true, false);
-    }
+    this.hydrateGrades();
+    void this.loadGrades(true, false);
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  hydrateGrades() {
+    const account = getSession()?.user.account || "";
+    if (!account || hydratedGradesAccount === account) return;
+    hydratedGradesAccount = account;
+    const cached = loadGradesSnapshot(account);
+    if (!cached) return;
+    this.applyGradesData(cached.data, true, cached.serverFetchedAt);
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const scrolled = event.detail.scrollTop > 18;
@@ -195,6 +213,36 @@ Page({
       parts.push(academicTermLabel(this.data.term));
     }
     return parts.length ? parts.join(" · ") : "全部成绩";
+  },
+  applyGradesData(data: GradesData, cached: boolean, fetchedAtValue = "") {
+    const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
+    const incoming = data.items.map(toGradeView);
+    this.setData({
+      gradeItems: incoming,
+      summary: data.summary,
+      averageLabel: displayAverage(data.summary.numericWeightedAverage),
+      page: data.pagination.page,
+      totalPages: data.pagination.totalPages,
+      total: data.pagination.total,
+      availableSemesters: data.semesters,
+      semesterChips: buildSemesterChips(data.semesters),
+      activeSemesterId:
+        this.data.academicYear && this.data.term
+          ? `${this.data.academicYear}-${this.data.term}`
+          : "all",
+      academicYearOptions: buildAcademicYearOptions(data.semesters),
+      termOptions: buildTermOptions(data.semesters, this.data.academicYear),
+      loaded: true,
+      loading: false,
+      cached,
+      fetchedAt,
+      sourceLabel: cached
+        ? fetchedAt
+          ? `缓存更新于 ${fetchedAt}`
+          : "使用已保存成绩"
+        : "刚刚从教务系统更新",
+      filterLabel: this.buildFilterLabel(),
+    });
   },
   async loadGrades(reset: boolean, refresh: boolean) {
     if (
@@ -213,6 +261,7 @@ Page({
       errorMessage: "",
     });
 
+    let shouldRefreshAfterward = false;
     try {
       const result = await getGrades({
         page,
@@ -227,40 +276,34 @@ Page({
       if (sequence !== requestSequence) {
         return;
       }
-      const incoming = result.data.items.map(toGradeView);
-      const fetchedAt = result.meta.fetchedAt
-        ? formatDateTime(result.meta.fetchedAt)
-        : "";
-      this.setData({
-        gradeItems: reset ? incoming : [...this.data.gradeItems, ...incoming],
-        summary: result.data.summary,
-        averageLabel: displayAverage(
-          result.data.summary.numericWeightedAverage,
-        ),
-        page: result.data.pagination.page,
-        totalPages: result.data.pagination.totalPages,
-        total: result.data.pagination.total,
-        availableSemesters: result.data.semesters,
-        semesterChips: buildSemesterChips(result.data.semesters),
-        activeSemesterId:
-          this.data.academicYear && this.data.term
-            ? `${this.data.academicYear}-${this.data.term}`
-            : "all",
-        academicYearOptions: buildAcademicYearOptions(result.data.semesters),
-        termOptions: buildTermOptions(
-          result.data.semesters,
-          this.data.academicYear,
-        ),
-        loaded: true,
-        cached: result.meta.cached,
-        fetchedAt,
-        sourceLabel: result.meta.cached
-          ? fetchedAt
-            ? `缓存更新于 ${fetchedAt}`
-            : "使用今日缓存"
-          : "刚刚从教务系统更新",
-        filterLabel: this.buildFilterLabel(),
-      });
+      const account = getSession()?.user.account || "";
+      const canonical =
+        page === 1 &&
+        !this.data.academicYear &&
+        !this.data.term &&
+        !this.data.queryText.trim() &&
+        this.data.sort === "academicYear" &&
+        this.data.order === "desc";
+      const local = canonical ? loadGradesSnapshot(account) : null;
+      if (
+        !canonical ||
+        refresh ||
+        shouldUseServerSnapshot(local, result.meta.fetchedAt)
+      ) {
+        if (canonical) {
+          saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
+        }
+        this.applyGradesData(
+          result.data,
+          result.meta.cached,
+          result.meta.fetchedAt,
+        );
+      }
+      shouldRefreshAfterward =
+        canonical &&
+        !refresh &&
+        isCacheStale(loadGradesSnapshot(account), WEEK_MS) &&
+        claimAutomaticRefresh("grades", account);
     } catch (error) {
       if (sequence === requestSequence) {
         this.setData({
@@ -270,6 +313,9 @@ Page({
     } finally {
       if (sequence === requestSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
+        if (shouldRefreshAfterward) {
+          setTimeout(() => void this.loadGrades(true, true), 0);
+        }
       }
     }
   },

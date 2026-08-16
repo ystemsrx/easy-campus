@@ -331,9 +331,36 @@ export interface ElectricityAccount {
   lastSettlementDate: string | null;
 }
 
+export interface ElectricityBinding {
+  buildingId: string;
+  buildingName: string;
+  roomNumber: string;
+}
+
+export interface ElectricityCachedData {
+  binding: ElectricityBinding | null;
+  account: ElectricityAccount | null;
+}
+
 export interface ElectricityQuery {
   buildingId: string;
+  buildingName?: string;
   roomNumber: string;
+}
+
+export interface LocalSchedulePlan {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  done: boolean;
+}
+
+export interface LocalScheduleData {
+  plans: LocalSchedulePlan[];
+  clientUpdatedAt: string | null;
 }
 
 export interface ExamOptionsData {

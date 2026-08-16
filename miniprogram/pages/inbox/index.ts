@@ -2,6 +2,7 @@ import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import { getSession } from "../../store/session";
 import {
+  cleanupTeachingPreview,
   loadTeachingPreview,
   saveTeachingPreview,
 } from "../../store/teaching-preview";
@@ -34,7 +35,7 @@ interface NoticeView extends Notice {
   displayTime: string;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15;
 let messageRequestSequence = 0;
 let noticeRequestSequence = 0;
 let hydratedInboxAccount = "";
@@ -122,11 +123,13 @@ function mergeMessages(
   existing: MessageView[],
 ): MessageView[] {
   const seen = new Set<string>();
-  return [...incoming, ...existing].filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
+  return [...incoming, ...existing]
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .slice(0, PAGE_SIZE);
 }
 
 function mergeNotices(
@@ -134,12 +137,14 @@ function mergeNotices(
   existing: NoticeView[],
 ): NoticeView[] {
   const seen = new Set<string>();
-  return [...incoming, ...existing].filter((item) => {
-    const identity = item.id || item.link;
-    if (seen.has(identity)) return false;
-    seen.add(identity);
-    return true;
-  });
+  return [...incoming, ...existing]
+    .filter((item) => {
+      const identity = item.id || item.link;
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    })
+    .slice(0, PAGE_SIZE);
 }
 
 function noticeSourceIdFromLink(link: string): string {
@@ -160,18 +165,12 @@ Page({
     activeTab: 0,
     messageItems: [] as MessageView[],
     noticeItems: [] as NoticeView[],
-    messagePage: 1,
-    messageTotalPages: 1,
-    noticePage: 1,
-    noticeTotalPages: 1,
     messageLoading: false,
     noticeLoading: false,
     messageLoaded: false,
     noticeLoaded: false,
     messageRefreshing: false,
     noticeRefreshing: false,
-    messageLoadingMore: false,
-    noticeLoadingMore: false,
     messageError: "",
     noticeError: "",
     messageFilterVisible: false,
@@ -211,9 +210,9 @@ Page({
           : this.data.activeTab;
     this.setData({ activeTab });
     if (activeTab === 0) {
-      void this.loadMessages(true, false, this.data.messageItems.length > 0);
+      void this.loadMessages(false, this.data.messageItems.length > 0);
     } else {
-      void this.loadNotices(true, false, this.data.noticeItems.length > 0);
+      void this.loadNotices(false, this.data.noticeItems.length > 0);
     }
   },
   applyAppearance() {
@@ -223,7 +222,8 @@ Page({
     const account = getSession()?.user.account || "";
     if (!account || hydratedInboxAccount === account) return;
     hydratedInboxAccount = account;
-    const cached = loadTeachingPreview(account);
+    const cached =
+      cleanupTeachingPreview(account) || loadTeachingPreview(account);
     const messageItems = (cached?.messages || []).map(toMessageView);
     const noticeItems = (cached?.notices || []).map((notice) => ({
       ...notice,
@@ -254,29 +254,22 @@ Page({
   },
   loadActiveTab(index: number) {
     if (index === 0) {
-      void this.loadMessages(true, false, this.data.messageItems.length > 0);
+      void this.loadMessages(false, this.data.messageItems.length > 0);
     } else {
-      void this.loadNotices(true, false, this.data.noticeItems.length > 0);
+      void this.loadNotices(false, this.data.noticeItems.length > 0);
     }
   },
-  async loadMessages(reset: boolean, refresh: boolean, mergeFresh = false) {
-    if (
-      (this.data.messageLoading || this.data.messageLoadingMore) &&
-      !refresh
-    ) {
-      return;
-    }
-    const page = reset ? 1 : this.data.messagePage + 1;
+  async loadMessages(refresh: boolean, mergeFresh = false) {
+    if (this.data.messageLoading && !refresh) return;
     const sequence = ++messageRequestSequence;
     this.setData({
-      messageLoading: reset && this.data.messageItems.length === 0,
+      messageLoading: this.data.messageItems.length === 0,
       messageRefreshing: false,
-      messageLoadingMore: !reset,
       messageError: "",
     });
     try {
       const result = await getMessages({
-        page,
+        page: 1,
         pageSize: PAGE_SIZE,
         type: this.data.messageType || undefined,
         from: this.data.from || undefined,
@@ -287,28 +280,19 @@ Page({
         return;
       }
       const incoming = result.data.items.map(toMessageView);
-      if (
-        page === 1 &&
-        !this.data.messageType &&
-        !this.data.from &&
-        !this.data.to
-      ) {
+      if (!this.data.messageType && !this.data.from && !this.data.to) {
         saveTeachingPreview(getSession()?.user.account || "", {
           messages: result.data.items,
         });
       }
       this.setData({
-        messageItems: reset
-          ? mergeFresh
-            ? mergeMessages(incoming, this.data.messageItems)
-            : incoming
-          : mergeMessages(this.data.messageItems, incoming),
-        messagePage: result.data.pagination.page,
-        messageTotalPages: result.data.pagination.totalPages,
+        messageItems: mergeFresh
+          ? mergeMessages(incoming, this.data.messageItems)
+          : incoming.slice(0, PAGE_SIZE),
         messageLoaded: true,
       });
       if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadMessages(true, true, true), 0);
+        setTimeout(() => void this.loadMessages(true, true), 0);
       }
     } catch (error) {
       if (sequence === messageRequestSequence) {
@@ -319,26 +303,21 @@ Page({
         this.setData({
           messageLoading: false,
           messageRefreshing: false,
-          messageLoadingMore: false,
         });
       }
     }
   },
-  async loadNotices(reset: boolean, refresh: boolean, mergeFresh = false) {
-    if ((this.data.noticeLoading || this.data.noticeLoadingMore) && !refresh) {
-      return;
-    }
-    const page = reset ? 1 : this.data.noticePage + 1;
+  async loadNotices(refresh: boolean, mergeFresh = false) {
+    if (this.data.noticeLoading && !refresh) return;
     const sequence = ++noticeRequestSequence;
     this.setData({
-      noticeLoading: reset && this.data.noticeItems.length === 0,
+      noticeLoading: this.data.noticeItems.length === 0,
       noticeRefreshing: false,
-      noticeLoadingMore: !reset,
       noticeError: "",
     });
     try {
       const result = await getNotices({
-        page,
+        page: 1,
         pageSize: PAGE_SIZE,
         q: this.data.noticeQuery.trim() || undefined,
         refresh,
@@ -350,23 +329,19 @@ Page({
         ...notice,
         displayTime: formatDateTime(notice.publishedAt),
       }));
-      if (page === 1 && !this.data.noticeQuery.trim()) {
+      if (!this.data.noticeQuery.trim()) {
         saveTeachingPreview(getSession()?.user.account || "", {
           notices: result.data.items,
         });
       }
       this.setData({
-        noticeItems: reset
-          ? mergeFresh
-            ? mergeNotices(incoming, this.data.noticeItems)
-            : incoming
-          : mergeNotices(this.data.noticeItems, incoming),
-        noticePage: result.data.pagination.page,
-        noticeTotalPages: result.data.pagination.totalPages,
+        noticeItems: mergeFresh
+          ? mergeNotices(incoming, this.data.noticeItems)
+          : incoming.slice(0, PAGE_SIZE),
         noticeLoaded: true,
       });
       if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadNotices(true, true, true), 0);
+        setTimeout(() => void this.loadNotices(true, true), 0);
       }
     } catch (error) {
       if (sequence === noticeRequestSequence) {
@@ -377,28 +352,17 @@ Page({
         this.setData({
           noticeLoading: false,
           noticeRefreshing: false,
-          noticeLoadingMore: false,
         });
       }
     }
   },
   refreshMessages() {
     haptic("light");
-    void this.loadMessages(true, true, true);
+    void this.loadMessages(true, true);
   },
   refreshNotices() {
     haptic("light");
-    void this.loadNotices(true, true, true);
-  },
-  loadMoreMessages() {
-    if (this.data.messagePage < this.data.messageTotalPages) {
-      void this.loadMessages(false, false);
-    }
-  },
-  loadMoreNotices() {
-    if (this.data.noticePage < this.data.noticeTotalPages) {
-      void this.loadNotices(false, false);
-    }
+    void this.loadNotices(true, true);
   },
   openMessageFilter() {
     haptic("light");
@@ -449,7 +413,7 @@ Page({
       to: this.data.draftTo,
       messageFilterVisible: false,
     });
-    void this.loadMessages(true, false);
+    void this.loadMessages(false);
   },
   onNoticeQueryInput(event: WechatMiniprogram.Input) {
     this.setData({ noticeQuery: event.detail.value });
@@ -461,11 +425,11 @@ Page({
     this.setData({ noticeSearchFocused: false });
   },
   searchNotices() {
-    void this.loadNotices(true, false);
+    void this.loadNotices(false);
   },
   clearNoticeQuery() {
     this.setData({ noticeQuery: "" });
-    void this.loadNotices(true, false);
+    void this.loadNotices(false);
   },
   openNotice(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");

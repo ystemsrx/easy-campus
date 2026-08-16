@@ -12,7 +12,7 @@
 
       <view class="semester-picker card pressable stagger-item stagger-2" bindtap="openFilter" hover-class="pressing"><view class="semester-icon"><lucide-icon name="notebook-tabs" tone="rose" size="{{31}}"></lucide-icon></view><view class="semester-copy"><text class="semester-caption">查询学期</text><text class="semester-value" overflow="ellipsis" max-lines="1">{{filterLabel}}</text></view><lucide-icon name="chevron-right" tone="muted" size="{{28}}"></lucide-icon></view>
 
-      <view class="result-heading"><view><text class="result-title">考试日程</text><text class="result-caption">按实际考试时间从早到晚排列</text></view><view class="realtime-pill"><view></view><text>实时</text></view></view>
+      <view class="result-heading"><view><text class="result-title">考试日程</text><text class="result-caption">按实际考试时间从早到晚排列</text></view><view class="realtime-pill"><view></view><text>静默更新</text></view></view>
       <loading-view wx:if="{{loading}}" label="正在读取考试安排"></loading-view>
       <view wx:elif="{{examItems.length}}" class="exam-list">
         <view wx:for="{{examItems}}" wx:key="id" class="exam-card exam-card--{{item.arrangementType}} card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">

@@ -16,8 +16,17 @@ import {
   getTimetable,
 } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
+import {
+  claimAutomaticRefresh,
+  isCacheStale,
+  shouldUseServerSnapshot,
+  WEEK_MS,
+} from "../../store/cache-policy";
+import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
+import { loadScheduleData } from "../../store/schedule";
 import { getSession } from "../../store/session";
 import {
+  cleanupTeachingPreview,
   loadTeachingPreview,
   saveTeachingPreview,
 } from "../../store/teaching-preview";
@@ -241,9 +250,8 @@ function noticeSourceIdFromLink(link: string): string {
   }
 }
 
-function loadPlanPreviews(): PlanPreview[] {
-  const stored = wx.getStorageSync("easy-swu:schedule-plans");
-  if (!Array.isArray(stored)) return [];
+function loadPlanPreviews(account: string): PlanPreview[] {
+  const stored = loadScheduleData(account).plans;
   const todayKey = today();
   return (
     stored as Array<{
@@ -386,7 +394,9 @@ Page({
       motionClass: this.data.motionClass,
     });
     this.updateTodayCourses();
-    this.setData({ plans: loadPlanPreviews() });
+    this.setData({
+      plans: loadPlanPreviews(getSession()?.user.account || ""),
+    });
     this.stopCourseClock();
     courseClockTimer = setInterval(
       () => this.updateTodayCourses(),
@@ -437,14 +447,22 @@ Page({
       hydratedAccount && hydratedAccount !== account,
     );
     hydratedAccount = account;
-    const cached = loadTeachingPreview(account);
+    const cached =
+      cleanupTeachingPreview(account) || loadTeachingPreview(account);
     const cachedTimetable = loadTimetableSnapshot(account);
+    const cachedGrades = loadGradesSnapshot(account);
     activeTimetable = cachedTimetable?.data || null;
     const messages = (cached?.messages || []).map(toMessagePreview);
     const notices = (cached?.notices || []).map(toNoticePreview);
     this.setData({
       messages,
       notices,
+      gradeAverageLabel: (() => {
+        const average = cachedGrades?.data.summary.numericWeightedAverage;
+        if (average === null || average === undefined) return "—";
+        return Number.isInteger(average) ? String(average) : average.toFixed(1);
+      })(),
+      gradeCourseCount: cachedGrades?.data.summary.courseCount || 0,
       loaded:
         messages.length > 0 || notices.length > 0 || Boolean(cachedTimetable),
       ...(changedAccount ? { errorMessage: "" } : {}),
@@ -738,10 +756,10 @@ Page({
       timetableResult,
     ] = await Promise.allSettled([
       includeStableData ? getCurrentUser() : Promise.resolve(null),
-      getMessages({ page: 1, pageSize: 3, refresh }),
-      getNotices({ page: 1, pageSize: 3, refresh }),
+      getMessages({ page: 1, pageSize: 15, refresh }),
+      getNotices({ page: 1, pageSize: 15, refresh }),
       includeStableData
-        ? getGrades({ page: 1, pageSize: 1, refresh })
+        ? getGrades({ page: 1, pageSize: 200, refresh })
         : Promise.resolve(null),
       includeStableData ? getTimetable({ refresh }) : Promise.resolve(null),
     ]);
@@ -784,32 +802,50 @@ Page({
       );
     }
     if (gradeResult.status === "fulfilled" && gradeResult.value) {
-      const average = gradeResult.value.data.summary.numericWeightedAverage;
-      patch.gradeAverageLabel =
-        average === null
-          ? "—"
-          : Number.isInteger(average)
-            ? String(average)
-            : average.toFixed(1);
-      patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
+      const account = getSession()?.user.account || "";
+      const local = loadGradesSnapshot(account);
+      if (
+        refresh ||
+        shouldUseServerSnapshot(local, gradeResult.value.meta.fetchedAt)
+      ) {
+        saveGradesSnapshot(
+          account,
+          gradeResult.value.data,
+          gradeResult.value.meta.fetchedAt,
+        );
+        const average = gradeResult.value.data.summary.numericWeightedAverage;
+        patch.gradeAverageLabel =
+          average === null
+            ? "—"
+            : Number.isInteger(average)
+              ? String(average)
+              : average.toFixed(1);
+        patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
+      }
     }
     if (timetableResult.status === "fulfilled" && timetableResult.value) {
-      activeTimetable = timetableResult.value.data;
-      saveTimetableSnapshot(
-        getSession()?.user.account || "",
-        timetableResult.value.data,
-      );
-      const now = new Date();
-      const courses = todayCoursePreview(now);
-      const emptyCopy = timetableEmptyCopy(now);
-      patch.currentTime = formatClock(now);
-      patch.todayCourses = courses;
-      patch.remainingCourseCount = remainingCourses(
-        activeTimetable,
-        now,
-      ).length;
-      patch.timetableEmptyTitle = emptyCopy.title;
-      patch.timetableEmptyCaption = emptyCopy.caption;
+      const account = getSession()?.user.account || "";
+      const local = loadTimetableSnapshot(account);
+      if (
+        refresh ||
+        shouldUseServerSnapshot(local, timetableResult.value.meta.fetchedAt)
+      ) {
+        activeTimetable = timetableResult.value.data;
+        saveTimetableSnapshot(account, timetableResult.value.data, {
+          serverFetchedAt: timetableResult.value.meta.fetchedAt,
+        });
+        const now = new Date();
+        const courses = todayCoursePreview(now);
+        const emptyCopy = timetableEmptyCopy(now);
+        patch.currentTime = formatClock(now);
+        patch.todayCourses = courses;
+        patch.remainingCourseCount = remainingCourses(
+          activeTimetable,
+          now,
+        ).length;
+        patch.timetableEmptyTitle = emptyCopy.title;
+        patch.timetableEmptyCaption = emptyCopy.caption;
+      }
     }
     if (
       messageResult.status === "rejected" &&
@@ -827,6 +863,18 @@ Page({
         messageResult.value.meta.refreshing) ||
         (noticeResult.status === "fulfilled" &&
           noticeResult.value.meta.refreshing));
+    if (!refresh && includeStableData) {
+      const account = getSession()?.user.account || "";
+      const stableDataStale =
+        (isCacheStale(loadGradesSnapshot(account), WEEK_MS) &&
+          claimAutomaticRefresh("grades", account)) ||
+        (isCacheStale(loadTimetableSnapshot(account), WEEK_MS) &&
+          claimAutomaticRefresh("timetable", account));
+      if (stableDataStale) {
+        dashboardRefreshQueued = true;
+        dashboardStableRefreshQueued = true;
+      }
+    }
     dashboardRequestInFlight = false;
     if (needsFreshResult || dashboardRefreshQueued) {
       const includeStableRefresh = dashboardStableRefreshQueued;

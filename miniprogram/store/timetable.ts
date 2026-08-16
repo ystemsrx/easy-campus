@@ -1,10 +1,10 @@
 import type { TimetableData } from "../types/api";
+import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:timetable:";
 
-export interface TimetableSnapshot {
+export interface TimetableSnapshot extends CacheMetadata {
   data: TimetableData;
-  updatedAt: number;
 }
 
 function storageKey(account: string, semesterId?: string): string {
@@ -29,21 +29,31 @@ export function loadTimetableSnapshot(
   const value = wx.getStorageSync(storageKey(account, semesterId)) as
     Partial<TimetableSnapshot> | undefined;
   if (!value || !isTimetable(value.data)) return null;
-  return { data: value.data, updatedAt: Number(value.updatedAt) || 0 };
+  const legacyUpdatedAt = Number(
+    (value as Partial<TimetableSnapshot> & { updatedAt?: number }).updatedAt,
+  );
+  return {
+    data: value.data,
+    serverFetchedAt: String(value.serverFetchedAt || ""),
+    localStoredAt: Number(value.localStoredAt) || legacyUpdatedAt || 0,
+  };
 }
 
 export function saveTimetableSnapshot(
   account: string,
   data: TimetableData,
-  semesterId?: string,
-): void {
-  if (!account.trim()) return;
+  options: { semesterId?: string; serverFetchedAt?: string } = {},
+): TimetableSnapshot | null {
+  if (!account.trim()) return null;
+  const snapshot: TimetableSnapshot = {
+    data,
+    serverFetchedAt: options.serverFetchedAt || "",
+    localStoredAt: Date.now(),
+  };
   try {
-    wx.setStorageSync(storageKey(account, semesterId), {
-      data,
-      updatedAt: Date.now(),
-    } satisfies TimetableSnapshot);
+    wx.setStorageSync(storageKey(account, options.semesterId), snapshot);
   } catch {
     // 本地快照只是首屏加速层，服务端仍保存完整的用户课表。
   }
+  return snapshot;
 }

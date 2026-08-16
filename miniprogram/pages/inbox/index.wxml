@@ -11,7 +11,7 @@
 
   <swiper class="inbox-swiper" current="{{activeTab}}" duration="420" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages" bindscrolltolower="loadMoreMessages" lower-threshold="180">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view class="list-heading-copy"><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
@@ -53,8 +53,6 @@
               </view>
               <text wx:else class="message-content">{{item.content}}</text>
             </view>
-            <view wx:if="{{messageLoadingMore}}" class="load-more"><text>正在载入更多…</text></view>
-            <text wx:elif="{{messagePage >= messageTotalPages}}" class="end-caption">以上是全部教务消息</text>
           </view>
           <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息"></loading-view>
           <empty-state wx:elif="{{messageError}}" icon="circle-alert" icon-tone="danger" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
@@ -64,7 +62,7 @@
     </swiper-item>
 
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices" bindscrolltolower="loadMoreNotices" lower-threshold="180">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
             <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>
@@ -82,8 +80,6 @@
                 <text class="notice-tag">教务通知</text>
               </view>
             </view>
-            <view wx:if="{{noticeLoadingMore}}" class="load-more"><text>正在载入更多…</text></view>
-            <text wx:elif="{{noticePage >= noticeTotalPages}}" class="end-caption">以上是全部学校通知</text>
           </view>
           <loading-view wx:elif="{{noticeLoading}}" label="正在读取学校通知"></loading-view>
           <empty-state wx:elif="{{noticeError}}" icon="circle-alert" icon-tone="danger" title="通知加载失败" description="{{noticeError}}" action-text="重新加载" bindaction="refreshNotices"></empty-state>
