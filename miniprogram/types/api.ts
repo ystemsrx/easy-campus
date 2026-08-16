@@ -394,6 +394,89 @@ export interface ExamsData extends Paginated<Exam> {
   summary: ExamSummary;
 }
 
+export interface TimetableCurrentSemester extends AcademicSemesterOption {
+  startDate: string;
+  endDate: string;
+}
+
+export interface TimetablePeriod {
+  period: number;
+  startTime: string;
+  endTime: string;
+}
+
+export type TimetableActivityType =
+  "lecture" | "practice" | "experiment" | "other";
+
+export interface TimetableArrangement {
+  id: string;
+  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  weekdayLabel: string;
+  periodStart: number;
+  periodEnd: number;
+  periods: number[];
+  startTime: string | null;
+  endTime: string | null;
+  weekText: string;
+  weeks: number[];
+  activityType: TimetableActivityType;
+  activityTypeLabel: string;
+  teacherNames: string[];
+  location: {
+    campus: string | null;
+    building: string | null;
+    room: string | null;
+    display: string;
+  };
+  teachingMethod: string | null;
+  selectionStatus: "selected" | "pending";
+  adjusted: boolean;
+}
+
+export interface TimetableCourseData {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  teachingClass: string | null;
+  teacherNames: string[];
+  credits: number | null;
+  category: string | null;
+  nature: string | null;
+  assessmentMethod: string | null;
+  examMethod: string | null;
+  teachingClassComposition: string[];
+  hours?: {
+    composition?: string;
+    weekly?: number;
+    total?: number;
+  };
+  retake: boolean | null;
+  selectionStatus: "selected" | "pending";
+  arrangements: TimetableArrangement[];
+}
+
+export interface TimetableAdditionalCourse {
+  id: string;
+  type: "practice" | "other";
+  description: string;
+  note?: string | null;
+}
+
+export interface TimetableData {
+  semester: AcademicSemesterOption;
+  semesters: AcademicSemesterOption[];
+  currentSemester: TimetableCurrentSemester | null;
+  sourceTimeZone: "Asia/Shanghai" | string;
+  periods: TimetablePeriod[];
+  courses: TimetableCourseData[];
+  additionalCourses: TimetableAdditionalCourse[];
+  summary: {
+    courseCount: number;
+    arrangementCount: number;
+    maxWeek: number;
+  };
+}
+
 export interface QueryMeta {
   cached: boolean;
   fetchedAt?: string;
@@ -442,5 +525,10 @@ export interface ExamsQuery {
   semester?: string;
   page?: number;
   pageSize?: number;
+  refresh?: boolean;
+}
+
+export interface TimetableQuery {
+  semester?: string;
   refresh?: boolean;
 }

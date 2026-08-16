@@ -1,198 +1,187 @@
+import type {
+  TimetableArrangement,
+  TimetableCourseData,
+  TimetableData,
+} from "../types/api";
+
+export type TimetableTone = "blue" | "cyan" | "purple" | "green" | "orange";
+
 export interface TimetableCourse {
   id: string;
+  courseId: string;
+  arrangementId: string;
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  sourceWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  date: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  localized: boolean;
   startTime: string;
   endTime: string;
+  displayTimeLabel: string;
+  periodStart: number;
+  periodEnd: number;
   periodLabel: string;
+  weekText: string;
+  weeks: number[];
   name: string;
   teacher: string;
+  teacherNames: string[];
   location: string;
-  tone: "blue" | "cyan" | "purple" | "green" | "orange";
+  campus: string | null;
+  tone: TimetableTone;
+  credits: number | null;
+  teachingClass: string | null;
+  activityTypeLabel: string;
+  selectionStatus: "selected" | "pending";
+  retake: boolean | null;
+  adjusted: boolean;
+  category: string | null;
+  nature: string | null;
+  assessmentMethod: string | null;
 }
 
-// 占位数据：后续课表 API 完善后，仅需替换该数据源。
-export const TIMETABLE_PLACEHOLDER: TimetableCourse[] = [
-  {
-    id: "mon-data-structure",
-    weekday: 1,
-    startTime: "08:00",
-    endTime: "09:40",
-    periodLabel: "1–2 节",
-    name: "数据结构",
-    teacher: "陈老师",
-    location: "25 教 301",
-    tone: "blue",
-  },
-  {
-    id: "mon-college-english",
-    weekday: 1,
-    startTime: "10:00",
-    endTime: "11:40",
-    periodLabel: "3–4 节",
-    name: "大学英语",
-    teacher: "王老师",
-    location: "31 教 204",
-    tone: "cyan",
-  },
-  {
-    id: "mon-database",
-    weekday: 1,
-    startTime: "14:00",
-    endTime: "15:40",
-    periodLabel: "7–8 节",
-    name: "数据库原理",
-    teacher: "李老师",
-    location: "工科大楼 B 座 402",
-    tone: "purple",
-  },
-  {
-    id: "mon-innovation-practice",
-    weekday: 1,
-    startTime: "19:20",
-    endTime: "21:00",
-    periodLabel: "12–13 节",
-    name: "创新实践",
-    teacher: "黄老师",
-    location: "软件学院实验室 2",
-    tone: "green",
-  },
-  {
-    id: "tue-computer-network",
-    weekday: 2,
-    startTime: "08:55",
-    endTime: "10:45",
-    periodLabel: "2–3 节",
-    name: "计算机网络",
-    teacher: "周老师",
-    location: "32 教 208",
-    tone: "green",
-  },
-  {
-    id: "tue-physical-education",
-    weekday: 2,
-    startTime: "15:50",
-    endTime: "17:40",
-    periodLabel: "9–10 节",
-    name: "大学体育",
-    teacher: "刘老师",
-    location: "第一运动场",
-    tone: "orange",
-  },
-  {
-    id: "tue-project-workshop",
-    weekday: 2,
-    startTime: "19:20",
-    endTime: "21:00",
-    periodLabel: "12–13 节",
-    name: "项目实践工作坊",
-    teacher: "郑老师",
-    location: "创新创业中心 201",
-    tone: "blue",
-  },
-  {
-    id: "wed-operating-system",
-    weekday: 3,
-    startTime: "10:00",
-    endTime: "11:40",
-    periodLabel: "3–4 节",
-    name: "操作系统",
-    teacher: "赵老师",
-    location: "25 教 208",
-    tone: "purple",
-  },
-  {
-    id: "wed-software-engineering",
-    weekday: 3,
-    startTime: "14:00",
-    endTime: "15:40",
-    periodLabel: "7–8 节",
-    name: "软件工程",
-    teacher: "张老师",
-    location: "工科大楼 A 座 312",
-    tone: "blue",
-  },
-  {
-    id: "wed-academic-writing",
-    weekday: 3,
-    startTime: "19:20",
-    endTime: "21:00",
-    periodLabel: "12–13 节",
-    name: "学术写作",
-    teacher: "徐老师",
-    location: "31 教 305",
-    tone: "cyan",
-  },
-  {
-    id: "thu-probability",
-    weekday: 4,
-    startTime: "08:00",
-    endTime: "09:40",
-    periodLabel: "1–2 节",
-    name: "概率论与数理统计",
-    teacher: "杨老师",
-    location: "33 教 101",
-    tone: "cyan",
-  },
-  {
-    id: "thu-web-development",
-    weekday: 4,
-    startTime: "12:10",
-    endTime: "13:50",
-    periodLabel: "5–6 节",
-    name: "Web 应用开发",
-    teacher: "吴老师",
-    location: "软件学院实验室 3",
-    tone: "green",
-  },
-  {
-    id: "thu-open-source-practice",
-    weekday: 4,
-    startTime: "19:20",
-    endTime: "21:00",
-    periodLabel: "12–13 节",
-    name: "开源软件实践",
-    teacher: "罗老师",
-    location: "软件学院实验室 4",
-    tone: "purple",
-  },
-  {
-    id: "fri-algorithm",
-    weekday: 5,
-    startTime: "10:55",
-    endTime: "12:55",
-    periodLabel: "4–5 节",
-    name: "算法设计与分析",
-    teacher: "孙老师",
-    location: "30 教 406",
-    tone: "orange",
-  },
-  {
-    id: "fri-mobile-development",
-    weekday: 5,
-    startTime: "14:55",
-    endTime: "16:35",
-    periodLabel: "8–9 节",
-    name: "移动应用开发",
-    teacher: "何老师",
-    location: "软件学院实验室 1",
-    tone: "blue",
-  },
-  {
-    id: "fri-career-planning",
-    weekday: 5,
-    startTime: "19:20",
-    endTime: "21:00",
-    periodLabel: "12–13 节",
-    name: "职业生涯规划",
-    teacher: "唐老师",
-    location: "学生就业指导中心",
-    tone: "orange",
-  },
-];
+export interface CoursePreviewSelection {
+  courses: TimetableCourse[];
+  currentCourseId: string | null;
+}
+
+const SOURCE_OFFSET = "+08:00";
+const ONE_DAY = 24 * 60 * 60 * 1000;
+const TONES: TimetableTone[] = ["blue", "cyan", "purple", "green", "orange"];
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function localClock(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toDateString(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function isoWeekday(date: Date): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
+  return (date.getDay() || 7) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+}
+
+function hash(value: string): number {
+  let result = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    result = (result * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return result;
+}
+
+function campusDateAt(startDate: string, days: number): string {
+  const start = Date.parse(`${startDate}T00:00:00${SOURCE_OFFSET}`);
+  if (!Number.isFinite(start)) return "";
+  const shifted = new Date(start + days * ONE_DAY + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}
+
+function campusToday(date: Date): string {
+  const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}
+
+function datesAvailable(data: TimetableData): boolean {
+  return Boolean(
+    data.currentSemester && data.currentSemester.id === data.semester.id,
+  );
+}
+
+function occurrenceDate(
+  data: TimetableData,
+  week: number,
+  weekday: number,
+): string | null {
+  if (!datesAvailable(data) || !data.currentSemester) return null;
+  return campusDateAt(
+    data.currentSemester.startDate,
+    (week - 1) * 7 + weekday - 1,
+  );
+}
+
+function toCourse(
+  data: TimetableData,
+  course: TimetableCourseData,
+  arrangement: TimetableArrangement,
+  week: number,
+): TimetableCourse {
+  const sourceDate = occurrenceDate(data, week, arrangement.weekday);
+  const start =
+    sourceDate && arrangement.startTime
+      ? new Date(`${sourceDate}T${arrangement.startTime}:00${SOURCE_OFFSET}`)
+      : null;
+  const end =
+    sourceDate && arrangement.endTime
+      ? new Date(`${sourceDate}T${arrangement.endTime}:00${SOURCE_OFFSET}`)
+      : null;
+  const validStart = start && !Number.isNaN(start.getTime()) ? start : null;
+  const validEnd = end && !Number.isNaN(end.getTime()) ? end : null;
+  const teacherNames = arrangement.teacherNames.length
+    ? arrangement.teacherNames
+    : course.teacherNames;
+  return {
+    id: `${arrangement.id}:w${week}`,
+    courseId: course.id,
+    arrangementId: arrangement.id,
+    weekday: validStart ? isoWeekday(validStart) : arrangement.weekday,
+    sourceWeekday: arrangement.weekday,
+    date: validStart ? toDateString(validStart) : null,
+    startAt: validStart ? validStart.toISOString() : null,
+    endAt: validEnd ? validEnd.toISOString() : null,
+    localized: Boolean(validStart && validEnd),
+    startTime: validStart
+      ? localClock(validStart)
+      : arrangement.startTime || "--:--",
+    endTime: validEnd ? localClock(validEnd) : arrangement.endTime || "--:--",
+    periodStart: arrangement.periodStart,
+    periodEnd: arrangement.periodEnd,
+    periodLabel:
+      arrangement.periodStart === arrangement.periodEnd
+        ? `${arrangement.periodStart} 节`
+        : `${arrangement.periodStart}–${arrangement.periodEnd} 节`,
+    displayTimeLabel:
+      validStart && validEnd
+        ? `${localClock(validStart)}–${localClock(validEnd)}`
+        : arrangement.periodStart === arrangement.periodEnd
+          ? `第 ${arrangement.periodStart} 节`
+          : `第 ${arrangement.periodStart}–${arrangement.periodEnd} 节`,
+    weekText: arrangement.weekText,
+    weeks: arrangement.weeks,
+    name: course.courseName,
+    teacher: teacherNames.join("、") || "教师待定",
+    teacherNames,
+    location: arrangement.location.display || "地点待定",
+    campus: arrangement.location.campus,
+    tone: TONES[hash(course.id) % TONES.length],
+    credits: course.credits,
+    teachingClass: course.teachingClass,
+    activityTypeLabel: arrangement.activityTypeLabel,
+    selectionStatus: arrangement.selectionStatus,
+    retake: course.retake,
+    adjusted: arrangement.adjusted,
+    category: course.category,
+    nature: course.nature,
+    assessmentMethod: course.assessmentMethod,
+  };
+}
+
+function occursInWeek(
+  arrangement: TimetableArrangement,
+  week: number,
+): boolean {
+  return !arrangement.weeks.length || arrangement.weeks.includes(week);
+}
 
 export function timeToMinutes(value: string): number {
   const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
+  return Number.isFinite(hour) && Number.isFinite(minute)
+    ? hour * 60 + minute
+    : 0;
 }
 
 export function currentMinutes(date = new Date()): number {
@@ -202,42 +191,112 @@ export function currentMinutes(date = new Date()): number {
 export function currentIsoWeekday(
   date = new Date(),
 ): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
-  return (date.getDay() || 7) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  return isoWeekday(date);
 }
 
 export function formatClock(date = new Date()): string {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  return localClock(date);
 }
 
-export function coursesForWeekday(weekday: number): TimetableCourse[] {
-  return TIMETABLE_PLACEHOLDER.filter(
+export function teachingWeekForDate(
+  data: TimetableData | null,
+  date = new Date(),
+): number | null {
+  if (!data?.currentSemester || !datesAvailable(data)) return null;
+  const currentDate = campusToday(date);
+  if (
+    currentDate < data.currentSemester.startDate ||
+    currentDate > data.currentSemester.endDate
+  ) {
+    return null;
+  }
+  const start = Date.parse(
+    `${data.currentSemester.startDate}T00:00:00${SOURCE_OFFSET}`,
+  );
+  const current = Date.parse(`${currentDate}T00:00:00${SOURCE_OFFSET}`);
+  return Math.floor((current - start) / ONE_DAY / 7) + 1;
+}
+
+export function coursesForWeek(
+  data: TimetableData | null,
+  week: number,
+): TimetableCourse[] {
+  if (!data || week < 1) return [];
+  return data.courses
+    .flatMap((course) =>
+      course.arrangements
+        .filter((arrangement) => occursInWeek(arrangement, week))
+        .map((arrangement) => toCourse(data, course, arrangement, week)),
+    )
+    .sort(
+      (left, right) =>
+        (left.date || "").localeCompare(right.date || "") ||
+        timeToMinutes(left.startTime) - timeToMinutes(right.startTime),
+    );
+}
+
+export function coursesForWeekday(
+  data: TimetableData | null,
+  weekday: number,
+  week: number,
+): TimetableCourse[] {
+  return coursesForWeek(data, week).filter(
     (course) => course.weekday === weekday,
-  ).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-}
-
-export function remainingCourses(date = new Date()): TimetableCourse[] {
-  const now = currentMinutes(date);
-  return coursesForWeekday(currentIsoWeekday(date)).filter(
-    (course) => timeToMinutes(course.endTime) > now,
   );
 }
 
-export interface CoursePreviewSelection {
-  courses: TimetableCourse[];
-  currentCourseId: string | null;
+export function coursesForDate(
+  data: TimetableData | null,
+  dateKey: string,
+  now = new Date(),
+): TimetableCourse[] {
+  const currentWeek = teachingWeekForDate(data, now);
+  if (!data || currentWeek === null) return [];
+  return [currentWeek - 1, currentWeek, currentWeek + 1]
+    .filter((week) => week > 0)
+    .flatMap((week) => coursesForWeek(data, week))
+    .filter((course) => course.date === dateKey)
+    .filter(
+      (course, index, courses) =>
+        courses.findIndex((item) => item.id === course.id) === index,
+    )
+    .sort(
+      (left, right) =>
+        timeToMinutes(left.startTime) - timeToMinutes(right.startTime),
+    );
+}
+
+export function remainingCourses(
+  data: TimetableData | null,
+  date = new Date(),
+): TimetableCourse[] {
+  const now = date.getTime();
+  return coursesForDate(data, toDateString(date), date).filter((course) => {
+    if (course.endAt) return new Date(course.endAt).getTime() > now;
+    return timeToMinutes(course.endTime) > currentMinutes(date);
+  });
 }
 
 export function coursePreview(
+  data: TimetableData | null,
   date = new Date(),
   limit = 3,
 ): CoursePreviewSelection {
-  const minutes = currentMinutes(date);
-  const remaining = remainingCourses(date);
-  const currentCourse = remaining.find(
-    (course) =>
+  const now = date.getTime();
+  const remaining = remainingCourses(data, date);
+  const currentCourse = remaining.find((course) => {
+    if (course.startAt && course.endAt) {
+      return (
+        new Date(course.startAt).getTime() <= now &&
+        new Date(course.endAt).getTime() > now
+      );
+    }
+    const minutes = currentMinutes(date);
+    return (
       minutes >= timeToMinutes(course.startTime) &&
-      minutes < timeToMinutes(course.endTime),
-  );
+      minutes < timeToMinutes(course.endTime)
+    );
+  });
   const safeLimit = Math.max(0, Math.floor(limit));
   const courses = currentCourse
     ? [
@@ -247,9 +306,30 @@ export function coursePreview(
           .slice(0, Math.max(0, safeLimit - 1)),
       ]
     : remaining.slice(0, safeLimit);
-
   return {
     courses: courses.slice(0, safeLimit),
     currentCourseId: currentCourse?.id ?? null,
   };
+}
+
+export function weekDateKeys(
+  data: TimetableData | null,
+  week: number,
+): string[] {
+  if (!data?.currentSemester || !datesAvailable(data)) return [];
+  const campusThursday = occurrenceDate(data, week, 4);
+  if (!campusThursday) return [];
+  const pivot = new Date(`${campusThursday}T12:00:00${SOURCE_OFFSET}`);
+  if (Number.isNaN(pivot.getTime())) return [];
+  const monday = new Date(
+    pivot.getFullYear(),
+    pivot.getMonth(),
+    pivot.getDate(),
+  );
+  monday.setDate(monday.getDate() - isoWeekday(monday) + 1);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return toDateString(date);
+  });
 }

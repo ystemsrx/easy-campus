@@ -9,7 +9,12 @@ import {
   markPublicationRead,
   recordAnnouncementPopup,
 } from "../../services/content";
-import { getGrades, getMessages, getNotices } from "../../services/teaching";
+import {
+  getGrades,
+  getMessages,
+  getNotices,
+  getTimetable,
+} from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import { getSession } from "../../store/session";
 import {
@@ -17,9 +22,15 @@ import {
   saveTeachingPreview,
 } from "../../store/teaching-preview";
 import {
+  loadTimetableSnapshot,
+  saveTimetableSnapshot,
+} from "../../store/timetable";
+import {
   coursePreview,
+  coursesForDate,
   formatClock,
   remainingCourses,
+  teachingWeekForDate,
   type TimetableCourse,
 } from "../../data/timetable";
 import type {
@@ -27,6 +38,7 @@ import type {
   Notice,
   Publication,
   TeachingMessage,
+  TimetableData,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import {
@@ -95,6 +107,7 @@ let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
+let activeTimetable: TimetableData | null = null;
 
 function getTimetableCardRadius(): number {
   try {
@@ -122,7 +135,7 @@ function publicationPreview(
 }
 
 function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
-  const preview = coursePreview(now, 3);
+  const preview = coursePreview(activeTimetable, now, 3);
   return preview.courses.map((course) => {
     const current = course.id === preview.currentCourseId;
     return {
@@ -131,6 +144,31 @@ function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
       statusLabel: current ? "进行中" : `${course.startTime}–${course.endTime}`,
     };
   });
+}
+
+function timetableEmptyCopy(now = new Date()) {
+  if (!activeTimetable) {
+    return {
+      title: "课表暂未同步",
+      caption: "连接服务后会自动显示今日课程",
+    };
+  }
+  if (teachingWeekForDate(activeTimetable, now) === null) {
+    return {
+      title: "当前不在教学周",
+      caption: "去完整课表查看所选学期安排",
+    };
+  }
+  const allToday = coursesForDate(activeTimetable, today(), now);
+  return allToday.length
+    ? {
+        title: "今天的课程已结束",
+        caption: "去完整课表看看本周安排",
+      }
+    : {
+        title: "今天没有课程",
+        caption: "给自己留一点从容的时间",
+      };
 }
 
 function getGreeting(): string {
@@ -278,8 +316,10 @@ Page({
     userName: "同学",
     organizationName: "",
     currentTime: formatClock(),
-    todayCourses: todayCoursePreview(),
-    remainingCourseCount: remainingCourses().length,
+    todayCourses: [] as TodayCoursePreview[],
+    remainingCourseCount: 0,
+    timetableEmptyTitle: "课表暂未同步",
+    timetableEmptyCaption: "连接服务后会自动显示今日课程",
     timetableCardRadius: getTimetableCardRadius(),
     gradeAverageLabel: "—",
     gradeCourseCount: 0,
@@ -328,6 +368,7 @@ Page({
   },
   onLoad() {
     hydratedAccount = "";
+    activeTimetable = null;
     credentialExitInFlight = false;
     this.applyAppearance();
   },
@@ -375,10 +416,13 @@ Page({
   updateTodayCourses() {
     const now = new Date();
     const courses = todayCoursePreview(now);
+    const emptyCopy = timetableEmptyCopy(now);
     this.setData({
       currentTime: formatClock(now),
       todayCourses: courses,
-      remainingCourseCount: remainingCourses(now).length,
+      remainingCourseCount: remainingCourses(activeTimetable, now).length,
+      timetableEmptyTitle: emptyCopy.title,
+      timetableEmptyCaption: emptyCopy.caption,
       greeting: getGreeting(),
       dateLabel: formatFriendlyDate(today()),
     });
@@ -394,14 +438,18 @@ Page({
     );
     hydratedAccount = account;
     const cached = loadTeachingPreview(account);
+    const cachedTimetable = loadTimetableSnapshot(account);
+    activeTimetable = cachedTimetable?.data || null;
     const messages = (cached?.messages || []).map(toMessagePreview);
     const notices = (cached?.notices || []).map(toNoticePreview);
     this.setData({
       messages,
       notices,
-      loaded: messages.length > 0 || notices.length > 0,
+      loaded:
+        messages.length > 0 || notices.length > 0 || Boolean(cachedTimetable),
       ...(changedAccount ? { errorMessage: "" } : {}),
     });
+    this.updateTodayCourses();
   },
   stopCredentialPoll() {
     if (credentialPollTimer !== undefined) {
@@ -682,21 +730,28 @@ Page({
       dateLabel: formatFriendlyDate(today()),
     });
 
-    const [userResult, messageResult, noticeResult, gradeResult] =
-      await Promise.allSettled([
-        includeStableData ? getCurrentUser() : Promise.resolve(null),
-        getMessages({ page: 1, pageSize: 3, refresh }),
-        getNotices({ page: 1, pageSize: 3, refresh }),
-        includeStableData
-          ? getGrades({ page: 1, pageSize: 1, refresh })
-          : Promise.resolve(null),
-      ]);
+    const [
+      userResult,
+      messageResult,
+      noticeResult,
+      gradeResult,
+      timetableResult,
+    ] = await Promise.allSettled([
+      includeStableData ? getCurrentUser() : Promise.resolve(null),
+      getMessages({ page: 1, pageSize: 3, refresh }),
+      getNotices({ page: 1, pageSize: 3, refresh }),
+      includeStableData
+        ? getGrades({ page: 1, pageSize: 1, refresh })
+        : Promise.resolve(null),
+      includeStableData ? getTimetable({ refresh }) : Promise.resolve(null),
+    ]);
 
     const serviceHealthy =
       (includeStableData && userResult.status === "fulfilled") ||
       messageResult.status === "fulfilled" ||
       noticeResult.status === "fulfilled" ||
-      (includeStableData && gradeResult.status === "fulfilled");
+      (includeStableData && gradeResult.status === "fulfilled") ||
+      (includeStableData && timetableResult.status === "fulfilled");
     const patch: Record<string, unknown> = {
       loading: false,
       refreshing: false,
@@ -737,6 +792,24 @@ Page({
             ? String(average)
             : average.toFixed(1);
       patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
+    }
+    if (timetableResult.status === "fulfilled" && timetableResult.value) {
+      activeTimetable = timetableResult.value.data;
+      saveTimetableSnapshot(
+        getSession()?.user.account || "",
+        timetableResult.value.data,
+      );
+      const now = new Date();
+      const courses = todayCoursePreview(now);
+      const emptyCopy = timetableEmptyCopy(now);
+      patch.currentTime = formatClock(now);
+      patch.todayCourses = courses;
+      patch.remainingCourseCount = remainingCourses(
+        activeTimetable,
+        now,
+      ).length;
+      patch.timetableEmptyTitle = emptyCopy.title;
+      patch.timetableEmptyCaption = emptyCopy.caption;
     }
     if (
       messageResult.status === "rejected" &&

@@ -71,8 +71,8 @@
               </view>
             </view>
             <view wx:else class="today-empty">
-              <text class="today-empty-title">今天的课程已结束</text>
-              <text class="today-empty-caption">去完整课表看看本周安排</text>
+              <text class="today-empty-title">{{timetableEmptyTitle}}</text>
+              <text class="today-empty-caption">{{timetableEmptyCaption}}</text>
             </view>
           </view>
         </view>

@@ -17,6 +17,8 @@ import type {
   RoomsData,
   RoomsQuery,
   TeachingMessage,
+  TimetableData,
+  TimetableQuery,
 } from "../types/api";
 import { buildQuery, type QueryValue } from "../utils/query";
 import {
@@ -102,6 +104,14 @@ export function getExams(
 ): Promise<TeachingResult<ExamsData>> {
   return teachingRequest<ExamsData>(
     `/teaching/exams${buildQuery(asQuery(query))}`,
+  );
+}
+
+export function getTimetable(
+  query: TimetableQuery = {},
+): Promise<TeachingResult<TimetableData>> {
+  return teachingRequest<TimetableData>(
+    `/teaching/timetable${buildQuery(asQuery(query))}`,
   );
 }
 

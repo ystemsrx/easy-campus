@@ -1,10 +1,18 @@
 import {
-  coursesForWeekday,
+  coursesForDate,
   currentIsoWeekday,
   formatClock,
+  teachingWeekForDate,
   timeToMinutes,
   type TimetableCourse,
 } from "../../data/timetable";
+import { getTimetable } from "../../services/teaching";
+import { getSession } from "../../store/session";
+import {
+  loadTimetableSnapshot,
+  saveTimetableSnapshot,
+} from "../../store/timetable";
+import type { TimetableData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { formatFriendlyDate, toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
@@ -75,11 +83,11 @@ function entryGeometry(startTime: string, endTime: string) {
 }
 
 function buildEntries(
-  weekday: DayOption["weekday"],
+  timetable: TimetableData | null,
   date: string,
   plans: LocalPlan[],
 ): ScheduleEntry[] {
-  const courses = coursesForWeekday(weekday).map((course) => ({
+  const courses = coursesForDate(timetable, date).map((course) => ({
     id: course.id,
     kind: "course" as const,
     title: course.name,
@@ -115,6 +123,10 @@ function buildEntries(
   );
 }
 
+let activeTimetable: TimetableData | null = null;
+let activeAccount = "";
+let timetableRequestInFlight = false;
+
 function addHour(value: string): string {
   const total = timeToMinutes(value) + 60;
   return `${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
@@ -128,6 +140,7 @@ Page({
     headerScrolled: false,
     currentTime: formatClock(),
     monthLabel: "",
+    teachingWeekLabel: "学期外",
     days: [] as DayOption[],
     selectedWeekday: currentIsoWeekday(),
     selectedDate: toDateString(new Date()),
@@ -143,6 +156,7 @@ Page({
   },
   onLoad() {
     this.setData(resolveAppearance());
+    this.hydrateTimetable();
     this.rebuildWeek();
   },
   onShow() {
@@ -153,7 +167,29 @@ Page({
       themeClass: this.data.themeClass,
       motionClass: this.data.motionClass,
     });
+    this.hydrateTimetable();
     this.rebuildWeek();
+    void this.loadTimetable();
+  },
+  hydrateTimetable() {
+    const account = getSession()?.user.account || "";
+    if (!account || account === activeAccount) return;
+    activeAccount = account;
+    activeTimetable = loadTimetableSnapshot(account)?.data || null;
+  },
+  async loadTimetable() {
+    if (timetableRequestInFlight) return;
+    timetableRequestInFlight = true;
+    try {
+      const result = await getTimetable();
+      activeTimetable = result.data;
+      saveTimetableSnapshot(activeAccount, result.data);
+      this.rebuildWeek();
+    } catch {
+      // 保留本地课表与用户日程，不用加载态打断当前页面。
+    } finally {
+      timetableRequestInFlight = false;
+    }
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const headerScrolled = event.detail.scrollTop > 18;
@@ -177,7 +213,7 @@ Page({
         date: dateKey,
         isToday: dateKey === todayKey,
         hasEntries:
-          coursesForWeekday(weekday).length > 0 ||
+          coursesForDate(activeTimetable, dateKey, now).length > 0 ||
           plans.some((plan) => plan.date === dateKey),
       };
     });
@@ -186,6 +222,10 @@ Page({
     this.setData({
       currentTime: formatClock(now),
       monthLabel: `${now.getMonth() + 1} 月`,
+      teachingWeekLabel: (() => {
+        const week = teachingWeekForDate(activeTimetable, now);
+        return week === null ? "学期外" : `第 ${week} 教学周`;
+      })(),
       days,
     });
     this.applyDay(selected.weekday, days, plans);
@@ -203,7 +243,7 @@ Page({
       selectedWeekday: weekday,
       selectedDate: selected.date,
       selectedDateLabel: `${formatFriendlyDate(selected.date)}${selected.isToday ? " · 今天" : ""}`,
-      entries: buildEntries(weekday, selected.date, plans),
+      entries: buildEntries(activeTimetable, selected.date, plans),
     });
   },
   selectDay(event: WechatMiniprogram.TouchEvent) {

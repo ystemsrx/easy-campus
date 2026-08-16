@@ -11,7 +11,7 @@
     <view class="schedule-content page-content page-content--tab page-enter">
       <view class="schedule-header">
         <view>
-          <text class="schedule-eyebrow">第 2 教学周 · {{monthLabel}}</text>
+          <text class="schedule-eyebrow">{{teachingWeekLabel}} · {{monthLabel}}</text>
           <text class="schedule-title display-title">日程</text>
         </view>
         <view class="schedule-header-actions">
@@ -72,7 +72,7 @@
         <view class="timeline-legend">
           <view><view class="legend-square legend-square--course"></view><text>课堂</text></view>
           <view><view class="legend-square legend-square--plan"></view><text>我的安排</text></view>
-          <text class="legend-note">当前为占位课表</text>
+          <text class="legend-note">时间按用户所在时区</text>
         </view>
       </view>
 

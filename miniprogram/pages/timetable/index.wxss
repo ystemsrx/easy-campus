@@ -1,10 +1,21 @@
 .timetable-content { padding-top: 20rpx; }
+.timetable-status { display: flex; flex-direction: row; align-items: center; gap: 12rpx; min-height: 62rpx; padding: 0 20rpx; border-radius: 24rpx; color: var(--color-text-tertiary); background: rgba(255, 255, 255, 0.72); box-shadow: 0 8rpx 26rpx rgba(52, 45, 38, 0.045); font-size: 20rpx; }
+.status-dot { flex: none; width: 9rpx; height: 9rpx; border-radius: 50%; background: #70a89d; box-shadow: 0 0 0 7rpx rgba(112, 168, 157, 0.12); }
+.timetable-status > text { flex: 1; min-width: 0; }
+.status-refresh { display: flex; flex: none; align-items: center; justify-content: center; width: 48rpx; height: 48rpx; border-radius: 50%; }
 .demo-banner { display: flex; flex-direction: row; align-items: center; gap: 12rpx; padding: 17rpx 22rpx; border-radius: 28rpx; color: #8b8578; background: #f8eedd; font-size: 21rpx; }
 .demo-dot { width: 10rpx; height: 10rpx; border-radius: 50%; background: #c98a2d; }
 .semester-scroll { width: calc(100% + 80rpx); margin: 26rpx 0 0 -40rpx; }
 .semester-row { display: flex; flex-direction: row; gap: 14rpx; padding: 2rpx 40rpx 16rpx; }
 .semester-chip { flex: none; padding: 14rpx 24rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; }
 .semester-chip--active { color: #fff; background: linear-gradient(135deg, #d97757, #eba97f); }
+
+.week-navigator { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 8rpx; padding: 18rpx 22rpx; }
+.week-step { display: flex; align-items: center; justify-content: center; width: 62rpx; height: 62rpx; border-radius: 22rpx; background-color: var(--color-surface-muted); }
+.week-step--disabled { opacity: 0.28; }
+.week-copy { text-align: center; }
+.week-title { display: block; color: var(--color-text); font-size: 27rpx; font-weight: 780; }
+.week-caption { display: block; margin-top: 3rpx; color: var(--color-text-tertiary); font-size: 18rpx; }
 
 .week-grid-scroll { width: calc(100% + 48rpx); margin: 6rpx 0 0 -24rpx; padding: 0 24rpx 22rpx; }
 .week-grid { width: 1120rpx; padding: 24rpx; }
