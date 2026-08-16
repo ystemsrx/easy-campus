@@ -32,6 +32,7 @@ Page({
     scoreTone: "muted",
     scoreIsText: false,
     creditsLabel: "—",
+    gradePointLabel: "—",
     termLabel: "学期未知",
     components: [] as ComponentView[],
     detailRows: [] as DetailRow[],
@@ -65,6 +66,7 @@ Page({
       { label: "课程代码", value: course.courseCode || "—" },
       { label: "教学班", value: course.teachingClass || "—" },
       { label: "开课学院", value: course.department || "—" },
+      { label: "课程性质", value: course.courseNature || "—" },
       { label: "学年", value: course.academicYear || "—" },
       { label: "学期", value: academicTermLabel(course.term) },
       {
@@ -81,6 +83,10 @@ Page({
       scoreTone: scoreTone(course.finalScore),
       scoreIsText: typeof course.finalScore === "string",
       creditsLabel: formatCredits(course.credits),
+      gradePointLabel:
+        typeof course.gradePoint === "number"
+          ? course.gradePoint.toFixed(1)
+          : "—",
       termLabel: academicTermLabel(course.term),
       components,
       detailRows: rows,

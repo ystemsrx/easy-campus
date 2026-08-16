@@ -83,7 +83,7 @@
           <view class="ambient-blob feature-blob"></view>
           <text class="feature-kicker">加权平均分</text>
           <view class="score-ring"><text class="score-ring-value tnum">{{gradeAverageLabel}}</text></view>
-          <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程' : '查看成绩明细'}}</text>
+          <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 绩点 ' + gradePointAverageLabel : '查看成绩明细'}}</text>
         </view>
         <view class="feature-card feature-card--rooms pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
           <view class="ambient-blob feature-blob feature-blob--rooms"></view>

@@ -14,9 +14,9 @@
         <view class="grade-overview-main">
           <view class="average-ring"><view class="average-inner"><text class="average-value tnum">{{averageLabel}}</text><text class="average-unit">加权平均</text></view></view>
           <view class="overview-stats">
+            <view class="overview-stat"><text>平均绩点</text><text class="tnum">{{gradePointAverageLabel}}</text></view>
             <view class="overview-stat"><text>课程门数</text><text class="tnum">{{summary.courseCount}}</text></view>
             <view class="overview-stat"><text>已修学分</text><text class="tnum">{{summary.totalCredits}}</text></view>
-            <view class="overview-stat"><text>计均学分</text><text class="tnum">{{summary.numericGradedCredits}}</text></view>
           </view>
         </view>
         <view class="overview-foot"><text>{{filterLabel}}</text><text>{{sourceLabel}}</text></view>
@@ -34,7 +34,7 @@
         <view wx:for="{{gradeItems}}" wx:key="id" class="grade-card card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openGrade" hover-class="pressing">
           <view class="score-tile score-tile--{{item.scoreTone}} {{item.isTextGrade ? 'score-tile--text' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
           <view class="course-copy">
-            <view class="course-title-line"><text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view>
+            <view class="course-title-line"><text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text><view class="course-tags"><text wx:if="{{item.hasGradePoint}}" class="course-tag course-tag--gpa">绩点 {{item.gradePointLabel}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view></view>
             <text class="course-term">{{item.academicYear}} · {{item.termLabel}} · {{item.department || item.courseCode}}</text>
             <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>
             <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text>{{item.gradeRemark}}</text></view>

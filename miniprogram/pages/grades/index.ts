@@ -31,6 +31,8 @@ interface GradeView extends GradeCourse {
   scoreTone: string;
   isTextGrade: boolean;
   creditsLabel: string;
+  hasGradePoint: boolean;
+  gradePointLabel: string;
   termLabel: string;
   componentPreview: GradeComponentPreview[];
 }
@@ -63,6 +65,11 @@ function toGradeView(course: GradeCourse): GradeView {
     scoreTone: scoreTone(course.finalScore),
     isTextGrade: typeof course.finalScore === "string",
     creditsLabel: formatCredits(course.credits),
+    hasGradePoint: typeof course.gradePoint === "number",
+    gradePointLabel:
+      typeof course.gradePoint === "number"
+        ? course.gradePoint.toFixed(1)
+        : "—",
     termLabel: academicTermLabel(course.term),
     componentPreview: course.components.slice(0, 3).map((component) => ({
       name: component.name,
@@ -122,8 +129,8 @@ function summaryDefaults(): GradeSummary {
   return {
     courseCount: 0,
     totalCredits: 0,
-    numericGradedCredits: 0,
-    numericWeightedAverage: null,
+    weightedAverage: null,
+    gradePointAverage: null,
   };
 }
 
@@ -148,6 +155,7 @@ Page({
     gradeItems: [] as GradeView[],
     summary: summaryDefaults(),
     averageLabel: "—",
+    gradePointAverageLabel: "—",
     page: 1,
     totalPages: 1,
     total: 0,
@@ -220,7 +228,8 @@ Page({
     this.setData({
       gradeItems: incoming,
       summary: data.summary,
-      averageLabel: displayAverage(data.summary.numericWeightedAverage),
+      averageLabel: displayAverage(data.summary.weightedAverage),
+      gradePointAverageLabel: displayAverage(data.summary.gradePointAverage),
       page: data.pagination.page,
       totalPages: data.pagination.totalPages,
       total: data.pagination.total,

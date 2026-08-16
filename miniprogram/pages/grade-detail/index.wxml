@@ -9,7 +9,7 @@
         <text class="detail-course-meta">{{course.courseCode}} · {{course.department || '开课单位未提供'}}</text>
         <view class="detail-score-row">
           <view><text class="detail-score-value" overflow="ellipsis" max-lines="2">{{displayScore}}</text><text class="detail-score-label">总评成绩</text></view>
-          <view class="detail-mini-stat"><text>{{components.length}}</text><text>成绩分项</text></view>
+          <view class="detail-mini-stat"><text>{{gradePointLabel}}</text><text>绩点</text></view>
           <view class="detail-mini-stat"><text>{{creditsLabel}}</text><text>学分</text></view>
         </view>
       </view>

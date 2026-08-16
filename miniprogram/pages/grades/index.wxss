@@ -44,7 +44,9 @@
 .course-copy { flex: 1; min-width: 0; }
 .course-title-line { display: flex; flex-direction: row; align-items: flex-start; gap: 12rpx; }
 .course-name { flex: 1; min-width: 0; color: var(--color-text); font-size: 27rpx; font-weight: 750; line-height: 1.4; }
+.course-tags { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 6rpx; }
 .course-tag { flex: none; padding: 5rpx 12rpx; border-radius: 999rpx; color: #8b8b94; background: rgba(43, 38, 32, 0.05); font-size: 17rpx; font-weight: 700; }
+.course-tag--gpa { color: #9a671f; background: #f8eedd; }
 .course-term { display: block; margin-top: 6rpx; color: var(--color-text-tertiary); font-size: 20rpx; }
 .component-preview { display: flex; flex-direction: row; flex-wrap: wrap; gap: 7rpx; margin-top: 12rpx; }
 .component-preview text { padding: 5rpx 11rpx; border-radius: 999rpx; color: #8b8578; background: #f6f3ec; font-size: 17rpx; font-weight: 650; }

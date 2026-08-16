@@ -330,6 +330,7 @@ Page({
     timetableEmptyCaption: "连接服务后会自动显示今日课程",
     timetableCardRadius: getTimetableCardRadius(),
     gradeAverageLabel: "—",
+    gradePointAverageLabel: "—",
     gradeCourseCount: 0,
     plans: [] as PlanPreview[],
     messages: [] as MessagePreview[],
@@ -458,9 +459,16 @@ Page({
       messages,
       notices,
       gradeAverageLabel: (() => {
-        const average = cachedGrades?.data.summary.numericWeightedAverage;
+        const average = cachedGrades?.data.summary.weightedAverage;
         if (average === null || average === undefined) return "—";
         return Number.isInteger(average) ? String(average) : average.toFixed(1);
+      })(),
+      gradePointAverageLabel: (() => {
+        const gradePointAverage = cachedGrades?.data.summary.gradePointAverage;
+        if (gradePointAverage === null || gradePointAverage === undefined) {
+          return "—";
+        }
+        return gradePointAverage.toFixed(2);
       })(),
       gradeCourseCount: cachedGrades?.data.summary.courseCount || 0,
       loaded:
@@ -813,13 +821,17 @@ Page({
           gradeResult.value.data,
           gradeResult.value.meta.fetchedAt,
         );
-        const average = gradeResult.value.data.summary.numericWeightedAverage;
+        const average = gradeResult.value.data.summary.weightedAverage;
         patch.gradeAverageLabel =
           average === null
             ? "—"
             : Number.isInteger(average)
               ? String(average)
               : average.toFixed(1);
+        const gradePointAverage =
+          gradeResult.value.data.summary.gradePointAverage;
+        patch.gradePointAverageLabel =
+          gradePointAverage === null ? "—" : gradePointAverage.toFixed(2);
         patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
       }
     }

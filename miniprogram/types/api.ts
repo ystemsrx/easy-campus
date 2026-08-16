@@ -223,8 +223,13 @@ export interface GradeCourse {
   courseName: string;
   teachingClass: string;
   department: string;
+  courseNatureCode: string | null;
+  courseNature: string | null;
   credits: number | null;
   finalScore: GradeValue;
+  calculationScore: number | null;
+  gradePoint: number | null;
+  countsTowardGradePointAverage: boolean;
   gradeRemark: string | null;
   components: GradeComponent[];
 }
@@ -232,8 +237,8 @@ export interface GradeCourse {
 export interface GradeSummary {
   courseCount: number;
   totalCredits: number;
-  numericGradedCredits: number;
-  numericWeightedAverage: number | null;
+  weightedAverage: number | null;
+  gradePointAverage: number | null;
 }
 
 export interface AcademicSemesterOption {
