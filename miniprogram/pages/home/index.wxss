@@ -44,29 +44,53 @@
 .feature-card { position: relative; display: flex; flex: 1; flex-basis: 0; flex-direction: column; min-width: 0; min-height: 320rpx; padding: 30rpx; overflow: hidden; border-radius: 48rpx; color: #fff; box-shadow: var(--shadow-card); transition: transform 150ms ease, opacity 150ms ease; }
 .feature-card--pressed { transform: scale(0.97); opacity: 0.88; }
 .feature-card--grades { background: linear-gradient(160deg, #c98a2d, #e5b86e); }
-.feature-card--rooms { background: linear-gradient(160deg, #7d8f6e, #acbe97); }
+.feature-card--utility { background: linear-gradient(160deg, #7d8f6e, #acbe97); }
 .feature-blob { top: -54rpx; right: -55rpx; width: 210rpx; height: 190rpx; background: rgba(255, 255, 255, 0.17); }
-.feature-blob--rooms { top: auto; bottom: -74rpx; right: -55rpx; }
+.feature-blob--utility { top: auto; bottom: -74rpx; right: -55rpx; }
 .feature-kicker { position: relative; color: rgba(255, 255, 255, 0.76); font-size: 21rpx; font-weight: 750; letter-spacing: 3rpx; }
+.feature-kicker--icon { display: flex; flex-direction: row; align-items: center; gap: 8rpx; }
 .score-ring { position: relative; display: flex; align-items: center; justify-content: center; width: 150rpx; height: 150rpx; margin: 22rpx auto 0; border: 13rpx solid rgba(255, 255, 255, 0.9); border-radius: 50%; box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.15); }
 .score-ring-value { max-width: 116rpx; font-size: 40rpx; font-weight: 800; text-align: center; }
 .feature-caption { position: relative; margin-top: auto; padding-top: 16rpx; color: rgba(255, 255, 255, 0.82); font-size: 22rpx; font-weight: 600; text-align: center; }
-.rooms-main { position: relative; margin-top: 22rpx; font-size: 58rpx; font-weight: 800; line-height: 1; }
-.rooms-copy { position: relative; margin-top: 10rpx; color: rgba(255, 255, 255, 0.8); font-size: 22rpx; line-height: 1.45; }
-.feature-action { position: relative; display: flex; align-self: flex-start; flex-direction: row; align-items: center; gap: 8rpx; margin-top: auto; padding: 12rpx 20rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); font-size: 21rpx; font-weight: 700; }
+.utility-balance { position: relative; display: flex; flex-direction: row; align-items: flex-start; margin-top: 24rpx; }
+.utility-currency { margin-top: 2rpx; font-size: 25rpx; font-weight: 750; }
+.utility-value { margin-left: 3rpx; font-size: 55rpx; font-weight: 800; line-height: 1; }
+.utility-unbound { position: relative; display: block; margin-top: 26rpx; font-size: 46rpx; font-weight: 800; line-height: 1; }
+.utility-caption { position: relative; display: block; margin-top: 9rpx; color: rgba(255, 255, 255, 0.78); font-size: 21rpx; }
+.utility-pill { position: relative; display: flex; align-self: flex-start; align-items: center; max-width: 100%; margin-top: auto; padding: 11rpx 17rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); font-size: 18rpx; font-weight: 700; backdrop-filter: blur(10px); }
+.utility-pill > text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .home-page .section-action { flex: none; white-space: nowrap; }
 .home-page .section-action > text { display: block; flex: none; white-space: nowrap; }
 
-.support-row { display: flex; flex-direction: row; gap: 14rpx; margin-top: 20rpx; }
-.support-card { display: flex; flex: 1; flex-basis: 0; flex-direction: column; align-items: center; min-width: 0; padding: 22rpx 8rpx 20rpx; border-radius: 36rpx; background: #fff; box-shadow: var(--shadow-card); }
-.support-glyph { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; color: #a66f1f; background: #f8eedd; font-family: Georgia, "Songti SC", serif; font-size: 26rpx; font-weight: 750; }
-.support-card--coral .support-glyph { color: #b85c38; background: #f9eae2; }
-.support-card--sage .support-glyph { color: #5f7350; background: #edf1e6; }
-.support-card--rose .support-glyph { color: #a55357; background: #f7e9e8; }
-.support-copy { min-width: 0; margin-top: 10rpx; text-align: center; }
-.support-title { display: block; color: var(--color-text); font-size: 23rpx; font-weight: 750; }
-.support-caption { display: block; margin-top: 2rpx; color: var(--color-text-tertiary); font-size: 18rpx; }
+.exam-layout { display: flex; flex-direction: row; gap: 20rpx; margin-top: 20rpx; }
+.exam-card { flex: 1; min-width: 0; min-height: 294rpx; padding: 26rpx; }
+.exam-card-head { display: flex; flex-direction: row; align-items: center; justify-content: space-between; }
+.exam-card-title { display: flex; flex-direction: row; align-items: center; gap: 10rpx; color: var(--color-text); font-size: 23rpx; font-weight: 780; }
+.exam-preview-list { margin-top: 18rpx; }
+.exam-preview-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; min-height: 90rpx; }
+.exam-preview-row--divided { margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid var(--color-separator); }
+.exam-badge { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 66rpx; height: 66rpx; border-radius: 21rpx; color: #a55357; background: #f7e9e8; line-height: 1; }
+.exam-badge--current { color: #fff; background: linear-gradient(155deg, #c98a2d, #e5b86e); }
+.exam-badge--past { color: #a39e92; background: #efede6; }
+.exam-badge--pending { color: #a66f1f; background: #f8eedd; }
+.exam-badge-value { max-width: 58rpx; font-size: 24rpx; font-weight: 800; text-align: center; }
+.exam-badge-sub { margin-top: 4rpx; font-size: 14rpx; font-weight: 700; opacity: 0.78; }
+.exam-preview-copy { flex: 1; min-width: 0; }
+.exam-course-line { display: flex; flex-direction: row; align-items: center; gap: 7rpx; min-width: 0; }
+.exam-course-name { flex: 1; min-width: 0; color: var(--color-text); font-size: 22rpx; font-weight: 760; }
+.exam-type { flex: none; padding: 3rpx 8rpx; border-radius: 999rpx; color: #a66f1f; background: #f8eedd; font-size: 14rpx; font-weight: 750; }
+.exam-location { display: flex; flex-direction: row; align-items: center; gap: 5rpx; min-width: 0; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 17rpx; }
+.exam-location > text { flex: 1; min-width: 0; }
+.exam-time { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 130rpx; }
+.exam-date { color: var(--color-text); font-size: 18rpx; font-weight: 750; white-space: nowrap; }
+.exam-clock { max-width: 130rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 14rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exam-empty { display: flex; align-items: center; justify-content: center; min-height: 192rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
+.side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
+.side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
+.side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
+.side-action-icon--grades { background: #edf1e6; }
+.side-action-icon--rooms { background: #f9eae2; }
 
 .plan-card { min-height: 224rpx; overflow: hidden; }
 .plan-list { display: flex; flex-direction: column; justify-content: center; min-height: 224rpx; }

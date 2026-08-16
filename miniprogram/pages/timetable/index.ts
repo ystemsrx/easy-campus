@@ -1,10 +1,6 @@
 import {
   coursesForWeek,
-  currentIsoWeekday,
-  currentMinutes,
-  formatClock,
   teachingWeekForDate,
-  timeToMinutes,
   weekDateKeys,
   type TimetableCourse,
 } from "../../data/timetable";
@@ -21,11 +17,14 @@ import {
   saveTimetableSnapshot,
   type TimetableSnapshot,
 } from "../../store/timetable";
-import type { TimetableData } from "../../types/api";
+import type {
+  AcademicSemesterOption,
+  TimetableData,
+  TimetablePeriod,
+} from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { formatFriendlyDate, toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
+import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 
 interface DayOption {
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -33,135 +32,225 @@ interface DayOption {
   dateLabel: string;
   date: string;
   isToday: boolean;
-  hasCourses: boolean;
-}
-
-interface CourseView extends TimetableCourse {
-  state: "current" | "upcoming" | "finished";
-  stateLabel: string;
 }
 
 interface GridCourse extends TimetableCourse {
-  top: number;
-  height: number;
+  topPercent: string;
+  heightPercent: string;
+  showRoom: boolean;
+  showTeacher: boolean;
 }
 
 interface GridDay extends DayOption {
   courses: GridCourse[];
 }
 
-interface TimeMark {
+interface WeekPage {
+  weekNumber: number;
+  monthLabel: string;
+  days: DayOption[];
+  gridDays: GridDay[];
+  courseCount: number;
+}
+
+interface PeriodRow {
+  period: number;
+  startTime: string;
+  endTime: string;
+}
+
+interface TimetableThemeOption {
+  id: string;
   label: string;
-  top: number;
+  color: string;
+  image: boolean;
 }
 
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
+const BACKGROUND_WIDTH = 854;
+const BACKGROUND_HEIGHT = 1920;
+const THEMES: TimetableThemeOption[] = [
+  { id: "image", label: "默认壁纸", color: "#0862ad", image: true },
+  { id: "ocean", label: "深海", color: "#17588f", image: false },
+  { id: "azure", label: "晴空", color: "#3478ae", image: false },
+  { id: "forest", label: "松林", color: "#416f68", image: false },
+  { id: "plum", label: "暮紫", color: "#655b82", image: false },
+];
+
 let activeTimetable: TimetableData | null = null;
 let visibleCourses: TimetableCourse[] = [];
-let clockTimer: number | undefined;
 let requestInFlight = false;
 let activeAccount = "";
 let defaultSemesterId = "";
 let activeSnapshot: TimetableSnapshot | null = null;
 
-function gridLayout(courses: TimetableCourse[]) {
-  const valid = courses.filter(
-    (course) => course.startTime !== "--:--" && course.endTime !== "--:--",
-  );
-  const earliest = valid.length
-    ? Math.min(...valid.map((course) => timeToMinutes(course.startTime)))
-    : 8 * 60;
-  const latest = valid.length
-    ? Math.max(...valid.map((course) => timeToMinutes(course.endTime)))
-    : 22 * 60;
-  const start = Math.max(0, Math.floor((earliest - 60) / 120) * 120);
-  const end = Math.min(24 * 60, Math.ceil((latest + 60) / 120) * 120);
-  const height = Math.max(480, end - start);
-  const marks: TimeMark[] = [];
-  for (let minute = start; minute <= end; minute += 120) {
-    marks.push({
-      label: `${String(Math.floor(minute / 60)).padStart(2, "0")}:00`,
-      top: minute - start,
-    });
-  }
-  return { start, height, marks };
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
-function toGridCourse(course: TimetableCourse, gridStart: number): GridCourse {
-  const start = timeToMinutes(course.startTime);
-  const end = timeToMinutes(course.endTime);
-  return {
-    ...course,
-    top: Math.max(0, start - gridStart),
-    height: Math.max(58, end - start),
-  };
+function shortSemesterLabel(semester: AcademicSemesterOption | null): string {
+  if (!semester) return "选择学期";
+  const start = pad(semester.academicYear % 100);
+  const end = pad((semester.academicYear + 1) % 100);
+  const term = semester.term === 1 ? "秋" : semester.term === 2 ? "春" : "夏";
+  return `${start}-${end} ${term}`;
 }
 
-function buildDays(
-  timetable: TimetableData | null,
-  week: number,
-  courses: TimetableCourse[],
-): DayOption[] {
-  const todayKey = toDateString(new Date());
-  const dateKeys = weekDateKeys(timetable, week);
+function buildDays(timetable: TimetableData, week: number): DayOption[] {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const dates = weekDateKeys(timetable, week);
   return DAY_LABELS.map((shortLabel, index) => {
-    const weekday = (index + 1) as DayOption["weekday"];
-    const date = dateKeys[index] || "";
+    const date = dates[index] || "";
     return {
-      weekday,
+      weekday: (index + 1) as DayOption["weekday"],
       shortLabel,
       dateLabel: date ? String(Number(date.slice(-2))) : "—",
       date,
       isToday: date === todayKey,
-      hasCourses: courses.some((course) =>
-        date ? course.date === date : course.weekday === weekday,
-      ),
     };
   });
 }
 
-function coursesForDay(
-  courses: TimetableCourse[],
-  day: DayOption,
-): TimetableCourse[] {
-  return courses.filter((course) =>
-    day.date ? course.date === day.date : course.weekday === day.weekday,
-  );
+function courseOccursOnDay(course: TimetableCourse, day: DayOption): boolean {
+  return day.date ? course.date === day.date : course.weekday === day.weekday;
 }
 
-function toCourseView(course: TimetableCourse, now: Date): CourseView {
-  const todayKey = toDateString(now);
-  if (course.date && course.date !== todayKey) {
-    return { ...course, state: "upcoming", stateLabel: course.periodLabel };
+function maxPeriodFor(timetable: TimetableData): number {
+  const periods = timetable.periods.map((item) => item.period);
+  const coursePeriods = timetable.courses.flatMap((course) =>
+    course.arrangements.map((arrangement) => arrangement.periodEnd),
+  );
+  return Math.max(12, ...periods, ...coursePeriods);
+}
+
+function toGridCourse(course: TimetableCourse, maxPeriod: number): GridCourse {
+  const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
+  const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
+  const span = end - start + 1;
+  return {
+    ...course,
+    topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
+    heightPercent: ((span / maxPeriod) * 100).toFixed(5),
+    showRoom: span >= 2,
+    showTeacher: span >= 3,
+  };
+}
+
+function monthLabel(days: DayOption[]): string {
+  const first = days.find((day) => day.date)?.date;
+  return first ? `${Number(first.slice(5, 7))}月` : "课表";
+}
+
+function buildWeekPage(
+  timetable: TimetableData,
+  weekNumber: number,
+  maxPeriod: number,
+): WeekPage {
+  const courses = coursesForWeek(timetable, weekNumber);
+  const days = buildDays(timetable, weekNumber);
+  return {
+    weekNumber,
+    monthLabel: monthLabel(days),
+    days,
+    gridDays: days.map((day) => ({
+      ...day,
+      courses: courses
+        .filter((course) => courseOccursOnDay(course, day))
+        .map((course) => toGridCourse(course, maxPeriod)),
+    })),
+    courseCount: courses.length,
+  };
+}
+
+function buildPeriodRows(
+  timetable: TimetableData,
+  maxPeriod: number,
+  courses: TimetableCourse[],
+): PeriodRow[] {
+  const source = new Map<number, TimetablePeriod>(
+    timetable.periods.map((period) => [period.period, period]),
+  );
+  const starts = new Map<number, string>();
+  const ends = new Map<number, string>();
+  for (const course of courses) {
+    if (course.startTime !== "--:--")
+      starts.set(course.periodStart, course.startTime);
+    if (course.endTime !== "--:--") ends.set(course.periodEnd, course.endTime);
   }
-  if (!course.date && course.weekday !== currentIsoWeekday(now)) {
-    return { ...course, state: "upcoming", stateLabel: course.periodLabel };
+  return Array.from({ length: maxPeriod }, (_, index) => {
+    const period = index + 1;
+    return {
+      period,
+      startTime: starts.get(period) || source.get(period)?.startTime || "--:--",
+      endTime: ends.get(period) || source.get(period)?.endTime || "--:--",
+    };
+  });
+}
+
+function backgroundMetrics(): {
+  headerTop: number;
+  headerHeight: number;
+  headerRightInset: number;
+  menuTop: number;
+  imageStyle: string;
+} {
+  try {
+    const windowInfo = wx.getWindowInfo();
+    const menu = wx.getMenuButtonBoundingClientRect();
+    const statusBarHeight = windowInfo.statusBarHeight || menu.top || 24;
+    const contentHeight = Math.max(
+      50,
+      (menu.top - statusBarHeight) * 2 + menu.height,
+    );
+    const headerHeight = statusBarHeight + contentHeight;
+    const rightInset = Math.max(12, windowInfo.windowWidth - menu.left + 6);
+    const scale = Math.max(
+      windowInfo.windowWidth / BACKGROUND_WIDTH,
+      windowInfo.windowHeight / BACKGROUND_HEIGHT,
+    );
+    const width = BACKGROUND_WIDTH * scale;
+    const height = BACKGROUND_HEIGHT * scale;
+    const left = (windowInfo.windowWidth - width) / 2;
+    return {
+      headerTop: statusBarHeight,
+      headerHeight,
+      headerRightInset: rightInset,
+      menuTop: headerHeight + 4,
+      imageStyle: `width:${width}px;height:${height}px;left:${left}px;top:0px;`,
+    };
+  } catch {
+    return {
+      headerTop: 24,
+      headerHeight: 74,
+      headerRightInset: 104,
+      menuTop: 78,
+      imageStyle: "width:100%;height:100%;left:0;top:0;",
+    };
   }
-  const timestamp = now.getTime();
-  if (
-    course.startAt &&
-    course.endAt &&
-    timestamp >= new Date(course.startAt).getTime() &&
-    timestamp < new Date(course.endAt).getTime()
-  ) {
-    return { ...course, state: "current", stateLabel: "进行中" };
+}
+
+function loadThemeId(): string {
+  try {
+    const saved = String(wx.getStorageSync(THEME_STORAGE_KEY) || "");
+    return THEMES.some((theme) => theme.id === saved) ? saved : "image";
+  } catch {
+    return "image";
   }
-  if (course.endAt && timestamp >= new Date(course.endAt).getTime()) {
-    return { ...course, state: "finished", stateLabel: "已结束" };
-  }
-  if (!course.startAt) {
-    const minutes = currentMinutes(now);
-    if (
-      minutes >= timeToMinutes(course.startTime) &&
-      minutes < timeToMinutes(course.endTime)
-    ) {
-      return { ...course, state: "current", stateLabel: "进行中" };
-    }
-    if (minutes >= timeToMinutes(course.endTime)) {
-      return { ...course, state: "finished", stateLabel: "已结束" };
-    }
-  }
-  return { ...course, state: "upcoming", stateLabel: course.periodLabel };
+}
+
+function themePatch(id: string): {
+  timetableThemeId: string;
+  useBackgroundImage: boolean;
+  backgroundColor: string;
+} {
+  const selected = THEMES.find((theme) => theme.id === id) || THEMES[0];
+  return {
+    timetableThemeId: selected.id,
+    useBackgroundImage: selected.image,
+    backgroundColor: selected.color,
+  };
 }
 
 Page({
@@ -169,27 +258,21 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
-    currentTime: formatClock(),
-    semesterLabel: "课表",
+    ...backgroundMetrics(),
+    ...themePatch("image"),
+    timetableThemes: THEMES,
+    menuOpen: false,
+    semesterOpen: false,
+    semesterLabel: "选择学期",
+    semesterShortLabel: "选择学期",
     semesterId: "",
     semesters: [] as TimetableData["semesters"],
     weekNumber: 1,
-    weekLabel: "第 1 教学周",
+    weekIndex: 0,
+    weekLabel: "第 1 周",
     maxWeek: 1,
-    canPreviousWeek: false,
-    canNextWeek: false,
-    days: [] as DayOption[],
-    selectedWeekday: currentIsoWeekday(),
-    selectedDateLabel: "",
-    courses: [] as CourseView[],
-    courseCount: 0,
-    totalCourseCount: 0,
-    gridDays: [] as GridDay[],
-    gridHeight: 840,
-    timeMarks: [] as TimeMark[],
-    statusCaption: "正在读取已保存的课表",
-    emptyDescription: "课表同步后会显示在这里",
+    weekPages: [] as WeekPage[],
+    periodRows: [] as PeriodRow[],
     selectedCourse: null as TimetableCourse | null,
     courseSheetVisible: false,
   },
@@ -198,27 +281,19 @@ Page({
     activeTimetable = null;
     activeSnapshot = null;
     defaultSemesterId = "";
-    this.setData(resolveAppearance());
+    this.setData({
+      ...resolveAppearance(),
+      ...backgroundMetrics(),
+      ...themePatch(loadThemeId()),
+    });
     this.hydrate();
     void this.loadTimetable(false);
   },
   onShow() {
     if (!ensureAuthenticated()) return;
-    this.setData(resolveAppearance());
+    this.setData({ ...resolveAppearance(), ...backgroundMetrics() });
     this.hydrate();
-    this.updateClock();
-    this.stopClock();
-    clockTimer = setInterval(
-      () => this.updateClock(),
-      30000,
-    ) as unknown as number;
     if (!activeTimetable) void this.loadTimetable(false);
-  },
-  onHide() {
-    this.stopClock();
-  },
-  onUnload() {
-    this.stopClock();
   },
   hydrate() {
     const account = getSession()?.user.account || "";
@@ -258,10 +333,7 @@ Page({
         claimAutomaticRefresh("timetable", activeAccount);
     } catch {
       if (!activeTimetable) {
-        this.setData({
-          statusCaption: "课表暂时不可用",
-          emptyDescription: "请稍后下拉或重新进入页面",
-        });
+        wx.showToast({ title: "课表暂时不可用", icon: "none" });
       }
     } finally {
       requestInFlight = false;
@@ -271,8 +343,8 @@ Page({
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
-    const detectedWeek = teachingWeekForDate(timetable);
     const maxWeek = Math.max(1, timetable.summary.maxWeek);
+    const detectedWeek = teachingWeekForDate(timetable);
     const weekNumber = Math.min(
       maxWeek,
       Math.max(
@@ -282,100 +354,47 @@ Page({
           : detectedWeek || 1,
       ),
     );
+    const maxPeriod = maxPeriodFor(timetable);
+    const periodCourses = coursesForWeek(timetable, weekNumber);
+    visibleCourses = periodCourses;
     this.setData({
       semesterLabel: timetable.semester.label,
+      semesterShortLabel: shortSemesterLabel(timetable.semester),
       semesterId: timetable.semester.id,
       semesters: timetable.semesters,
-      totalCourseCount: timetable.summary.courseCount,
+      weekNumber,
+      weekIndex: weekNumber - 1,
+      weekLabel: `第 ${weekNumber} 周`,
       maxWeek,
-      statusCaption:
-        detectedWeek === null
-          ? "周期课表按节次展示 · 开学后换算设备时区"
-          : "已同步教务系统 · 时间按用户所在时区展示",
-      emptyDescription: "本周这一天没有课程",
+      periodRows: buildPeriodRows(timetable, maxPeriod, periodCourses),
+      weekPages: Array.from({ length: maxWeek }, (_, index) =>
+        buildWeekPage(timetable, index + 1, maxPeriod),
+      ),
     });
-    this.applyWeek(weekNumber, new Date());
   },
-  stopClock() {
-    if (clockTimer !== undefined) {
-      clearInterval(clockTimer);
-      clockTimer = undefined;
-    }
-  },
-  updateClock() {
-    this.setData({ currentTime: formatClock() });
-    if (activeTimetable) this.applyWeek(this.data.weekNumber, new Date());
-  },
-  applyWeek(week: number, now: Date) {
-    const maxWeek = Math.max(1, this.data.maxWeek);
-    const weekNumber = Math.min(maxWeek, Math.max(1, week));
+  onWeekChange(event: WechatMiniprogram.SwiperChange) {
+    if (!activeTimetable) return;
+    const weekNumber = Math.min(
+      this.data.maxWeek,
+      Math.max(1, Number(event.detail.current) + 1),
+    );
+    if (weekNumber === this.data.weekNumber) return;
     visibleCourses = coursesForWeek(activeTimetable, weekNumber);
-    const days = buildDays(activeTimetable, weekNumber, visibleCourses);
-    const layout = gridLayout(visibleCourses);
-    let selectedWeekday = this.data.selectedWeekday;
-    if (!days.some((day) => day.weekday === selectedWeekday)) {
-      selectedWeekday = currentIsoWeekday(now);
-    }
-    const detectedWeek = teachingWeekForDate(activeTimetable, now);
-    if (detectedWeek === weekNumber) selectedWeekday = currentIsoWeekday(now);
     this.setData({
       weekNumber,
-      weekLabel: `第 ${weekNumber} 教学周`,
-      canPreviousWeek: weekNumber > 1,
-      canNextWeek: weekNumber < maxWeek,
-      days,
-      gridDays: days.map((day) => ({
-        ...day,
-        courses: coursesForDay(visibleCourses, day).map((course) =>
-          toGridCourse(course, layout.start),
-        ),
-      })),
-      gridHeight: layout.height,
-      timeMarks: layout.marks,
-      selectedWeekday,
+      weekIndex: weekNumber - 1,
+      weekLabel: `第 ${weekNumber} 周`,
+      periodRows: buildPeriodRows(
+        activeTimetable,
+        this.data.periodRows.length || maxPeriodFor(activeTimetable),
+        visibleCourses,
+      ),
     });
-    this.applyDay(selectedWeekday, now, days);
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
-  },
-  selectDay(event: WechatMiniprogram.TouchEvent) {
-    const weekday = Number(
-      event.currentTarget.dataset.weekday,
-    ) as DayOption["weekday"];
-    if (weekday === this.data.selectedWeekday) return;
     haptic("light");
-    this.applyDay(weekday, new Date());
-  },
-  applyDay(weekday: DayOption["weekday"], now: Date, dayOptions?: DayOption[]) {
-    const days = dayOptions || this.data.days;
-    const selectedDay = days.find((day) => day.weekday === weekday);
-    if (!selectedDay) return;
-    const courses = coursesForDay(visibleCourses, selectedDay).map((course) =>
-      toCourseView(course, now),
-    );
-    this.setData({
-      selectedWeekday: weekday,
-      selectedDateLabel: selectedDay.date
-        ? `${formatFriendlyDate(selectedDay.date)}${selectedDay.isToday ? " · 今天" : ""}`
-        : `周${DAY_LABELS[weekday - 1]} · 第 ${this.data.weekNumber} 教学周`,
-      courses,
-      courseCount: courses.length,
-    });
-  },
-  changeWeek(event: WechatMiniprogram.TouchEvent) {
-    const delta = Number(event.currentTarget.dataset.delta);
-    if (!Number.isFinite(delta)) return;
-    const next = this.data.weekNumber + delta;
-    if (next < 1 || next > this.data.maxWeek) return;
-    haptic("light");
-    this.applyWeek(next, new Date());
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semester = String(event.currentTarget.dataset.semester || "");
+    this.setData({ semesterOpen: false });
     if (!semester || semester === this.data.semesterId) return;
     haptic("light");
     const querySemester = semester === defaultSemesterId ? undefined : semester;
@@ -387,16 +406,44 @@ Page({
     }
     void this.loadTimetable(false, querySemester);
   },
-  goToday() {
+  toggleMenu() {
     haptic("light");
-    const currentWeek = teachingWeekForDate(activeTimetable);
-    if (currentWeek !== null) {
-      this.applyWeek(currentWeek, new Date());
-      return;
+    this.setData({ menuOpen: !this.data.menuOpen, semesterOpen: false });
+  },
+  toggleSemester() {
+    haptic("light");
+    this.setData({ semesterOpen: !this.data.semesterOpen, menuOpen: false });
+  },
+  closeMenus() {
+    this.setData({ menuOpen: false, semesterOpen: false });
+  },
+  stopPropagation() {},
+  selectTheme(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.theme || "image");
+    const patch = themePatch(id);
+    this.setData(patch);
+    try {
+      wx.setStorageSync(THEME_STORAGE_KEY, patch.timetableThemeId);
+    } catch {
+      // 外观偏好保存失败不影响当前显示。
     }
-    this.applyDay(currentIsoWeekday(), new Date());
+    haptic("light");
+  },
+  openCalendar() {
+    this.setData({ menuOpen: false });
+    haptic("light");
+    void navigateTo("/pages/calendar/index", "wx://upwards");
+  },
+  goToday() {
+    if (!activeTimetable) return;
+    this.setData({ menuOpen: false });
+    const week = teachingWeekForDate(activeTimetable);
+    if (week !== null && week >= 1 && week <= this.data.maxWeek) {
+      this.setData({ weekIndex: week - 1 });
+    }
   },
   onRefresh() {
+    this.setData({ menuOpen: false });
     haptic("light");
     void this.loadTimetable(
       true,
@@ -404,6 +451,10 @@ Page({
         ? undefined
         : this.data.semesterId || undefined,
     );
+  },
+  goBack() {
+    haptic("light");
+    wx.navigateBack({ fail: () => wx.switchTab({ url: "/pages/home/index" }) });
   },
   openCourse(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");

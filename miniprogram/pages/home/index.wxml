@@ -85,19 +85,31 @@
           <view class="score-ring"><text class="score-ring-value tnum">{{gradeAverageLabel}}</text></view>
           <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 绩点 ' + gradePointAverageLabel : '查看成绩明细'}}</text>
         </view>
-        <view class="feature-card feature-card--rooms pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
-          <view class="ambient-blob feature-blob feature-blob--rooms"></view>
-          <text class="feature-kicker">空教室</text>
-          <text class="rooms-main">实时</text>
-          <text class="rooms-copy">按日期、节次和楼栋查询</text>
-          <view class="feature-action"><lucide-icon name="sparkles" tone="white" size="{{20}}"></lucide-icon><text>立即查询</text></view>
+        <view class="feature-card feature-card--utility pressable" data-route="/pages/electricity/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
+          <view class="ambient-blob feature-blob feature-blob--utility"></view>
+          <view class="feature-kicker feature-kicker--icon"><lucide-icon name="zap" tone="white" size="{{21}}"></lucide-icon><text>寝室电费</text></view>
+          <view wx:if="{{electricityBound}}" class="utility-balance"><text class="utility-currency">¥</text><text class="utility-value tnum">{{electricityBalanceLabel}}</text></view>
+          <text wx:else class="utility-unbound">未绑定</text>
+          <text class="utility-caption">{{electricityBound ? '剩余金额' : '选择宿舍与寝室号'}}</text>
+          <view class="utility-pill"><text>{{electricityUsageLabel}}</text></view>
         </view>
       </view>
 
-      <view class="support-row stagger-item stagger-2">
-        <view wx:for="{{supportActions}}" wx:key="title" class="support-card support-card--{{item.tone}} pressable" data-route="{{item.route}}" bindtap="onQuickAction" hover-class="pressing">
-          <view class="support-glyph"><lucide-icon name="{{item.icon}}" tone="{{item.tone}}" size="{{30}}"></lucide-icon></view>
-          <view class="support-copy"><text class="support-title">{{item.title}}</text><text class="support-caption">{{item.caption}}</text></view>
+      <view class="exam-layout stagger-item stagger-2">
+        <view class="exam-card card pressable" data-route="/pages/exams/index" bindtap="onQuickAction" hover-class="pressing">
+          <view class="exam-card-head"><view class="exam-card-title"><lucide-icon name="clock-3" tone="rose" size="{{23}}"></lucide-icon><text>考试安排</text></view><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+          <view wx:if="{{examPreviews.length}}" class="exam-preview-list">
+            <view wx:for="{{examPreviews}}" wx:key="id" class="exam-preview-row {{index ? 'exam-preview-row--divided' : ''}}">
+              <view class="exam-badge exam-badge--{{item.badgeTone}}"><text class="exam-badge-value tnum">{{item.badgeText}}</text><text class="exam-badge-sub">{{item.badgeSub}}</text></view>
+              <view class="exam-preview-copy"><view class="exam-course-line"><text class="exam-course-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text wx:if="{{item.typeLabel !== '正常考试'}}" class="exam-type">{{item.typeLabel}}</text></view><view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{16}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}}</text></view></view>
+              <view class="exam-time"><text class="exam-date tnum">{{item.dateLabel}}</text><text class="exam-clock tnum">{{item.timeLabel}}</text></view>
+            </view>
+          </view>
+          <view wx:else class="exam-empty"><text>{{examEmptyLabel}}</text></view>
+        </view>
+        <view class="side-actions">
+          <view class="side-action card pressable" data-route="/pages/grades/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--grades"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>成绩</text></view>
+          <view class="side-action card pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
         </view>
       </view>
 

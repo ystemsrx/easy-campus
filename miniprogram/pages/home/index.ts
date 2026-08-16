@@ -15,6 +15,7 @@ import {
   getNotices,
   getTimetable,
 } from "../../services/teaching";
+import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
 import { getErrorMessage } from "../../services/request";
 import {
   claimAutomaticRefresh,
@@ -23,6 +24,8 @@ import {
   WEEK_MS,
 } from "../../store/cache-policy";
 import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
+import { loadElectricitySnapshot } from "../../store/electricity";
+import { loadExamsSnapshot } from "../../store/exams";
 import { loadScheduleData } from "../../store/schedule";
 import { getSession } from "../../store/session";
 import {
@@ -44,6 +47,7 @@ import {
 } from "../../data/timetable";
 import type {
   CredentialState,
+  Exam,
   Notice,
   Publication,
   TeachingMessage,
@@ -54,6 +58,9 @@ import {
   currentLocalHour,
   formatDateTime,
   formatFriendlyDate,
+  formatShortDate,
+  formatTimestampTime,
+  localDateKey,
   today,
 } from "../../utils/date";
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
@@ -102,6 +109,26 @@ interface PublicationPreview extends Publication {
   expanded: boolean;
 }
 
+interface ExamPreview {
+  id: string;
+  courseName: string;
+  location: string;
+  dateLabel: string;
+  timeLabel: string;
+  typeLabel: string;
+  badgeText: string;
+  badgeSub: string;
+  badgeTone: "current" | "future" | "past" | "pending";
+}
+
+interface ShortcutCachePatch {
+  electricityBound: boolean;
+  electricityBalanceLabel: string;
+  electricityUsageLabel: string;
+  examPreviews: ExamPreview[];
+  examEmptyLabel: string;
+}
+
 let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
 let announcementModalTimer: number | undefined;
@@ -117,6 +144,98 @@ let credentialExitInFlight = false;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
 let activeTimetable: TimetableData | null = null;
+
+function dateAtLocalMidnight(value: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  return new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  ).getTime();
+}
+
+function examDateKey(exam: Exam): string {
+  return exam.time.startAt ? localDateKey(exam.time.startAt) : exam.time.date;
+}
+
+function examTimestamp(exam: Exam): number {
+  if (exam.time.startAt) {
+    const value = new Date(exam.time.startAt).getTime();
+    if (Number.isFinite(value)) return value;
+  }
+  const date = dateAtLocalMidnight(examDateKey(exam));
+  return date ?? Number.MAX_SAFE_INTEGER;
+}
+
+function examBadge(
+  exam: Exam,
+): Pick<ExamPreview, "badgeText" | "badgeSub" | "badgeTone"> {
+  const target = dateAtLocalMidnight(examDateKey(exam));
+  const current = dateAtLocalMidnight(today());
+  if (target === null || current === null) {
+    return { badgeText: "待", badgeSub: "定", badgeTone: "pending" };
+  }
+  const days = Math.round((target - current) / (24 * 60 * 60 * 1000));
+  if (days === 0)
+    return { badgeText: "今", badgeSub: "日", badgeTone: "current" };
+  if (days > 0) {
+    return {
+      badgeText: days > 99 ? "99+" : String(days),
+      badgeSub: "天",
+      badgeTone: "future",
+    };
+  }
+  return { badgeText: "已", badgeSub: "考", badgeTone: "past" };
+}
+
+function toExamPreview(exam: Exam): ExamPreview {
+  const dateKey = examDateKey(exam);
+  const startTime = exam.time.startAt
+    ? formatTimestampTime(exam.time.startAt)
+    : exam.time.startTime || "待定";
+  const endTime = exam.time.endAt
+    ? formatTimestampTime(exam.time.endAt)
+    : exam.time.endTime;
+  return {
+    id: exam.id,
+    courseName: exam.course.name,
+    location:
+      [exam.location.room, exam.location.campus].filter(Boolean).join(" · ") ||
+      "考场待定",
+    dateLabel: dateKey ? formatShortDate(dateKey) : "日期待定",
+    timeLabel: endTime ? `${startTime}–${endTime}` : startTime,
+    typeLabel: exam.arrangementTypeLabel || "正常考试",
+    ...examBadge(exam),
+  };
+}
+
+function shortcutCachePatch(account: string): ShortcutCachePatch {
+  const electricity = loadElectricitySnapshot(account)?.data;
+  const electricityAccount = electricity?.account;
+  const exams = loadExamsSnapshot(account)?.data.items || [];
+  const now = Date.now();
+  const ordered = [...exams].sort(
+    (left, right) => examTimestamp(left) - examTimestamp(right),
+  );
+  const upcoming = ordered.filter((exam) => examTimestamp(exam) >= now);
+  const selected = (
+    upcoming.length ? upcoming : ordered.slice().reverse()
+  ).slice(0, 2);
+  return {
+    electricityBound: Boolean(electricity?.binding),
+    electricityBalanceLabel: electricityAccount
+      ? electricityAccount.remainingAmountYuan.toFixed(2)
+      : "—",
+    electricityUsageLabel: electricityAccount
+      ? `计费 ${electricityAccount.billedElectricityKwh.toFixed(2)} 度`
+      : electricity?.binding
+        ? "账单暂不可用"
+        : "绑定寝室后查看",
+    examPreviews: selected.map(toExamPreview),
+    examEmptyLabel: exams.length ? "本学期考试已结束" : "暂时没有考试安排",
+  };
+}
 
 function getTimetableCardRadius(): number {
   try {
@@ -332,6 +451,11 @@ Page({
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
     gradeCourseCount: 0,
+    electricityBound: false,
+    electricityBalanceLabel: "—",
+    electricityUsageLabel: "绑定寝室后查看",
+    examPreviews: [] as ExamPreview[],
+    examEmptyLabel: "暂时没有考试安排",
     plans: [] as PlanPreview[],
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
@@ -344,36 +468,6 @@ Page({
     announcementModalMounted: false,
     announcementModalOpen: false,
     activeAnnouncement: null as PublicationPreview | null,
-    supportActions: [
-      {
-        title: "考试",
-        caption: "安排与座位",
-        icon: "clipboard-check",
-        tone: "amber",
-        route: "/pages/exams/index",
-      },
-      {
-        title: "校历",
-        caption: "查看最新校历",
-        icon: "calendar-range",
-        tone: "sage",
-        route: "/pages/calendar/index",
-      },
-      {
-        title: "校园消息",
-        caption: "通知与教务",
-        icon: "inbox",
-        tone: "rose",
-        route: "inbox",
-      },
-      {
-        title: "电费",
-        caption: "用量与余额",
-        icon: "zap",
-        tone: "coral",
-        route: "/pages/electricity/index",
-      },
-    ],
   },
   onLoad() {
     hydratedAccount = "";
@@ -389,6 +483,7 @@ Page({
     automaticPopupsThisEntry = new Set<string>();
     this.applyAppearance();
     this.hydrateCachedDashboard();
+    this.hydrateShortcutCaches();
     this.getTabBar().setData({
       selected: 0,
       themeClass: this.data.themeClass,
@@ -405,6 +500,9 @@ Page({
     ) as unknown as number;
     void this.loadDashboard(false);
     void this.loadPublicationFeed();
+    void refreshExamsAfterSignIn().then(() => {
+      if (homeVisible) this.hydrateShortcutCaches();
+    });
   },
   onHide() {
     homeVisible = false;
@@ -440,6 +538,11 @@ Page({
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  hydrateShortcutCaches() {
+    const account = getSession()?.user.account || "";
+    if (!account) return;
+    this.setData(shortcutCachePatch(account));
   },
   hydrateCachedDashboard() {
     const account = getSession()?.user.account || "";

@@ -1,63 +1,179 @@
-<view class="page timetable-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
-    <navigation-bar title="完整课表" subtitle="{{weekLabel}} · {{semesterLabel}}" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
-    <view class="timetable-content page-content page-enter">
-      <view class="timetable-status">
-        <view class="status-dot"></view>
-        <text>{{statusCaption}}</text>
-        <view class="status-refresh pressable" bindtap="onRefresh" hover-class="pressing" aria-role="button" aria-label="刷新课表">
-          <lucide-icon name="refresh-cw" tone="muted" size="{{26}}"></lucide-icon>
-        </view>
+<view class="page timetable-page {{themeClass}} {{motionClass}}" style="background-color: {{backgroundColor}};">
+  <image
+    wx:if="{{useBackgroundImage}}"
+    class="timetable-background"
+    src="/assets/images/timetable-background.png"
+    mode="scaleToFill"
+    style="{{imageStyle}}"
+    aria-hidden="true"
+  ></image>
+  <view class="background-shade"></view>
+
+  <view class="timetable-header" style="height: {{headerHeight}}px; padding-top: {{headerTop}}px;">
+    <view class="header-left">
+      <view class="header-button pressable" bindtap="goBack" hover-class="header-button--pressed" aria-role="button" aria-label="返回">
+        <lucide-icon name="arrow-left" tone="white" size="{{29}}"></lucide-icon>
       </view>
-
-      <scroll-view wx:if="{{semesters.length}}" class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
-        <view class="semester-row">
-          <view wx:for="{{semesters}}" wx:key="id" class="semester-chip pressable {{semesterId === item.id ? 'semester-chip--active' : ''}}" data-semester="{{item.id}}" bindtap="selectSemester" hover-class="pressing"><text>{{item.label}}</text></view>
-        </view>
-      </scroll-view>
-
-      <view class="week-navigator card">
-        <view class="week-step pressable {{canPreviousWeek ? '' : 'week-step--disabled'}}" data-delta="-1" bindtap="changeWeek" hover-class="pressing"><lucide-icon name="arrow-left" tone="muted" size="{{27}}"></lucide-icon></view>
-        <view class="week-copy"><text class="week-title">{{weekLabel}}</text><text class="week-caption">{{courseCount}} 项课程安排</text></view>
-        <view class="week-step pressable {{canNextWeek ? '' : 'week-step--disabled'}}" data-delta="{{1}}" bindtap="changeWeek" hover-class="pressing"><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
+      <view class="header-button pressable" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单">
+        <view class="menu-glyph"><view></view><view></view><view></view></view>
       </view>
+    </view>
 
-      <scroll-view class="week-grid-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
-        <view class="week-grid card">
-          <view class="week-grid-head">
-            <view class="time-head"></view>
-            <view wx:for="{{gridDays}}" wx:key="weekday" class="grid-day-head {{item.isToday ? 'grid-day-head--today' : ''}}"><text>周{{item.shortLabel}}</text><view class="grid-day-date"><text>{{item.dateLabel}}</text></view></view>
+    <text class="header-week tnum">{{weekLabel}}</text>
+
+    <view
+      class="semester-trigger pressable"
+      style="right: {{headerRightInset}}px;"
+      bindtap="toggleSemester"
+      hover-class="semester-trigger--pressed"
+      aria-role="button"
+      aria-label="切换学期，当前 {{semesterLabel}}"
+    >
+      <text>{{semesterShortLabel}}</text>
+      <view class="semester-chevron {{semesterOpen ? 'semester-chevron--open' : ''}}"><lucide-icon name="chevron-right" tone="white" size="{{18}}"></lucide-icon></view>
+    </view>
+  </view>
+
+  <swiper
+    wx:if="{{weekPages.length}}"
+    class="week-swiper"
+    current="{{weekIndex}}"
+    duration="380"
+    easing-function="easeOutCubic"
+    bindchange="onWeekChange"
+    cache-extent="1"
+  >
+    <swiper-item wx:for="{{weekPages}}" wx:for-item="weekPage" wx:key="weekNumber">
+      <view class="week-page page-enter">
+        <view class="week-grid-head">
+          <view class="month-head"><text>{{weekPage.monthLabel}}</text></view>
+          <view
+            wx:for="{{weekPage.days}}"
+            wx:for-item="day"
+            wx:key="weekday"
+            class="grid-day-head {{day.isToday ? 'grid-day-head--today' : ''}}"
+          >
+            <text class="weekday-label">{{day.shortLabel}}</text>
+            <view class="grid-day-date"><text class="tnum">{{day.dateLabel}}</text></view>
           </view>
-          <view class="week-grid-body" style="height: {{gridHeight}}rpx;">
-            <view class="time-scale">
-              <view wx:for="{{timeMarks}}" wx:key="label" class="time-mark" style="top: {{item.top}}rpx;"><text>{{item.label}}</text></view>
+        </view>
+
+        <view class="week-grid-body">
+          <view class="time-scale">
+            <view wx:for="{{periodRows}}" wx:for-item="period" wx:key="period" class="period-row">
+              <text class="period-number tnum">{{period.period}}</text>
+              <text class="period-time tnum">{{period.startTime}}</text>
+              <text class="period-time tnum">{{period.endTime}}</text>
             </view>
-            <view class="grid-days">
-              <view wx:for="{{gridDays}}" wx:key="weekday" class="grid-day-column" style="height: {{gridHeight}}rpx;">
-                <view wx:for="{{timeMarks}}" wx:key="label" class="grid-line" style="top: {{item.top}}rpx;"></view>
-                <view wx:for="{{item.courses}}" wx:for-item="course" wx:key="id" class="grid-course grid-course--{{course.tone}} pressable stagger-item" style="top: {{course.top}}rpx; height: {{course.height}}rpx;" data-id="{{course.id}}" bindtap="openCourse" hover-class="pressing"><text class="grid-course-name" overflow="ellipsis" max-lines="2">{{course.name}}</text><text class="grid-course-room" overflow="ellipsis" max-lines="1">{{course.location}}</text></view>
+          </view>
+
+          <view class="grid-days">
+            <view wx:for="{{weekPage.gridDays}}" wx:for-item="day" wx:key="weekday" class="grid-day-column">
+              <view wx:for="{{periodRows}}" wx:for-item="period" wx:key="period" class="period-grid-line"></view>
+              <view
+                wx:for="{{day.courses}}"
+                wx:for-item="course"
+                wx:key="id"
+                class="grid-course-slot"
+                style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%;"
+              >
+                <view
+                  class="grid-course grid-course--{{course.tone}} pressable"
+                  data-id="{{course.id}}"
+                  bindtap="openCourse"
+                  hover-class="grid-course--pressed"
+                  aria-role="button"
+                  aria-label="{{course.name}}，{{course.location}}"
+                >
+                  <text class="grid-course-name" overflow="ellipsis" max-lines="3">{{course.name}}</text>
+                  <text wx:if="{{course.showRoom}}" class="grid-course-room" overflow="ellipsis" max-lines="2">@{{course.location}}</text>
+                  <text wx:if="{{course.showTeacher}}" class="grid-course-teacher" overflow="ellipsis" max-lines="1">{{course.teacher}}</text>
+                </view>
               </view>
             </view>
           </view>
         </view>
-      </scroll-view>
-      <text class="grid-caption">共 {{totalCourseCount}} 门课 · 左右滑动查看整周 · 点击色块查看详情</text>
 
-      <view class="selected-heading"><view><text class="selected-title">{{selectedDateLabel}}</text><text class="selected-caption">当前时间 {{currentTime}} · 用户所在时区</text></view><view class="today-button pressable" bindtap="goToday" hover-class="pressing"><text>今天</text></view></view>
-      <view wx:if="{{courses.length}}" class="course-list card">
-        <view wx:for="{{courses}}" wx:key="id" class="course-row pressable {{index < courses.length - 1 ? 'course-row--divided' : ''}}" data-id="{{item.id}}" bindtap="openCourse" hover-class="pressing">
-          <view class="course-accent course-accent--{{item.tone}}"></view>
-          <view class="course-copy"><text class="course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text><text class="course-meta">{{item.displayTimeLabel}} · {{item.teacher}} · {{item.location}}</text></view>
-          <text class="course-state course-state--{{item.state}}">{{item.stateLabel}}</text>
+        <view class="week-footer">
+          <text class="tnum">{{weekPage.courseCount}} 门课</text>
+          <view class="footer-dot"></view>
+          <text>左右滑动切换教学周</text>
         </view>
       </view>
-      <empty-state wx:else icon="calendar-check" icon-tone="coral" title="这一天没有课程" description="{{emptyDescription}}" action-text="回到今天" bindaction="goToday"></empty-state>
+    </swiper-item>
+  </swiper>
+
+  <view wx:else class="timetable-empty"><text>课表正在同步</text><text>完成后会自动显示</text></view>
+
+  <view wx:if="{{menuOpen || semesterOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>
+
+  <view wx:if="{{menuOpen}}" class="timetable-menu popover-enter" style="top: {{menuTop}}px;" catchtap="stopPropagation">
+    <text class="menu-label">课表主题</text>
+    <view class="theme-options">
+      <view
+        wx:for="{{timetableThemes}}"
+        wx:key="id"
+        class="theme-option pressable {{timetableThemeId === item.id ? 'theme-option--active' : ''}}"
+        data-theme="{{item.id}}"
+        bindtap="selectTheme"
+        hover-class="pressing"
+        aria-role="button"
+        aria-label="{{item.label}}"
+      >
+        <view class="theme-swatch" style="background-color: {{item.color}};">
+          <image wx:if="{{item.image}}" src="/assets/images/timetable-background.png" mode="aspectFill"></image>
+          <lucide-icon wx:if="{{timetableThemeId === item.id}}" name="check" tone="white" size="{{20}}"></lucide-icon>
+        </view>
+      </view>
     </view>
-  </scroll-view>
+    <view class="menu-separator"></view>
+    <view class="menu-action pressable" bindtap="openCalendar" hover-class="pressing">
+      <view class="menu-action-icon"><lucide-icon name="calendar-range" tone="coral" size="{{25}}"></lucide-icon></view>
+      <text>查看校历</text>
+      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+    </view>
+    <view class="menu-action pressable" bindtap="goToday" hover-class="pressing">
+      <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="calendar-check" tone="sage" size="{{25}}"></lucide-icon></view>
+      <text>回到本周</text>
+      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+    </view>
+    <view class="menu-action pressable" bindtap="onRefresh" hover-class="pressing">
+      <view class="menu-action-icon menu-action-icon--amber"><lucide-icon name="refresh-cw" tone="amber" size="{{25}}"></lucide-icon></view>
+      <text>刷新课表</text>
+      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+    </view>
+  </view>
+
+  <view
+    wx:if="{{semesterOpen}}"
+    class="semester-popover popover-enter"
+    style="top: {{menuTop}}px; right: {{headerRightInset}}px;"
+    catchtap="stopPropagation"
+  >
+    <text class="menu-label">选择学期</text>
+    <scroll-view class="semester-list" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{semesters}}"
+        wx:key="id"
+        class="semester-option pressable {{semesterId === item.id ? 'semester-option--active' : ''}}"
+        data-semester="{{item.id}}"
+        bindtap="selectSemester"
+        hover-class="pressing"
+      >
+        <text>{{item.label}}</text>
+        <lucide-icon wx:if="{{semesterId === item.id}}" name="check" tone="coral" size="{{23}}"></lucide-icon>
+      </view>
+    </scroll-view>
+  </view>
 
   <bottom-sheet visible="{{courseSheetVisible}}" title="课程详情" theme="{{theme}}" bindclose="closeCourse">
     <view wx:if="{{selectedCourse}}" class="course-sheet">
-      <view class="course-sheet-hero course-sheet-hero--{{selectedCourse.tone}}"><view class="ambient-blob course-sheet-blob"></view><text class="course-sheet-kicker">{{selectedCourse.periodLabel}} · {{selectedCourse.weekText}}</text><text class="course-sheet-title display-title">{{selectedCourse.name}}</text><text class="course-sheet-teacher">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text></view>
+      <view class="course-sheet-hero course-sheet-hero--{{selectedCourse.tone}}">
+        <view class="ambient-blob course-sheet-blob"></view>
+        <text class="course-sheet-kicker">{{selectedCourse.periodLabel}} · {{selectedCourse.weekText}}</text>
+        <text class="course-sheet-title display-title">{{selectedCourse.name}}</text>
+        <text class="course-sheet-teacher">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text>
+      </view>
       <view class="course-sheet-info card">
         <view class="course-sheet-row"><text>上课地点</text><text>{{selectedCourse.location}}</text></view>
         <view class="course-sheet-row"><text>上课时间</text><text>{{selectedCourse.displayTimeLabel}}{{selectedCourse.localized ? ' · 用户所在时区' : ''}}</text></view>
