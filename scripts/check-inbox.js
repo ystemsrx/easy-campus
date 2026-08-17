@@ -106,16 +106,47 @@ assert(
 );
 assert(loadCount === 4, "每次筛选变化都必须重新读取对应消息");
 
+page.data.messageFilterMounted = true;
+page.data.messageFilterOpen = true;
+page.onPageTap();
+assert(
+  page.data.messageFilterOpen === false,
+  "点击筛选浮窗外的页面区域必须立即开始收起浮窗",
+);
+
 const template = fs.readFileSync(path.join(pageRoot, "index.wxml"), "utf8");
 const styles = fs.readFileSync(path.join(pageRoot, "index.wxss"), "utf8");
 assert(
-  template.includes('<root-portal enable="{{messageFilterMounted}}">') &&
-    template.includes('<button class="message-type-option"'),
-  "筛选选项必须提升到 root-portal 并使用独立原生按钮",
+  !template.includes("<root-portal") &&
+    template.includes('bindtap="onPageTap"') &&
+    template.includes('catchtap="openMessageFilter"') &&
+    template.includes('<view class="message-filter-anchor">') &&
+    template.includes('catchtap="selectMessageType"') &&
+    template.includes('catchtap="keepMessageFilterOpen"'),
+  "筛选浮窗必须在同一 Skyline 交互层，并支持点击外部收起",
 );
 assert(
-  /\.message-filter-popover\s*\{[^}]*width:\s*212rpx/s.test(styles),
+  /\.message-filter-popover\s*\{[^}]*position:\s*absolute[^}]*width:\s*132rpx/s.test(
+    styles,
+  ) &&
+    /\.message-filter-popover\s*\{[^}]*padding:\s*20rpx 19rpx 14rpx/s.test(
+      styles,
+    ),
   "筛选浮窗宽度必须与两字标签和勾选图标相匹配",
+);
+assert(
+  /\.filter-button\s*\{[^}]*min-width:\s*140rpx[^}]*padding:\s*13rpx 26rpx/s.test(
+    styles,
+  ) &&
+    /\.message-filter-heading\s*\{[^}]*width:\s*92rpx/s.test(styles) &&
+    /\.message-type-option\s*\{[^}]*justify-content:\s*space-between[^}]*width:\s*92rpx/s.test(
+      styles,
+    ) &&
+    /\.message-type-separator\s*\{[^}]*align-self:\s*center[^}]*width:\s*92rpx/s.test(
+      styles,
+    ) &&
+    !styles.includes(".filter-button--active"),
+  "筛选按钮必须保留充足内边距，并且筛选生效时只能显示角标",
 );
 
 console.log("Inbox interaction checks passed.");

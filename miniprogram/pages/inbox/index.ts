@@ -206,8 +206,6 @@ Page({
     noticeError: "",
     messageFilterMounted: false,
     messageFilterOpen: false,
-    messageFilterTop: 0,
-    messageFilterRight: 20,
     messageTypes: [] as MessageType[],
     messageFilterCount: 0,
     noticeQuery: "",
@@ -270,12 +268,14 @@ Page({
       return;
     }
     haptic("light");
+    if (this.data.messageFilterMounted) this.closeMessageFilter();
     this.setData({ activeTab: index });
     this.loadActiveTab(index);
   },
   onSwiperChange(event: WechatMiniprogram.SwiperChange) {
     const index = event.detail.current;
     if (index !== this.data.activeTab) {
+      if (this.data.messageFilterMounted) this.closeMessageFilter();
       this.setData({ activeTab: index });
       this.loadActiveTab(index);
     }
@@ -402,6 +402,10 @@ Page({
     haptic("light");
     void this.loadNotices(true, true, true);
   },
+  onPageTap() {
+    if (this.data.messageFilterMounted) this.closeMessageFilter();
+  },
+  keepMessageFilterOpen() {},
   openMessageFilter() {
     if (this.data.messageFilterMounted) {
       this.closeMessageFilter();
@@ -409,31 +413,18 @@ Page({
     }
     haptic("light");
     clearFilterTransitionTimer();
-    wx.createSelectorQuery()
-      .select("#message-filter-button")
-      .boundingClientRect((rect) => {
-        const windowInfo = wx.getWindowInfo();
-        const top = Math.min(
-          rect.bottom + 8,
-          Math.max(16, windowInfo.windowHeight - 286),
-        );
-        const right = Math.max(16, windowInfo.windowWidth - rect.right);
-        this.setData(
-          {
-            messageFilterMounted: true,
-            messageFilterOpen: false,
-            messageFilterTop: top,
-            messageFilterRight: right,
-          },
-          () => {
-            filterTransitionTimer = setTimeout(() => {
-              this.setData({ messageFilterOpen: true });
-              filterTransitionTimer = undefined;
-            }, 16);
-          },
-        );
-      })
-      .exec();
+    this.setData(
+      {
+        messageFilterMounted: true,
+        messageFilterOpen: false,
+      },
+      () => {
+        filterTransitionTimer = setTimeout(() => {
+          this.setData({ messageFilterOpen: true });
+          filterTransitionTimer = undefined;
+        }, 16);
+      },
+    );
   },
   closeMessageFilter() {
     clearFilterTransitionTimer();

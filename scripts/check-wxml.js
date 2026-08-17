@@ -123,13 +123,15 @@ if (
   );
 }
 if (
-  !inboxTemplate.includes('<root-portal enable="{{messageFilterMounted}}">') ||
-  !inboxTemplate.includes('<button class="message-type-option"') ||
+  inboxTemplate.includes("<root-portal") ||
+  !inboxTemplate.includes('bindtap="onPageTap"') ||
+  !inboxTemplate.includes('catchtap="openMessageFilter"') ||
+  !inboxTemplate.includes('<view class="message-filter-anchor">') ||
   !inboxTemplate.includes('data-index="{{index}}"') ||
-  !inboxTemplate.includes('bindtap="selectMessageType"')
+  !inboxTemplate.includes('catchtap="selectMessageType"')
 ) {
   failures.push(
-    "pages/inbox/index.wxml: 消息筛选必须位于根级交互层，并以独立按钮和稳定索引触发勾选状态",
+    "pages/inbox/index.wxml: 消息筛选必须与触发按钮位于同一 Skyline 层，并以稳定索引直接触发勾选状态",
   );
 }
 

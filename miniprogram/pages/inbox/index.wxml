@@ -1,4 +1,4 @@
-<view class="page inbox-page {{themeClass}} {{motionClass}}">
+<view class="page inbox-page {{themeClass}} {{motionClass}}" bindtap="onPageTap">
   <navigation-bar title="学校通知与教务安排" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="inbox-toolbar page-enter">
@@ -15,7 +15,18 @@
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view class="list-heading-copy"><text class="list-title">教务消息</text></view>
-            <view id="message-filter-button" class="filter-button pressable {{messageFilterCount ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageFilterCount ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text><view wx:if="{{messageFilterCount}}" class="filter-count"><text>{{messageFilterCount}}</text></view></view>
+            <view class="message-filter-anchor">
+              <view id="message-filter-button" class="filter-button pressable" catchtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="muted" size="{{25}}"></lucide-icon><text>筛选</text><view wx:if="{{messageFilterCount}}" class="filter-count"><text>{{messageFilterCount}}</text></view></view>
+              <view wx:if="{{messageFilterMounted}}" class="message-filter-popover {{messageFilterOpen ? 'message-filter-popover--open' : ''}}" catchtap="keepMessageFilterOpen">
+                <view class="message-filter-heading"><text>消息类型</text></view>
+                <view class="message-type-list">
+                  <block wx:for="{{messageTypeOptions}}" wx:key="label">
+                    <view class="message-type-option" data-index="{{index}}" catchtap="selectMessageType" hover-class="message-type-option--pressed" hover-start-time="0" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><view class="message-type-check"><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{20}}"></lucide-icon></view></view>
+                    <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
+                  </block>
+                </view>
+              </view>
+            </view>
           </view>
 
           <view wx:if="{{messageItems.length}}" class="message-list">
@@ -88,18 +99,4 @@
     </swiper-item>
   </swiper>
 
-  <root-portal enable="{{messageFilterMounted}}">
-    <view wx:if="{{messageFilterMounted}}" class="message-filter-layer {{messageFilterOpen ? 'message-filter-layer--open' : ''}}">
-      <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
-      <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;">
-        <view class="message-filter-heading"><text>消息类型</text></view>
-        <view class="message-type-list">
-          <block wx:for="{{messageTypeOptions}}" wx:key="label">
-            <button class="message-type-option" data-index="{{index}}" bindtap="selectMessageType" hover-class="message-type-option--pressed" hover-start-time="0" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></button>
-            <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
-          </block>
-        </view>
-      </view>
-    </view>
-  </root-portal>
 </view>
