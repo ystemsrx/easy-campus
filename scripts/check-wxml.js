@@ -143,6 +143,10 @@ const electricityTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "electricity", "index.wxml"),
   "utf8",
 );
+const electricityScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "electricity", "index.ts"),
+  "utf8",
+);
 if (
   !homeTemplate.includes('class="feature-open-container"') ||
   !homeTemplate.includes('bind:tap="openElectricity"') ||
@@ -160,6 +164,19 @@ if (
 ) {
   failures.push(
     "pages/electricity/index.wxml: 宿舍楼选择必须使用展开式底部抽屉及独立列表滚动区",
+  );
+}
+if (
+  !electricityTemplate.includes("{{querying ? '读取中' : '绑定'}}") ||
+  !electricityTemplate.includes('class="result-action result-action--icon') ||
+  electricityTemplate.includes("<text>刷新</text>") ||
+  !electricityTemplate.includes("{{boundBuildingName}}") ||
+  !electricityTemplate.includes("{{boundRoomNumber}}") ||
+  !electricityScript.includes("isBindingCooldownActive(") ||
+  !electricityScript.includes("this.data.boundBuildingId")
+) {
+  failures.push(
+    "pages/electricity: 换绑草稿必须与当前绑定分离，并保留紧凑的读取、换绑和刷新状态",
   );
 }
 

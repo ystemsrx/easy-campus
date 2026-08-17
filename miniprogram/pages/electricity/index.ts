@@ -40,6 +40,8 @@ interface ElectricityBuildingRow {
   items: ElectricityBuilding[];
 }
 
+const BINDING_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
+
 let buildingRequestSequence = 0;
 let accountRequestSequence = 0;
 let activeAccount = "";
@@ -119,6 +121,18 @@ function toBuildingRows(
   return rows;
 }
 
+function isBindingCooldownActive(
+  binding: ElectricityCachedData["binding"],
+  fallbackTimestamp = "",
+): boolean {
+  if (!binding) return false;
+  const reference =
+    binding.changedAt || binding.boundAt || fallbackTimestamp || "";
+  const referenceTime = new Date(reference).getTime();
+  if (!Number.isFinite(referenceTime)) return false;
+  return Date.now() - referenceTime < BINDING_COOLDOWN_MS;
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -141,6 +155,9 @@ Page({
     buildingPickerVisible: false,
     bindingEditing: false,
     roomNumber: "",
+    boundBuildingId: "",
+    boundBuildingName: "",
+    boundRoomNumber: "",
     account: null as ElectricityView | null,
     cacheLabel: "尚未绑定寝室",
     bindingToastMounted: false,
@@ -175,16 +192,26 @@ Page({
   },
   applyElectricityData(data: ElectricityCachedData) {
     const binding = data.binding;
-    this.setData({
-      buildingId: binding?.buildingId || "",
-      buildingName: binding?.buildingName || "",
-      roomNumber: binding?.roomNumber || "",
+    const bindingFields = {
+      boundBuildingId: binding?.buildingId || "",
+      boundBuildingName: binding?.buildingName || "",
+      boundRoomNumber: binding?.roomNumber || "",
       account: data.account ? toView(data.account) : null,
       cacheLabel: activeSnapshot?.serverFetchedAt
         ? `更新于 ${formatDateTime(activeSnapshot.serverFetchedAt)}`
         : data.account
           ? "使用已保存电费"
           : "尚未绑定寝室",
+    };
+    if (this.data.bindingEditing && this.data.account) {
+      this.setData(bindingFields);
+      return;
+    }
+    this.setData({
+      ...bindingFields,
+      buildingId: binding?.buildingId || "",
+      buildingName: binding?.buildingName || "",
+      roomNumber: binding?.roomNumber || "",
     });
   },
   async loadSavedAccount() {
@@ -265,7 +292,7 @@ Page({
   },
   onRefresh() {
     haptic("light");
-    if (this.data.buildingId && this.data.roomNumber) {
+    if (this.data.boundBuildingId && this.data.boundRoomNumber) {
       void this.refreshBoundAccount();
     } else {
       void this.loadBuildings(true);
@@ -273,7 +300,7 @@ Page({
   },
   retryService() {
     haptic("light");
-    if (this.data.buildingId && this.data.roomNumber) {
+    if (this.data.boundBuildingId && this.data.boundRoomNumber) {
       void this.refreshBoundAccount();
     } else {
       void this.loadBuildings();
@@ -281,18 +308,30 @@ Page({
   },
   openRebind() {
     haptic("light");
-    this.setData({ bindingEditing: true, errorMessage: "" });
+    const binding = activeSnapshot?.data.binding || null;
+    if (
+      isBindingCooldownActive(binding, activeSnapshot?.serverFetchedAt || "")
+    ) {
+      this.showBindingLimitToast();
+      return;
+    }
+    this.setData({
+      bindingEditing: true,
+      buildingId: this.data.boundBuildingId,
+      buildingName: this.data.boundBuildingName,
+      roomNumber: this.data.boundRoomNumber,
+      errorMessage: "",
+    });
     if (!this.data.allBuildings.length && !this.data.optionsLoading) {
       void this.loadBuildings();
     }
   },
   cancelRebind() {
-    const binding = activeSnapshot?.data.binding;
     this.setData({
       bindingEditing: false,
-      buildingId: binding?.buildingId || "",
-      buildingName: binding?.buildingName || "",
-      roomNumber: binding?.roomNumber || "",
+      buildingId: this.data.boundBuildingId,
+      buildingName: this.data.boundBuildingName,
+      roomNumber: this.data.boundRoomNumber,
       errorMessage: "",
     });
   },
@@ -364,14 +403,23 @@ Page({
     await this.queryBoundAccount(true);
   },
   async refreshBoundAccount() {
-    if (!this.data.buildingId || !this.data.roomNumber) return;
+    if (!this.data.boundBuildingId || !this.data.boundRoomNumber) return;
     await this.queryBoundAccount(false);
   },
   async queryBoundAccount(rebinding: boolean) {
     const sequence = ++accountRequestSequence;
-    const normalizedRoomNumber = /^\d{3}$/.test(this.data.roomNumber)
-      ? `0${this.data.roomNumber}`
-      : this.data.roomNumber;
+    const buildingId = rebinding
+      ? this.data.buildingId
+      : this.data.boundBuildingId;
+    const buildingName = rebinding
+      ? this.data.buildingName
+      : this.data.boundBuildingName;
+    const roomNumber = rebinding
+      ? this.data.roomNumber
+      : this.data.boundRoomNumber;
+    const normalizedRoomNumber = /^\d{3}$/.test(roomNumber)
+      ? `0${roomNumber}`
+      : roomNumber;
     this.setData({
       querying: true,
       serviceUnavailable: false,
@@ -379,8 +427,8 @@ Page({
     });
     try {
       const result = await queryElectricity({
-        buildingId: this.data.buildingId,
-        buildingName: this.data.buildingName,
+        buildingId,
+        buildingName,
         roomNumber: normalizedRoomNumber,
       });
       if (sequence !== accountRequestSequence) return;
@@ -400,7 +448,13 @@ Page({
           errorMessage: "",
         });
       } else if (isBindingLimited(error)) {
-        this.setData({ errorMessage: "" });
+        this.setData({
+          bindingEditing: false,
+          buildingId: this.data.boundBuildingId,
+          buildingName: this.data.boundBuildingName,
+          roomNumber: this.data.boundRoomNumber,
+          errorMessage: "",
+        });
         this.showBindingLimitToast();
       } else {
         this.setData({

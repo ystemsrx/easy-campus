@@ -24,7 +24,7 @@
           </view>
           <button class="electricity-query-button {{optionsLoading || querying || !buildingId || !roomNumber ? 'electricity-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying || !buildingId || !roomNumber}}" hover-class="electricity-query-button--pressed" bindtap="onQuery">
             <lucide-icon name="zap" tone="white" size="{{27}}"></lucide-icon>
-            <text>{{querying ? '正在读取最新电费…' : '绑定'}}</text>
+            <text>{{querying ? '读取中' : '绑定'}}</text>
           </button>
           <button wx:if="{{account && bindingEditing}}" class="binding-cancel" bindtap="cancelRebind">取消换绑</button>
           <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
@@ -32,8 +32,8 @@
 
         <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
           <view class="section-header result-heading">
-            <view><text class="section-title">寝室电费</text><text class="section-caption">{{buildingName}} · {{roomNumber}} · {{cacheLabel}}</text></view>
-            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="refreshBoundAccount" hover-class="pressing"><lucide-icon name="refresh-cw" tone="amber" size="{{21}}"></lucide-icon><text>刷新</text></view></view>
+            <view class="result-copy"><text class="section-title">寝室电费</text><text class="section-caption" overflow="ellipsis" max-lines="1">{{boundBuildingName}} · {{boundRoomNumber}} · {{cacheLabel}}</text></view>
+            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="refreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="刷新电费"><lucide-icon name="refresh-cw" tone="amber" size="{{22}}"></lucide-icon></view></view>
           </view>
           <view wx:if="{{serviceUnavailable}}" class="service-warning"><lucide-icon name="circle-alert" tone="danger" size="{{22}}"></lucide-icon><text>校园电费服务暂不可用，当前仍显示上次保存的数据。</text></view>
           <view class="balance-card {{account.balanceNegative ? 'balance-card--negative' : ''}}">
