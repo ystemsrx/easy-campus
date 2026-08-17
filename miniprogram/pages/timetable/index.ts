@@ -205,8 +205,8 @@ function gridLayoutMetrics(
   }
   const scale = viewportWidth / 750;
   const columnWidth = (viewportWidth - 84 * scale) / 7;
-  // 槽内边距 4rpx、课程边框 4rpx、课程内边距 8rpx。
-  const contentWidth = Math.max(1, columnWidth - 16 * scale);
+  // 槽内边距 4rpx、课程边框 6rpx、课程内边距 8rpx。
+  const contentWidth = Math.max(1, columnWidth - 18 * scale);
   const widthSafetyPx = 1;
   const fittedFontSize = (charactersPerLine: number, maximum: number) =>
     Math.max(
@@ -220,8 +220,8 @@ function gridLayoutMetrics(
     locationFontSizePx: fittedFontSize(3, 14),
     teacherFontSizePx: fittedFontSize(3, 12),
     contentWidthPx: contentWidth,
-    // 卡片槽上下内边距 4rpx + 卡片边框 4rpx + 内边距 8rpx。
-    contentInsetPx: 16 * scale,
+    // 卡片槽上下内边距 4rpx + 卡片边框 6rpx + 内边距 8rpx。
+    contentInsetPx: 18 * scale,
     scale,
   };
 }

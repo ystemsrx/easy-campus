@@ -315,7 +315,7 @@
   align-items: flex-start;
   padding: 4rpx;
   overflow: hidden;
-  border: 2rpx solid #fff;
+  border: 3rpx solid #fff;
   border-radius: 13rpx;
   color: #fff;
   background: #0862ad;
