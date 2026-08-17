@@ -22,12 +22,12 @@
             <view class="pass-metrics">
               <view class="pass-primary-score"><text class="pass-score-value tnum {{course.textScore ? 'pass-score-value--text' : ''}}">{{course.displayScore}}</text><text class="pass-score-label">总评成绩</text></view>
               <view class="pass-mini-stat"><text class="tnum">{{course.gradePointLabel}}</text><text>绩点</text></view>
-              <view class="pass-mini-stat"><text class="tnum">{{averageScoreLabel}}</text><text>平均分</text></view>
+              <view class="pass-mini-stat"><text class="tnum">{{averageScoreLabel}}</text><text>年级平均</text></view>
             </view>
             <view wx:if="{{components.length}}" class="hero-composition">
               <text class="composition-title">成绩组成</text>
               <view class="composition-track"><view wx:for="{{components}}" wx:key="name" class="composition-part" style="width: {{item.width}}%; opacity: {{item.opacity}};"></view></view>
-              <view class="composition-tags"><text wx:for="{{components}}" wx:key="name">{{item.name}} {{item.score}}</text></view>
+              <view class="composition-tags"><text wx:for="{{components}}" wx:key="name">{{item.name}} {{item.score}} ({{item.weightLabel}})</text></view>
             </view>
           </view>
         </view>

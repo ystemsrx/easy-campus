@@ -25,6 +25,7 @@ interface CourseView extends PassRateCourse {
 interface ComponentView {
   name: string;
   score: string;
+  weightLabel: string;
   width: number;
   opacity: number;
 }
@@ -96,6 +97,10 @@ function componentViews(course: PassRateCourse): ComponentView[] {
   return course.components.map((component, index) => ({
     name: component.name,
     score: formatScore(component.score),
+    weightLabel:
+      component.weightPercent === null
+        ? "占比未提供"
+        : `${Number.isInteger(component.weightPercent) ? component.weightPercent : Number(component.weightPercent.toFixed(2))}%`,
     width: Number(((rawWeights[index] / totalWeight) * 100).toFixed(2)),
     opacity: Math.max(0.35, 1 - index * 0.2),
   }));
