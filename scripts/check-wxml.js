@@ -149,6 +149,9 @@ if (
   navigationTemplate.includes("scrolled") ||
   navigationScript.includes("scrolled") ||
   navigationScript.includes("backOffset") ||
+  !navigationScript.includes(
+    'insetBack: { type: Boolean, value: false }',
+  ) ||
   !navigationScript.includes("const NAVIGATION_INSET_RPX = 28") ||
   !navigationScript.includes(
     "(NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750",
@@ -165,14 +168,15 @@ if (
     "const nativeControlBottom = menu.bottom",
   ) ||
   !navigationScript.includes(
-    "const coverHeight = this.data.back",
+    "const insetBack = this.data.back && this.data.insetBack",
   ) ||
   !navigationScript.includes(
-    "? navigationInset * 2 + backButtonSize",
+    "const coverHeight = insetBack",
   ) ||
   !navigationScript.includes(
     ": nativeControlBottom",
   ) ||
+  !navigationScript.includes("const backLift = insetBack") ||
   !navigationScript.includes(
     "totalHeight: coverHeight",
   ) ||
@@ -198,6 +202,19 @@ const inboxTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "inbox", "index.wxml"),
   "utf8",
 );
+const inboxStyles = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "inbox", "index.wxss"),
+  "utf8",
+);
+if (
+  !inboxStyles.includes(
+    ".inbox-toolbar { flex: none; padding: 28rpx 48rpx 10rpx;",
+  )
+) {
+  failures.push(
+    "pages/inbox/index.wxss: 消息选择器必须与顶部原生胶囊保留明确间距",
+  );
+}
 if (
   (
     inboxTemplate.match(
@@ -297,6 +314,7 @@ if (
   passRateTemplate.includes('scroll-into-view="{{coursePickerTarget}}"') ||
   !passRateTemplate.includes('({{item.courses.length}})') ||
   passRateTemplate.includes("back-offset") ||
+  !passRateTemplate.includes('inset-back="{{true}}"') ||
   !passRateScript.includes("function toCourseRows(") ||
   !passRateScript.includes("function coursePickerState(") ||
   !passRateScript.includes('shortAcademicSemesterLabel(') ||

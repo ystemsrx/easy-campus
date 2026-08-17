@@ -1,5 +1,5 @@
 .inbox-page { display: flex; flex-direction: column; overflow: hidden; }
-.inbox-toolbar { flex: none; padding: 24rpx 48rpx 10rpx; background-color: var(--color-bg); }
+.inbox-toolbar { flex: none; padding: 28rpx 48rpx 10rpx; background-color: var(--color-bg); }
 .segmented-control { position: relative; display: flex; flex-direction: row; padding: 7rpx; border-radius: 999rpx; background: rgba(43, 38, 32, 0.05); }
 .segment-indicator { position: absolute; top: 7rpx; bottom: 7rpx; left: 7rpx; width: calc((100% - 14rpx) / 2); border-radius: 999rpx; background: #fff; box-shadow: var(--shadow-card); transform: translateX(0); transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1); }
 .segment-indicator--1 { transform: translateX(100%); }

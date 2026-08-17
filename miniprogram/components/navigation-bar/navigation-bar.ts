@@ -9,15 +9,16 @@ Component({
     title: { type: String, value: "" },
     subtitle: { type: String, value: "" },
     back: { type: Boolean, value: false },
+    insetBack: { type: Boolean, value: false },
     transparent: { type: Boolean, value: false },
     theme: { type: String, value: "light" },
   },
   data: {
-    coverHeight: 66,
+    coverHeight: 64,
     controlTop: 28,
     contentHeight: 32,
-    backLift: 11,
-    totalHeight: 66,
+    backLift: 0,
+    totalHeight: 64,
     sideWidth: 88,
   },
   lifetimes: {
@@ -32,15 +33,15 @@ Component({
         const navigationInset =
           (NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750;
         const nativeControlBottom = menu.bottom || controlTop + contentHeight;
-        const coverHeight = this.data.back
+        const insetBack = this.data.back && this.data.insetBack;
+        const coverHeight = insetBack
           ? navigationInset * 2 + backButtonSize
           : nativeControlBottom;
         const naturalBackTop =
           controlTop + (contentHeight - backButtonSize) / 2;
-        const backLift = Math.max(
-          0,
-          naturalBackTop - navigationInset,
-        );
+        const backLift = insetBack
+          ? Math.max(0, naturalBackTop - navigationInset)
+          : 0;
         this.setData({
           coverHeight,
           controlTop,
