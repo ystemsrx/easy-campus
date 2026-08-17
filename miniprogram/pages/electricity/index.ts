@@ -35,6 +35,11 @@ interface ElectricityView {
   lastSettlementDateLabel: string;
 }
 
+interface ElectricityBuildingRow {
+  id: string;
+  items: ElectricityBuilding[];
+}
+
 let buildingRequestSequence = 0;
 let accountRequestSequence = 0;
 let activeAccount = "";
@@ -42,7 +47,6 @@ let activeSnapshot: ElectricitySnapshot | null = null;
 let bindingToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
-let buildingPickerUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 
 function formatDecimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
@@ -88,13 +92,6 @@ function clearBindingToastTimers(): void {
   }
 }
 
-function clearBuildingPickerTimer(): void {
-  if (buildingPickerUnmountTimer !== undefined) {
-    clearTimeout(buildingPickerUnmountTimer);
-    buildingPickerUnmountTimer = undefined;
-  }
-}
-
 function filterBuildings(
   buildings: ElectricityBuilding[],
   query: string,
@@ -106,6 +103,20 @@ function filterBuildings(
       building.name.toLowerCase().includes(normalized) ||
       building.id.toLowerCase().includes(normalized),
   );
+}
+
+function toBuildingRows(
+  buildings: ElectricityBuilding[],
+): ElectricityBuildingRow[] {
+  const rows: ElectricityBuildingRow[] = [];
+  for (let index = 0; index < buildings.length; index += 2) {
+    const items = buildings.slice(index, index + 2);
+    rows.push({
+      id: items.map((building) => building.id).join(":"),
+      items,
+    });
+  }
+  return rows;
 }
 
 Page({
@@ -121,12 +132,12 @@ Page({
     errorMessage: "",
     allBuildings: [] as ElectricityBuilding[],
     buildings: [] as ElectricityBuilding[],
+    buildingRows: [] as ElectricityBuildingRow[],
     buildingId: "",
     buildingName: "",
     draftBuildingId: "",
     buildingQuery: "",
     buildingSearchFocused: false,
-    buildingPickerMounted: false,
     buildingPickerVisible: false,
     bindingEditing: false,
     roomNumber: "",
@@ -151,7 +162,6 @@ Page({
   },
   onUnload() {
     clearBindingToastTimers();
-    clearBuildingPickerTimer();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -224,9 +234,14 @@ Page({
       const selected = result.buildings.find(
         (building) => building.id === this.data.buildingId,
       );
+      const buildings = filterBuildings(
+        result.buildings,
+        this.data.buildingQuery,
+      );
       this.setData({
         allBuildings: result.buildings,
-        buildings: filterBuildings(result.buildings, this.data.buildingQuery),
+        buildings,
+        buildingRows: toBuildingRows(buildings),
         buildingId: selected?.id || "",
         buildingName: selected?.name || "",
       });
@@ -288,35 +303,24 @@ Page({
       return;
     }
     haptic("light");
-    clearBuildingPickerTimer();
-    this.setData(
-      {
-        buildingPickerMounted: true,
-        buildingPickerVisible: false,
-        draftBuildingId: this.data.buildingId,
-        buildingQuery: "",
-        buildings: this.data.allBuildings,
-      },
-      () => {
-        wx.nextTick(() => this.setData({ buildingPickerVisible: true }));
-      },
-    );
+    this.setData({
+      buildingPickerVisible: true,
+      draftBuildingId: this.data.buildingId,
+      buildingQuery: "",
+      buildings: this.data.allBuildings,
+      buildingRows: toBuildingRows(this.data.allBuildings),
+    });
   },
   closeBuildingPicker() {
     this.setData({ buildingPickerVisible: false });
-    clearBuildingPickerTimer();
-    buildingPickerUnmountTimer = setTimeout(() => {
-      buildingPickerUnmountTimer = undefined;
-      if (!this.data.buildingPickerVisible) {
-        this.setData({ buildingPickerMounted: false });
-      }
-    }, 300);
   },
   onBuildingSearch(event: WechatMiniprogram.Input) {
     const buildingQuery = String(event.detail.value || "");
+    const buildings = filterBuildings(this.data.allBuildings, buildingQuery);
     this.setData({
       buildingQuery,
-      buildings: filterBuildings(this.data.allBuildings, buildingQuery),
+      buildings,
+      buildingRows: toBuildingRows(buildings),
     });
   },
   onBuildingSearchFocus() {
@@ -336,11 +340,10 @@ Page({
       draftBuildingId: selected.id,
       buildingId: selected.id,
       buildingName: selected.name,
+      buildingPickerVisible: false,
       errorMessage: "",
     });
-    this.closeBuildingPicker();
   },
-  noop() {},
   onRoomInput(event: WechatMiniprogram.Input): string {
     const roomNumber = String(event.detail.value || "")
       .toUpperCase()

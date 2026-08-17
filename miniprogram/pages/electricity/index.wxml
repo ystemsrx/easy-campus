@@ -1,6 +1,6 @@
 <view class="page electricity-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscroll="onScroll">
-    <navigation-bar title="宿舍用电与余额" back inline-title transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <navigation-bar title="宿舍用电与余额" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
     <view class="electricity-content page-content page-enter">
       <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
 
@@ -55,27 +55,18 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{buildingPickerMounted}}" class="building-picker-layer">
-    <view class="building-picker-mask {{buildingPickerVisible ? 'building-picker-mask--visible' : ''}}" bindtap="closeBuildingPicker" catchtouchmove="noop"></view>
-    <view class="building-picker-card {{buildingPickerVisible ? 'building-picker-card--visible' : ''}}" catchtap="noop">
-      <view class="building-picker-header">
-        <text>选择宿舍楼</text>
-        <view class="building-picker-close" bindtap="closeBuildingPicker" hover-class="building-picker-close--pressed" aria-role="button" aria-label="关闭宿舍楼选择">
-          <lucide-icon name="x" tone="muted" size="{{28}}"></lucide-icon>
+  <bottom-sheet visible="{{buildingPickerVisible}}" expanded="{{true}}" scrollable="{{false}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker">
+    <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="muted" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
+    <scroll-view class="building-picker-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
+      <view wx:for="{{buildingRows}}" wx:key="id" wx:for-item="row" class="building-row">
+        <view wx:for="{{row.items}}" wx:key="id" wx:for-item="building" class="building-option {{draftBuildingId === building.id ? 'building-option--active' : ''}}" data-id="{{building.id}}" bindtap="selectBuilding" hover-class="building-option--pressed">
+          <text>{{building.name}}</text>
+          <lucide-icon wx:if="{{draftBuildingId === building.id}}" name="check" tone="coral" size="{{24}}"></lucide-icon>
         </view>
       </view>
-      <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="muted" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
-      <scroll-view class="building-picker-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
-        <view class="building-list">
-          <view wx:for="{{buildings}}" wx:key="id" class="building-option {{draftBuildingId === item.id ? 'building-option--active' : ''}}" data-id="{{item.id}}" bindtap="selectBuilding" hover-class="building-option--pressed">
-            <text>{{item.name}}</text>
-            <lucide-icon wx:if="{{draftBuildingId === item.id}}" name="check" tone="coral" size="{{24}}"></lucide-icon>
-          </view>
-          <view wx:if="{{!buildings.length}}" class="building-empty"><text>没有匹配的宿舍楼</text></view>
-        </view>
-      </scroll-view>
-    </view>
-  </view>
+      <view wx:if="{{!buildings.length}}" class="building-empty"><text>没有匹配的宿舍楼</text></view>
+    </scroll-view>
+  </bottom-sheet>
 
   <view wx:if="{{bindingToastMounted}}" class="binding-limit-toast {{bindingToastVisible ? 'binding-limit-toast--visible' : ''}}" aria-role="status">
     <text>一个月仅能绑定一次</text>

@@ -4,47 +4,26 @@
   style="height: {{totalHeight}}px; padding-top: {{statusBarHeight}}px;"
 >
   <view class="nav-content" style="height: {{contentHeight}}px;">
-    <block wx:if="{{inlineTitle}}">
-      <view class="nav-inline-leading">
-        <view
-          wx:if="{{back}}"
-          class="back-button"
-          bindtap="onBack"
-          hover-class="nav-button--pressed"
-          hover-stay-time="90"
-          aria-role="button"
-          aria-label="返回"
-        >
-          <lucide-icon name="arrow-left" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{34}}" label="返回"></lucide-icon>
-        </view>
-        <view class="nav-inline-title-wrap">
-          <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
-          <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
-        </view>
+    <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
+      <view
+        wx:if="{{back}}"
+        class="back-button"
+        bindtap="onBack"
+        hover-class="nav-button--pressed"
+        hover-stay-time="90"
+        aria-role="button"
+        aria-label="返回"
+      >
+        <lucide-icon name="arrow-left" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{34}}" label="返回"></lucide-icon>
       </view>
-    </block>
-    <block wx:else>
-      <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
-        <view
-          wx:if="{{back}}"
-          class="back-button"
-          bindtap="onBack"
-          hover-class="nav-button--pressed"
-          hover-stay-time="90"
-          aria-role="button"
-          aria-label="返回"
-        >
-          <lucide-icon name="arrow-left" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{34}}" label="返回"></lucide-icon>
-        </view>
-        <slot wx:else name="left"></slot>
-      </view>
+      <slot wx:else name="left"></slot>
+    </view>
 
-      <view class="nav-title-wrap">
-        <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
-        <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
-        <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
-      </view>
-    </block>
+    <view class="nav-title-wrap">
+      <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
+      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
+      <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
+    </view>
 
     <view class="nav-side nav-side--right" style="width: {{sideWidth}}px;">
       <slot name="right"></slot>

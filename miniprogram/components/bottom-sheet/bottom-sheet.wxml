@@ -4,7 +4,7 @@
     bindtap="onMaskTap"
     catchtouchmove="noop"
   ></view>
-  <view class="sheet-card {{active ? 'sheet-card--active' : ''}}" catchtouchmove="noop">
+  <view class="sheet-card {{expanded ? 'sheet-card--expanded' : ''}} {{active ? 'sheet-card--active' : ''}}">
     <view class="sheet-handle"></view>
     <view class="sheet-header">
       <view class="sheet-title-wrap">
@@ -22,9 +22,12 @@
         <lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon>
       </view>
     </view>
-    <scroll-view class="sheet-content" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <scroll-view wx:if="{{scrollable}}" class="sheet-content" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
       <slot></slot>
     </scroll-view>
+    <view wx:else class="sheet-content sheet-content--static">
+      <slot></slot>
+    </view>
     <view class="sheet-footer">
       <slot name="footer"></slot>
     </view>

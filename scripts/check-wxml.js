@@ -146,19 +146,20 @@ const electricityTemplate = fs.readFileSync(
 if (
   !homeTemplate.includes('class="feature-open-container"') ||
   !homeTemplate.includes('bind:tap="openElectricity"') ||
-  !electricityTemplate.includes("inline-title")
+  !electricityTemplate.includes('title="宿舍用电与余额"')
 ) {
   failures.push(
-    "pages/home/index.wxml: 寝室电费必须使用与课表一致的卡片放大转场，并保持返回按钮与标题同行",
+    "pages/home/index.wxml: 寝室电费必须使用与课表一致的卡片放大转场，并保留完整页面标题",
   );
 }
 if (
-  electricityTemplate.includes("<bottom-sheet") ||
-  !electricityTemplate.includes('class="building-picker-scroll"') ||
-  !electricityTemplate.includes('type="list" scroll-y')
+  !electricityTemplate.includes("<bottom-sheet") ||
+  !electricityTemplate.includes('expanded="{{true}}"') ||
+  !electricityTemplate.includes('scrollable="{{false}}"') ||
+  !electricityTemplate.includes('class="building-picker-scroll"')
 ) {
   failures.push(
-    "pages/electricity/index.wxml: 宿舍楼选择必须使用独立可滚动浮层，不得回退到底部抽屉",
+    "pages/electricity/index.wxml: 宿舍楼选择必须使用展开式底部抽屉及独立列表滚动区",
   );
 }
 
