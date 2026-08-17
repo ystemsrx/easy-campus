@@ -445,20 +445,24 @@ Page({
   },
   stopPropagation() {},
   selectMessageType(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    const value = String(event.currentTarget.dataset.value) as MessageType | "";
+    const index = Number(event.currentTarget.dataset.index);
+    const value = MESSAGE_TYPE_OPTIONS[index]?.value;
+    if (value === undefined) return;
     const current = this.data.messageTypes;
     const messageTypes = value
       ? current.includes(value)
         ? current.filter((type) => type !== value)
         : [...current, value]
       : [];
-    this.setData({
-      messageTypes,
-      messageFilterCount: messageTypes.length,
-      messageTypeOptions: messageTypeOptions(messageTypes),
-    });
-    void this.loadMessages(false);
+    haptic("light");
+    this.setData(
+      {
+        messageTypes,
+        messageFilterCount: messageTypes.length,
+        messageTypeOptions: messageTypeOptions(messageTypes),
+      },
+      () => void this.loadMessages(false),
+    );
   },
   onNoticeQueryInput(event: WechatMiniprogram.Input) {
     this.setData({ noticeQuery: event.detail.value });

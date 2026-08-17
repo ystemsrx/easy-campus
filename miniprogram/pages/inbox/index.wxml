@@ -11,10 +11,10 @@
 
   <swiper class="inbox-swiper" current="{{activeTab}}" duration="420" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="{{theme === 'dark' ? 'white' : 'black'}}" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
         <view class="inbox-content page-content">
           <view class="list-heading">
-            <view class="list-heading-copy"><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
+            <view class="list-heading-copy"><text class="list-title">教务消息</text></view>
             <view id="message-filter-button" class="filter-button pressable {{messageFilterCount ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageFilterCount ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text><view wx:if="{{messageFilterCount}}" class="filter-count"><text>{{messageFilterCount}}</text></view></view>
           </view>
 
@@ -30,15 +30,15 @@
               </view>
               <view wx:if="{{item.type === 'course_rescheduled'}}" class="schedule-flow schedule-flow--rescheduled">
                 <view class="schedule-panel schedule-panel--old">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--old">原安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view><text class="schedule-time-label">{{item.original.primary}}</text></view></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--old">原安排</text><view class="schedule-location"><lucide-icon name="map-pin" tone="muted" size="{{18}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view></view>
+                  <text class="schedule-comparison-time tnum">{{item.original.primary}}</text>
                 </view>
                 <view class="reschedule-connector">
-                  <view class="reschedule-connector-line"></view>
                   <view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="amber" size="{{19}}"></lucide-icon></view>
-                  <view class="reschedule-connector-line"></view>
                 </view>
                 <view class="schedule-panel schedule-panel--new">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><view class="schedule-inline"><view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view><text class="schedule-time-label">{{item.current.primary}}</text></view></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{18}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view></view>
+                  <text class="schedule-comparison-time schedule-comparison-time--new tnum">{{item.current.primary}}</text>
                 </view>
               </view>
               <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-flow">
@@ -63,14 +63,13 @@
     </swiper-item>
 
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="{{theme === 'dark' ? 'white' : 'black'}}" refresher-threshold="68" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
             <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>
-            <input class="search-input" value="{{noticeQuery}}" placeholder="搜索通知标题" placeholder-class="notice-placeholder" bindinput="onNoticeQueryInput" bindfocus="onNoticeSearchFocus" bindblur="onNoticeSearchBlur" bindconfirm="searchNotices" confirm-type="search" aria-label="搜索通知标题" />
+            <input class="search-input" value="{{noticeQuery}}" placeholder="搜索通知" placeholder-class="notice-placeholder" bindinput="onNoticeQueryInput" bindfocus="onNoticeSearchFocus" bindblur="onNoticeSearchBlur" bindconfirm="searchNotices" confirm-type="search" aria-label="搜索通知" />
             <view wx:if="{{noticeQuery}}" class="search-clear" bindtap="clearNoticeQuery"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view>
           </view>
-          <view class="notice-source"><view class="source-dot"></view><text>先显示最近缓存，随后静默更新</text></view>
 
           <view wx:if="{{noticeItems.length}}" class="notice-list">
             <view wx:for="{{noticeItems}}" wx:key="link" class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
@@ -92,10 +91,10 @@
   <view wx:if="{{messageFilterMounted}}" class="message-filter-layer {{messageFilterOpen ? 'message-filter-layer--open' : ''}}">
     <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
     <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;" catchtap="stopPropagation">
-      <view class="message-filter-heading"><text>消息类型</text><text>{{messageFilterCount ? '已选 ' + messageFilterCount + ' 项' : '全部消息'}}</text></view>
+      <view class="message-filter-heading"><text>消息类型</text></view>
       <view class="message-type-list">
         <block wx:for="{{messageTypeOptions}}" wx:key="value">
-          <view class="message-type-option" data-value="{{item.value}}" catchtap="selectMessageType" hover-class="message-type-option--pressed" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></view>
+          <view class="message-type-option" data-index="{{index}}" bindtap="selectMessageType" hover-class="message-type-option--pressed" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></view>
           <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
         </block>
       </view>

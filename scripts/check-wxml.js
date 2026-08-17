@@ -15,7 +15,9 @@ for (const page of appConfig.pages || []) {
   }
   const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
   if (config.navigationStyle !== "custom" || config.disableScroll !== true) {
-    failures.push(`${page}.json: Skyline 页面必须使用自定义导航栏并禁用页面级滚动`);
+    failures.push(
+      `${page}.json: Skyline 页面必须使用自定义导航栏并禁用页面级滚动`,
+    );
   }
 }
 
@@ -35,7 +37,9 @@ function checkBalancedTags(source, relativePath) {
     if (match[0].startsWith("</")) {
       const expected = stack.pop();
       if (expected !== tag) {
-        failures.push(`${relativePath}: 标签闭合错误，期望 </${expected || "空"}>，实际 </${tag}>`);
+        failures.push(
+          `${relativePath}: 标签闭合错误，期望 </${expected || "空"}>，实际 </${tag}>`,
+        );
         return;
       }
     } else {
@@ -68,7 +72,10 @@ function visit(directory) {
           `${relativePath}: scroll-view 缺少 Skyline 必需的 type 属性`,
         );
       }
-      if (/\bscroll-x(?:\s|=|>)/.test(tag) && !/\benable-flex(?:\s|=|>)/.test(tag)) {
+      if (
+        /\bscroll-x(?:\s|=|>)/.test(tag) &&
+        !/\benable-flex(?:\s|=|>)/.test(tag)
+      ) {
         failures.push(`${relativePath}: 横向 scroll-view 缺少 enable-flex`);
       }
     }
@@ -78,13 +85,18 @@ function visit(directory) {
     }
 
     const scriptPath = fullPath.replace(/\.wxml$/, ".ts");
-    const script = fs.existsSync(scriptPath) ? fs.readFileSync(scriptPath, "utf8") : "";
-    const eventPattern = /\b(?:bind|catch|capture-bind|capture-catch)[\w:-]*=(['"])([^'"{}]+)\1/g;
+    const script = fs.existsSync(scriptPath)
+      ? fs.readFileSync(scriptPath, "utf8")
+      : "";
+    const eventPattern =
+      /\b(?:bind|catch|capture-bind|capture-catch)[\w:-]*=(['"])([^'"{}]+)\1/g;
     let eventMatch;
     while ((eventMatch = eventPattern.exec(source))) {
       const handler = eventMatch[2];
       if (!new RegExp(`\\b${escapeRegExp(handler)}\\s*\\(`).test(script)) {
-        failures.push(`${relativePath}: 事件处理函数 ${handler} 未在同名 TypeScript 文件中定义`);
+        failures.push(
+          `${relativePath}: 事件处理函数 ${handler} 未在同名 TypeScript 文件中定义`,
+        );
       }
     }
 
@@ -93,6 +105,31 @@ function visit(directory) {
 }
 
 visit(miniprogramRoot);
+
+const inboxTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "inbox", "index.wxml"),
+  "utf8",
+);
+if (
+  (
+    inboxTemplate.match(
+      /refresher-default-style="\{\{theme === 'dark' \? 'white' : 'black'\}\}"/g,
+    ) || []
+  ).length !== 2 ||
+  /slot="refresher"/.test(inboxTemplate)
+) {
+  failures.push(
+    "pages/inbox/index.wxml: 两个消息列表必须使用原生黑白刷新指示器，不得回退到缺失的自定义 refresher",
+  );
+}
+if (
+  !inboxTemplate.includes('data-index="{{index}}"') ||
+  !inboxTemplate.includes('bindtap="selectMessageType"')
+) {
+  failures.push(
+    "pages/inbox/index.wxml: 消息筛选必须以稳定索引触发可见的勾选状态",
+  );
+}
 
 if (failures.length > 0) {
   console.error(failures.join("\n"));
