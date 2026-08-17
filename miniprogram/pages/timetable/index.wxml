@@ -21,17 +21,6 @@
 
     <text class="header-week tnum">{{weekLabel}}</text>
 
-    <view
-      class="semester-trigger pressable"
-      style="right: {{headerRightInset}}px;"
-      bindtap="toggleSemester"
-      hover-class="semester-trigger--pressed"
-      aria-role="button"
-      aria-label="切换学期，当前 {{semesterLabel}}"
-    >
-      <text>{{semesterShortLabel}}</text>
-      <view class="semester-chevron {{semesterOpen ? 'semester-chevron--open' : ''}}"><lucide-icon name="chevron-right" tone="white" size="{{18}}"></lucide-icon></view>
-    </view>
   </view>
 
   <swiper
@@ -78,16 +67,16 @@
                 style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%;"
               >
                 <view
-                  class="grid-course grid-course--{{course.tone}} {{course.densityClass}} pressable"
+                  class="grid-course grid-course--{{course.tone}} pressable"
                   data-id="{{course.id}}"
                   bindtap="openCourse"
                   hover-class="grid-course--pressed"
                   aria-role="button"
                   aria-label="{{course.name}}，{{course.location}}"
                 >
-                  <text class="grid-course-name" overflow="ellipsis" max-lines="4">{{course.displayName}}</text>
-                  <text class="grid-course-room" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
-                  <text class="grid-course-teacher" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
+                  <text class="grid-course-name" style="{{course.nameStyle}}" overflow="ellipsis" max-lines="{{course.nameLines}}">{{course.displayName}}</text>
+                  <text class="grid-course-room" style="{{course.locationStyle}}" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
+                  <text class="grid-course-teacher" style="{{course.teacherStyle}}" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
                 </view>
               </view>
             </view>
@@ -102,65 +91,77 @@
     <block wx:if="{{hasHydrated}}"><text>暂无本地课表</text><text>可从左上角菜单手动刷新</text></block>
   </view>
 
-  <view wx:if="{{menuOpen || semesterOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>
-
-  <view wx:if="{{menuOpen}}" class="timetable-menu popover-enter" style="top: {{menuTop}}px;" catchtap="stopPropagation">
-    <text class="menu-label">课表主题</text>
-    <view class="theme-options">
-      <view
-        wx:for="{{timetableThemes}}"
-        wx:key="id"
-        class="theme-option pressable {{timetableThemeId === item.id ? 'theme-option--active' : ''}}"
-        data-theme="{{item.id}}"
-        bindtap="selectTheme"
-        hover-class="pressing"
-        aria-role="button"
-        aria-label="{{item.label}}"
-      >
-        <view class="theme-swatch" style="background-color: {{item.color}};">
-          <image wx:if="{{item.image}}" src="/assets/images/timetable-background.png" mode="aspectFill"></image>
-          <lucide-icon wx:if="{{timetableThemeId === item.id}}" name="check" tone="white" size="{{20}}"></lucide-icon>
-        </view>
-      </view>
-    </view>
-    <view class="menu-separator"></view>
-    <view class="menu-action pressable" bindtap="openCalendar" hover-class="pressing">
-      <view class="menu-action-icon"><lucide-icon name="calendar-range" tone="coral" size="{{25}}"></lucide-icon></view>
-      <text>查看校历</text>
-      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
-    </view>
-    <view class="menu-action pressable" bindtap="goToday" hover-class="pressing">
-      <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="calendar-check" tone="sage" size="{{25}}"></lucide-icon></view>
-      <text>回到本周</text>
-      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
-    </view>
-    <view class="menu-action pressable" bindtap="onRefresh" hover-class="pressing">
-      <view class="menu-action-icon menu-action-icon--amber"><lucide-icon name="refresh-cw" tone="amber" size="{{25}}"></lucide-icon></view>
-      <text>刷新课表</text>
-      <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
-    </view>
-  </view>
+  <view wx:if="{{menuOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>
 
   <view
-    wx:if="{{semesterOpen}}"
-    class="semester-popover popover-enter"
-    style="top: {{menuTop}}px; right: {{headerRightInset}}px;"
+    wx:if="{{menuOpen}}"
+    class="timetable-menu popover-enter {{semesterOpen ? 'timetable-menu--submenu' : ''}}"
+    style="top: {{menuTop}}px; height: {{menuHeight}}rpx;"
     catchtap="stopPropagation"
   >
-    <text class="menu-label">选择学期</text>
-    <scroll-view class="semester-list" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-      <view
-        wx:for="{{semesters}}"
-        wx:key="id"
-        class="semester-option pressable {{semesterId === item.id ? 'semester-option--active' : ''}}"
-        data-semester="{{item.id}}"
-        bindtap="selectSemester"
-        hover-class="pressing"
-      >
-        <text>{{item.label}}</text>
-        <lucide-icon wx:if="{{semesterId === item.id}}" name="check" tone="coral" size="{{23}}"></lucide-icon>
+    <view class="menu-panel menu-panel--main">
+      <text class="menu-label">课表主题</text>
+      <view class="theme-options">
+        <view
+          wx:for="{{timetableThemes}}"
+          wx:key="id"
+          class="theme-option pressable {{timetableThemeId === item.id ? 'theme-option--active' : ''}}"
+          data-theme="{{item.id}}"
+          bindtap="selectTheme"
+          hover-class="pressing"
+          aria-role="button"
+          aria-label="{{item.label}}"
+        >
+          <view class="theme-swatch" style="background-color: {{item.color}};">
+            <image wx:if="{{item.image}}" src="/assets/images/timetable-background.png" mode="aspectFill"></image>
+            <lucide-icon wx:if="{{timetableThemeId === item.id}}" name="check" tone="white" size="{{20}}"></lucide-icon>
+          </view>
+        </view>
       </view>
-    </scroll-view>
+      <view class="menu-separator"></view>
+      <view class="menu-action pressable" bindtap="openSemesterMenu" hover-class="pressing">
+        <view class="menu-action-icon menu-action-icon--semester"><lucide-icon name="calendar-days" tone="coral" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">选择学期</text>
+        <text class="menu-action-value">{{semesterShortLabel}}</text>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view class="menu-action pressable" bindtap="openCalendar" hover-class="pressing">
+        <view class="menu-action-icon"><lucide-icon name="calendar-range" tone="coral" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">查看校历</text>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view class="menu-action pressable" bindtap="goToday" hover-class="pressing">
+        <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="calendar-check" tone="sage" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">回到本周</text>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view class="menu-action pressable" bindtap="onRefresh" hover-class="pressing">
+        <view class="menu-action-icon menu-action-icon--amber"><lucide-icon name="refresh-cw" tone="amber" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">刷新课表</text>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+    </view>
+    <view class="menu-panel menu-panel--semester">
+      <view class="submenu-header">
+        <view class="submenu-back pressable" bindtap="backToMainMenu" hover-class="pressing" aria-role="button" aria-label="返回课表菜单">
+          <lucide-icon name="arrow-left" tone="ink" size="{{24}}"></lucide-icon>
+        </view>
+        <text>选择学期</text>
+      </view>
+      <scroll-view class="semester-list" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{semesters}}"
+          wx:key="id"
+          class="semester-option pressable {{semesterId === item.id ? 'semester-option--active' : ''}}"
+          data-semester="{{item.id}}"
+          bindtap="selectSemester"
+          hover-class="pressing"
+        >
+          <text>{{item.label}}</text>
+          <lucide-icon wx:if="{{semesterId === item.id}}" name="check" tone="coral" size="{{23}}"></lucide-icon>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 
   <bottom-sheet visible="{{courseSheetVisible}}" title="课程详情" theme="{{theme}}" bindclose="closeCourse">

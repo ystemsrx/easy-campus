@@ -1,9 +1,7 @@
 import { ApiClientError, getErrorMessage } from "../../services/request";
 import { downloadCalendarImage, getCalendar } from "../../services/teaching";
-import type { CalendarData } from "../../types/api";
+import type { CalendarAcademicYearOption, CalendarData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime } from "../../utils/date";
-import { formatBytes } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
 
@@ -12,14 +10,26 @@ interface YearOption {
   label: string;
 }
 
-function buildYearOptions(latest: number, available?: number[]): YearOption[] {
-  const years = available?.length
+function buildYearOptions(
+  selected: number,
+  selectedLabel: string,
+  available?: CalendarAcademicYearOption[],
+): YearOption[] {
+  const entries = available?.length
     ? available
-    : Array.from({ length: 6 }, (_, index) => latest - index);
-  return [...new Set(years)]
-    .sort((a, b) => b - a)
-    .map((year) => ({ value: year, label: `${year}-${year + 1}` }));
+    : [{ startYear: selected, academicYear: selectedLabel }];
+  const options = new Map<number, YearOption>();
+  for (const entry of entries) {
+    if (!Number.isInteger(entry.startYear) || entry.startYear <= 0) continue;
+    options.set(entry.startYear, {
+      value: entry.startYear,
+      label: entry.academicYear,
+    });
+  }
+  return [...options.values()].sort((a, b) => b.value - a.value);
 }
+
+let yearPickerCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
 function accessFile(path: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -56,11 +66,9 @@ Page({
     imagePath: "",
     academicYear: 0,
     yearLabel: "最新校历",
-    publishedLabel: "发布时间未提供",
-    sizeLabel: "—",
     yearOptions: [] as YearOption[],
-    yearPickerVisible: false,
-    draftAcademicYear: 0,
+    yearPickerMounted: false,
+    yearPickerOpen: false,
   },
   onLoad() {
     this.applyAppearance();
@@ -71,6 +79,10 @@ Page({
     if (!this.data.calendar) {
       void this.loadCalendar(undefined, false);
     }
+  },
+  onUnload() {
+    if (yearPickerCloseTimer) clearTimeout(yearPickerCloseTimer);
+    yearPickerCloseTimer = null;
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -111,31 +123,29 @@ Page({
     });
     try {
       const calendar = await getCalendar(academicYear, refresh);
+      const imagePath = await this.getCachedImage(calendar, refresh);
       this.setData({
         calendar,
         academicYear: calendar.startYear,
-        draftAcademicYear: calendar.startYear,
         yearLabel: calendar.academicYear,
-        publishedLabel: calendar.publishedAt
-          ? /[ T]\d{2}:\d{2}/.test(calendar.publishedAt)
-            ? formatDateTime(calendar.publishedAt)
-            : calendar.publishedAt
-          : "发布时间未提供",
-        sizeLabel: formatBytes(calendar.size),
-        yearOptions: buildYearOptions(calendar.startYear),
+        yearOptions: buildYearOptions(
+          calendar.startYear,
+          calendar.academicYear,
+          calendar.availableCalendars,
+        ),
+        imagePath,
       });
-      const imagePath = await this.getCachedImage(calendar, refresh);
-      this.setData({ imagePath });
       if (refresh) haptic("medium");
     } catch (error) {
       if (error instanceof ApiClientError) {
         const details = error.details as
-          { availableAcademicYears?: number[] } | undefined;
-        if (details?.availableAcademicYears?.length) {
+          { availableCalendars?: CalendarAcademicYearOption[] } | undefined;
+        if (details?.availableCalendars?.length) {
           this.setData({
             yearOptions: buildYearOptions(
-              details.availableAcademicYears[0],
-              details.availableAcademicYears,
+              details.availableCalendars[0].startYear,
+              details.availableCalendars[0].academicYear,
+              details.availableCalendars,
             ),
           });
         }
@@ -146,7 +156,7 @@ Page({
     }
   },
   onRefresh() {
-    void this.loadCalendar(undefined, true);
+    void this.loadCalendar(this.data.academicYear || undefined, true);
   },
   previewImage() {
     if (!this.data.imagePath) return;
@@ -170,23 +180,25 @@ Page({
   },
   openYearPicker() {
     haptic("light");
-    this.setData({
-      yearPickerVisible: true,
-      draftAcademicYear: this.data.academicYear,
-    });
+    if (yearPickerCloseTimer) clearTimeout(yearPickerCloseTimer);
+    this.setData({ yearPickerMounted: true });
+    setTimeout(() => this.setData({ yearPickerOpen: true }), 20);
   },
   closeYearPicker() {
-    this.setData({ yearPickerVisible: false });
+    this.setData({ yearPickerOpen: false });
+    if (yearPickerCloseTimer) clearTimeout(yearPickerCloseTimer);
+    yearPickerCloseTimer = setTimeout(() => {
+      this.setData({ yearPickerMounted: false });
+      yearPickerCloseTimer = null;
+    }, 280);
   },
   selectYear(event: WechatMiniprogram.TouchEvent) {
+    const year = Number(event.currentTarget.dataset.value);
+    if (!Number.isInteger(year) || year <= 0) return;
     haptic("light");
-    this.setData({
-      draftAcademicYear: Number(event.currentTarget.dataset.value),
-    });
-  },
-  applyYear() {
-    const year = this.data.draftAcademicYear;
-    this.setData({ yearPickerVisible: false, imagePath: "", calendar: null });
+    this.closeYearPicker();
+    if (year === this.data.academicYear) return;
     void this.loadCalendar(year, false);
   },
+  stopPropagation() {},
 });

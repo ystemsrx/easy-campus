@@ -88,9 +88,16 @@ export interface CurrentUserData {
   };
 }
 
+export interface CalendarAcademicYearOption {
+  startYear: number;
+  academicYear: string;
+}
+
 export interface CalendarData {
   academicYear: string;
   startYear: number;
+  availableAcademicYears: number[];
+  availableCalendars: CalendarAcademicYearOption[];
   publishedAt?: string | null;
   sourcePageUrl: string;
   contentType: string;

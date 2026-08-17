@@ -40,7 +40,10 @@ interface GridCourse extends TimetableCourse {
   displayName: string;
   displayLocation: string;
   displayTeacher: string;
-  densityClass: string;
+  nameLines: number;
+  nameStyle: string;
+  locationStyle: string;
+  teacherStyle: string;
 }
 
 interface GridDay extends DayOption {
@@ -67,10 +70,20 @@ interface TimetableThemeOption {
   image: boolean;
 }
 
+interface GridLayoutMetrics {
+  rowHeightPx: number;
+  nameFontSizePx: number;
+  locationFontSizePx: number;
+  teacherFontSizePx: number;
+  verticalChromePx: number;
+  scale: number;
+}
+
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
+const MAIN_MENU_HEIGHT = 478;
 const THEMES: TimetableThemeOption[] = [
   { id: "image", label: "默认壁纸", color: "#0862ad", image: true },
   { id: "ocean", label: "深海", color: "#17588f", image: false },
@@ -126,27 +139,48 @@ function maxPeriodFor(timetable: TimetableData): number {
   return Math.max(12, ...periods, ...coursePeriods);
 }
 
-function toGridCourse(course: TimetableCourse, maxPeriod: number): GridCourse {
+function toGridCourse(
+  course: TimetableCourse,
+  maxPeriod: number,
+  metrics: GridLayoutMetrics,
+): GridCourse {
   const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
   const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
   const span = end - start + 1;
-  const contentLength =
-    Array.from(course.name).length +
-    Array.from(course.location).length +
-    Array.from(course.teacher).length;
+  const nameLength = Array.from(course.name.trim()).length;
+  const displayLocation = truncateGridText(course.location, 12);
+  const locationLines = Math.max(
+    1,
+    Math.min(3, Math.ceil(Array.from(displayLocation).length / 4)),
+  );
+  const availableHeight = Math.max(
+    0,
+    span * metrics.rowHeightPx - metrics.verticalChromePx,
+  );
+  const fitsNameLines = (limit: number): boolean => {
+    const actualNameLines = Math.max(
+      1,
+      Math.min(limit, Math.ceil(nameLength / 3)),
+    );
+    const nameHeight = actualNameLines * metrics.nameFontSizePx * 1.12;
+    const locationHeight =
+      locationLines * metrics.locationFontSizePx * 1.08 + 3 * metrics.scale;
+    return nameHeight + locationHeight <= availableHeight;
+  };
+  let nameLines = 4;
+  if (!fitsNameLines(4)) nameLines = 3;
+  if (!fitsNameLines(3)) nameLines = 2;
   return {
     ...course,
     topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
     heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    displayName: truncateGridText(course.name, 12),
-    displayLocation: truncateGridText(course.location, 12),
+    displayName: truncateGridText(course.name, nameLines * 3),
+    displayLocation,
     displayTeacher: truncateGridText(course.teacher, 6),
-    densityClass:
-      span <= 1
-        ? "grid-course--micro"
-        : span <= 2 || contentLength > 26
-          ? "grid-course--compact"
-          : "grid-course--comfortable",
+    nameLines,
+    nameStyle: `font-size:${metrics.nameFontSizePx.toFixed(2)}px;`,
+    locationStyle: `font-size:${metrics.locationFontSizePx.toFixed(2)}px;`,
+    teacherStyle: `font-size:${metrics.teacherFontSizePx.toFixed(2)}px;`,
   };
 }
 
@@ -155,6 +189,40 @@ function truncateGridText(value: string, maxCharacters: number): string {
   return characters.length <= maxCharacters
     ? characters.join("")
     : `${characters.slice(0, maxCharacters - 1).join("")}…`;
+}
+
+function gridLayoutMetrics(
+  maxPeriod: number,
+  headerHeight: number,
+): GridLayoutMetrics {
+  let viewportWidth = 375;
+  let viewportHeight = 667;
+  try {
+    const windowInfo = wx.getWindowInfo();
+    viewportWidth = windowInfo.windowWidth || viewportWidth;
+    viewportHeight = windowInfo.windowHeight || viewportHeight;
+  } catch {
+    // 默认视口仅用于旧基础库，真实设备会读取窗口尺寸。
+  }
+  const scale = viewportWidth / 750;
+  const columnWidth = (viewportWidth - 84 * scale) / 7;
+  const contentWidth = Math.max(24, columnWidth - 14 * scale);
+  const gridHeight = Math.max(160, viewportHeight - headerHeight - 84 * scale);
+  return {
+    rowHeightPx: gridHeight / Math.max(1, maxPeriod),
+    nameFontSizePx: Math.max(10.5, Math.min(15, (contentWidth - 0.75) / 3)),
+    locationFontSizePx: Math.max(
+      8.5,
+      Math.min(11.5, (contentWidth - 0.75) / 4),
+    ),
+    teacherFontSizePx: Math.max(9, Math.min(12, (contentWidth - 0.75) / 3)),
+    verticalChromePx: 14 * scale,
+    scale,
+  };
+}
+
+function submenuHeight(semesterCount: number): number {
+  return Math.min(590, Math.max(250, 104 + Math.min(6, semesterCount) * 78));
 }
 
 function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
@@ -175,6 +243,7 @@ function buildWeekPage(
   timetable: TimetableData,
   weekNumber: number,
   maxPeriod: number,
+  metrics: GridLayoutMetrics,
 ): WeekPage {
   const courses = coursesForWeek(timetable, weekNumber);
   const days = buildDays(timetable, weekNumber);
@@ -186,7 +255,7 @@ function buildWeekPage(
       ...day,
       courses: courses
         .filter((course) => courseOccursOnDay(course, day))
-        .map((course) => toGridCourse(course, maxPeriod)),
+        .map((course) => toGridCourse(course, maxPeriod, metrics)),
     })),
   };
 }
@@ -219,7 +288,6 @@ function buildPeriodRows(
 function backgroundMetrics(): {
   headerTop: number;
   headerHeight: number;
-  headerRightInset: number;
   menuTop: number;
   imageStyle: string;
 } {
@@ -232,7 +300,6 @@ function backgroundMetrics(): {
       (menu.top - statusBarHeight) * 2 + menu.height,
     );
     const headerHeight = statusBarHeight + contentHeight;
-    const rightInset = Math.max(12, windowInfo.windowWidth - menu.left + 6);
     const scale = Math.max(
       windowInfo.windowWidth / BACKGROUND_WIDTH,
       windowInfo.windowHeight / BACKGROUND_HEIGHT,
@@ -243,7 +310,6 @@ function backgroundMetrics(): {
     return {
       headerTop: statusBarHeight,
       headerHeight,
-      headerRightInset: rightInset,
       menuTop: headerHeight + 4,
       imageStyle: `width:${width}px;height:${height}px;left:${left}px;top:0px;`,
     };
@@ -251,7 +317,6 @@ function backgroundMetrics(): {
     return {
       headerTop: 24,
       headerHeight: 74,
-      headerRightInset: 104,
       menuTop: 78,
       imageStyle: "width:100%;height:100%;left:0;top:0;",
     };
@@ -290,7 +355,8 @@ Page({
     timetableThemes: THEMES,
     menuOpen: false,
     semesterOpen: false,
-    semesterLabel: "选择学期",
+    menuHeight: MAIN_MENU_HEIGHT,
+    semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
     semesterId: "",
     semesters: [] as TimetableData["semesters"],
@@ -415,20 +481,24 @@ Page({
       ),
     );
     const maxPeriod = maxPeriodFor(timetable);
+    const layoutMetrics = gridLayoutMetrics(
+      maxPeriod,
+      Number(this.data.headerHeight) || 74,
+    );
     const periodCourses = coursesForWeek(timetable, weekNumber);
     visibleCourses = periodCourses;
     this.setData({
-      semesterLabel: timetable.semester.label,
       semesterShortLabel: shortSemesterLabel(timetable.semester),
       semesterId: timetable.semester.id,
       semesters: timetable.semesters,
+      semesterMenuHeight: submenuHeight(timetable.semesters.length),
       weekNumber,
       weekIndex: weekNumber - 1,
       weekLabel: `第 ${weekNumber} 周`,
       maxWeek,
       periodRows: buildPeriodRows(timetable, maxPeriod, periodCourses),
       weekPages: Array.from({ length: maxWeek }, (_, index) =>
-        buildWeekPage(timetable, index + 1, maxPeriod),
+        buildWeekPage(timetable, index + 1, maxPeriod, layoutMetrics),
       ),
     });
   },
@@ -454,30 +524,51 @@ Page({
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semester = String(event.currentTarget.dataset.semester || "");
-    this.setData({ semesterOpen: false });
+    this.setData({
+      menuOpen: false,
+      semesterOpen: false,
+      menuHeight: MAIN_MENU_HEIGHT,
+    });
     if (!semester || semester === this.data.semesterId) return;
     haptic("light");
     const querySemester = semester === defaultSemesterId ? undefined : semester;
     const cached = loadTimetableSnapshot(activeAccount, querySemester);
     if (cached) {
+      this.setData({ menuOpen: false, semesterOpen: false });
       activeSnapshot = cached;
       activeTimetable = cached.data;
       this.applyTimetable(cached.data, false);
       this.syncTimetableIfNeeded(querySemester);
       return;
     }
+    this.setData({ menuOpen: false, semesterOpen: false });
     void this.loadTimetable(false, querySemester);
   },
   toggleMenu() {
     haptic("light");
-    this.setData({ menuOpen: !this.data.menuOpen, semesterOpen: false });
+    this.setData({
+      menuOpen: !this.data.menuOpen,
+      semesterOpen: false,
+      menuHeight: MAIN_MENU_HEIGHT,
+    });
   },
-  toggleSemester() {
+  openSemesterMenu() {
     haptic("light");
-    this.setData({ semesterOpen: !this.data.semesterOpen, menuOpen: false });
+    this.setData({
+      semesterOpen: true,
+      menuHeight: this.data.semesterMenuHeight,
+    });
+  },
+  backToMainMenu() {
+    haptic("light");
+    this.setData({ semesterOpen: false, menuHeight: MAIN_MENU_HEIGHT });
   },
   closeMenus() {
-    this.setData({ menuOpen: false, semesterOpen: false });
+    this.setData({
+      menuOpen: false,
+      semesterOpen: false,
+      menuHeight: MAIN_MENU_HEIGHT,
+    });
   },
   stopPropagation() {},
   selectTheme(event: WechatMiniprogram.TouchEvent) {
@@ -527,5 +618,9 @@ Page({
   },
   closeCourse() {
     this.setData({ courseSheetVisible: false, selectedCourse: null });
+  },
+  onResize() {
+    this.setData(backgroundMetrics());
+    if (activeTimetable) this.applyTimetable(activeTimetable, true);
   },
 });
