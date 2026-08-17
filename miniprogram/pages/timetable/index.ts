@@ -4,6 +4,7 @@ import {
   weekDateKeys,
   type TimetableCourse,
 } from "../../data/timetable";
+import { layoutGridCourseText } from "../../data/timetable-grid";
 import { getTimetable } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
@@ -75,7 +76,7 @@ interface GridLayoutMetrics {
   nameFontSizePx: number;
   locationFontSizePx: number;
   teacherFontSizePx: number;
-  verticalChromePx: number;
+  contentInsetPx: number;
   scale: number;
 }
 
@@ -147,48 +148,17 @@ function toGridCourse(
   const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
   const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
   const span = end - start + 1;
-  const nameLength = Array.from(course.name.trim()).length;
-  const displayLocation = truncateGridText(course.location, 12);
-  const locationLines = Math.max(
-    1,
-    Math.min(3, Math.ceil(Array.from(displayLocation).length / 4)),
+  const textLayout = layoutGridCourseText(
+    course,
+    span * metrics.rowHeightPx,
+    metrics,
   );
-  const availableHeight = Math.max(
-    0,
-    span * metrics.rowHeightPx - metrics.verticalChromePx,
-  );
-  const fitsNameLines = (limit: number): boolean => {
-    const actualNameLines = Math.max(
-      1,
-      Math.min(limit, Math.ceil(nameLength / 3)),
-    );
-    const nameHeight = actualNameLines * metrics.nameFontSizePx * 1.12;
-    const locationHeight =
-      locationLines * metrics.locationFontSizePx * 1.08 + 3 * metrics.scale;
-    return nameHeight + locationHeight <= availableHeight;
-  };
-  let nameLines = 4;
-  if (!fitsNameLines(4)) nameLines = 3;
-  if (!fitsNameLines(3)) nameLines = 2;
   return {
     ...course,
     topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
     heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    displayName: truncateGridText(course.name, nameLines * 3),
-    displayLocation,
-    displayTeacher: truncateGridText(course.teacher, 6),
-    nameLines,
-    nameStyle: `font-size:${metrics.nameFontSizePx.toFixed(2)}px;`,
-    locationStyle: `font-size:${metrics.locationFontSizePx.toFixed(2)}px;`,
-    teacherStyle: `font-size:${metrics.teacherFontSizePx.toFixed(2)}px;`,
+    ...textLayout,
   };
-}
-
-function truncateGridText(value: string, maxCharacters: number): string {
-  const characters = Array.from(value.trim());
-  return characters.length <= maxCharacters
-    ? characters.join("")
-    : `${characters.slice(0, maxCharacters - 1).join("")}…`;
 }
 
 function gridLayoutMetrics(
@@ -216,7 +186,8 @@ function gridLayoutMetrics(
       Math.min(11.5, (contentWidth - 0.75) / 4),
     ),
     teacherFontSizePx: Math.max(9, Math.min(12, (contentWidth - 0.75) / 3)),
-    verticalChromePx: 14 * scale,
+    // 卡片槽上下内边距 4rpx + 卡片边框 4rpx + 内边距 8rpx。
+    contentInsetPx: 16 * scale,
     scale,
   };
 }

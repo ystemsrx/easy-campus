@@ -244,7 +244,7 @@
   align-items: flex-start;
   padding: 4rpx;
   overflow: hidden;
-  border: 1rpx solid #fff;
+  border: 2rpx solid #fff;
   border-radius: 13rpx;
   color: #fff;
   background: #0862ad;
@@ -259,6 +259,8 @@
 
 .grid-course-name {
   display: block;
+  flex: none;
+  flex-shrink: 0;
   width: 3em;
   max-width: 100%;
   overflow: hidden;
@@ -272,6 +274,8 @@
 .grid-course-room,
 .grid-course-teacher {
   display: block;
+  flex: none;
+  flex-shrink: 0;
   max-width: 100%;
   margin-top: 3rpx;
   overflow: hidden;

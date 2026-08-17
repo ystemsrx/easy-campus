@@ -75,8 +75,8 @@
                   aria-label="{{course.name}}，{{course.location}}"
                 >
                   <text class="grid-course-name" style="{{course.nameStyle}}" overflow="ellipsis" max-lines="{{course.nameLines}}">{{course.displayName}}</text>
-                  <text class="grid-course-room" style="{{course.locationStyle}}" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
-                  <text class="grid-course-teacher" style="{{course.teacherStyle}}" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
+                  <text wx:if="{{course.displayLocation}}" class="grid-course-room" style="{{course.locationStyle}}" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
+                  <text wx:if="{{course.displayTeacher}}" class="grid-course-teacher" style="{{course.teacherStyle}}" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
                 </view>
               </view>
             </view>
