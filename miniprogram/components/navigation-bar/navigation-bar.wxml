@@ -7,7 +7,8 @@
     <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
       <view
         wx:if="{{back}}"
-        class="back-button {{raisedBack ? 'back-button--raised' : ''}}"
+        class="back-button"
+        style="top: -{{backOffset}}rpx;"
         bindtap="onBack"
         hover-class="nav-button--pressed"
         hover-stay-time="90"

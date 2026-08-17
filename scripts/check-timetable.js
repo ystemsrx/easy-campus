@@ -97,6 +97,11 @@ assert(
   "第三学期的课表短名称必须映射为夏",
 );
 assert(
+  semesterFormat.shortAcademicSemesterLabel(summerSemester, " · ") ===
+    "25-26 · 夏",
+  "学期短名称必须支持课程选择器使用的点分隔符",
+);
+assert(
   semesterFormat.timetableSemesterMenuLabel(summerSemester) ===
     "2025-2026 · 夏",
   "课表菜单中的第三学期必须映射为夏",

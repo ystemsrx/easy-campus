@@ -147,6 +147,18 @@ const electricityScript = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "electricity", "index.ts"),
   "utf8",
 );
+const passRateTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "pass-rates", "index.wxml"),
+  "utf8",
+);
+const passRateScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "pass-rates", "index.ts"),
+  "utf8",
+);
+const passRateStyles = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "pass-rates", "index.wxss"),
+  "utf8",
+);
 if (
   !homeTemplate.includes('class="feature-open-container"') ||
   !homeTemplate.includes('bind:tap="openElectricity"') ||
@@ -179,6 +191,45 @@ if (
 ) {
   failures.push(
     "pages/electricity: 换绑草稿必须与当前绑定分离，并保留紧凑的读取、换绑和刷新状态",
+  );
+}
+
+if (
+  passRateTemplate.includes("<bottom-sheet") ||
+  !passRateTemplate.includes('class="pass-picker-layer"') ||
+  !passRateTemplate.includes('class="semester-menu"') ||
+  passRateTemplate.includes('class="semester-menu-scroll"') ||
+  !passRateTemplate.includes('class="course-picker-body"') ||
+  !passRateTemplate.includes('class="course-picker-scroll" type="list"') ||
+  !passRateTemplate.includes('class="course-picker-content"') ||
+  !passRateTemplate.includes('class="course-picker-bottom-space"') ||
+  !passRateTemplate.includes(
+    'wx:for="{{courseRows}}" wx:key="id" wx:for-item="row"',
+  ) ||
+  passRateTemplate.includes('scroll-into-view="{{coursePickerTarget}}"') ||
+  !passRateTemplate.includes('({{item.courses.length}})') ||
+  !passRateTemplate.includes('back-offset="{{32}}"') ||
+  !passRateScript.includes("function toCourseRows(") ||
+  !passRateScript.includes("function coursePickerState(") ||
+  !passRateScript.includes('shortAcademicSemesterLabel(') ||
+  !passRateScript.includes(
+    "coursePickerState(groups, this.data.selectedSemesterId)",
+  ) ||
+  !passRateStyles.includes(
+    ".course-picker-body { flex: 1; width: 100%; min-height: 0; }",
+  ) ||
+  !passRateStyles.includes(
+    ".course-picker-scroll { width: 100%; height: 100%; background: #fbf9f4; }",
+  ) ||
+  !passRateStyles.includes(
+    ".course-picker-bottom-space { width: 100%; height: calc(136rpx + env(safe-area-inset-bottom)); }",
+  ) ||
+  !passRateStyles.includes(
+    ".course-picker-list-row { display: flex; flex: none; flex-direction: row; box-sizing: border-box; width: 100%; height: 88rpx; padding-bottom: 12rpx; }",
+  )
+) {
+  failures.push(
+    "pages/pass-rates: 课程选择必须与校园消息一致，在同一模板中使用明确高度的滚动区、内容层和底部占位",
   );
 }
 

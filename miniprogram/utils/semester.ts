@@ -9,12 +9,13 @@ export function semesterSeasonLabel(term: number): string {
 
 export function shortAcademicSemesterLabel(
   semester: AcademicSemesterOption | null,
+  separator = " ",
 ): string {
   if (!semester) return "选择学期";
   const start = String(semester.academicYear % 100).padStart(2, "0");
   const end = String((semester.academicYear + 1) % 100).padStart(2, "0");
   const season = semesterSeasonLabel(semester.term);
-  return season ? `${start}-${end} ${season}` : `${start}-${end}`;
+  return season ? `${start}-${end}${separator}${season}` : `${start}-${end}`;
 }
 
 export function timetableSemesterMenuLabel(

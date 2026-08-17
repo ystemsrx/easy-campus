@@ -78,20 +78,40 @@
 .collecting-title { display: block; margin-top: 22rpx; color: var(--color-text); font-size: 27rpx; font-weight: 750; }
 .updating-label { display: block; padding: 22rpx 0 0; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
 
-.semester-menu { display: flex; flex-direction: column; gap: 12rpx; padding-bottom: 12rpx; }
-.semester-menu-section { flex: none; overflow: hidden; border-radius: 30rpx; background: rgba(43, 38, 32, 0.035); }
-.semester-menu-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; min-height: 86rpx; padding: 0 24rpx; }
-.semester-menu-copy { display: flex; flex: 1; flex-direction: row; align-items: baseline; gap: 12rpx; min-width: 0; }
-.semester-menu-title { display: block; min-width: 0; color: var(--color-text); font-size: 24rpx; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pass-picker-layer { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1200; display: flex; align-items: flex-end; justify-content: center; color: #16161a; }
+.pass-picker-scrim { position: absolute; top: 0; right: 0; bottom: 0; left: 0; opacity: 0; background: rgba(24, 21, 18, 0.36); transition: opacity 300ms ease; }
+.pass-picker-scrim--active { opacity: 1; }
+.pass-picker-card { position: relative; z-index: 1; display: flex; flex-direction: column; width: 100%; height: 86vh; overflow: hidden; border-radius: 56rpx 56rpx 0 0; background: #fbf9f4; box-shadow: 0 -22rpx 80rpx rgba(20, 20, 30, 0.18); transform: translateY(105%); transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1); }
+.pass-picker-card--active { transform: translateY(0); }
+.pass-picker-handle { position: absolute; top: 14rpx; left: 50%; z-index: 3; width: 70rpx; height: 8rpx; border-radius: 999rpx; background: rgba(43, 38, 32, 0.15); transform: translateX(-50%); }
+.pass-picker-header { position: relative; z-index: 2; display: flex; flex: none; flex-direction: row; align-items: center; justify-content: space-between; min-height: 84rpx; padding: 18rpx 38rpx 6rpx 44rpx; background: rgba(251, 249, 244, 0.92); backdrop-filter: blur(16px); }
+.pass-picker-title { display: block; min-width: 0; color: currentColor; font-size: 34rpx; font-weight: 750; line-height: 1.2; }
+.pass-picker-close { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; border-radius: 50%; background: rgba(43, 38, 32, 0.06); transition: transform 110ms ease-out, opacity 110ms ease-out; }
+.pass-picker-close--pressed { transform: scale(0.9); opacity: 0.72; }
+.pass-picker-semesters { flex: none; width: 100%; padding: 6rpx 40rpx 0; }
+.semester-menu { display: flex; flex-direction: row; flex-wrap: wrap; gap: 10rpx 12rpx; width: 100%; margin: 2rpx 0 16rpx; }
+.semester-menu-option { display: flex; flex: none; flex-direction: row; align-items: center; gap: 10rpx; box-sizing: border-box; height: 68rpx; padding: 0 22rpx; border-radius: 24rpx; color: var(--color-text-secondary); background: rgba(43, 38, 32, 0.035); }
+.semester-menu-option--active { color: #9a651e; background: #fdf2d9; }
+.semester-menu-title { display: block; flex: none; font-size: 23rpx; font-weight: 750; white-space: nowrap; }
 .semester-menu-count { display: block; flex: none; color: var(--color-text-tertiary); font-size: 18rpx; white-space: nowrap; }
-.semester-menu-chevron { display: flex; flex: none; align-items: center; justify-content: center; transition: transform 220ms ease; }
-.semester-menu-chevron--expanded { transform: rotate(90deg); }
-.semester-course-list { display: flex; flex-direction: column; padding: 0 12rpx 12rpx; border-top: 1rpx solid var(--color-separator); }
-.course-picker-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; min-height: 76rpx; padding: 0 14rpx 0 18rpx; border-radius: 22rpx; }
+.course-picker-body { flex: 1; width: 100%; min-height: 0; }
+.course-picker-scroll { width: 100%; height: 100%; background: #fbf9f4; }
+.course-picker-content { width: 100%; padding: 6rpx 40rpx 0; }
+.course-picker-bottom-space { width: 100%; height: calc(136rpx + env(safe-area-inset-bottom)); }
+.course-picker-list-row { display: flex; flex: none; flex-direction: row; box-sizing: border-box; width: 100%; height: 88rpx; padding-bottom: 12rpx; }
+.course-picker-row { display: flex; flex: 1; flex-direction: row; align-items: center; gap: 16rpx; box-sizing: border-box; width: 100%; min-width: 0; height: 76rpx; padding: 0 14rpx 0 22rpx; border-radius: 22rpx; }
 .course-picker-row--active { background: #fdf8ec; }
 .picker-name { display: block; flex: 1; min-width: 0; color: var(--color-text); font-size: 23rpx; font-weight: 650; }
 
 .theme-dark .outcome-row--pass { color: #8fd6c9; background: rgba(10, 143, 128, 0.18); }
 .theme-dark .outcome-row--fail { color: #eba18c; background: rgba(192, 69, 45, 0.18); }
-.theme-dark .semester-menu-section { background: rgba(255, 255, 255, 0.04); }
+.theme-dark .semester-menu-option { background: rgba(255, 255, 255, 0.04); }
+.theme-dark .semester-menu-option--active { color: #e5b86e; background: rgba(201, 138, 45, 0.14); }
 .theme-dark .course-picker-row--active { background: rgba(201, 138, 45, 0.12); }
+.theme-dark .pass-picker-card,
+.theme-dark .course-picker-scroll { background: #211f1b; }
+.theme-dark .pass-picker-header { background: rgba(33, 31, 27, 0.92); }
+.theme-dark .pass-picker-close { background: rgba(255, 255, 255, 0.08); }
+
+.motion-reduced .pass-picker-scrim,
+.motion-reduced .pass-picker-card { transition-duration: 1ms; }

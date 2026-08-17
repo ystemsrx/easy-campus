@@ -12,6 +12,7 @@ import { academicTermLabel } from "../../utils/date";
 import { formatCredits, formatScore } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import { shortAcademicSemesterLabel } from "../../utils/semester";
 
 interface CourseView extends PassRateCourse {
   displayScore: string;
@@ -21,7 +22,7 @@ interface CourseView extends PassRateCourse {
   gradePointLabel: string;
   termLabel: string;
   semesterId: string;
-  semesterLabel: string;
+  semesterShortLabel: string;
   semesterOrder: number;
 }
 
@@ -29,8 +30,12 @@ interface CourseGroup {
   id: string;
   label: string;
   order: number;
-  expanded: boolean;
   courses: CourseView[];
+}
+
+interface CoursePickerRow {
+  id: string;
+  items: CourseView[];
 }
 
 interface ComponentView {
@@ -52,6 +57,14 @@ interface ScoreView extends PassRateScoreItem {
 }
 
 let requestSequence = 0;
+let pickerTransitionTimer: number | undefined;
+
+function clearPickerTransitionTimer() {
+  if (pickerTransitionTimer !== undefined) {
+    clearTimeout(pickerTransitionTimer);
+    pickerTransitionTimer = undefined;
+  }
+}
 
 function scoreLabel(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "";
@@ -78,6 +91,19 @@ function toCourseView(course: PassRateCourse): CourseView {
     academicYear.match(/(?:19|20)\d{2}/)?.[0] || 0,
   );
   const term = Number(course.term || 0);
+  const semesterShortLabel =
+    academicYearStart && course.term
+      ? shortAcademicSemesterLabel(
+          {
+            id: `${academicYearStart}-${course.term}`,
+            academicYear: academicYearStart,
+            academicYearLabel: academicYear,
+            term: course.term,
+            label: "",
+          },
+          " · ",
+        )
+      : termLabel;
   return {
     ...course,
     displayScore: formatScore(course.finalScore),
@@ -93,15 +119,12 @@ function toCourseView(course: PassRateCourse): CourseView {
     semesterId: academicYearStart
       ? `${academicYearStart}-${term}`
       : `unknown-${term}`,
-    semesterLabel: academicYear ? `${academicYear} · ${termLabel}` : termLabel,
+    semesterShortLabel,
     semesterOrder: academicYearStart * 10 + term,
   };
 }
 
-function courseGroups(
-  courses: CourseView[],
-  expandedSemesterId = "",
-): CourseGroup[] {
+function courseGroups(courses: CourseView[]): CourseGroup[] {
   const grouped = new Map<string, CourseGroup>();
   for (const course of courses) {
     const existing = grouped.get(course.semesterId);
@@ -111,22 +134,30 @@ function courseGroups(
     }
     grouped.set(course.semesterId, {
       id: course.semesterId,
-      label: course.semesterLabel,
+      label: course.semesterShortLabel,
       order: course.semesterOrder,
-      expanded: false,
       courses: [course],
     });
   }
-  const result = [...grouped.values()].sort(
+  return [...grouped.values()].sort(
     (left, right) => right.order - left.order,
   );
-  const activeId = result.some((group) => group.id === expandedSemesterId)
-    ? expandedSemesterId
-    : result[0]?.id || "";
-  return result.map((group) => ({
-    ...group,
-    expanded: group.id === activeId,
+}
+
+function toCourseRows(courses: CourseView[]): CoursePickerRow[] {
+  return courses.map((course) => ({
+    id: course.statisticsKey,
+    items: [course],
   }));
+}
+
+function coursePickerState(groups: CourseGroup[], semesterId = "") {
+  const activeGroup =
+    groups.find((group) => group.id === semesterId) || groups[0] || null;
+  return {
+    selectedSemesterId: activeGroup?.id || "",
+    courseRows: toCourseRows(activeGroup?.courses || []),
+  };
 }
 
 function componentViews(course: PassRateCourse): ComponentView[] {
@@ -199,8 +230,12 @@ Page({
     loaded: false,
     errorMessage: "",
     pickerVisible: false,
+    pickerMounted: false,
+    pickerActive: false,
     courses: [] as CourseView[],
     courseGroups: [] as CourseGroup[],
+    selectedSemesterId: "",
+    courseRows: [] as CoursePickerRow[],
     course: null as CourseView | null,
     components: [] as ComponentView[],
     statistics: null as PassRateStatistics | null,
@@ -226,6 +261,7 @@ Page({
   },
   onUnload() {
     requestSequence += 1;
+    clearPickerTransitionTimer();
   },
   onScroll(event: WechatMiniprogram.ScrollViewScroll) {
     const headerScrolled = event.detail.scrollTop > 18;
@@ -266,10 +302,16 @@ Page({
       : null;
     const statistics = data.statistics;
     const ownScore = course?.calculationScore ?? null;
+    const groups = courseGroups(courses);
+    const pickerState = coursePickerState(
+      groups,
+      this.data.selectedSemesterId,
+    );
     this.setData(
       {
         courses,
-        courseGroups: courseGroups(courses),
+        courseGroups: groups,
+        ...pickerState,
         course,
         components: course ? componentViews(course) : [],
         statistics,
@@ -349,32 +391,52 @@ Page({
   openPicker() {
     if (this.data.courses.length < 2) return;
     haptic("light");
-    this.setData({
-      pickerVisible: true,
-      courseGroups: courseGroups(this.data.courses),
-    });
+    clearPickerTransitionTimer();
+    const groups = courseGroups(this.data.courses);
+    this.setData(
+      {
+        pickerVisible: true,
+        pickerMounted: true,
+        pickerActive: false,
+        courseGroups: groups,
+        ...coursePickerState(groups, this.data.selectedSemesterId),
+      },
+      () => {
+        wx.nextTick(() => {
+          if (this.data.pickerVisible) this.setData({ pickerActive: true });
+        });
+      },
+    );
   },
   closePicker() {
-    this.setData({ pickerVisible: false });
+    clearPickerTransitionTimer();
+    this.setData({ pickerVisible: false, pickerActive: false });
+    pickerTransitionTimer = setTimeout(() => {
+      if (!this.data.pickerVisible) this.setData({ pickerMounted: false });
+      pickerTransitionTimer = undefined;
+    }, 380);
   },
-  toggleSemester(event: WechatMiniprogram.TouchEvent) {
+  selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semesterId = String(event.currentTarget.dataset.semester || "");
-    if (!semesterId) return;
+    if (!semesterId || semesterId === this.data.selectedSemesterId) return;
+    const group = this.data.courseGroups.find(
+      (item) => item.id === semesterId,
+    );
+    if (!group) return;
     haptic("light");
     this.setData({
-      courseGroups: this.data.courseGroups.map((group) => ({
-        ...group,
-        expanded: group.id === semesterId ? !group.expanded : false,
-      })),
+      selectedSemesterId: semesterId,
+      courseRows: toCourseRows(group.courses),
     });
   },
   selectCourse(event: WechatMiniprogram.TouchEvent) {
     const courseKey = String(event.currentTarget.dataset.key || "");
     if (!courseKey) return;
     haptic("light");
-    this.setData({ pickerVisible: false });
+    this.closePicker();
     if (courseKey !== this.data.course?.statisticsKey) {
       void this.loadPassRates(courseKey);
     }
   },
+  noop() {},
 });
