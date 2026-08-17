@@ -1,7 +1,6 @@
-import { getApiOrigin } from "../../config/index";
 import { getCurrentUser, logout as logoutSession } from "../../services/auth";
 import { getErrorMessage } from "../../services/request";
-import { getSession, loadCurrentUser } from "../../store/session";
+import { loadCurrentUser } from "../../store/session";
 import { updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
@@ -9,38 +8,17 @@ import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
 
-interface ProfileRow {
-  label: string;
-  value: string;
+function classLabel(user: CurrentUserData): string {
+  const grade = (user.profile.grade || "").trim().replace(/级$/, "");
+  const className = (user.profile.className || "").trim();
+  if (!className) return "";
+  return grade && !className.includes(grade)
+    ? `${grade}${className}`
+    : className;
 }
 
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
-function getUserTimeZoneLabel(): string {
-  const offsetMinutes = -new Date().getTimezoneOffset();
-  if (offsetMinutes === 0) return "UTC";
-  const sign = offsetMinutes > 0 ? "+" : "−";
-  const absolute = Math.abs(offsetMinutes);
-  return `UTC${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
-}
-
-function buildProfileRows(user: CurrentUserData): ProfileRow[] {
-  const profile = user.profile;
-  return [
-    { label: "学院", value: profile.organizationName || "—" },
-    { label: "专业", value: profile.majorName || "—" },
-    { label: "班级", value: profile.className || "—" },
-    { label: "年级", value: profile.grade || "—" },
-    { label: "培养层次", value: profile.studentType || "—" },
-    { label: "学籍状态", value: profile.studentStatus || "—" },
-    { label: "入学日期", value: profile.enrollmentDate || "—" },
-    {
-      label: "学制",
-      value: profile.programLength ? `${profile.programLength} 年` : "—",
-    },
-  ];
+function enrollmentDateLabel(value?: string): string {
+  return /^(\d{4}-\d{2}-\d{2})/.exec((value || "").trim())?.[1] || "";
 }
 
 function themeLabel(theme: ThemePreference): string {
@@ -62,15 +40,13 @@ Page({
     avatarText: "易",
     account: "",
     organizationName: "西南大学",
-    majorName: "",
-    profileRows: [] as ProfileRow[],
+    classLabel: "",
+    enrollmentDate: "",
     themePreference: "system" as ThemePreference,
     themePreferenceLabel: "跟随系统",
     reducedMotion: false,
     haptics: true,
     themeSheetVisible: false,
-    apiOrigin: getApiOrigin(),
-    timeZoneLabel: getUserTimeZoneLabel(),
     themeOptions: [
       { value: "system", label: "跟随系统", caption: "自动匹配设备外观" },
       { value: "light", label: "浅色", caption: "明亮、清晰的界面" },
@@ -100,8 +76,6 @@ Page({
       themePreferenceLabel: themeLabel(preferences.theme),
       reducedMotion: preferences.reducedMotion,
       haptics: preferences.haptics,
-      apiOrigin: getApiOrigin(),
-      timeZoneLabel: getUserTimeZoneLabel(),
     });
   },
   syncTabBarAppearance() {
@@ -118,8 +92,8 @@ Page({
       avatarText: name.slice(0, 1),
       account: user.account,
       organizationName: user.profile.organizationName || "西南大学",
-      majorName: user.profile.majorName || user.profile.studentType || "",
-      profileRows: buildProfileRows(user),
+      classLabel: classLabel(user),
+      enrollmentDate: enrollmentDateLabel(user.profile.enrollmentDate),
     });
   },
   async loadUser() {
@@ -127,7 +101,7 @@ Page({
       return;
     }
     this.setData({
-      loading: !this.data.profileRows.length,
+      loading: !this.data.account,
       refreshing: false,
       errorMessage: "",
     });
@@ -184,38 +158,10 @@ Page({
     this.applyAppearance();
     this.syncTabBarAppearance();
   },
-  copyAccount() {
-    if (!this.data.account) return;
-    wx.setClipboardData({ data: this.data.account });
-  },
-  copyApiOrigin() {
-    wx.setClipboardData({ data: this.data.apiOrigin });
-  },
   logout() {
-    wx.showModal({
-      title: "退出登录？",
-      content:
-        "只撤销当前登录会话。服务器上的个人资料、成绩及最近三条消息与通知都会保留，重新登录后可快速恢复。",
-      confirmText: "退出登录",
-      confirmColor: "#e64b5d",
-      success: (result) => {
-        if (!result.confirm) return;
-        haptic("heavy");
-        void logoutSession()
-          .catch(() => undefined)
-          .finally(() => wx.reLaunch({ url: "/pages/login/index" }));
-      },
-    });
-  },
-  showSessionInfo() {
-    const session = getSession();
-    wx.showModal({
-      title: "滑动会话",
-      content: session
-        ? "登录状态连续 90 天未使用才会失效。每次成功访问都会重新获得完整的 90 天有效期。"
-        : "当前没有有效会话。",
-      showCancel: false,
-      confirmText: "知道了",
-    });
+    haptic("heavy");
+    void logoutSession()
+      .catch(() => undefined)
+      .finally(() => wx.reLaunch({ url: "/pages/login/index" }));
   },
 });

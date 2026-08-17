@@ -177,15 +177,15 @@ function examBadge(
   }
   const days = Math.round((target - current) / (24 * 60 * 60 * 1000));
   if (days === 0)
-    return { badgeText: "今", badgeSub: "日", badgeTone: "current" };
+    return { badgeText: "逢考必过", badgeSub: "", badgeTone: "current" };
   if (days > 0) {
     return {
-      badgeText: days > 99 ? "99+" : String(days),
-      badgeSub: "天",
+      badgeText: String(days),
+      badgeSub: "",
       badgeTone: "future",
     };
   }
-  return { badgeText: "已", badgeSub: "考", badgeTone: "past" };
+  return { badgeText: "过", badgeSub: "", badgeTone: "past" };
 }
 
 function toExamPreview(exam: Exam): ExamPreview {
@@ -214,13 +214,13 @@ function shortcutCachePatch(account: string): ShortcutCachePatch {
   const electricityAccount = electricity?.account;
   const exams = loadExamsSnapshot(account)?.data.items || [];
   const now = Date.now();
-  const ordered = [...exams].sort(
-    (left, right) => examTimestamp(left) - examTimestamp(right),
-  );
-  const upcoming = ordered.filter((exam) => examTimestamp(exam) >= now);
-  const selected = (
-    upcoming.length ? upcoming : ordered.slice().reverse()
-  ).slice(0, 2);
+  const ordered = [...exams].sort((left, right) => {
+    const leftTime = examTimestamp(left);
+    const rightTime = examTimestamp(right);
+    const distance = Math.abs(leftTime - now) - Math.abs(rightTime - now);
+    return distance || leftTime - rightTime;
+  });
+  const selected = ordered.slice(0, 2);
   return {
     electricityBound: Boolean(electricity?.binding),
     electricityBalanceLabel: electricityAccount

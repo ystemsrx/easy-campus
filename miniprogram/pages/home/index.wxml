@@ -99,7 +99,7 @@
           <view class="exam-card-head"><view class="exam-card-title"><lucide-icon name="clock-3" tone="rose" size="{{23}}"></lucide-icon><text>考试安排</text></view><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
           <view wx:if="{{examPreviews.length}}" class="exam-preview-list">
             <view wx:for="{{examPreviews}}" wx:key="id" class="exam-preview-row {{index ? 'exam-preview-row--divided' : ''}}">
-              <view class="exam-badge exam-badge--{{item.badgeTone}}"><text class="exam-badge-value tnum">{{item.badgeText}}</text><text class="exam-badge-sub">{{item.badgeSub}}</text></view>
+              <view class="exam-badge exam-badge--{{item.badgeTone}}"><text class="exam-badge-value tnum">{{item.badgeText}}</text><text wx:if="{{item.badgeSub}}" class="exam-badge-sub">{{item.badgeSub}}</text></view>
               <view class="exam-preview-copy"><view class="exam-course-line"><text class="exam-course-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text wx:if="{{item.typeLabel !== '正常考试'}}" class="exam-type">{{item.typeLabel}}</text></view><view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{16}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}}</text></view></view>
               <view class="exam-time"><text class="exam-date tnum">{{item.dateLabel}}</text><text class="exam-clock tnum">{{item.timeLabel}}</text></view>
             </view>
