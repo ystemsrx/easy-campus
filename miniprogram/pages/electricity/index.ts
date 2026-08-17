@@ -173,10 +173,7 @@ Page({
     try {
       const result = await getElectricityAccount();
       if (sequence !== accountRequestSequence) return;
-      if (
-        result.data.binding &&
-        shouldUseServerSnapshot(activeSnapshot, result.meta.fetchedAt)
-      ) {
+      if (shouldUseServerSnapshot(activeSnapshot, result.meta.fetchedAt)) {
         activeSnapshot = saveElectricitySnapshot(
           activeAccount,
           result.data,
