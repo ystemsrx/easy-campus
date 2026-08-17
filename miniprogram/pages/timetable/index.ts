@@ -1,10 +1,10 @@
 import {
   coursesForWeek,
+  layoutGridCourseText,
   teachingWeekForDate,
   weekDateKeys,
   type TimetableCourse,
 } from "../../data/timetable";
-import { layoutGridCourseText } from "../../data/timetable-grid";
 import { getTimetable } from "../../services/teaching";
 import {
   claimAutomaticRefresh,

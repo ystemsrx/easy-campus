@@ -25,35 +25,11 @@ function loadTimetable() {
   return moduleRecord.exports;
 }
 
-function loadTimetableGrid() {
-  const sourcePath = path.resolve(
-    __dirname,
-    "..",
-    "miniprogram",
-    "data",
-    "timetable-grid.ts",
-  );
-  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2020,
-    },
-  }).outputText;
-  const moduleRecord = { exports: {} };
-  new Function("module", "exports", "require", output)(
-    moduleRecord,
-    moduleRecord.exports,
-    require,
-  );
-  return moduleRecord.exports;
-}
-
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 const timetable = loadTimetable();
-const timetableGrid = loadTimetableGrid();
 
 const periodTimes = [
   [1, "08:00", "08:45"],
@@ -245,11 +221,7 @@ const longText = {
   location: "一二三四五六七八九十甲乙丙",
   teacher: "一二三四五六七",
 };
-const roomyLayout = timetableGrid.layoutGridCourseText(
-  longText,
-  80,
-  textMetrics,
-);
+const roomyLayout = timetable.layoutGridCourseText(longText, 80, textMetrics);
 assert(roomyLayout.nameLines === 4, "高度充足时课程名应保留四行");
 assert(
   roomyLayout.displayName === "一二三四五六七八九十甲…",
@@ -264,19 +236,16 @@ assert(
   "教师应保持每行三字、最多两行",
 );
 assert(
-  timetableGrid.layoutGridCourseText(longText, 66, textMetrics).nameLines === 3,
+  timetable.layoutGridCourseText(longText, 66, textMetrics).nameLines === 3,
   "只有地点将越过底边时才应把课程名降为三行",
 );
 assert(
-  timetableGrid.layoutGridCourseText(longText, 58, textMetrics).nameLines === 2,
+  timetable.layoutGridCourseText(longText, 58, textMetrics).nameLines === 2,
   "地点仍会越界时应继续把课程名降为两行",
 );
 assert(
-  timetableGrid.layoutGridCourseText(
-    { ...longText, location: "" },
-    20,
-    textMetrics,
-  ).nameLines === 4,
+  timetable.layoutGridCourseText({ ...longText, location: "" }, 20, textMetrics)
+    .nameLines === 4,
   "教师越界或没有地点时不得压缩课程名",
 );
 
