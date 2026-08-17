@@ -172,6 +172,7 @@ if (
   electricityTemplate.includes("<text>刷新</text>") ||
   !electricityTemplate.includes("{{boundBuildingName}}") ||
   !electricityTemplate.includes("{{boundRoomNumber}}") ||
+  electricityTemplate.includes("refresher-") ||
   !electricityScript.includes("isBindingCooldownActive(") ||
   !electricityScript.includes("serverBindingCleared") ||
   !electricityScript.includes("this.data.boundBuildingId")

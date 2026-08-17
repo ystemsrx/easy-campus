@@ -140,7 +140,6 @@ Page({
     motionClass: "motion-normal",
     headerScrolled: false,
     optionsLoading: false,
-    refreshing: false,
     querying: false,
     serviceUnavailable: false,
     errorMessage: "",
@@ -251,11 +250,10 @@ Page({
       this.setData({ headerScrolled: scrolled });
     }
   },
-  async loadBuildings(refreshing = false) {
+  async loadBuildings() {
     const sequence = ++buildingRequestSequence;
     this.setData({
       optionsLoading: !this.data.allBuildings.length,
-      refreshing,
       serviceUnavailable: false,
       errorMessage: "",
     });
@@ -290,16 +288,8 @@ Page({
       }
     } finally {
       if (sequence === buildingRequestSequence) {
-        this.setData({ optionsLoading: false, refreshing: false });
+        this.setData({ optionsLoading: false });
       }
-    }
-  },
-  onRefresh() {
-    haptic("light");
-    if (this.data.boundBuildingId && this.data.boundRoomNumber) {
-      void this.refreshBoundAccount();
-    } else {
-      void this.loadBuildings(true);
     }
   },
   retryService() {
