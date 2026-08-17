@@ -38,9 +38,9 @@ interface DayOption {
 interface GridCourse extends TimetableCourse {
   topPercent: string;
   heightPercent: string;
-  displayName: string;
-  displayLocation: string;
-  displayTeacher: string;
+  nameRows: Array<{ key: string; text: string }>;
+  locationRows: Array<{ key: string; text: string }>;
+  teacherRows: Array<{ key: string; text: string }>;
   nameLines: number;
   nameStyle: string;
   locationStyle: string;
@@ -76,6 +76,7 @@ interface GridLayoutMetrics {
   nameFontSizePx: number;
   locationFontSizePx: number;
   teacherFontSizePx: number;
+  contentWidthPx: number;
   contentInsetPx: number;
   scale: number;
 }
@@ -176,16 +177,21 @@ function gridLayoutMetrics(
   }
   const scale = viewportWidth / 750;
   const columnWidth = (viewportWidth - 84 * scale) / 7;
-  const contentWidth = Math.max(24, columnWidth - 14 * scale);
+  // 槽内边距 4rpx、课程边框 4rpx、课程内边距 8rpx。
+  const contentWidth = Math.max(1, columnWidth - 16 * scale);
+  const widthSafetyPx = 1;
+  const fittedFontSize = (charactersPerLine: number, maximum: number) =>
+    Math.max(
+      1,
+      Math.min(maximum, (contentWidth - widthSafetyPx) / charactersPerLine),
+    );
   const gridHeight = Math.max(160, viewportHeight - headerHeight - 84 * scale);
   return {
     rowHeightPx: gridHeight / Math.max(1, maxPeriod),
-    nameFontSizePx: Math.max(10.5, Math.min(15, (contentWidth - 0.75) / 3)),
-    locationFontSizePx: Math.max(
-      8.5,
-      Math.min(11.5, (contentWidth - 0.75) / 4),
-    ),
-    teacherFontSizePx: Math.max(9, Math.min(12, (contentWidth - 0.75) / 3)),
+    nameFontSizePx: fittedFontSize(3, 15),
+    locationFontSizePx: fittedFontSize(3, 14),
+    teacherFontSizePx: fittedFontSize(3, 12),
+    contentWidthPx: contentWidth,
     // 卡片槽上下内边距 4rpx + 卡片边框 4rpx + 内边距 8rpx。
     contentInsetPx: 16 * scale,
     scale,

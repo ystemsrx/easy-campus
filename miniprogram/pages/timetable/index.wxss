@@ -261,14 +261,13 @@
   display: block;
   flex: none;
   flex-shrink: 0;
-  width: 3em;
-  max-width: 100%;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   font-size: 27rpx;
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: 0;
-  word-break: break-all;
 }
 
 .grid-course-room,
@@ -276,7 +275,8 @@
   display: block;
   flex: none;
   flex-shrink: 0;
-  max-width: 100%;
+  width: 100%;
+  min-width: 0;
   margin-top: 3rpx;
   overflow: hidden;
   font-size: 20rpx;
@@ -284,14 +284,21 @@
   line-height: 1.08;
   letter-spacing: 0;
   opacity: 0.86;
-  word-break: break-all;
 }
 
-.grid-course-room { width: 4em; }
-
 .grid-course-teacher {
-  width: 3em;
   opacity: 0.72;
+}
+
+.grid-course-text-line {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .timetable-empty {

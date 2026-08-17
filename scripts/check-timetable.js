@@ -213,6 +213,7 @@ const textMetrics = {
   nameFontSizePx: 10,
   locationFontSizePx: 8,
   teacherFontSizePx: 8,
+  contentWidthPx: 33,
   contentInsetPx: 4,
   scale: 0.5,
 };
@@ -224,16 +225,62 @@ const longText = {
 const roomyLayout = timetable.layoutGridCourseText(longText, 80, textMetrics);
 assert(roomyLayout.nameLines === 4, "高度充足时课程名应保留四行");
 assert(
-  roomyLayout.displayName === "一二三四五六七八九十甲…",
-  "课程名应在第四行第三个位置显示省略号",
+  JSON.stringify(roomyLayout.nameRows.map((row) => row.text)) ===
+    JSON.stringify(["一二三", "四五六", "七八九", "十甲…"]),
+  "课程名应严格每行三字，并在第四行第三个位置显示省略号",
 );
 assert(
-  roomyLayout.displayLocation === "一二三四五六七八九十甲…",
-  "地点应保持每行四字、最多三行",
+  JSON.stringify(roomyLayout.locationRows.map((row) => row.text)) ===
+    JSON.stringify(["@一二三", "四五六七", "八九十…"]),
+  "地点应带 @ 前缀并严格每行四个字符、最多三行",
 );
 assert(
-  roomyLayout.displayTeacher === "一二三四五…",
-  "教师应保持每行三字、最多两行",
+  JSON.stringify(roomyLayout.teacherRows.map((row) => row.text)) ===
+    JSON.stringify(["一二三", "四五…"]),
+  "教师应严格每行三字、最多两行",
+);
+assert(
+  timetable
+    .layoutGridCourseText(
+      { ...longText, location: "@31教0503" },
+      80,
+      textMetrics,
+    )
+    .locationRows.map((row) => row.text)
+    .join("") === "@31教0503",
+  "已有 @ 前缀的地点不得重复添加前缀",
+);
+const compactAddressLayout = timetable.layoutGridCourseText(
+  { ...longText, location: "31教0503" },
+  90,
+  {
+    ...textMetrics,
+    locationFontSizePx: 14,
+    contentWidthPx: 40,
+  },
+);
+const compactAddressFontSize = Number(
+  compactAddressLayout.locationStyle.match(/font-size:([\d.]+)px/)?.[1],
+);
+assert(
+  compactAddressFontSize > (40 - 1) / 4,
+  "半角字符较多的地点应使用比四个全角字更大的字号",
+);
+const fullWidthAddressLayout = timetable.layoutGridCourseText(
+  { ...longText, location: "天地玄黄宇宙洪荒" },
+  90,
+  {
+    ...textMetrics,
+    locationFontSizePx: 14,
+    contentWidthPx: 40,
+  },
+);
+const fullWidthAddressFontSize = Number(
+  fullWidthAddressLayout.locationStyle.match(/font-size:([\d.]+)px/)?.[1],
+);
+assert(
+  fullWidthAddressFontSize <= (40 - 1) / 4,
+  "包含四个全角字的地点仍应完整落在课程卡片内",
 );
 assert(
   timetable.layoutGridCourseText(longText, 66, textMetrics).nameLines === 3,

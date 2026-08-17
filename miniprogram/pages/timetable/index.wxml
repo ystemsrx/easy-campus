@@ -74,9 +74,15 @@
                   aria-role="button"
                   aria-label="{{course.name}}，{{course.location}}"
                 >
-                  <text class="grid-course-name" style="{{course.nameStyle}}" overflow="ellipsis" max-lines="{{course.nameLines}}">{{course.displayName}}</text>
-                  <text wx:if="{{course.displayLocation}}" class="grid-course-room" style="{{course.locationStyle}}" overflow="ellipsis" max-lines="3">{{course.displayLocation}}</text>
-                  <text wx:if="{{course.displayTeacher}}" class="grid-course-teacher" style="{{course.teacherStyle}}" overflow="ellipsis" max-lines="2">{{course.displayTeacher}}</text>
+                  <view class="grid-course-name" style="{{course.nameStyle}}">
+                    <text wx:for="{{course.nameRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
+                  </view>
+                  <view wx:if="{{course.locationRows.length}}" class="grid-course-room" style="{{course.locationStyle}}">
+                    <text wx:for="{{course.locationRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
+                  </view>
+                  <view wx:if="{{course.teacherRows.length}}" class="grid-course-teacher" style="{{course.teacherStyle}}">
+                    <text wx:for="{{course.teacherRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
+                  </view>
                 </view>
               </view>
             </view>

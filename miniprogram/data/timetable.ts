@@ -56,18 +56,24 @@ export interface GridCourseTextMetrics {
   nameFontSizePx: number;
   locationFontSizePx: number;
   teacherFontSizePx: number;
+  contentWidthPx: number;
   contentInsetPx: number;
   scale: number;
 }
 
 export interface GridCourseTextLayout {
-  displayName: string;
-  displayLocation: string;
-  displayTeacher: string;
+  nameRows: GridCourseTextRow[];
+  locationRows: GridCourseTextRow[];
+  teacherRows: GridCourseTextRow[];
   nameLines: number;
   nameStyle: string;
   locationStyle: string;
   teacherStyle: string;
+}
+
+export interface GridCourseTextRow {
+  key: string;
+  text: string;
 }
 
 const SOURCE_OFFSET = "+08:00";
@@ -115,13 +121,76 @@ function truncateGridText(value: string, maxCharacters: number): string {
     : `${characters.slice(0, maxCharacters - 1).join("")}…`;
 }
 
-function renderedGridTextLines(
+function gridTextRows(
   value: string,
   charactersPerLine: number,
-  maximum: number,
+  keyPrefix: string,
+): GridCourseTextRow[] {
+  const characters = Array.from(value);
+  const rows: GridCourseTextRow[] = [];
+  for (let index = 0; index < characters.length; index += charactersPerLine) {
+    rows.push({
+      key: `${keyPrefix}-${rows.length}`,
+      text: characters.slice(index, index + charactersPerLine).join(""),
+    });
+  }
+  return rows;
+}
+
+function gridLocation(value: string): string {
+  const location = value.trim().replace(/^@+/, "");
+  return location ? `@${location}` : "";
+}
+
+function isFullWidthGridCharacter(character: string): boolean {
+  const codePoint = character.codePointAt(0) || 0;
+  return (
+    codePoint >= 0x1100 &&
+    (codePoint <= 0x115f ||
+      codePoint === 0x2329 ||
+      codePoint === 0x232a ||
+      (codePoint >= 0x2e80 && codePoint <= 0xa4cf) ||
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0xfe10 && codePoint <= 0xfe6f) ||
+      (codePoint >= 0xff01 && codePoint <= 0xff60) ||
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+      (codePoint >= 0x1f300 && codePoint <= 0x1faff) ||
+      (codePoint >= 0x20000 && codePoint <= 0x3fffd))
+  );
+}
+
+function gridCharacterWidthUnits(character: string): number {
+  if (isFullWidthGridCharacter(character) || character === "…") return 1;
+  if (character === "@") return 0.95;
+  if (/[MW]/.test(character)) return 0.9;
+  if (/[A-Z]/.test(character)) return 0.7;
+  if (/[0-9]/.test(character)) return 0.6;
+  if (/[a-z]/.test(character)) return 0.55;
+  if (/\s/.test(character)) return 0.35;
+  if (/[-_.,:;!|'"`()\[\]{}]/.test(character)) return 0.4;
+  return 0.65;
+}
+
+function fittedGridRowsFontSize(
+  rows: GridCourseTextRow[],
+  maximumFontSizePx: number,
+  contentWidthPx: number,
 ): number {
-  const length = Array.from(value).length;
-  return length ? Math.min(maximum, Math.ceil(length / charactersPerLine)) : 0;
+  if (!rows.length) return maximumFontSizePx;
+  const widestRow = Math.max(
+    1,
+    ...rows.map((row) =>
+      Array.from(row.text).reduce(
+        (width, character) => width + gridCharacterWidthUnits(character),
+        0,
+      ),
+    ),
+  );
+  return Math.max(
+    1,
+    Math.min(maximumFontSizePx, (contentWidthPx - 1) / widestRow),
+  );
 }
 
 function gridTextStyle(
@@ -146,23 +215,28 @@ export function layoutGridCourseText(
   cardHeightPx: number,
   metrics: GridCourseTextMetrics,
 ): GridCourseTextLayout {
-  const displayLocation = truncateGridText(
-    input.location,
+  const locationText = truncateGridText(
+    gridLocation(input.location),
     LOCATION_CHARACTERS_PER_LINE * MAX_LOCATION_LINES,
   );
-  const displayTeacher = truncateGridText(
+  const teacherText = truncateGridText(
     input.teacher,
     TEACHER_CHARACTERS_PER_LINE * MAX_TEACHER_LINES,
   );
   const rawNameLength = Array.from(input.name.trim()).length;
-  const locationLines = renderedGridTextLines(
-    displayLocation,
+  const locationRows = gridTextRows(
+    locationText,
     LOCATION_CHARACTERS_PER_LINE,
-    MAX_LOCATION_LINES,
+    "location",
+  );
+  const locationLines = locationRows.length;
+  const locationFontSizePx = fittedGridRowsFontSize(
+    locationRows,
+    metrics.locationFontSizePx,
+    metrics.contentWidthPx,
   );
   const availableHeight = Math.max(0, cardHeightPx - metrics.contentInsetPx);
-  const locationHeight =
-    locationLines * metrics.locationFontSizePx * META_LINE_HEIGHT;
+  const locationHeight = locationLines * locationFontSizePx * META_LINE_HEIGHT;
   const locationMargin = locationLines ? META_MARGIN_RPX * metrics.scale : 0;
   const locationFitsAfterName = (limit: number): boolean => {
     if (!locationLines) return true;
@@ -179,13 +253,18 @@ export function layoutGridCourseText(
     nameLines -= 1;
   }
 
+  const nameText = truncateGridText(
+    input.name,
+    nameLines * NAME_CHARACTERS_PER_LINE,
+  );
   return {
-    displayName: truncateGridText(
-      input.name,
-      nameLines * NAME_CHARACTERS_PER_LINE,
+    nameRows: gridTextRows(nameText, NAME_CHARACTERS_PER_LINE, "name"),
+    locationRows,
+    teacherRows: gridTextRows(
+      teacherText,
+      TEACHER_CHARACTERS_PER_LINE,
+      "teacher",
     ),
-    displayLocation,
-    displayTeacher,
     nameLines,
     nameStyle: gridTextStyle(
       metrics.nameFontSizePx,
@@ -193,7 +272,7 @@ export function layoutGridCourseText(
       nameLines,
     ),
     locationStyle: gridTextStyle(
-      metrics.locationFontSizePx,
+      locationFontSizePx,
       META_LINE_HEIGHT,
       MAX_LOCATION_LINES,
     ),
