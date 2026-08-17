@@ -84,11 +84,11 @@
 .exam-course-line { display: flex; flex-direction: row; align-items: center; gap: 7rpx; min-width: 0; }
 .exam-course-name { flex: 1; min-width: 0; color: var(--color-text); font-size: 22rpx; font-weight: 760; }
 .exam-type { flex: none; padding: 3rpx 8rpx; border-radius: 999rpx; color: #a66f1f; background: #f8eedd; font-size: 14rpx; font-weight: 750; }
-.exam-location { display: flex; flex-direction: row; align-items: center; gap: 5rpx; min-width: 0; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 17rpx; }
+.exam-location { display: flex; flex-direction: row; align-items: center; gap: 5rpx; min-width: 0; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 19rpx; }
 .exam-location > text { flex: 1; min-width: 0; }
 .exam-time { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 130rpx; }
-.exam-date { color: var(--color-text); font-size: 18rpx; font-weight: 750; white-space: nowrap; }
-.exam-clock { max-width: 130rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 14rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exam-date { color: var(--color-text); font-size: 20rpx; font-weight: 750; white-space: nowrap; }
+.exam-clock { max-width: 142rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .exam-empty { display: flex; align-items: center; justify-content: center; min-height: 192rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
 .side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }

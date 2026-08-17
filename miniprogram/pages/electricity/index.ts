@@ -39,6 +39,9 @@ let buildingRequestSequence = 0;
 let accountRequestSequence = 0;
 let activeAccount = "";
 let activeSnapshot: ElectricitySnapshot | null = null;
+let bindingToastShowTimer: ReturnType<typeof setTimeout> | undefined;
+let bindingToastHideTimer: ReturnType<typeof setTimeout> | undefined;
+let bindingToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 
 function formatDecimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
@@ -60,6 +63,28 @@ function isUnavailable(error: unknown): boolean {
     error instanceof ApiClientError &&
     error.code === "ELECTRICITY_SERVICE_UNAVAILABLE"
   );
+}
+
+function isBindingLimited(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError &&
+    error.code === "ELECTRICITY_BINDING_LIMIT"
+  );
+}
+
+function clearBindingToastTimers(): void {
+  if (bindingToastShowTimer !== undefined) {
+    clearTimeout(bindingToastShowTimer);
+    bindingToastShowTimer = undefined;
+  }
+  if (bindingToastHideTimer !== undefined) {
+    clearTimeout(bindingToastHideTimer);
+    bindingToastHideTimer = undefined;
+  }
+  if (bindingToastUnmountTimer !== undefined) {
+    clearTimeout(bindingToastUnmountTimer);
+    bindingToastUnmountTimer = undefined;
+  }
 }
 
 function filterBuildings(
@@ -98,6 +123,8 @@ Page({
     roomNumber: "",
     account: null as ElectricityView | null,
     cacheLabel: "尚未绑定寝室",
+    bindingToastMounted: false,
+    bindingToastVisible: false,
   },
   onLoad() {
     activeAccount = "";
@@ -112,6 +139,9 @@ Page({
     if (!this.data.buildingId && !this.data.optionsLoading) {
       void this.loadBuildings();
     }
+  },
+  onUnload() {
+    clearBindingToastTimers();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -275,21 +305,14 @@ Page({
     this.setData({ buildingSearchFocused: false });
   },
   selectBuilding(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({
-      draftBuildingId: String(event.currentTarget.dataset.id || ""),
-    });
-  },
-  applyBuilding() {
     const selected = this.data.allBuildings.find(
-      (building) => building.id === this.data.draftBuildingId,
+      (building) =>
+        building.id === String(event.currentTarget.dataset.id || ""),
     );
-    if (!selected) {
-      wx.showToast({ title: "请选择宿舍楼", icon: "none" });
-      return;
-    }
+    if (!selected) return;
     haptic("light");
     this.setData({
+      draftBuildingId: selected.id,
       buildingId: selected.id,
       buildingName: selected.name,
       buildingPickerVisible: false,
@@ -351,6 +374,9 @@ Page({
           serviceUnavailable: true,
           errorMessage: "",
         });
+      } else if (isBindingLimited(error)) {
+        this.setData({ errorMessage: "" });
+        this.showBindingLimitToast();
       } else {
         this.setData({
           errorMessage: getErrorMessage(error, "电费查询失败。"),
@@ -361,5 +387,27 @@ Page({
         this.setData({ querying: false });
       }
     }
+  },
+  showBindingLimitToast() {
+    clearBindingToastTimers();
+    this.setData(
+      { bindingToastMounted: true, bindingToastVisible: false },
+      () => {
+        bindingToastShowTimer = setTimeout(() => {
+          bindingToastShowTimer = undefined;
+          this.setData({ bindingToastVisible: true });
+          bindingToastHideTimer = setTimeout(() => {
+            bindingToastHideTimer = undefined;
+            this.setData({ bindingToastVisible: false });
+            bindingToastUnmountTimer = setTimeout(() => {
+              bindingToastUnmountTimer = undefined;
+              if (!this.data.bindingToastVisible) {
+                this.setData({ bindingToastMounted: false });
+              }
+            }, 320);
+          }, 3000);
+        }, 16);
+      },
+    );
   },
 });

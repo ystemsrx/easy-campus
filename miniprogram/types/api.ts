@@ -349,6 +349,8 @@ export interface ElectricityBinding {
   buildingId: string;
   buildingName: string;
   roomNumber: string;
+  boundAt?: string | null;
+  changedAt?: string | null;
 }
 
 export interface ElectricityCachedData {
