@@ -446,6 +446,7 @@ Page({
     publicationUnreadLabel: "",
     publicationPanelMounted: false,
     publicationPanelOpen: false,
+    publicationPanelTop: 132,
     announcementModalMounted: false,
     announcementModalOpen: false,
     activeAnnouncement: null as PublicationPreview | null,
@@ -662,10 +663,23 @@ Page({
       clearTimeout(publicationPanelTimer);
       publicationPanelTimer = undefined;
     }
-    this.setData({ publicationPanelMounted: true });
-    setTimeout(() => {
-      if (homeVisible) this.setData({ publicationPanelOpen: true });
-    }, 16);
+    wx.createSelectorQuery()
+      .select(".publication-bell")
+      .boundingClientRect((rect) => {
+        const bottom = Number(rect?.bottom);
+        this.setData(
+          {
+            publicationPanelMounted: true,
+            publicationPanelTop: Number.isFinite(bottom) ? bottom + 10 : 132,
+          },
+          () => {
+            setTimeout(() => {
+              if (homeVisible) this.setData({ publicationPanelOpen: true });
+            }, 16);
+          },
+        );
+      })
+      .exec();
   },
   closePublicationPanel() {
     if (!this.data.publicationPanelMounted) return;
