@@ -220,7 +220,11 @@ Page({
     try {
       const result = await getElectricityAccount();
       if (sequence !== accountRequestSequence) return;
-      if (shouldUseServerSnapshot(activeSnapshot, result.meta.fetchedAt)) {
+      const serverBindingCleared = !result.data.binding && !result.data.account;
+      if (
+        serverBindingCleared ||
+        shouldUseServerSnapshot(activeSnapshot, result.meta.fetchedAt)
+      ) {
         activeSnapshot = saveElectricitySnapshot(
           activeAccount,
           result.data,

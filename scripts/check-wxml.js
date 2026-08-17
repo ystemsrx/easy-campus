@@ -173,6 +173,7 @@ if (
   !electricityTemplate.includes("{{boundBuildingName}}") ||
   !electricityTemplate.includes("{{boundRoomNumber}}") ||
   !electricityScript.includes("isBindingCooldownActive(") ||
+  !electricityScript.includes("serverBindingCleared") ||
   !electricityScript.includes("this.data.boundBuildingId")
 ) {
   failures.push(
