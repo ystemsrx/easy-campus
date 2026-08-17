@@ -224,7 +224,7 @@
           bindtap="selectSemester"
           hover-class="pressing"
         >
-          <text>{{item.label}}</text>
+          <text>{{item.displayLabel}}</text>
           <lucide-icon wx:if="{{semesterId === item.id}}" name="check" tone="coral" size="{{23}}"></lucide-icon>
         </view>
       </scroll-view>

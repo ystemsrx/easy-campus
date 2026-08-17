@@ -27,6 +27,10 @@ import type {
 import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import {
+  shortAcademicSemesterLabel,
+  timetableSemesterMenuLabel,
+} from "../../utils/semester";
 
 interface DayOption {
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -71,6 +75,10 @@ interface TimetableThemeOption {
   label: string;
   color: string;
   image: boolean;
+}
+
+interface TimetableSemesterOption extends AcademicSemesterOption {
+  displayLabel: string;
 }
 
 interface GridLayoutMetrics {
@@ -120,12 +128,13 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function shortSemesterLabel(semester: AcademicSemesterOption | null): string {
-  if (!semester) return "选择学期";
-  const start = pad(semester.academicYear % 100);
-  const end = pad((semester.academicYear + 1) % 100);
-  const term = semester.term === 1 ? "秋" : semester.term === 2 ? "春" : "夏";
-  return `${start}-${end} ${term}`;
+function timetableSemesterOptions(
+  semesters: AcademicSemesterOption[],
+): TimetableSemesterOption[] {
+  return semesters.map((semester) => ({
+    ...semester,
+    displayLabel: timetableSemesterMenuLabel(semester),
+  }));
 }
 
 function buildDays(
@@ -398,7 +407,7 @@ Page({
     semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
     semesterId: "",
-    semesters: [] as TimetableData["semesters"],
+    semesters: [] as TimetableSemesterOption[],
     weekNumber: 1,
     currentWeekNumber: 0,
     weekIndex: 0,
@@ -616,9 +625,9 @@ Page({
     );
     visibleCourses = periodCourses;
     this.setData({
-      semesterShortLabel: shortSemesterLabel(timetable.semester),
+      semesterShortLabel: shortAcademicSemesterLabel(timetable.semester),
       semesterId: timetable.semester.id,
-      semesters: timetable.semesters,
+      semesters: timetableSemesterOptions(timetable.semesters),
       semesterMenuHeight: submenuHeight(timetable.semesters.length),
       weekNumber,
       currentWeekNumber: detectedWeek || 0,

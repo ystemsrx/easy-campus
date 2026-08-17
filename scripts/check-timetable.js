@@ -54,12 +54,53 @@ function loadMessageFormat() {
   return moduleRecord.exports;
 }
 
+function loadSemesterFormat() {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "utils",
+    "semester.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    require,
+  );
+  return moduleRecord.exports;
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 const timetable = loadTimetable();
 const messageFormat = loadMessageFormat();
+const semesterFormat = loadSemesterFormat();
+
+const summerSemester = {
+  id: "2025-3",
+  academicYear: 2025,
+  academicYearLabel: "2025-2026",
+  term: 3,
+  label: "2025-2026 · 第三学期",
+};
+assert(
+  semesterFormat.shortAcademicSemesterLabel(summerSemester) === "25-26 夏",
+  "第三学期的课表短名称必须映射为夏",
+);
+assert(
+  semesterFormat.timetableSemesterMenuLabel(summerSemester) ===
+    "2025-2026 · 夏",
+  "课表菜单中的第三学期必须映射为夏",
+);
 
 assert(
   messageFormat.formatScheduleDate({
