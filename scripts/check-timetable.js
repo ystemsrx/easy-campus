@@ -208,6 +208,14 @@ assert(
   timetable.coursePreview(null, duringFirstCourse).courses.length === 0,
   "没有真实课表时不得回退到占位课程",
 );
+const cachedWeekDates = timetable.buildTimetableWeekDateCache(data);
+assert(
+  cachedWeekDates.length === 16 &&
+    cachedWeekDates[0].weekNumber === 1 &&
+    cachedWeekDates[0].dates.length === 7 &&
+    cachedWeekDates[0].dates[0] === "2026-08-10",
+  "本地课表快照必须包含全部周次及每周日期",
+);
 
 const textMetrics = {
   nameFontSizePx: 10,
@@ -315,6 +323,10 @@ const timetablePageStyles = fs.readFileSync(
   path.join(timetablePageRoot, "index.wxss"),
   "utf8",
 );
+const timetableStoreSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "store", "timetable.ts"),
+  "utf8",
+);
 const dayColumnRule = timetablePageStyles.match(
   /\.grid-day-column\s*\{[^}]*\}/s,
 )?.[0];
@@ -340,9 +352,33 @@ assert(
   "顶部周次必须提供可直接切换周次的弹出菜单",
 );
 assert(
+  timetablePageTemplate.includes('class="week-option-content"') &&
+    /\.week-option-content\s*\{[^}]*translateY\(2rpx\)/s.test(
+      timetablePageStyles,
+    ),
+  "周次选项的数字和日期必须按视觉中心向下校正",
+);
+assert(
   timetablePageScript.includes("timetableRequestsInFlight") &&
     timetablePageScript.includes("refresh || !semester"),
   "静默刷新必须允许其他学期请求并保留当前周",
+);
+assert(
+  timetableStoreSource.includes(
+    "weekDates: buildTimetableWeekDateCache(data)",
+  ) && timetableStoreSource.includes("wx.setStorageSync"),
+  "每个课表快照都必须在本地持久化周次日期",
+);
+assert(
+  timetablePageTemplate.includes("menu-glyph--open") &&
+    timetablePageStyles.includes(".menu-glyph--open > view:nth-child(1)"),
+  "课表菜单按钮必须在三横线和关闭图标之间平滑变形",
+);
+assert(
+  timetablePageTemplate.includes("refresh-confirmation--visible") &&
+    /},\s*3000\);/.test(timetablePageScript) &&
+    timetablePageScript.includes("const succeeded = await this.loadTimetable"),
+  "手动刷新成功后必须显示三秒的非阻塞完成反馈",
 );
 
 console.log("Timetable preview checks passed.");

@@ -1,10 +1,15 @@
 import type { TimetableData } from "../types/api";
+import {
+  buildTimetableWeekDateCache,
+  type TimetableWeekDateCache,
+} from "../data/timetable";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:timetable:";
 
 export interface TimetableSnapshot extends CacheMetadata {
   data: TimetableData;
+  weekDates: TimetableWeekDateCache[];
 }
 
 function storageKey(account: string, semesterId?: string): string {
@@ -21,6 +26,23 @@ function isTimetable(value: unknown): value is TimetableData {
   );
 }
 
+function isWeekDateCache(value: unknown): value is TimetableWeekDateCache[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (week) =>
+        week !== null &&
+        typeof week === "object" &&
+        Number.isInteger((week as TimetableWeekDateCache).weekNumber) &&
+        (week as TimetableWeekDateCache).weekNumber > 0 &&
+        Array.isArray((week as TimetableWeekDateCache).dates) &&
+        (week as TimetableWeekDateCache).dates.every(
+          (date) => typeof date === "string",
+        ),
+    )
+  );
+}
+
 export function loadTimetableSnapshot(
   account: string,
   semesterId?: string,
@@ -32,11 +54,24 @@ export function loadTimetableSnapshot(
   const legacyUpdatedAt = Number(
     (value as Partial<TimetableSnapshot> & { updatedAt?: number }).updatedAt,
   );
-  return {
+  const cachedWeekDates = value.weekDates;
+  const hasCachedWeekDates = isWeekDateCache(cachedWeekDates);
+  const snapshot: TimetableSnapshot = {
     data: value.data,
+    weekDates: hasCachedWeekDates
+      ? cachedWeekDates
+      : buildTimetableWeekDateCache(value.data),
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || legacyUpdatedAt || 0,
   };
+  if (!hasCachedWeekDates) {
+    try {
+      wx.setStorageSync(storageKey(account, semesterId), snapshot);
+    } catch {
+      // 旧快照迁移失败时仍可使用内存中生成的周次日期。
+    }
+  }
+  return snapshot;
 }
 
 export function saveTimetableSnapshot(
@@ -47,6 +82,7 @@ export function saveTimetableSnapshot(
   if (!account.trim()) return null;
   const snapshot: TimetableSnapshot = {
     data,
+    weekDates: buildTimetableWeekDateCache(data),
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),
   };

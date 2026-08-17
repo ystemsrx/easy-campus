@@ -2,6 +2,7 @@ import {
   coursesForWeek,
   layoutGridCourseText,
   teachingWeekForDate,
+  timetableWeekCount,
   weekDateKeys,
   type TimetableCourse,
 } from "../../data/timetable";
@@ -95,16 +96,25 @@ const THEMES: TimetableThemeOption[] = [
   { id: "plum", label: "暮紫", color: "#655b82", image: false },
 ];
 
+interface InFlightTimetableRequest {
+  refresh: boolean;
+  completion: Promise<boolean>;
+}
+
 let activeTimetable: TimetableData | null = null;
 let visibleCourses: TimetableCourse[] = [];
-const timetableRequestsInFlight = new Set<string>();
+const timetableRequestsInFlight = new Map<string, InFlightTimetableRequest>();
 let activeAccount = "";
 let defaultSemesterId = "";
 let activeSnapshot: TimetableSnapshot | null = null;
 let weekMenuOpenTimer: ReturnType<typeof setTimeout> | undefined;
 let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+let refreshToastShowTimer: ReturnType<typeof setTimeout> | undefined;
+let refreshToastHideTimer: ReturnType<typeof setTimeout> | undefined;
+let refreshToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
+let pageAlive = false;
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -118,10 +128,14 @@ function shortSemesterLabel(semester: AcademicSemesterOption | null): string {
   return `${start}-${end} ${term}`;
 }
 
-function buildDays(timetable: TimetableData, week: number): DayOption[] {
+function buildDays(
+  timetable: TimetableData,
+  week: number,
+  cachedDates?: string[],
+): DayOption[] {
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-  const dates = weekDateKeys(timetable, week);
+  const dates = cachedDates || weekDateKeys(timetable, week);
   return DAY_LABELS.map((shortLabel, index) => {
     const date = dates[index] || "";
     return {
@@ -235,9 +249,10 @@ function buildWeekPage(
   weekNumber: number,
   maxPeriod: number,
   metrics: GridLayoutMetrics,
+  cachedDates?: string[],
 ): WeekPage {
   const courses = coursesForWeek(timetable, weekNumber);
-  const days = buildDays(timetable, weekNumber);
+  const days = buildDays(timetable, weekNumber, cachedDates);
   return {
     weekNumber,
     monthNumber: monthNumber(days),
@@ -348,6 +363,21 @@ function themePatch(id: string): {
   };
 }
 
+function clearRefreshToastTimers(): void {
+  if (refreshToastShowTimer !== undefined) {
+    clearTimeout(refreshToastShowTimer);
+    refreshToastShowTimer = undefined;
+  }
+  if (refreshToastHideTimer !== undefined) {
+    clearTimeout(refreshToastHideTimer);
+    refreshToastHideTimer = undefined;
+  }
+  if (refreshToastUnmountTimer !== undefined) {
+    clearTimeout(refreshToastUnmountTimer);
+    refreshToastUnmountTimer = undefined;
+  }
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -362,6 +392,8 @@ Page({
     weekMenuOpen: false,
     weekScrollIntoView: "",
     weekMenuListHeight: 114,
+    refreshToastMounted: false,
+    refreshToastVisible: false,
     menuHeight: MAIN_MENU_HEIGHT,
     semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
@@ -378,6 +410,7 @@ Page({
     hasHydrated: false,
   },
   onLoad() {
+    pageAlive = true;
     if (weekMenuOpenTimer !== undefined) {
       clearTimeout(weekMenuOpenTimer);
       weekMenuOpenTimer = undefined;
@@ -386,6 +419,7 @@ Page({
       clearTimeout(weekMenuUnmountTimer);
       weekMenuUnmountTimer = undefined;
     }
+    clearRefreshToastTimers();
     activeAccount = "";
     activeTimetable = null;
     activeSnapshot = null;
@@ -407,6 +441,7 @@ Page({
     this.syncTimetableIfNeeded();
   },
   onUnload() {
+    pageAlive = false;
     if (weekMenuOpenTimer !== undefined) {
       clearTimeout(weekMenuOpenTimer);
       weekMenuOpenTimer = undefined;
@@ -415,6 +450,7 @@ Page({
       clearTimeout(weekMenuUnmountTimer);
       weekMenuUnmountTimer = undefined;
     }
+    clearRefreshToastTimers();
   },
   hydrate() {
     const account = getSession()?.user.account || "";
@@ -449,15 +485,30 @@ Page({
       void this.loadTimetable(true, semester);
     }
   },
-  async loadTimetable(refresh: boolean, semester?: string, activate = false) {
+  async loadTimetable(
+    refresh: boolean,
+    semester?: string,
+    activate = false,
+  ): Promise<boolean> {
     const requestAccount = activeAccount;
-    if (!requestAccount) return;
+    if (!requestAccount) return false;
     const requestKey = `${requestAccount}:${semester || "default"}`;
-    if (timetableRequestsInFlight.has(requestKey)) return;
-    timetableRequestsInFlight.add(requestKey);
+    const existingRequest = timetableRequestsInFlight.get(requestKey);
+    if (existingRequest) {
+      const succeeded = await existingRequest.completion;
+      return refresh && !existingRequest.refresh
+        ? this.loadTimetable(true, semester, activate)
+        : succeeded;
+    }
+    let resolveCompletion: (succeeded: boolean) => void = () => undefined;
+    const completion = new Promise<boolean>((resolve) => {
+      resolveCompletion = resolve;
+    });
+    timetableRequestsInFlight.set(requestKey, { refresh, completion });
     const visibleRequestId = activate ? ++visibleRequestSequence : 0;
     if (activate) pendingVisibleRequestId = visibleRequestId;
     let shouldRefreshAfterward = false;
+    let succeeded = false;
     try {
       const result = await getTimetable({ semester, refresh });
       const local = loadTimetableSnapshot(requestAccount, semester);
@@ -502,6 +553,8 @@ Page({
           `timetable:${semester || "default"}`,
           requestAccount,
         );
+      succeeded = true;
+      return true;
     } catch {
       if (activate && pendingVisibleRequestId === visibleRequestId) {
         pendingVisibleRequestId = null;
@@ -509,21 +562,28 @@ Page({
       if (!activeTimetable) {
         wx.showToast({ title: "课表暂时不可用", icon: "none" });
       }
+      return false;
     } finally {
       if (activate && pendingVisibleRequestId === visibleRequestId) {
         pendingVisibleRequestId = null;
       }
-      timetableRequestsInFlight.delete(requestKey);
+      if (
+        timetableRequestsInFlight.get(requestKey)?.completion === completion
+      ) {
+        timetableRequestsInFlight.delete(requestKey);
+      }
+      resolveCompletion(succeeded);
       if (shouldRefreshAfterward) {
         setTimeout(() => void this.loadTimetable(true, semester), 0);
       }
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
-    const maxWeek = Math.max(
-      1,
-      timetable.summary.maxWeek,
-      timetable.semesterCalendar?.totalWeeks || 0,
+    const maxWeek = timetableWeekCount(timetable);
+    const cachedWeekDates = new Map(
+      activeSnapshot?.data.semester.id === timetable.semester.id
+        ? activeSnapshot.weekDates.map((week) => [week.weekNumber, week.dates])
+        : [],
     );
     const detectedWeek = teachingWeekForDate(timetable);
     const weekNumber = Math.min(
@@ -542,7 +602,13 @@ Page({
     );
     const periodCourses = coursesForWeek(timetable, weekNumber);
     const weekPages = Array.from({ length: maxWeek }, (_, index) =>
-      buildWeekPage(timetable, index + 1, maxPeriod, layoutMetrics),
+      buildWeekPage(
+        timetable,
+        index + 1,
+        maxPeriod,
+        layoutMetrics,
+        cachedWeekDates.get(index + 1),
+      ),
     );
     visibleCourses = periodCourses;
     this.setData({
@@ -719,15 +785,50 @@ Page({
       this.setWeek(week, true);
     }
   },
-  onRefresh() {
+  showRefreshConfirmation() {
+    if (!pageAlive) return;
+    clearRefreshToastTimers();
+    this.setData(
+      { refreshToastMounted: true, refreshToastVisible: false },
+      () => {
+        refreshToastShowTimer = setTimeout(() => {
+          refreshToastShowTimer = undefined;
+          if (!pageAlive) return;
+          this.setData({ refreshToastVisible: true });
+          refreshToastHideTimer = setTimeout(() => {
+            refreshToastHideTimer = undefined;
+            if (!pageAlive) return;
+            this.setData({ refreshToastVisible: false });
+            refreshToastUnmountTimer = setTimeout(() => {
+              refreshToastUnmountTimer = undefined;
+              if (pageAlive && !this.data.refreshToastVisible) {
+                this.setData({ refreshToastMounted: false });
+              }
+            }, 320);
+          }, 3000);
+        }, 16);
+      },
+    );
+  },
+  async onRefresh() {
     this.setData({ menuOpen: false });
     haptic("light");
-    void this.loadTimetable(
+    const requestAccount = activeAccount;
+    const requestSemesterId = this.data.semesterId;
+    const succeeded = await this.loadTimetable(
       true,
       this.data.semesterId === defaultSemesterId
         ? undefined
         : this.data.semesterId || undefined,
     );
+    if (
+      succeeded &&
+      pageAlive &&
+      activeAccount === requestAccount &&
+      this.data.semesterId === requestSemesterId
+    ) {
+      this.showRefreshConfirmation();
+    }
   },
   goBack() {
     haptic("light");

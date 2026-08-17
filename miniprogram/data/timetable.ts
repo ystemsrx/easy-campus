@@ -76,6 +76,11 @@ export interface GridCourseTextRow {
   text: string;
 }
 
+export interface TimetableWeekDateCache {
+  weekNumber: number;
+  dates: string[];
+}
+
 const SOURCE_OFFSET = "+08:00";
 const ONE_DAY = 24 * 60 * 60 * 1000;
 const TONES: TimetableTone[] = ["blue", "cyan", "purple", "green", "orange"];
@@ -560,4 +565,21 @@ export function weekDateKeys(
   return Array.from({ length: 7 }, (_, index) =>
     campusDateAt(range.startDate, index),
   );
+}
+
+export function timetableWeekCount(data: TimetableData): number {
+  return Math.max(
+    1,
+    data.summary.maxWeek,
+    data.semesterCalendar?.totalWeeks || 0,
+  );
+}
+
+export function buildTimetableWeekDateCache(
+  data: TimetableData,
+): TimetableWeekDateCache[] {
+  return Array.from({ length: timetableWeekCount(data) }, (_, index) => ({
+    weekNumber: index + 1,
+    dates: weekDateKeys(data, index + 1),
+  }));
 }
