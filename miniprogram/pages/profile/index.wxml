@@ -28,7 +28,7 @@
         <text class="identity-school">{{organizationName}}</text>
         <view class="identity-details">
           <text class="identity-class" overflow="ellipsis" max-lines="1">{{classLabel || '—'}}</text>
-          <text class="identity-enrollment tnum">{{enrollmentDate || '—'}}</text>
+          <view class="identity-enrollment"><text class="identity-enrollment-label">入学</text><text class="identity-enrollment-date tnum">{{enrollmentDate || '—'}}</text></view>
         </view>
       </view>
 
@@ -56,7 +56,7 @@
         <text class="developer-copy">克隆仓库开始开发：</text>
         <view class="terminal-card">
           <view class="terminal-head"><view class="terminal-dot terminal-dot--red"></view><view class="terminal-dot terminal-dot--yellow"></view><view class="terminal-dot terminal-dot--green"></view><text>bash</text></view>
-          <scroll-view class="terminal-code-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="terminal-code-line"><text class="terminal-code" selectable user-select>git clone --depth 1 git@github.com:ystemsrx/easy-swu.git</text></view></scroll-view>
+          <scroll-view class="terminal-code-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="terminal-code-line"><text class="terminal-token terminal-token--git" selectable user-select>git</text><text class="terminal-token terminal-token--action" selectable user-select>clone</text><text class="terminal-token terminal-token--option" selectable user-select>--depth</text><text class="terminal-token terminal-token--number" selectable user-select>1</text><text class="terminal-token terminal-token--repository" selectable user-select>git@github.com:ystemsrx/easy-swu.git</text></view></scroll-view>
         </view>
       </view>
 

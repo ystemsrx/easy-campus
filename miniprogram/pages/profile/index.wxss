@@ -15,7 +15,9 @@
 .identity-school { position: relative; display: block; margin-top: 26rpx; color: rgba(255, 255, 255, 0.9); font-size: 24rpx; font-weight: 650; }
 .identity-details { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 5rpx; color: rgba(255, 255, 255, 0.72); font-size: 22rpx; }
 .identity-class { flex: 1; min-width: 0; }
-.identity-enrollment { flex: none; white-space: nowrap; }
+.identity-enrollment { display: flex; flex: none; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.identity-enrollment-label { color: rgba(255, 255, 255, 0.58); font-size: 17rpx; font-weight: 650; line-height: 1.15; }
+.identity-enrollment-date { margin-top: 4rpx; color: rgba(255, 255, 255, 0.78); font-size: 21rpx; line-height: 1.15; }
 
 .settings-card { overflow: hidden; }
 .appearance-setting { padding: 28rpx 34rpx 30rpx; border-bottom: 1rpx solid var(--color-separator); }
@@ -35,15 +37,22 @@
 .developer-card { padding: 30rpx; }
 .developer-copy { display: block; padding: 0 2rpx; color: #8b8578; font-size: 23rpx; line-height: 1.65; }
 .terminal-card { margin-top: 20rpx; padding: 26rpx; border-radius: 32rpx; background: #2b2620; }
-.terminal-head { display: flex; flex-direction: row; align-items: center; gap: 18rpx; padding-bottom: 20rpx; }
+.terminal-head { display: flex; flex-direction: row; align-items: center; gap: 0; padding-bottom: 20rpx; }
 .terminal-head text { margin-left: auto; color: rgba(255, 255, 255, 0.4); font-family: monospace; font-size: 18rpx; }
 .terminal-dot { width: 16rpx; height: 16rpx; border-radius: 50%; }
+.terminal-dot + .terminal-dot { margin-left: 14rpx; }
 .terminal-dot--red { background: #c2767a; }
 .terminal-dot--yellow { background: #e5b86e; }
 .terminal-dot--green { background: #7d8f6e; }
-.terminal-code-scroll { width: 100%; white-space: nowrap; }
-.terminal-code-line { display: flex; flex-direction: row; width: 760rpx; min-width: 100%; }
-.terminal-code { display: inline-block; color: #9fe3c1; font-family: monospace; font-size: 21rpx; line-height: 1.6; white-space: nowrap; }
+.terminal-code-scroll { width: 100%; height: 46rpx; }
+.terminal-code-line { display: flex; flex-direction: row; align-items: center; width: 900rpx; height: 46rpx; }
+.terminal-token { display: block; flex: none; font-family: monospace; font-size: 22rpx; font-weight: 650; line-height: 1.4; white-space: nowrap; }
+.terminal-token + .terminal-token { margin-left: 14rpx; }
+.terminal-token--git { color: #e5b86e; }
+.terminal-token--action { color: #f7f3e9; }
+.terminal-token--option { color: #86b7d5; }
+.terminal-token--number { color: #d79a9d; }
+.terminal-token--repository { color: #9fe3c1; }
 .profile-error { display: flex; flex-direction: row; justify-content: space-between; gap: 20rpx; margin-top: 28rpx; padding: 20rpx 24rpx; border-radius: 28rpx; color: #c0452d; background: #f9e7e0; font-size: 22rpx; }
 .logout-button { gap: 12rpx; margin-top: 48rpx; }
 

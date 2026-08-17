@@ -71,13 +71,14 @@
 .exam-preview-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; min-height: 90rpx; }
 .exam-preview-row--divided { margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid var(--color-separator); }
 .exam-badge { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 66rpx; height: 66rpx; border-radius: 21rpx; color: #a55357; background: #f7e9e8; line-height: 1; }
-.exam-badge--current { color: #fff; background: linear-gradient(155deg, #c98a2d, #e5b86e); }
-.exam-badge--current { width: 94rpx; border-radius: 999rpx; }
+.exam-badge--current { color: #d97757; }
 .exam-badge--future { color: #a66f1f; background: #f8eedd; }
 .exam-badge--past { color: #a39e92; background: #efede6; }
 .exam-badge--pending { color: #a66f1f; background: #f8eedd; }
 .exam-badge-value { max-width: 58rpx; font-size: 24rpx; font-weight: 800; text-align: center; }
-.exam-badge--current .exam-badge-value { max-width: 94rpx; font-size: 18rpx; white-space: nowrap; }
+.exam-badge-current-grid { box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; width: 100%; height: 100%; padding: 9rpx 10rpx; color: #d97757; font-size: 21rpx; font-weight: 850; line-height: 1; }
+.exam-badge-current-grid > view { display: flex; flex-direction: row; justify-content: space-between; width: 100%; }
+.exam-badge-current-grid text { display: block; flex: none; line-height: 1; text-align: center; }
 .exam-badge-sub { margin-top: 4rpx; font-size: 14rpx; font-weight: 700; opacity: 0.78; }
 .exam-preview-copy { flex: 1; min-width: 0; }
 .exam-course-line { display: flex; flex-direction: row; align-items: center; gap: 7rpx; min-width: 0; }
