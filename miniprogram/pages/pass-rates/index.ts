@@ -224,7 +224,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     loading: true,
     updating: false,
     loaded: false,
@@ -262,12 +261,6 @@ Page({
   onUnload() {
     requestSequence += 1;
     clearPickerTransitionTimer();
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const headerScrolled = event.detail.scrollTop > 18;
-    if (headerScrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled });
-    }
   },
   async loadPassRates(courseKey = "") {
     const sequence = ++requestSequence;

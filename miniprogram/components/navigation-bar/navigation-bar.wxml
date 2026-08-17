@@ -1,14 +1,15 @@
+<view class="nav-cover nav-cover--{{theme}}" style="height: {{coverHeight}}px;"></view>
 <view class="nav-spacer" style="height: {{totalHeight}}px;"></view>
 <view
-  class="nav-shell nav-shell--{{theme}} {{transparent && !scrolled ? 'nav-shell--transparent' : 'nav-shell--material'}}"
-  style="height: {{totalHeight}}px; padding-top: {{statusBarHeight}}px;"
+  class="nav-shell nav-shell--{{theme}} {{transparent ? 'nav-shell--transparent' : 'nav-shell--material'}}"
+  style="height: {{totalHeight}}px;"
 >
-  <view class="nav-content" style="height: {{contentHeight}}px;">
+  <view class="nav-content" style="top: {{controlTop}}px; height: {{contentHeight}}px;">
     <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
       <view
         wx:if="{{back}}"
         class="back-button"
-        style="top: -{{backOffset}}rpx;"
+        style="top: -{{backLift}}px;"
         bindtap="onBack"
         hover-class="nav-button--pressed"
         hover-stay-time="90"

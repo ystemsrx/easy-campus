@@ -9,9 +9,8 @@
     refresher-default-style="none"
     refresher-triggered="{{refreshing}}"
     bindrefresherrefresh="onRefresh"
-    bindscroll="onScroll"
   >
-    <navigation-bar title="教学日历" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <navigation-bar title="教学日历" back transparent theme="{{theme}}"></navigation-bar>
     <view class="calendar-content page-content page-enter">
       <view class="calendar-hero stagger-item stagger-1">
         <view class="ambient-blob calendar-blob calendar-blob--one"></view>

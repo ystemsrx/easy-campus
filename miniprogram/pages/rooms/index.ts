@@ -62,7 +62,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     optionsLoading: true,
     querying: false,
     refreshing: false,
@@ -114,12 +113,6 @@ Page({
   },
   applyAppearance() {
     this.setData(resolveAppearance());
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
   },
   applyOptionData(data: RoomOptionsData) {
     const selectedPeriods = this.data.selectedPeriods;

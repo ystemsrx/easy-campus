@@ -1,6 +1,6 @@
 <view class="page exams-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onScroll" lower-threshold="180">
-    <navigation-bar title="考试安排" subtitle="按学期实时查询" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" lower-threshold="180">
+    <navigation-bar title="考试安排" subtitle="按学期实时查询" back transparent theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
     <view class="exams-content page-content page-enter">
       <view class="exam-hero stagger-item stagger-1">
         <view class="ambient-blob exam-blob exam-blob--one"></view><view class="ambient-blob exam-blob exam-blob--two"></view>

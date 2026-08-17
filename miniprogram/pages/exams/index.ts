@@ -135,7 +135,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     loading: true,
     refreshing: false,
     loadingMore: false,
@@ -198,12 +197,6 @@ Page({
       loading: false,
       filterLabel: data.semester?.label || "暂无可用学期",
     });
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
   },
   async loadExams(reset: boolean, refresh: boolean) {
     if (

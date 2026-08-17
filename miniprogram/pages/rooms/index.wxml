@@ -1,6 +1,6 @@
 <view class="page rooms-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onScroll" lower-threshold="180">
-    <navigation-bar title="空教室" subtitle="找个地方自习" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" lower-threshold="180">
+    <navigation-bar title="空教室" subtitle="找个地方自习" back transparent theme="{{theme}}"></navigation-bar>
     <view class="rooms-content page-content page-enter">
       <view class="source-banner"><view class="source-icon"><lucide-icon name="info" tone="amber" size="{{27}}"></lucide-icon></view><view><text class="source-title">{{sourceName}}</text><text class="source-caption">{{sourceUpdatedAt ? '数据更新于 ' + sourceUpdatedAt : '查询时实时获取最新数据'}}</text></view></view>
 

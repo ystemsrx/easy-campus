@@ -1,6 +1,6 @@
 <view class="page pass-rate-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
-    <navigation-bar title="通过率" back="{{true}}" back-offset="{{32}}" transparent="{{true}}" scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="通过率" back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="pass-rate-content page-content page-enter">
       <loading-view wx:if="{{loading && !course}}" label="正在整理课程统计"></loading-view>
       <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="danger" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>

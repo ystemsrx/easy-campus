@@ -106,6 +106,94 @@ function visit(directory) {
 
 visit(miniprogramRoot);
 
+const navigationTemplate = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "navigation-bar",
+    "navigation-bar.wxml",
+  ),
+  "utf8",
+);
+const navigationStyles = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "navigation-bar",
+    "navigation-bar.wxss",
+  ),
+  "utf8",
+);
+const navigationScript = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "navigation-bar",
+    "navigation-bar.ts",
+  ),
+  "utf8",
+);
+const pageNavigationSources = (appConfig.pages || [])
+  .flatMap((page) => [`${page}.wxml`, `${page}.ts`])
+  .map((page) => fs.readFileSync(path.join(miniprogramRoot, page), "utf8"))
+  .join("\n");
+if (
+  !navigationTemplate.startsWith(
+    '<view class="nav-cover nav-cover--{{theme}}" style="height: {{coverHeight}}px;"></view>\n<view class="nav-spacer" style="height: {{totalHeight}}px;"></view>\n<view\n  class="nav-shell',
+  ) ||
+  !navigationTemplate.includes(
+    'class="nav-content" style="top: {{controlTop}}px; height: {{contentHeight}}px;"',
+  ) ||
+  !navigationTemplate.includes('style="top: -{{backLift}}px;"') ||
+  navigationTemplate.includes("backOffset") ||
+  navigationTemplate.includes("scrolled") ||
+  navigationScript.includes("scrolled") ||
+  navigationScript.includes("backOffset") ||
+  !navigationScript.includes("const NAVIGATION_INSET_RPX = 28") ||
+  !navigationScript.includes(
+    "(NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750",
+  ) ||
+  !navigationScript.includes(
+    "controlTop + (contentHeight - backButtonSize) / 2",
+  ) ||
+  !navigationScript.includes(
+    "naturalBackTop - navigationInset",
+  ) ||
+  !navigationScript.includes("backLift,") ||
+  !navigationScript.includes("const controlTop = menu.top") ||
+  !navigationScript.includes(
+    "const nativeControlBottom = menu.bottom",
+  ) ||
+  !navigationScript.includes(
+    "const coverHeight = this.data.back",
+  ) ||
+  !navigationScript.includes(
+    "? navigationInset * 2 + backButtonSize",
+  ) ||
+  !navigationScript.includes(
+    ": nativeControlBottom",
+  ) ||
+  !navigationScript.includes(
+    "totalHeight: coverHeight",
+  ) ||
+  pageNavigationSources.includes("headerScrolled") ||
+  !navigationStyles.includes(
+    ".nav-cover {\n  position: fixed;\n  top: 0;\n  right: 0;\n  left: 0;\n  z-index: 700;",
+  ) ||
+  !navigationStyles.includes("pointer-events: none;") ||
+  !navigationStyles.includes(
+    ".nav-spacer {\n  flex: none;\n  width: 100%;",
+  ) ||
+  !navigationStyles.includes(
+    ".nav-shell {\n  position: fixed;\n  top: 0;\n  right: 0;\n  left: 0;\n  z-index: 800;",
+  ) ||
+  !navigationStyles.includes(".nav-content {\n  position: absolute;")
+) {
+  failures.push(
+    "components/navigation-bar: 顶部窄遮罩与固定导航操作层必须按原生胶囊位置对齐，且不得触发滚动状态重绘",
+  );
+}
+
 const inboxTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "inbox", "index.wxml"),
   "utf8",
@@ -208,7 +296,7 @@ if (
   ) ||
   passRateTemplate.includes('scroll-into-view="{{coursePickerTarget}}"') ||
   !passRateTemplate.includes('({{item.courses.length}})') ||
-  !passRateTemplate.includes('back-offset="{{32}}"') ||
+  passRateTemplate.includes("back-offset") ||
   !passRateScript.includes("function toCourseRows(") ||
   !passRateScript.includes("function coursePickerState(") ||
   !passRateScript.includes('shortAcademicSemesterLabel(') ||

@@ -144,7 +144,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     loading: true,
     refreshing: false,
     loadingMore: false,
@@ -205,12 +204,6 @@ Page({
     const cached = loadGradesSnapshot(account);
     if (!cached) return;
     this.applyGradesData(cached.data, true, cached.serverFetchedAt);
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
   },
   buildFilterLabel(): string {
     const parts: string[] = [];

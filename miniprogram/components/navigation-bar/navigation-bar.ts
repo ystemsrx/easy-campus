@@ -1,3 +1,6 @@
+const BACK_BUTTON_SIZE_RPX = 76;
+const NAVIGATION_INSET_RPX = 28;
+
 Component({
   options: {
     multipleSlots: true,
@@ -6,15 +9,15 @@ Component({
     title: { type: String, value: "" },
     subtitle: { type: String, value: "" },
     back: { type: Boolean, value: false },
-    backOffset: { type: Number, value: 0 },
     transparent: { type: Boolean, value: false },
-    scrolled: { type: Boolean, value: false },
     theme: { type: String, value: "light" },
   },
   data: {
-    statusBarHeight: 24,
-    contentHeight: 44,
-    totalHeight: 68,
+    coverHeight: 66,
+    controlTop: 28,
+    contentHeight: 32,
+    backLift: 11,
+    totalHeight: 66,
     sideWidth: 88,
   },
   lifetimes: {
@@ -22,15 +25,28 @@ Component({
       try {
         const menu = wx.getMenuButtonBoundingClientRect();
         const windowInfo = wx.getWindowInfo();
-        const statusBarHeight = windowInfo.statusBarHeight || menu.top;
-        const contentHeight = Math.max(
-          50,
-          (menu.top - statusBarHeight) * 2 + menu.height,
+        const controlTop = menu.top || windowInfo.statusBarHeight || 24;
+        const contentHeight = menu.height || 32;
+        const backButtonSize =
+          (BACK_BUTTON_SIZE_RPX * windowInfo.windowWidth) / 750;
+        const navigationInset =
+          (NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750;
+        const nativeControlBottom = menu.bottom || controlTop + contentHeight;
+        const coverHeight = this.data.back
+          ? navigationInset * 2 + backButtonSize
+          : nativeControlBottom;
+        const naturalBackTop =
+          controlTop + (contentHeight - backButtonSize) / 2;
+        const backLift = Math.max(
+          0,
+          naturalBackTop - navigationInset,
         );
         this.setData({
-          statusBarHeight,
+          coverHeight,
+          controlTop,
           contentHeight,
-          totalHeight: statusBarHeight + contentHeight,
+          backLift,
+          totalHeight: coverHeight,
           sideWidth: Math.max(82, windowInfo.windowWidth - menu.left + 8),
         });
       } catch {

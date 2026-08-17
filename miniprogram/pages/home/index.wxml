@@ -5,9 +5,8 @@
     scroll-y
     enhanced
     show-scrollbar="{{false}}"
-    bindscroll="onScroll"
   >
-    <navigation-bar transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <navigation-bar transparent theme="{{theme}}"></navigation-bar>
     <view class="home-content page-content page-content--tab page-enter">
       <view class="welcome-row">
         <view class="welcome-copy">

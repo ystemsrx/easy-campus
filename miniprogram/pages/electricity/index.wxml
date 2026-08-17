@@ -1,6 +1,6 @@
 <view class="page electricity-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
-    <navigation-bar title="宿舍用电与余额" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="宿舍用电与余额" back transparent theme="{{theme}}"></navigation-bar>
     <view class="electricity-content page-content page-enter">
       <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
 

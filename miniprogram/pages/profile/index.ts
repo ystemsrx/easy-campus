@@ -32,7 +32,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     loading: false,
     refreshing: false,
     errorMessage: "",
@@ -119,12 +118,6 @@ Page({
   onRefresh() {
     haptic("light");
     void this.loadUser();
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
   },
   openThemeSheet() {
     haptic("light");

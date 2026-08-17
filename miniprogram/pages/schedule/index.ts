@@ -133,7 +133,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     currentTime: formatClock(),
     monthLabel: "",
     teachingWeekLabel: "学期外",
@@ -242,11 +241,6 @@ Page({
     void putLocalSchedule(data).catch(() => {
       // 本地写入已经完成，服务端将在下次进入页面时追平。
     });
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const headerScrolled = event.detail.scrollTop > 18;
-    if (headerScrolled !== this.data.headerScrolled)
-      this.setData({ headerScrolled });
   },
   rebuildWeek() {
     const now = new Date();

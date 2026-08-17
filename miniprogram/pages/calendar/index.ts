@@ -37,7 +37,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     loading: true,
     refreshing: false,
     imageLoading: false,
@@ -66,12 +65,6 @@ Page({
   },
   applyAppearance() {
     this.setData(resolveAppearance());
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
-    }
   },
   async getCachedImage(
     calendar: CalendarData,

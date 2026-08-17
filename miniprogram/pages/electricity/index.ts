@@ -138,7 +138,6 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    headerScrolled: false,
     optionsLoading: false,
     querying: false,
     serviceUnavailable: false,
@@ -242,12 +241,6 @@ Page({
       if (sequence === accountRequestSequence && shouldRefreshAfterward) {
         setTimeout(() => void this.refreshBoundAccount(), 0);
       }
-    }
-  },
-  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
-    const scrolled = event.detail.scrollTop > 18;
-    if (scrolled !== this.data.headerScrolled) {
-      this.setData({ headerScrolled: scrolled });
     }
   },
   async loadBuildings() {

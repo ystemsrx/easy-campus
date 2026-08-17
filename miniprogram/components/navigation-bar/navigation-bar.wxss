@@ -1,4 +1,19 @@
-.nav-spacer { width: 100%; }
+.nav-cover {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 700;
+  background-color: #f7f5ef;
+  pointer-events: none;
+}
+
+.nav-cover--dark { background-color: #171613; }
+
+.nav-spacer {
+  flex: none;
+  width: 100%;
+}
 
 .nav-shell {
   position: fixed;
@@ -6,6 +21,7 @@
   right: 0;
   left: 0;
   z-index: 800;
+  width: 100%;
   color: #16161a;
   transition: background-color 260ms ease, box-shadow 260ms ease;
 }
@@ -22,7 +38,7 @@
 .nav-shell--dark.nav-shell--material { background: rgba(23, 22, 19, 0.9); }
 
 .nav-content {
-  position: relative;
+  position: absolute;
   display: flex;
   flex-direction: row;
   align-items: center;

@@ -1,6 +1,6 @@
 <view class="page grades-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" bindscroll="onScroll" lower-threshold="180">
-    <navigation-bar title="成绩" subtitle="成绩单 · 含历史学期" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" lower-threshold="180">
+    <navigation-bar title="成绩" subtitle="成绩单 · 含历史学期" back transparent theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
     <view class="grades-content page-content page-enter">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
