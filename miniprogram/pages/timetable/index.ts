@@ -53,7 +53,8 @@ interface GridDay extends DayOption {
 
 interface WeekPage {
   weekNumber: number;
-  monthLabel: string;
+  monthNumber: string;
+  startDateLabel: string;
   days: DayOption[];
   gridDays: GridDay[];
 }
@@ -96,10 +97,14 @@ const THEMES: TimetableThemeOption[] = [
 
 let activeTimetable: TimetableData | null = null;
 let visibleCourses: TimetableCourse[] = [];
-let requestInFlight = false;
+const timetableRequestsInFlight = new Set<string>();
 let activeAccount = "";
 let defaultSemesterId = "";
 let activeSnapshot: TimetableSnapshot | null = null;
+let weekMenuOpenTimer: ReturnType<typeof setTimeout> | undefined;
+let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+let visibleRequestSequence = 0;
+let pendingVisibleRequestId: number | null = null;
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -202,6 +207,10 @@ function submenuHeight(semesterCount: number): number {
   return Math.min(590, Math.max(250, 104 + Math.min(6, semesterCount) * 78));
 }
 
+function weekMenuListHeight(weekCount: number): number {
+  return Math.min(440, 32 + Math.ceil(Math.max(1, weekCount) / 4) * 82);
+}
+
 function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
   return Boolean(
     (timetable.semesterCalendar?.semesterId === timetable.semester.id &&
@@ -210,10 +219,15 @@ function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
   );
 }
 
-function monthLabel(days: DayOption[]): string {
+function monthNumber(days: DayOption[]): string {
   const datedDays = days.filter((day) => day.date);
   const displayDate = datedDays[datedDays.length - 1]?.date;
-  return displayDate ? `${Number(displayDate.slice(5, 7))}月` : "课表";
+  return displayDate ? String(Number(displayDate.slice(5, 7))) : "—";
+}
+
+function weekStartDateLabel(days: DayOption[]): string {
+  const date = days.find((day) => day.date)?.date;
+  return date ? `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}` : "";
 }
 
 function buildWeekPage(
@@ -226,7 +240,8 @@ function buildWeekPage(
   const days = buildDays(timetable, weekNumber);
   return {
     weekNumber,
-    monthLabel: monthLabel(days),
+    monthNumber: monthNumber(days),
+    startDateLabel: weekStartDateLabel(days),
     days,
     gridDays: days.map((day) => ({
       ...day,
@@ -265,17 +280,22 @@ function buildPeriodRows(
 function backgroundMetrics(): {
   headerTop: number;
   headerHeight: number;
+  headerControlSize: number;
+  headerControlCenter: number;
   menuTop: number;
+  weekMenuTop: number;
   imageStyle: string;
 } {
   try {
     const windowInfo = wx.getWindowInfo();
     const menu = wx.getMenuButtonBoundingClientRect();
     const statusBarHeight = windowInfo.statusBarHeight || menu.top || 24;
-    const contentHeight = Math.max(
-      50,
-      (menu.top - statusBarHeight) * 2 + menu.height,
-    );
+    const headerControlSize = menu.height || 32;
+    const headerControlTop = menu.top || statusBarHeight + 4;
+    const headerControlBottom =
+      menu.bottom || headerControlTop + headerControlSize;
+    const contentHeight =
+      Math.max(0, headerControlTop - statusBarHeight) * 2 + headerControlSize;
     const headerHeight = statusBarHeight + contentHeight;
     const scale = Math.max(
       windowInfo.windowWidth / BACKGROUND_WIDTH,
@@ -287,14 +307,20 @@ function backgroundMetrics(): {
     return {
       headerTop: statusBarHeight,
       headerHeight,
-      menuTop: headerHeight + 4,
+      headerControlSize,
+      headerControlCenter: headerControlTop + headerControlSize / 2,
+      menuTop: Math.max(headerHeight, headerControlBottom) + 4,
+      weekMenuTop: headerControlBottom + 8,
       imageStyle: `width:${width}px;height:${height}px;left:${left}px;top:0px;`,
     };
   } catch {
     return {
       headerTop: 24,
-      headerHeight: 74,
-      menuTop: 78,
+      headerHeight: 64,
+      headerControlSize: 32,
+      headerControlCenter: 44,
+      menuTop: 68,
+      weekMenuTop: 68,
       imageStyle: "width:100%;height:100%;left:0;top:0;",
     };
   }
@@ -332,6 +358,10 @@ Page({
     timetableThemes: THEMES,
     menuOpen: false,
     semesterOpen: false,
+    weekMenuMounted: false,
+    weekMenuOpen: false,
+    weekScrollIntoView: "",
+    weekMenuListHeight: 114,
     menuHeight: MAIN_MENU_HEIGHT,
     semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
@@ -348,10 +378,20 @@ Page({
     hasHydrated: false,
   },
   onLoad() {
+    if (weekMenuOpenTimer !== undefined) {
+      clearTimeout(weekMenuOpenTimer);
+      weekMenuOpenTimer = undefined;
+    }
+    if (weekMenuUnmountTimer !== undefined) {
+      clearTimeout(weekMenuUnmountTimer);
+      weekMenuUnmountTimer = undefined;
+    }
     activeAccount = "";
     activeTimetable = null;
     activeSnapshot = null;
     defaultSemesterId = "";
+    visibleRequestSequence += 1;
+    pendingVisibleRequestId = null;
     this.setData({
       ...resolveAppearance(),
       ...backgroundMetrics(),
@@ -365,6 +405,16 @@ Page({
     this.setData({ ...resolveAppearance(), ...backgroundMetrics() });
     this.hydrate();
     this.syncTimetableIfNeeded();
+  },
+  onUnload() {
+    if (weekMenuOpenTimer !== undefined) {
+      clearTimeout(weekMenuOpenTimer);
+      weekMenuOpenTimer = undefined;
+    }
+    if (weekMenuUnmountTimer !== undefined) {
+      clearTimeout(weekMenuUnmountTimer);
+      weekMenuUnmountTimer = undefined;
+    }
   },
   hydrate() {
     const account = getSession()?.user.account || "";
@@ -386,7 +436,7 @@ Page({
       loadTimetableSnapshot(activeAccount, semester) ||
       (!semester ? activeSnapshot : null);
     if (!snapshot) {
-      void this.loadTimetable(false, semester);
+      void this.loadTimetable(false, semester, !activeTimetable);
       return;
     }
     const needsRefresh =
@@ -399,28 +449,50 @@ Page({
       void this.loadTimetable(true, semester);
     }
   },
-  async loadTimetable(refresh: boolean, semester?: string) {
-    if (requestInFlight) return;
-    requestInFlight = true;
+  async loadTimetable(refresh: boolean, semester?: string, activate = false) {
+    const requestAccount = activeAccount;
+    if (!requestAccount) return;
+    const requestKey = `${requestAccount}:${semester || "default"}`;
+    if (timetableRequestsInFlight.has(requestKey)) return;
+    timetableRequestsInFlight.add(requestKey);
+    const visibleRequestId = activate ? ++visibleRequestSequence : 0;
+    if (activate) pendingVisibleRequestId = visibleRequestId;
     let shouldRefreshAfterward = false;
     try {
       const result = await getTimetable({ semester, refresh });
-      const local = loadTimetableSnapshot(activeAccount, semester);
-      if (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
-        activeSnapshot = saveTimetableSnapshot(activeAccount, result.data, {
+      const local = loadTimetableSnapshot(requestAccount, semester);
+      const shouldStore =
+        refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt);
+      let stored = local;
+      if (shouldStore) {
+        stored = saveTimetableSnapshot(requestAccount, result.data, {
           semesterId: semester,
           serverFetchedAt: result.meta.fetchedAt,
         });
+      }
+      const stillViewingResult = activate
+        ? activeAccount === requestAccount &&
+          pendingVisibleRequestId === visibleRequestId
+        : activeAccount === requestAccount &&
+          pendingVisibleRequestId === null &&
+          (!activeTimetable ||
+            !this.data.semesterId ||
+            this.data.semesterId === result.data.semester.id);
+      if (shouldStore && stillViewingResult) {
+        if (activate) pendingVisibleRequestId = null;
+        activeSnapshot = stored;
         activeTimetable = result.data;
         if (!semester) defaultSemesterId = result.data.semester.id;
-        this.applyTimetable(result.data, !semester);
-      } else if (!activeTimetable && local) {
+        this.applyTimetable(result.data, refresh || !semester);
+      } else if (stillViewingResult && !activeTimetable && local) {
+        if (activate) pendingVisibleRequestId = null;
         activeSnapshot = local;
         activeTimetable = local.data;
         this.applyTimetable(local.data, !semester);
       }
       const current =
-        loadTimetableSnapshot(activeAccount, semester) || activeSnapshot;
+        loadTimetableSnapshot(requestAccount, semester) ||
+        (activeAccount === requestAccount ? activeSnapshot : null);
       shouldRefreshAfterward =
         !refresh &&
         current !== null &&
@@ -428,14 +500,20 @@ Page({
           !hasSelectedSemesterCalendar(current.data)) &&
         claimAutomaticRefresh(
           `timetable:${semester || "default"}`,
-          activeAccount,
+          requestAccount,
         );
     } catch {
+      if (activate && pendingVisibleRequestId === visibleRequestId) {
+        pendingVisibleRequestId = null;
+      }
       if (!activeTimetable) {
         wx.showToast({ title: "课表暂时不可用", icon: "none" });
       }
     } finally {
-      requestInFlight = false;
+      if (activate && pendingVisibleRequestId === visibleRequestId) {
+        pendingVisibleRequestId = null;
+      }
+      timetableRequestsInFlight.delete(requestKey);
       if (shouldRefreshAfterward) {
         setTimeout(() => void this.loadTimetable(true, semester), 0);
       }
@@ -460,9 +538,12 @@ Page({
     const maxPeriod = maxPeriodFor(timetable);
     const layoutMetrics = gridLayoutMetrics(
       maxPeriod,
-      Number(this.data.headerHeight) || 74,
+      Number(this.data.headerHeight) || 64,
     );
     const periodCourses = coursesForWeek(timetable, weekNumber);
+    const weekPages = Array.from({ length: maxWeek }, (_, index) =>
+      buildWeekPage(timetable, index + 1, maxPeriod, layoutMetrics),
+    );
     visibleCourses = periodCourses;
     this.setData({
       semesterShortLabel: shortSemesterLabel(timetable.semester),
@@ -473,11 +554,29 @@ Page({
       weekIndex: weekNumber - 1,
       weekLabel: `第 ${weekNumber} 周`,
       maxWeek,
+      weekMenuListHeight: weekMenuListHeight(maxWeek),
       periodRows: buildPeriodRows(timetable, maxPeriod, periodCourses),
-      weekPages: Array.from({ length: maxWeek }, (_, index) =>
-        buildWeekPage(timetable, index + 1, maxPeriod, layoutMetrics),
+      weekPages,
+    });
+  },
+  setWeek(weekNumber: number, feedback = false) {
+    if (!activeTimetable) return;
+    const normalizedWeek = Math.min(
+      this.data.maxWeek,
+      Math.max(1, Math.floor(weekNumber)),
+    );
+    visibleCourses = coursesForWeek(activeTimetable, normalizedWeek);
+    this.setData({
+      weekNumber: normalizedWeek,
+      weekIndex: normalizedWeek - 1,
+      weekLabel: `第 ${normalizedWeek} 周`,
+      periodRows: buildPeriodRows(
+        activeTimetable,
+        this.data.periodRows.length || maxPeriodFor(activeTimetable),
+        visibleCourses,
       ),
     });
+    if (feedback) haptic("light");
   },
   onWeekChange(event: WechatMiniprogram.SwiperChange) {
     if (!activeTimetable) return;
@@ -486,18 +585,20 @@ Page({
       Math.max(1, Number(event.detail.current) + 1),
     );
     if (weekNumber === this.data.weekNumber) return;
-    visibleCourses = coursesForWeek(activeTimetable, weekNumber);
-    this.setData({
-      weekNumber,
-      weekIndex: weekNumber - 1,
-      weekLabel: `第 ${weekNumber} 周`,
-      periodRows: buildPeriodRows(
-        activeTimetable,
-        this.data.periodRows.length || maxPeriodFor(activeTimetable),
-        visibleCourses,
-      ),
-    });
-    haptic("light");
+    this.setWeek(weekNumber, true);
+  },
+  selectWeek(event: WechatMiniprogram.TouchEvent) {
+    const weekNumber = Number(event.currentTarget.dataset.week);
+    this.closeWeekMenu();
+    if (
+      !Number.isInteger(weekNumber) ||
+      weekNumber < 1 ||
+      weekNumber > this.data.maxWeek ||
+      weekNumber === this.data.weekNumber
+    ) {
+      return;
+    }
+    this.setWeek(weekNumber, true);
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semester = String(event.currentTarget.dataset.semester || "");
@@ -511,6 +612,8 @@ Page({
     const querySemester = semester === defaultSemesterId ? undefined : semester;
     const cached = loadTimetableSnapshot(activeAccount, querySemester);
     if (cached) {
+      visibleRequestSequence += 1;
+      pendingVisibleRequestId = null;
       this.setData({ menuOpen: false, semesterOpen: false });
       activeSnapshot = cached;
       activeTimetable = cached.data;
@@ -519,10 +622,54 @@ Page({
       return;
     }
     this.setData({ menuOpen: false, semesterOpen: false });
-    void this.loadTimetable(false, querySemester);
+    void this.loadTimetable(false, querySemester, true);
+  },
+  toggleWeekMenu() {
+    haptic("light");
+    if (this.data.weekMenuOpen) {
+      this.closeWeekMenu();
+      return;
+    }
+    if (weekMenuUnmountTimer !== undefined) {
+      clearTimeout(weekMenuUnmountTimer);
+      weekMenuUnmountTimer = undefined;
+    }
+    this.setData(
+      {
+        menuOpen: false,
+        semesterOpen: false,
+        menuHeight: MAIN_MENU_HEIGHT,
+        weekMenuMounted: true,
+        weekScrollIntoView: `week-option-${this.data.weekNumber}`,
+      },
+      () => {
+        weekMenuOpenTimer = setTimeout(() => {
+          weekMenuOpenTimer = undefined;
+          if (this.data.weekMenuMounted) this.setData({ weekMenuOpen: true });
+        }, 16);
+      },
+    );
+  },
+  closeWeekMenu() {
+    if (!this.data.weekMenuMounted) return;
+    if (weekMenuOpenTimer !== undefined) {
+      clearTimeout(weekMenuOpenTimer);
+      weekMenuOpenTimer = undefined;
+    }
+    this.setData({ weekMenuOpen: false });
+    if (weekMenuUnmountTimer !== undefined) {
+      clearTimeout(weekMenuUnmountTimer);
+    }
+    weekMenuUnmountTimer = setTimeout(() => {
+      weekMenuUnmountTimer = undefined;
+      if (!this.data.weekMenuOpen) {
+        this.setData({ weekMenuMounted: false });
+      }
+    }, 320);
   },
   toggleMenu() {
     haptic("light");
+    this.closeWeekMenu();
     this.setData({
       menuOpen: !this.data.menuOpen,
       semesterOpen: false,
@@ -569,7 +716,7 @@ Page({
     this.setData({ menuOpen: false });
     const week = teachingWeekForDate(activeTimetable);
     if (week !== null && week >= 1 && week <= this.data.maxWeek) {
-      this.setData({ weekIndex: week - 1 });
+      this.setWeek(week, true);
     }
   },
   onRefresh() {

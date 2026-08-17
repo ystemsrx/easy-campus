@@ -11,15 +11,26 @@
 
   <view class="timetable-header" style="height: {{headerHeight}}px; padding-top: {{headerTop}}px;">
     <view class="header-left">
-      <view class="header-button pressable" bindtap="goBack" hover-class="header-button--pressed" aria-role="button" aria-label="返回">
+      <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="goBack" hover-class="header-button--pressed" aria-role="button" aria-label="返回">
         <lucide-icon name="arrow-left" tone="white" size="{{29}}"></lucide-icon>
       </view>
-      <view class="header-button pressable" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单">
+      <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单">
         <view class="menu-glyph"><view></view><view></view><view></view></view>
       </view>
     </view>
 
-    <text class="header-week tnum">{{weekLabel}}</text>
+    <view
+      class="header-week pressable {{weekMenuOpen ? 'header-week--open' : ''}}"
+      style="top: {{headerControlCenter}}px; height: {{headerControlSize}}px;"
+      bindtap="toggleWeekMenu"
+      hover-class="header-week--pressed"
+      aria-role="button"
+      aria-label="切换教学周，当前{{weekLabel}}"
+      aria-expanded="{{weekMenuOpen}}"
+    >
+      <text class="tnum">{{weekLabel}}</text>
+      <view class="week-chevron"><lucide-icon name="chevron-right" tone="white" size="{{16}}"></lucide-icon></view>
+    </view>
 
   </view>
 
@@ -27,7 +38,7 @@
     wx:if="{{weekPages.length}}"
     class="week-swiper"
     current="{{weekIndex}}"
-    duration="380"
+    duration="320"
     easing-function="easeOutCubic"
     bindchange="onWeekChange"
     cache-extent="1"
@@ -35,7 +46,10 @@
     <swiper-item wx:for="{{weekPages}}" wx:for-item="weekPage" wx:key="weekNumber">
       <view class="week-page page-enter">
         <view class="week-grid-head">
-          <view class="month-head"><text>{{weekPage.monthLabel}}</text></view>
+          <view class="month-head">
+            <text class="month-number tnum">{{weekPage.monthNumber}}</text>
+            <text class="month-unit">月</text>
+          </view>
           <view
             wx:for="{{weekPage.days}}"
             wx:for-item="day"
@@ -95,6 +109,43 @@
 
   <view wx:else class="timetable-empty">
     <block wx:if="{{hasHydrated}}"><text>暂无本地课表</text><text>可从左上角菜单手动刷新</text></block>
+  </view>
+
+  <view wx:if="{{weekMenuMounted}}" class="week-popover-layer {{weekMenuOpen ? 'week-popover-layer--open' : ''}}">
+    <view class="week-popover-dismiss" catchtap="closeWeekMenu"></view>
+    <view class="week-popover" style="top: {{weekMenuTop}}px;" catchtap="stopPropagation">
+      <view class="week-popover-header">
+        <text>选择周次</text>
+        <text>{{semesterShortLabel}}</text>
+      </view>
+      <scroll-view
+        class="week-option-scroll"
+        style="height: {{weekMenuListHeight}}rpx;"
+        type="list"
+        scroll-y
+        enhanced
+        show-scrollbar="{{false}}"
+        scroll-into-view="{{weekScrollIntoView}}"
+      >
+        <view class="week-options">
+          <view
+            wx:for="{{weekPages}}"
+            wx:for-item="week"
+            wx:key="weekNumber"
+            id="week-option-{{week.weekNumber}}"
+            class="week-option pressable {{weekNumber === week.weekNumber ? 'week-option--active' : ''}}"
+            data-week="{{week.weekNumber}}"
+            bindtap="selectWeek"
+            hover-class="week-option--pressed"
+            aria-role="button"
+            aria-label="第{{week.weekNumber}}周，{{week.startDateLabel}}开始"
+          >
+            <text class="week-option-number tnum">{{week.weekNumber}}</text>
+            <text class="week-option-date tnum">{{week.startDateLabel}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 
   <view wx:if="{{menuOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>

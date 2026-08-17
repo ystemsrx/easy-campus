@@ -55,6 +55,7 @@
   background: rgba(255, 255, 255, 0.14);
   box-shadow: 0 12rpx 34rpx rgba(0, 32, 84, 0.14);
   backdrop-filter: blur(18px) saturate(1.35);
+  transition: opacity 120ms ease, transform 120ms ease;
 }
 
 .header-button--pressed {
@@ -81,16 +82,50 @@
 
 .header-week {
   position: absolute;
-  top: 50%;
   left: 50%;
-  max-width: 150rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5rpx;
+  min-width: 146rpx;
+  max-width: 176rpx;
+  padding: 0 16rpx;
   overflow: hidden;
-  font-size: 30rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  border-radius: 999rpx;
+  font-size: 27rpx;
   font-weight: 780;
   letter-spacing: -0.5rpx;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10rpx 30rpx rgba(0, 32, 84, 0.12);
   text-overflow: ellipsis;
   white-space: nowrap;
   transform: translate(-50%, -50%);
+  transform-origin: center;
+  backdrop-filter: blur(18px) saturate(1.35);
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.header-week--pressed {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.week-chevron {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18rpx;
+  height: 18rpx;
+  opacity: 0.72;
+  transform: rotate(90deg);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.header-week--open .week-chevron {
+  transform: rotate(-90deg);
 }
 
 .week-swiper {
@@ -121,12 +156,41 @@
 .month-head {
   display: flex;
   flex: none;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 64rpx;
   color: rgba(255, 255, 255, 0.78);
-  font-size: 19rpx;
   font-weight: 760;
+}
+
+.month-number,
+.weekday-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 24rpx;
+  line-height: 24rpx;
+}
+
+.month-number {
+  font-size: 28rpx;
+  font-weight: 820;
+  letter-spacing: -1rpx;
+}
+
+.month-unit {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 43rpx;
+  height: 43rpx;
+  margin-top: 5rpx;
+  font-size: 25rpx;
+  font-weight: 780;
+  line-height: 43rpx;
 }
 
 .grid-day-head {
@@ -142,7 +206,6 @@
 .weekday-label {
   font-size: 20rpx;
   font-weight: 650;
-  line-height: 1;
 }
 
 .grid-day-date {
@@ -218,13 +281,11 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  border-left: 1rpx solid rgba(255, 255, 255, 0.09);
 }
 
 .period-grid-line {
   flex: 1;
   min-height: 0;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.07);
 }
 
 .grid-course-slot {
@@ -328,6 +389,132 @@
   bottom: 0;
   left: 0;
   z-index: 70;
+}
+
+.week-popover-layer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.week-popover-layer--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.week-popover-dismiss {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.week-popover {
+  position: absolute;
+  left: 50%;
+  width: 520rpx;
+  max-width: calc(100% - 48rpx);
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.82);
+  border-radius: 34rpx;
+  color: #17171b;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 34rpx 90rpx -16rpx rgba(0, 31, 78, 0.34);
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12rpx) scale(0.9);
+  transform-origin: top center;
+  backdrop-filter: blur(24px) saturate(1.4);
+  transition: opacity 220ms ease,
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.week-popover-layer--open .week-popover {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.week-popover-header {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 25rpx 28rpx 12rpx;
+}
+
+.week-popover-header text:first-child {
+  font-size: 27rpx;
+  font-weight: 800;
+  letter-spacing: -0.5rpx;
+}
+
+.week-popover-header text:last-child {
+  max-width: 250rpx;
+  overflow: hidden;
+  color: #9a958b;
+  font-size: 18rpx;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-option-scroll {
+  max-height: 440rpx;
+}
+
+.week-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  padding: 8rpx 20rpx 24rpx;
+}
+
+.week-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: calc(25% - 8rpx);
+  min-height: 72rpx;
+  border-radius: 21rpx;
+  color: #817b70;
+  background: #f3f1eb;
+  transition: color 180ms ease, background-color 180ms ease,
+    transform 120ms ease;
+}
+
+.week-option--pressed {
+  transform: scale(0.94);
+}
+
+.week-option--active {
+  color: #fff;
+  background: #0862ad;
+  box-shadow: 0 10rpx 24rpx rgba(8, 98, 173, 0.22);
+}
+
+.week-option-number {
+  font-size: 24rpx;
+  font-weight: 820;
+  line-height: 1.05;
+}
+
+.week-option-date {
+  min-height: 18rpx;
+  margin-top: 4rpx;
+  color: currentColor;
+  font-size: 16rpx;
+  font-weight: 620;
+  line-height: 1;
+  opacity: 0.62;
 }
 
 .timetable-menu {
@@ -581,5 +768,8 @@
 }
 
 .motion-reduced .popover-enter { animation-duration: 1ms; }
+.motion-reduced .week-popover-layer,
+.motion-reduced .week-popover,
+.motion-reduced .week-chevron { transition-duration: 1ms; }
 .motion-reduced .timetable-menu,
 .motion-reduced .menu-panel { transition-duration: 1ms; }

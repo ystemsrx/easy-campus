@@ -296,4 +296,53 @@ assert(
   "教师越界或没有地点时不得压缩课程名",
 );
 
+const timetablePageRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "pages",
+  "timetable",
+);
+const timetablePageScript = fs.readFileSync(
+  path.join(timetablePageRoot, "index.ts"),
+  "utf8",
+);
+const timetablePageTemplate = fs.readFileSync(
+  path.join(timetablePageRoot, "index.wxml"),
+  "utf8",
+);
+const timetablePageStyles = fs.readFileSync(
+  path.join(timetablePageRoot, "index.wxss"),
+  "utf8",
+);
+const dayColumnRule = timetablePageStyles.match(
+  /\.grid-day-column\s*\{[^}]*\}/s,
+)?.[0];
+const periodLineRule = timetablePageStyles.match(
+  /\.period-grid-line\s*\{[^}]*\}/s,
+)?.[0];
+assert(
+  dayColumnRule && !dayColumnRule.includes("border"),
+  "课表背景不应保留纵向浅色网格",
+);
+assert(
+  periodLineRule && !periodLineRule.includes("border"),
+  "课表背景不应保留横向浅色网格",
+);
+assert(
+  timetablePageTemplate.includes('class="month-number tnum"') &&
+    timetablePageTemplate.includes('class="month-unit"'),
+  "月份数字和‘月’必须分成两行并分别对齐星期与日期",
+);
+assert(
+  timetablePageTemplate.includes('bindtap="toggleWeekMenu"') &&
+    timetablePageTemplate.includes('bindtap="selectWeek"'),
+  "顶部周次必须提供可直接切换周次的弹出菜单",
+);
+assert(
+  timetablePageScript.includes("timetableRequestsInFlight") &&
+    timetablePageScript.includes("refresh || !semester"),
+  "静默刷新必须允许其他学期请求并保留当前周",
+);
+
 console.log("Timetable preview checks passed.");
