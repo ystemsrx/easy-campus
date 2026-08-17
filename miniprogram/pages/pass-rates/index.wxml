@@ -1,0 +1,87 @@
+<view class="page pass-rate-page {{themeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
+    <navigation-bar title="通过率" subtitle="选择已修课程" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <view class="pass-rate-content page-content page-enter">
+      <loading-view wx:if="{{loading && !course}}" label="正在整理课程统计"></loading-view>
+      <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="danger" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>
+      <empty-state wx:elif="{{loaded && !course}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无可选课程" description="获取成绩后再来查看"></empty-state>
+
+      <block wx:elif="{{course}}">
+        <view class="pass-hero stagger-item stagger-1">
+          <view class="ambient-blob pass-blob pass-blob--one"></view><view class="ambient-blob pass-blob pass-blob--two"></view>
+          <view class="pass-hero-head">
+            <view class="pass-heading">
+              <text class="pass-eyebrow">{{course.courseNature || '课程'}} · {{course.credits === null ? '学分未提供' : course.creditsLabel + ' 学分'}}</text>
+              <text class="pass-course-name display-title">{{course.courseName}}</text>
+              <text class="pass-course-meta">{{course.academicYear}} · {{course.termLabel}}{{statistics ? ' · 共 ' + statistics.totalCount + ' 份成绩' : ''}}</text>
+            </view>
+            <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="white" size="{{22}}"></lucide-icon></view>
+          </view>
+
+          <view class="pass-hero-lower">
+            <view class="pass-metrics">
+              <view class="pass-primary-score"><text class="pass-score-value tnum {{course.textScore ? 'pass-score-value--text' : ''}}">{{course.displayScore}}</text><text class="pass-score-label">总评成绩</text></view>
+              <view class="pass-mini-stat"><text class="tnum">{{course.gradePointLabel}}</text><text>绩点</text></view>
+              <view class="pass-mini-stat"><text class="tnum">{{averageScoreLabel}}</text><text>平均分</text></view>
+            </view>
+            <view wx:if="{{components.length}}" class="hero-composition">
+              <text class="composition-title">成绩组成</text>
+              <view class="composition-track"><view wx:for="{{components}}" wx:key="name" class="composition-part" style="width: {{item.width}}%; opacity: {{item.opacity}};"></view></view>
+              <view class="composition-tags"><text wx:for="{{components}}" wx:key="name">{{item.name}} {{item.score}}</text></view>
+            </view>
+          </view>
+        </view>
+
+        <view class="section-header pass-section-header stagger-item stagger-2"><view><text class="section-title">通过率 · 得分分布</text><text wx:if="{{cohortLabel}}" class="section-caption">{{cohortLabel}}</text></view></view>
+
+        <view wx:if="{{status === 'ready' && statistics}}" class="statistics-card card stagger-item stagger-2">
+          <view class="statistics-overview">
+            <view class="pass-ring"><canvas id="pass-rate-ring-canvas" class="pass-ring-canvas" type="2d"></canvas><view class="pass-ring-inner"><view class="pass-ring-value"><text class="tnum">{{statistics.passRate}}</text><text>%</text></view><text class="pass-ring-label">通过率</text></view></view>
+            <view class="outcome-stack">
+              <view class="outcome-row outcome-row--pass"><text>通过</text><text class="tnum">{{statistics.passedCount}} 人</text></view>
+              <view class="outcome-row outcome-row--fail"><text>未通过</text><text class="tnum">{{statistics.failedCount}} 人</text></view>
+            </view>
+          </view>
+
+          <view class="band-chart">
+            <view wx:for="{{distribution}}" wx:key="band" class="band-column {{item.mine ? 'band-column--mine' : ''}}">
+              <text class="band-count tnum">{{item.count}}人</text>
+              <view class="band-track"><view class="band-fill" style="height: {{item.height}}%;"></view></view>
+              <text class="band-label tnum">{{item.band}}</text>
+            </view>
+          </view>
+
+          <view class="exact-section">
+            <text class="exact-title">全部分数分布 <text>· 仅显示有人获得的分数</text></text>
+            <scroll-view class="exact-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+              <view class="exact-chart" style="width: {{scoreChartWidth}}rpx;">
+                <view wx:for="{{scoreEntries}}" wx:key="score" class="exact-column {{item.mine ? 'exact-column--mine' : ''}}">
+                  <text class="exact-count tnum">{{item.count}}</text>
+                  <view class="exact-track"><view class="exact-fill" style="height: {{item.height}}%;"></view></view>
+                  <text class="exact-label tnum">{{item.score}}</text>
+                </view>
+              </view>
+            </scroll-view>
+          </view>
+          <view class="own-score-note"><lucide-icon name="sparkles" tone="coral" size="{{23}}"></lucide-icon><text>你的成绩为 <text class="own-score-value tnum">{{course.displayScore}}</text>，图中高亮为对应区间</text></view>
+        </view>
+
+        <view wx:else class="collecting-card card stagger-item stagger-2">
+          <view class="collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{40}}"></lucide-icon></view>
+          <text class="collecting-title">{{message}}</text>
+        </view>
+        <text wx:if="{{updating}}" class="updating-label">正在切换课程…</text>
+      </block>
+    </view>
+  </scroll-view>
+
+  <bottom-sheet visible="{{pickerVisible}}" expanded="{{true}}" title="选择课程" theme="{{theme}}" bindclose="closePicker">
+    <view class="course-picker-list">
+      <view wx:for="{{courses}}" wx:key="statisticsKey" class="course-picker-row pressable {{course.statisticsKey === item.statisticsKey ? 'course-picker-row--active' : ''}}" data-key="{{item.statisticsKey}}" bindtap="selectCourse" hover-class="pressing">
+        <view class="picker-score"><text class="tnum">{{item.displayScore}}</text></view>
+        <view class="picker-copy"><text class="picker-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text class="picker-meta">{{item.pickerMeta}}</text></view>
+        <lucide-icon name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
+      </view>
+    </view>
+  </bottom-sheet>
+</view>

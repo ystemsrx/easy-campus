@@ -95,7 +95,7 @@
 .side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
 .side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
-.side-action-icon--grades { background: #edf1e6; }
+.side-action-icon--pass-rate { background: #edf1e6; }
 .side-action-icon--rooms { background: #f9eae2; }
 
 .plan-card { min-height: 224rpx; overflow: hidden; }

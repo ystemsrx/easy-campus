@@ -6,6 +6,7 @@
     "pages/profile/index",
     "pages/login/index",
     "pages/grades/index",
+    "pages/pass-rates/index",
     "pages/grade-detail/index",
     "pages/rooms/index",
     "pages/exams/index",

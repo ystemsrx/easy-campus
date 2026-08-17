@@ -12,6 +12,7 @@ import type {
   NoticeDetail,
   NoticesQuery,
   Paginated,
+  PassRatesData,
   QueryMeta,
   RoomOptionsData,
   RoomsData,
@@ -77,6 +78,14 @@ export function getGrades(
 ): Promise<TeachingResult<GradesData>> {
   return teachingRequest<GradesData>(
     `/teaching/grades${buildQuery(asQuery(query))}`,
+  );
+}
+
+export function getPassRates(
+  courseKey?: string,
+): Promise<TeachingResult<PassRatesData>> {
+  return teachingRequest<PassRatesData>(
+    `/teaching/pass-rates${buildQuery({ courseKey })}`,
   );
 }
 

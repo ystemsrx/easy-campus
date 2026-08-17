@@ -5,10 +5,6 @@
     scroll-y
     enhanced
     show-scrollbar="{{false}}"
-    refresher-enabled
-    refresher-default-style="none"
-    refresher-triggered="{{refreshing}}"
-    bindrefresherrefresh="onRefresh"
     bindscroll="onScroll"
   >
     <navigation-bar transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
@@ -127,7 +123,7 @@
           <view wx:else class="exam-empty"><text>{{examEmptyLabel}}</text></view>
         </view>
         <view class="side-actions">
-          <view class="side-action card pressable" data-route="/pages/grades/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--grades"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>成绩</text></view>
+          <view class="side-action card pressable" data-route="/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
           <view class="side-action card pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
         </view>
       </view>
@@ -186,7 +182,7 @@
         </view>
       </view>
 
-      <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="onRefresh" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
+      <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="retryDashboard" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
     </view>
   </scroll-view>
 

@@ -263,6 +263,39 @@ export interface GradesData extends Paginated<GradeCourse> {
   semesters: AcademicSemesterOption[];
 }
 
+export interface PassRateCourse extends GradeCourse {
+  statisticsKey: string;
+}
+
+export interface PassRateDistributionItem {
+  band: "<60" | "60–69" | "70–79" | "80–89" | "90–100";
+  count: number;
+}
+
+export interface PassRateScoreItem {
+  score: string;
+  count: number;
+}
+
+export interface PassRateStatistics {
+  cohorts: number[];
+  totalCount: number;
+  passedCount: number;
+  failedCount: number;
+  passRate: number;
+  averageScore: number;
+  distribution: PassRateDistributionItem[];
+  scores: PassRateScoreItem[];
+}
+
+export interface PassRatesData {
+  courses: PassRateCourse[];
+  selectedCourse: PassRateCourse | null;
+  status: "ready" | "collecting";
+  message: string | null;
+  statistics: PassRateStatistics | null;
+}
+
 export interface SelectOption {
   value: string;
   label: string;

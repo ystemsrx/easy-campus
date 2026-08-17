@@ -424,7 +424,6 @@ Page({
     motionClass: "motion-normal",
     headerScrolled: false,
     loading: false,
-    refreshing: false,
     loaded: false,
     errorMessage: "",
     serviceHealthy: false,
@@ -858,7 +857,6 @@ Page({
 
     this.setData({
       loading: false,
-      refreshing: false,
       errorMessage: "",
       greeting: getGreeting(),
       dateLabel: formatFriendlyDate(today()),
@@ -888,7 +886,6 @@ Page({
       (includeStableData && timetableResult.status === "fulfilled");
     const patch: Record<string, unknown> = {
       loading: false,
-      refreshing: false,
       loaded: true,
       serviceHealthy,
       serviceLabel: serviceHealthy ? "服务连接正常" : "服务连接异常",
@@ -970,7 +967,7 @@ Page({
     ) {
       patch.errorMessage = getErrorMessage(
         messageResult.reason,
-        "动态暂时加载失败。下拉即可重试。",
+        "动态暂时加载失败，请稍后再试。",
       );
     }
     this.setData(patch);
@@ -1000,7 +997,7 @@ Page({
       setTimeout(() => void this.loadDashboard(true, includeStableRefresh), 0);
     }
   },
-  onRefresh() {
+  retryDashboard() {
     haptic("light");
     void this.loadDashboard(true);
     void this.loadPublicationFeed();
