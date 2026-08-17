@@ -61,7 +61,9 @@
   background: #2d2a24;
 }
 
+.back-button--raised { transform: translateY(-14rpx); }
 .nav-button--pressed { transform: scale(0.93); opacity: 0.82; }
+.back-button--raised.nav-button--pressed { transform: translateY(-14rpx) scale(0.93); }
 
 .nav-title-wrap {
   position: absolute;

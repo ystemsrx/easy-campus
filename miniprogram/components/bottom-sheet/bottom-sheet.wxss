@@ -75,6 +75,11 @@
 }
 
 .sheet-layer--dark .sheet-header { background: rgba(33, 31, 27, 0.92); }
+.sheet-card--compact-header .sheet-header {
+  min-height: 84rpx;
+  padding-top: 18rpx;
+  padding-bottom: 6rpx;
+}
 
 .sheet-title-wrap { min-width: 0; }
 

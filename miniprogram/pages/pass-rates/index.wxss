@@ -78,16 +78,20 @@
 .collecting-title { display: block; margin-top: 22rpx; color: var(--color-text); font-size: 27rpx; font-weight: 750; }
 .updating-label { display: block; padding: 22rpx 0 0; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
 
-.course-picker-list { display: flex; flex-direction: column; gap: 16rpx; padding-bottom: 12rpx; }
-.course-picker-row { display: flex; flex-direction: row; align-items: center; gap: 20rpx; min-height: 108rpx; padding: 20rpx; border: 2rpx solid transparent; border-radius: 34rpx; background: rgba(43, 38, 32, 0.035); }
-.course-picker-row--active { border-color: rgba(201, 138, 45, 0.42); background: #fdf8ec; }
-.picker-score { display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border-radius: 25rpx; color: #a66f1f; background: linear-gradient(135deg, #f8eedd, #f0dfbd); font-size: 24rpx; font-weight: 800; }
-.picker-score text { max-width: 66rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-copy { flex: 1; min-width: 0; }
-.picker-name { display: block; color: var(--color-text); font-size: 25rpx; font-weight: 750; }
-.picker-meta { display: block; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 19rpx; }
+.semester-menu { display: flex; flex-direction: column; gap: 12rpx; padding-bottom: 12rpx; }
+.semester-menu-section { flex: none; overflow: hidden; border-radius: 30rpx; background: rgba(43, 38, 32, 0.035); }
+.semester-menu-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; min-height: 86rpx; padding: 0 24rpx; }
+.semester-menu-copy { display: flex; flex: 1; flex-direction: row; align-items: baseline; gap: 12rpx; min-width: 0; }
+.semester-menu-title { display: block; min-width: 0; color: var(--color-text); font-size: 24rpx; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.semester-menu-count { display: block; flex: none; color: var(--color-text-tertiary); font-size: 18rpx; white-space: nowrap; }
+.semester-menu-chevron { display: flex; flex: none; align-items: center; justify-content: center; transition: transform 220ms ease; }
+.semester-menu-chevron--expanded { transform: rotate(90deg); }
+.semester-course-list { display: flex; flex-direction: column; padding: 0 12rpx 12rpx; border-top: 1rpx solid var(--color-separator); }
+.course-picker-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; min-height: 76rpx; padding: 0 14rpx 0 18rpx; border-radius: 22rpx; }
+.course-picker-row--active { background: #fdf8ec; }
+.picker-name { display: block; flex: 1; min-width: 0; color: var(--color-text); font-size: 23rpx; font-weight: 650; }
 
 .theme-dark .outcome-row--pass { color: #8fd6c9; background: rgba(10, 143, 128, 0.18); }
 .theme-dark .outcome-row--fail { color: #eba18c; background: rgba(192, 69, 45, 0.18); }
-.theme-dark .course-picker-row { background: rgba(255, 255, 255, 0.04); }
-.theme-dark .course-picker-row--active { border-color: rgba(229, 184, 110, 0.42); background: rgba(201, 138, 45, 0.12); }
+.theme-dark .semester-menu-section { background: rgba(255, 255, 255, 0.04); }
+.theme-dark .course-picker-row--active { background: rgba(201, 138, 45, 0.12); }

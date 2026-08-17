@@ -265,6 +265,7 @@ export interface GradesData extends Paginated<GradeCourse> {
 
 export interface PassRateCourse extends GradeCourse {
   statisticsKey: string;
+  hasOwnGrade: boolean;
 }
 
 export interface PassRateDistributionItem {

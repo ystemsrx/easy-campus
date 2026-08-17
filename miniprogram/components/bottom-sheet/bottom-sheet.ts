@@ -13,6 +13,7 @@ Component({
     title: { type: String, value: "" },
     theme: { type: String, value: "light" },
     expanded: { type: Boolean, value: false },
+    compactHeader: { type: Boolean, value: false },
     scrollable: { type: Boolean, value: true },
     closeOnMask: { type: Boolean, value: true },
   },

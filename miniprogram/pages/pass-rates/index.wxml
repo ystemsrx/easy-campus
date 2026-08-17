@@ -1,10 +1,10 @@
 <view class="page pass-rate-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
-    <navigation-bar title="通过率" subtitle="选择已修课程" back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
+    <navigation-bar title="通过率" back raised-back transparent scrolled="{{headerScrolled}}" theme="{{theme}}"></navigation-bar>
     <view class="pass-rate-content page-content page-enter">
       <loading-view wx:if="{{loading && !course}}" label="正在整理课程统计"></loading-view>
       <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="danger" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>
-      <empty-state wx:elif="{{loaded && !course}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无可选课程" description="获取成绩后再来查看"></empty-state>
+      <empty-state wx:elif="{{loaded && !course}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无可查看课程" description="暂无成绩或课表课程"></empty-state>
 
       <block wx:elif="{{course}}">
         <view class="pass-hero stagger-item stagger-1">
@@ -63,7 +63,7 @@
               </view>
             </scroll-view>
           </view>
-          <view class="own-score-note"><lucide-icon name="sparkles" tone="coral" size="{{23}}"></lucide-icon><text>你的成绩为 <text class="own-score-value tnum">{{course.displayScore}}</text>，图中高亮为对应区间</text></view>
+          <view wx:if="{{course.hasComparableScore}}" class="own-score-note"><lucide-icon name="sparkles" tone="coral" size="{{23}}"></lucide-icon><text>你的成绩为 <text class="own-score-value tnum">{{course.displayScore}}</text>，图中高亮为对应区间</text></view>
         </view>
 
         <view wx:else class="collecting-card card stagger-item stagger-2">
@@ -75,12 +75,20 @@
     </view>
   </scroll-view>
 
-  <bottom-sheet visible="{{pickerVisible}}" expanded="{{true}}" title="选择课程" theme="{{theme}}" bindclose="closePicker">
-    <view class="course-picker-list">
-      <view wx:for="{{courses}}" wx:key="statisticsKey" class="course-picker-row pressable {{course.statisticsKey === item.statisticsKey ? 'course-picker-row--active' : ''}}" data-key="{{item.statisticsKey}}" bindtap="selectCourse" hover-class="pressing">
-        <view class="picker-score"><text class="tnum">{{item.displayScore}}</text></view>
-        <view class="picker-copy"><text class="picker-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text class="picker-meta">{{item.pickerMeta}}</text></view>
-        <lucide-icon name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
+  <bottom-sheet visible="{{pickerVisible}}" expanded="{{true}}" compact-header title="切换课程" theme="{{theme}}" bindclose="closePicker">
+    <view class="semester-menu">
+      <view wx:for="{{courseGroups}}" wx:key="id" wx:for-item="semester" class="semester-menu-section">
+        <view class="semester-menu-header pressable" data-semester="{{semester.id}}" bindtap="toggleSemester" hover-class="pressing">
+          <view class="semester-menu-copy"><text class="semester-menu-title">{{semester.label}}</text><text class="semester-menu-count">{{semester.courses.length}} 门</text></view>
+          <view class="semester-menu-chevron {{semester.expanded ? 'semester-menu-chevron--expanded' : ''}}"><lucide-icon name="chevron-right" tone="muted" size="{{25}}"></lucide-icon></view>
+        </view>
+        <view wx:if="{{semester.expanded}}" class="semester-course-list">
+          <view wx:for="{{semester.courses}}" wx:key="statisticsKey" wx:for-item="courseItem" class="course-picker-row pressable {{course.statisticsKey === courseItem.statisticsKey ? 'course-picker-row--active' : ''}}" data-key="{{courseItem.statisticsKey}}" bindtap="selectCourse" hover-class="pressing">
+            <text class="picker-name" overflow="ellipsis" max-lines="1">{{courseItem.courseName}}</text>
+            <lucide-icon wx:if="{{course.statisticsKey === courseItem.statisticsKey}}" name="check" tone="amber" size="{{24}}"></lucide-icon>
+            <lucide-icon wx:else name="chevron-right" tone="muted" size="{{23}}"></lucide-icon>
+          </view>
+        </view>
       </view>
     </view>
   </bottom-sheet>

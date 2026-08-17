@@ -16,10 +16,21 @@ import { ensureAuthenticated } from "../../utils/navigation";
 interface CourseView extends PassRateCourse {
   displayScore: string;
   textScore: boolean;
+  hasComparableScore: boolean;
   creditsLabel: string;
   gradePointLabel: string;
   termLabel: string;
-  pickerMeta: string;
+  semesterId: string;
+  semesterLabel: string;
+  semesterOrder: number;
+}
+
+interface CourseGroup {
+  id: string;
+  label: string;
+  order: number;
+  expanded: boolean;
+  courses: CourseView[];
 }
 
 interface ComponentView {
@@ -62,18 +73,60 @@ function scoreBand(value: number | null): string {
 function toCourseView(course: PassRateCourse): CourseView {
   const creditsLabel = formatCredits(course.credits);
   const termLabel = academicTermLabel(course.term);
+  const academicYear = String(course.academicYear || "").trim();
+  const academicYearStart = Number(
+    academicYear.match(/(?:19|20)\d{2}/)?.[0] || 0,
+  );
+  const term = Number(course.term || 0);
   return {
     ...course,
     displayScore: formatScore(course.finalScore),
     textScore: typeof course.finalScore === "string",
+    hasComparableScore:
+      course.hasOwnGrade && typeof course.calculationScore === "number",
     creditsLabel,
     gradePointLabel:
       typeof course.gradePoint === "number"
         ? course.gradePoint.toFixed(1)
         : "—",
     termLabel,
-    pickerMeta: `${course.academicYear} · ${termLabel} · ${creditsLabel} 学分`,
+    semesterId: academicYearStart
+      ? `${academicYearStart}-${term}`
+      : `unknown-${term}`,
+    semesterLabel: academicYear ? `${academicYear} · ${termLabel}` : termLabel,
+    semesterOrder: academicYearStart * 10 + term,
   };
+}
+
+function courseGroups(
+  courses: CourseView[],
+  expandedSemesterId = "",
+): CourseGroup[] {
+  const grouped = new Map<string, CourseGroup>();
+  for (const course of courses) {
+    const existing = grouped.get(course.semesterId);
+    if (existing) {
+      existing.courses.push(course);
+      continue;
+    }
+    grouped.set(course.semesterId, {
+      id: course.semesterId,
+      label: course.semesterLabel,
+      order: course.semesterOrder,
+      expanded: false,
+      courses: [course],
+    });
+  }
+  const result = [...grouped.values()].sort(
+    (left, right) => right.order - left.order,
+  );
+  const activeId = result.some((group) => group.id === expandedSemesterId)
+    ? expandedSemesterId
+    : result[0]?.id || "";
+  return result.map((group) => ({
+    ...group,
+    expanded: group.id === activeId,
+  }));
 }
 
 function componentViews(course: PassRateCourse): ComponentView[] {
@@ -147,6 +200,7 @@ Page({
     errorMessage: "",
     pickerVisible: false,
     courses: [] as CourseView[],
+    courseGroups: [] as CourseGroup[],
     course: null as CourseView | null,
     components: [] as ComponentView[],
     statistics: null as PassRateStatistics | null,
@@ -215,6 +269,7 @@ Page({
     this.setData(
       {
         courses,
+        courseGroups: courseGroups(courses),
         course,
         components: course ? componentViews(course) : [],
         statistics,
@@ -294,10 +349,24 @@ Page({
   openPicker() {
     if (this.data.courses.length < 2) return;
     haptic("light");
-    this.setData({ pickerVisible: true });
+    this.setData({
+      pickerVisible: true,
+      courseGroups: courseGroups(this.data.courses),
+    });
   },
   closePicker() {
     this.setData({ pickerVisible: false });
+  },
+  toggleSemester(event: WechatMiniprogram.TouchEvent) {
+    const semesterId = String(event.currentTarget.dataset.semester || "");
+    if (!semesterId) return;
+    haptic("light");
+    this.setData({
+      courseGroups: this.data.courseGroups.map((group) => ({
+        ...group,
+        expanded: group.id === semesterId ? !group.expanded : false,
+      })),
+    });
   },
   selectCourse(event: WechatMiniprogram.TouchEvent) {
     const courseKey = String(event.currentTarget.dataset.key || "");
