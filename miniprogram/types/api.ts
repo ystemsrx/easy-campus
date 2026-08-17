@@ -102,6 +102,7 @@ export interface CalendarData {
   sourcePageUrl: string;
   contentType: string;
   size: number;
+  version: string;
   imageUrl: string;
 }
 

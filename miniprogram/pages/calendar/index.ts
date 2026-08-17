@@ -1,5 +1,6 @@
 import { ApiClientError, getErrorMessage } from "../../services/request";
 import { downloadCalendarImage, getCalendar } from "../../services/teaching";
+import { getCachedCalendarImage } from "../../store/calendar";
 import type { CalendarAcademicYearOption, CalendarData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
@@ -30,27 +31,6 @@ function buildYearOptions(
 }
 
 let yearPickerCloseTimer: ReturnType<typeof setTimeout> | null = null;
-
-function accessFile(path: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    wx.getFileSystemManager().access({
-      path,
-      success: () => resolve(true),
-      fail: () => resolve(false),
-    });
-  });
-}
-
-function persistFile(tempFilePath: string): Promise<string> {
-  return new Promise((resolve) => {
-    wx.getFileSystemManager().saveFile({
-      tempFilePath,
-      success: (result: WechatMiniprogram.SaveFileSuccessCallbackResult) =>
-        resolve(result.savedFilePath),
-      fail: () => resolve(tempFilePath),
-    });
-  });
-}
 
 Page({
   data: {
@@ -97,22 +77,11 @@ Page({
     calendar: CalendarData,
     forceDownload = false,
   ): Promise<string> {
-    const key = `easy-swu:calendar-image:${calendar.startYear}:${calendar.size}`;
-    const cached = wx.getStorageSync(key);
-    if (
-      !forceDownload &&
-      typeof cached === "string" &&
-      cached &&
-      (await accessFile(cached))
-    ) {
-      return cached;
-    }
-    const tempPath = await downloadCalendarImage(calendar.startYear);
-    const savedPath = await persistFile(tempPath);
-    if (savedPath !== tempPath) {
-      wx.setStorageSync(key, savedPath);
-    }
-    return savedPath;
+    return getCachedCalendarImage(
+      calendar,
+      () => downloadCalendarImage(calendar.startYear),
+      forceDownload,
+    );
   },
   async loadCalendar(academicYear?: number, refresh = false) {
     this.setData({
