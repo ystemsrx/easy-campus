@@ -11,11 +11,12 @@
 
   <swiper class="inbox-swiper" current="{{activeTab}}" duration="420" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
+        <view slot="refresher" class="inbox-refresher"><text>{{messageRefreshing ? '正在刷新' : '下拉刷新'}}</text></view>
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view class="list-heading-copy"><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
-            <view class="filter-button pressable {{messageType || from || to ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageType || from || to ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text></view>
+            <view id="message-filter-button" class="filter-button pressable {{messageFilterCount ? 'filter-button--active' : ''}}" bindtap="openMessageFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="{{messageFilterCount ? 'coral' : 'muted'}}" size="{{25}}"></lucide-icon><text>筛选</text><view wx:if="{{messageFilterCount}}" class="filter-count"><text>{{messageFilterCount}}</text></view></view>
           </view>
 
           <view wx:if="{{messageItems.length}}" class="message-list">
@@ -62,7 +63,8 @@
     </swiper-item>
 
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
+        <view slot="refresher" class="inbox-refresher"><text>{{noticeRefreshing ? '正在刷新' : '下拉刷新'}}</text></view>
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
             <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>
@@ -75,9 +77,7 @@
             <view wx:for="{{noticeItems}}" wx:key="link" class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
               <view class="notice-icon"><lucide-icon name="megaphone" tone="coral" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
-                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><text class="notice-time">{{item.displayTime}}</text></view>
-                <text class="notice-preview">点击查看已整理的通知正文</text>
-                <text class="notice-tag">教务通知</text>
+                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">教务通知</text></view></view>
               </view>
             </view>
           </view>
@@ -89,21 +89,13 @@
     </swiper-item>
   </swiper>
 
-  <bottom-sheet visible="{{messageFilterVisible}}" title="筛选消息" theme="{{theme}}" bindclose="closeMessageFilter">
-    <view class="filter-section">
-      <text class="filter-section-title">消息类型</text>
-      <view class="type-grid">
-        <view wx:for="{{messageTypeOptions}}" wx:key="value" class="type-option {{draftType === item.value ? 'type-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectDraftType" hover-class="type-option--pressed"><text>{{item.label}}</text></view>
+  <view wx:if="{{messageFilterMounted}}" class="message-filter-layer {{messageFilterOpen ? 'message-filter-layer--open' : ''}}">
+    <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
+    <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;" catchtap="stopPropagation">
+      <view class="message-filter-heading"><text>消息类型</text><text>{{messageFilterCount ? '已选 ' + messageFilterCount + ' 项' : '全部消息'}}</text></view>
+      <view class="message-type-grid">
+        <view wx:for="{{messageTypeOptions}}" wx:key="value" class="message-type-option {{item.selected ? 'message-type-option--active' : ''}}" data-value="{{item.value}}" catchtap="selectMessageType" hover-class="message-type-option--pressed"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="white" size="{{19}}"></lucide-icon></view>
       </view>
     </view>
-    <view class="filter-section">
-      <text class="filter-section-title">时间范围</text>
-      <view class="date-range">
-        <picker class="date-picker" mode="date" value="{{draftFrom || '2020-01-01'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftFromChange"><view class="date-value"><text class="date-label">开始</text><text class="date-text {{!draftFrom ? 'date-text--placeholder' : ''}}">{{draftFrom || '不限'}}</text></view></picker>
-        <text class="date-separator">—</text>
-        <picker class="date-picker" mode="date" value="{{draftTo || '2030-12-31'}}" start="2000-01-01" end="2101-12-31" bindchange="onDraftToChange"><view class="date-value"><text class="date-label">结束</text><text class="date-text {{!draftTo ? 'date-text--placeholder' : ''}}">{{draftTo || '不限'}}</text></view></picker>
-      </view>
-    </view>
-    <view slot="footer" class="filter-actions"><button class="secondary-button reset-button" hover-class="button-pressed" bindtap="resetMessageFilter">重置</button><button class="primary-button apply-button" hover-class="button-pressed" bindtap="applyMessageFilter">查看结果</button></view>
-  </bottom-sheet>
+  </view>
 </view>

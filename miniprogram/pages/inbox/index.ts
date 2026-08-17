@@ -35,14 +35,45 @@ interface NoticeView extends Notice {
   displayTime: string;
 }
 
+interface MessageTypeOption {
+  value: MessageType | "";
+  label: string;
+  selected: boolean;
+}
+
 const PAGE_SIZE = 15;
+const MESSAGE_TYPE_OPTIONS: ReadonlyArray<
+  Pick<MessageTypeOption, "value" | "label">
+> = [
+  { value: "", label: "全部" },
+  { value: "course_rescheduled", label: "调课" },
+  { value: "makeup_class", label: "补课" },
+  { value: "course_cancelled", label: "停课" },
+  { value: "other", label: "其他" },
+];
 let messageRequestSequence = 0;
 let noticeRequestSequence = 0;
 let hydratedInboxAccount = "";
+let filterTransitionTimer: ReturnType<typeof setTimeout> | undefined;
+
+function messageTypeOptions(selected: MessageType[]): MessageTypeOption[] {
+  return MESSAGE_TYPE_OPTIONS.map((option) => ({
+    ...option,
+    selected: option.value ? selected.includes(option.value) : !selected.length,
+  }));
+}
+
+function clearFilterTransitionTimer() {
+  if (filterTransitionTimer !== undefined) {
+    clearTimeout(filterTransitionTimer);
+    filterTransitionTimer = undefined;
+  }
+}
 
 function scheduleView(schedule: {
   weekStart: number;
   weekEnd: number;
+  weeks?: number[];
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   periodStart: number;
   periodEnd: number;
@@ -173,25 +204,19 @@ Page({
     noticeRefreshing: false,
     messageError: "",
     noticeError: "",
-    messageFilterVisible: false,
-    messageType: "" as MessageType | "",
-    from: "",
-    to: "",
-    draftType: "" as MessageType | "",
-    draftFrom: "",
-    draftTo: "",
+    messageFilterMounted: false,
+    messageFilterOpen: false,
+    messageFilterTop: 0,
+    messageFilterRight: 20,
+    messageTypes: [] as MessageType[],
+    messageFilterCount: 0,
     noticeQuery: "",
     noticeSearchFocused: false,
-    messageTypeOptions: [
-      { value: "", label: "全部" },
-      { value: "course_rescheduled", label: "调课" },
-      { value: "makeup_class", label: "补课" },
-      { value: "course_cancelled", label: "停课" },
-      { value: "other", label: "其他" },
-    ],
+    messageTypeOptions: messageTypeOptions([]),
   },
   onLoad() {
     hydratedInboxAccount = "";
+    clearFilterTransitionTimer();
     this.applyAppearance();
   },
   onShow() {
@@ -214,6 +239,9 @@ Page({
     } else {
       void this.loadNotices(false, this.data.noticeItems.length > 0);
     }
+  },
+  onUnload() {
+    clearFilterTransitionTimer();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -259,28 +287,33 @@ Page({
       void this.loadNotices(false, this.data.noticeItems.length > 0);
     }
   },
-  async loadMessages(refresh: boolean, mergeFresh = false) {
+  async loadMessages(
+    refresh: boolean,
+    mergeFresh = false,
+    showRefresher = false,
+  ) {
     if (this.data.messageLoading && !refresh) return;
+    if (showRefresher && this.data.messageRefreshing) return;
     const sequence = ++messageRequestSequence;
     this.setData({
       messageLoading: this.data.messageItems.length === 0,
-      messageRefreshing: false,
+      messageRefreshing: showRefresher,
       messageError: "",
     });
     try {
       const result = await getMessages({
         page: 1,
         pageSize: PAGE_SIZE,
-        type: this.data.messageType || undefined,
-        from: this.data.from || undefined,
-        to: this.data.to || undefined,
+        types: this.data.messageTypes.length
+          ? this.data.messageTypes
+          : undefined,
         refresh,
       });
       if (sequence !== messageRequestSequence) {
         return;
       }
       const incoming = result.data.items.map(toMessageView);
-      if (!this.data.messageType && !this.data.from && !this.data.to) {
+      if (!this.data.messageTypes.length) {
         saveTeachingPreview(getSession()?.user.account || "", {
           messages: result.data.items,
         });
@@ -292,7 +325,7 @@ Page({
         messageLoaded: true,
       });
       if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadMessages(true, true), 0);
+        setTimeout(() => void this.loadMessages(true, true, false), 0);
       }
     } catch (error) {
       if (sequence === messageRequestSequence) {
@@ -307,12 +340,17 @@ Page({
       }
     }
   },
-  async loadNotices(refresh: boolean, mergeFresh = false) {
+  async loadNotices(
+    refresh: boolean,
+    mergeFresh = false,
+    showRefresher = false,
+  ) {
     if (this.data.noticeLoading && !refresh) return;
+    if (showRefresher && this.data.noticeRefreshing) return;
     const sequence = ++noticeRequestSequence;
     this.setData({
       noticeLoading: this.data.noticeItems.length === 0,
-      noticeRefreshing: false,
+      noticeRefreshing: showRefresher,
       noticeError: "",
     });
     try {
@@ -341,7 +379,7 @@ Page({
         noticeLoaded: true,
       });
       if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadNotices(true, true), 0);
+        setTimeout(() => void this.loadNotices(true, true, false), 0);
       }
     } catch (error) {
       if (sequence === noticeRequestSequence) {
@@ -358,60 +396,67 @@ Page({
   },
   refreshMessages() {
     haptic("light");
-    void this.loadMessages(true, true);
+    void this.loadMessages(true, true, true);
   },
   refreshNotices() {
     haptic("light");
-    void this.loadNotices(true, true);
+    void this.loadNotices(true, true, true);
   },
   openMessageFilter() {
-    haptic("light");
-    this.setData({
-      messageFilterVisible: true,
-      draftType: this.data.messageType,
-      draftFrom: this.data.from,
-      draftTo: this.data.to,
-    });
-  },
-  closeMessageFilter() {
-    this.setData({ messageFilterVisible: false });
-  },
-  selectDraftType(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({
-      draftType: String(event.currentTarget.dataset.value) as MessageType | "",
-    });
-  },
-  onDraftFromChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
-    this.setData({ draftFrom: event.detail.value });
-  },
-  onDraftToChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
-    this.setData({ draftTo: event.detail.value });
-  },
-  clearDraftFrom() {
-    this.setData({ draftFrom: "" });
-  },
-  clearDraftTo() {
-    this.setData({ draftTo: "" });
-  },
-  resetMessageFilter() {
-    this.setData({ draftType: "", draftFrom: "", draftTo: "" });
-  },
-  applyMessageFilter() {
-    if (
-      this.data.draftFrom &&
-      this.data.draftTo &&
-      this.data.draftFrom > this.data.draftTo
-    ) {
-      wx.showToast({ title: "开始日期不能晚于结束日期", icon: "none" });
+    if (this.data.messageFilterMounted) {
+      this.closeMessageFilter();
       return;
     }
-    haptic("medium");
+    haptic("light");
+    clearFilterTransitionTimer();
+    wx.createSelectorQuery()
+      .select("#message-filter-button")
+      .boundingClientRect((rect) => {
+        const windowInfo = wx.getWindowInfo();
+        const top = Math.min(
+          rect.bottom + 8,
+          Math.max(16, windowInfo.windowHeight - 286),
+        );
+        const right = Math.max(16, windowInfo.windowWidth - rect.right);
+        this.setData(
+          {
+            messageFilterMounted: true,
+            messageFilterOpen: false,
+            messageFilterTop: top,
+            messageFilterRight: right,
+          },
+          () => {
+            filterTransitionTimer = setTimeout(() => {
+              this.setData({ messageFilterOpen: true });
+              filterTransitionTimer = undefined;
+            }, 16);
+          },
+        );
+      })
+      .exec();
+  },
+  closeMessageFilter() {
+    clearFilterTransitionTimer();
+    this.setData({ messageFilterOpen: false });
+    filterTransitionTimer = setTimeout(() => {
+      this.setData({ messageFilterMounted: false });
+      filterTransitionTimer = undefined;
+    }, 260);
+  },
+  stopPropagation() {},
+  selectMessageType(event: WechatMiniprogram.TouchEvent) {
+    haptic("light");
+    const value = String(event.currentTarget.dataset.value) as MessageType | "";
+    const current = this.data.messageTypes;
+    const messageTypes = value
+      ? current.includes(value)
+        ? current.filter((type) => type !== value)
+        : [...current, value]
+      : [];
     this.setData({
-      messageType: this.data.draftType,
-      from: this.data.draftFrom,
-      to: this.data.draftTo,
-      messageFilterVisible: false,
+      messageTypes,
+      messageFilterCount: messageTypes.length,
+      messageTypeOptions: messageTypeOptions(messageTypes),
     });
     void this.loadMessages(false);
   },

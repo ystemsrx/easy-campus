@@ -54,9 +54,39 @@ export function formatSchedule(schedule: MessageSchedule): string {
 }
 
 export function formatScheduleDate(schedule: MessageSchedule): string {
-  const week =
-    schedule.weekStart === schedule.weekEnd
-      ? `第${schedule.weekStart}周`
-      : `第${schedule.weekStart}–${schedule.weekEnd}周`;
+  const weeks = normalizeScheduleWeeks(schedule);
+  const week = `第${compactWeekRanges(weeks)}周`;
   return `${week} ${formatMessageWeekday(schedule.weekday)}`;
+}
+
+function normalizeScheduleWeeks(schedule: MessageSchedule): number[] {
+  const explicit = (schedule.weeks || []).filter(
+    (week) => Number.isInteger(week) && week > 0,
+  );
+  if (explicit.length) {
+    return [...new Set(explicit)].sort((left, right) => left - right);
+  }
+  const start = Math.min(schedule.weekStart, schedule.weekEnd);
+  const end = Math.max(schedule.weekStart, schedule.weekEnd);
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
+
+function compactWeekRanges(weeks: number[]): string {
+  if (!weeks.length) return "—";
+  const parts: string[] = [];
+  let rangeStart = weeks[0];
+  let previous = weeks[0];
+  for (let index = 1; index <= weeks.length; index += 1) {
+    const current = weeks[index];
+    if (current === previous + 1) {
+      previous = current;
+      continue;
+    }
+    parts.push(
+      rangeStart === previous ? `${rangeStart}` : `${rangeStart}–${previous}`,
+    );
+    rangeStart = current;
+    previous = current;
+  }
+  return parts.join("、");
 }

@@ -39,10 +39,8 @@ import {
 } from "../../store/timetable";
 import {
   coursePreview,
-  coursesForDate,
   formatClock,
   remainingCourses,
-  teachingWeekForDate,
   type TimetableCourse,
 } from "../../data/timetable";
 import type {
@@ -274,31 +272,6 @@ function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
   });
 }
 
-function timetableEmptyCopy(now = new Date()) {
-  if (!activeTimetable) {
-    return {
-      title: "课表暂未同步",
-      caption: "连接服务后会自动显示今日课程",
-    };
-  }
-  if (teachingWeekForDate(activeTimetable, now) === null) {
-    return {
-      title: "当前不在教学周",
-      caption: "去完整课表查看所选学期安排",
-    };
-  }
-  const allToday = coursesForDate(activeTimetable, today(), now);
-  return allToday.length
-    ? {
-        title: "今天的课程已结束",
-        caption: "去完整课表看看本周安排",
-      }
-    : {
-        title: "今天没有课程",
-        caption: "给自己留一点从容的时间",
-      };
-}
-
 function getGreeting(): string {
   const hour = currentLocalHour();
   if (hour < 6) return "夜深了";
@@ -445,8 +418,6 @@ Page({
     currentTime: formatClock(),
     todayCourses: [] as TodayCoursePreview[],
     remainingCourseCount: 0,
-    timetableEmptyTitle: "课表暂未同步",
-    timetableEmptyCaption: "连接服务后会自动显示今日课程",
     timetableCardRadius: getTimetableCardRadius(),
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
@@ -525,13 +496,10 @@ Page({
   updateTodayCourses() {
     const now = new Date();
     const courses = todayCoursePreview(now);
-    const emptyCopy = timetableEmptyCopy(now);
     this.setData({
       currentTime: formatClock(now),
       todayCourses: courses,
       remainingCourseCount: remainingCourses(activeTimetable, now).length,
-      timetableEmptyTitle: emptyCopy.title,
-      timetableEmptyCaption: emptyCopy.caption,
       greeting: getGreeting(),
       dateLabel: formatFriendlyDate(today()),
     });
@@ -951,15 +919,12 @@ Page({
         });
         const now = new Date();
         const courses = todayCoursePreview(now);
-        const emptyCopy = timetableEmptyCopy(now);
         patch.currentTime = formatClock(now);
         patch.todayCourses = courses;
         patch.remainingCourseCount = remainingCourses(
           activeTimetable,
           now,
         ).length;
-        patch.timetableEmptyTitle = emptyCopy.title;
-        patch.timetableEmptyCaption = emptyCopy.caption;
       }
     }
     if (

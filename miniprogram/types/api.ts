@@ -111,6 +111,7 @@ export type MessageType =
 export interface MessageSchedule {
   weekStart: number;
   weekEnd: number;
+  weeks?: number[];
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   periodStart: number;
   periodEnd: number;
@@ -543,6 +544,7 @@ export interface MessagesQuery {
   page?: number;
   pageSize?: number;
   type?: MessageType;
+  types?: MessageType[];
   from?: string;
   to?: string;
   refresh?: boolean;
