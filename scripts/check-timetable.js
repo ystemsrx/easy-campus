@@ -25,11 +25,54 @@ function loadTimetable() {
   return moduleRecord.exports;
 }
 
+function loadMessageFormat() {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "utils",
+    "format.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  const weekdays = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    (request) => {
+      if (request === "./date") {
+        return { formatMessageWeekday: (weekday) => weekdays[weekday] || "" };
+      }
+      return require(request);
+    },
+  );
+  return moduleRecord.exports;
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 const timetable = loadTimetable();
+const messageFormat = loadMessageFormat();
+
+assert(
+  messageFormat.formatScheduleDate({
+    weekStart: 4,
+    weekEnd: 13,
+    weeks: [4, 7, 10, 13],
+    weekday: 1,
+    periodStart: 7,
+    periodEnd: 8,
+    location: "09-0402",
+  }) === "第4、7、10、13周 周一",
+  "离散多周教务消息不得在前端重新压缩成连续周次",
+);
 
 const periodTimes = [
   [1, "08:00", "08:45"],
@@ -353,21 +396,34 @@ assert(
 );
 assert(
   timetablePageTemplate.includes('class="week-option-content"') &&
-    /\.week-option-content\s*\{[^}]*translateY\(2rpx\)/s.test(
+    /\.week-option-content\s*\{[^}]*translateY\(5rpx\)/s.test(
       timetablePageStyles,
     ),
   "周次选项的数字和日期必须按视觉中心向下校正",
 );
 assert(
+  timetablePageTemplate.includes("week-option--current") &&
+    /\.week-option\s*\{[^}]*border-radius:\s*999rpx/s.test(
+      timetablePageStyles,
+    ) &&
+    /\.week-option--current\s*\{[^}]*border-color:\s*#0862ad/s.test(
+      timetablePageStyles,
+    ),
+  "周次选项必须使用胶囊形，并持续描边标识当前周",
+);
+assert(
   timetablePageScript.includes("timetableRequestsInFlight") &&
-    timetablePageScript.includes("refresh || !semester"),
-  "静默刷新必须允许其他学期请求并保留当前周",
+    timetablePageScript.includes("refresh || !semester") &&
+    timetablePageScript.includes("result.meta.stale === true"),
+  "静默刷新必须允许其他学期请求、识别旧服务端快照并保留当前周",
 );
 assert(
   timetableStoreSource.includes(
-    "weekDates: buildTimetableWeekDateCache(data)",
-  ) && timetableStoreSource.includes("wx.setStorageSync"),
-  "每个课表快照都必须在本地持久化周次日期",
+    "weekDates: buildTimetableWeekDateCache(cachedData)",
+  ) &&
+    timetableStoreSource.includes("SEMESTER_CATALOG_PREFIX") &&
+    timetableStoreSource.includes("mergeTimetableSemesterCatalog"),
+  "每个课表快照都必须在本地持久化周次日期和完整学期目录",
 );
 assert(
   timetablePageTemplate.includes("menu-glyph--open") &&

@@ -1,4 +1,4 @@
-import type { TimetableData } from "../types/api";
+import type { AcademicSemesterOption, TimetableData } from "../types/api";
 import {
   buildTimetableWeekDateCache,
   type TimetableWeekDateCache,
@@ -6,6 +6,7 @@ import {
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:timetable:";
+const SEMESTER_CATALOG_PREFIX = "easy-swu:timetable-semesters:";
 
 export interface TimetableSnapshot extends CacheMetadata {
   data: TimetableData;
@@ -14,6 +15,59 @@ export interface TimetableSnapshot extends CacheMetadata {
 
 function storageKey(account: string, semesterId?: string): string {
   return `${PREFIX}${encodeURIComponent(account.trim())}:${encodeURIComponent(semesterId || "default")}`;
+}
+
+function semesterCatalogKey(account: string): string {
+  return `${SEMESTER_CATALOG_PREFIX}${encodeURIComponent(account.trim())}`;
+}
+
+function isSemester(value: unknown): value is AcademicSemesterOption {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<AcademicSemesterOption>;
+  return (
+    typeof candidate.id === "string" &&
+    Number.isInteger(candidate.academicYear) &&
+    [1, 2, 3].includes(Number(candidate.term)) &&
+    typeof candidate.label === "string"
+  );
+}
+
+function normalizedSemesters(
+  values: readonly unknown[],
+): AcademicSemesterOption[] {
+  return [
+    ...new Map(
+      values.filter(isSemester).map((semester) => [semester.id, semester]),
+    ).values(),
+  ].sort(
+    (left, right) =>
+      right.academicYear - left.academicYear || right.term - left.term,
+  );
+}
+
+export function loadTimetableSemesterCatalog(
+  account: string,
+): AcademicSemesterOption[] {
+  if (!account.trim()) return [];
+  const value = wx.getStorageSync(semesterCatalogKey(account)) as unknown;
+  return normalizedSemesters(Array.isArray(value) ? value : []);
+}
+
+function mergeTimetableSemesterCatalog(
+  account: string,
+  data: TimetableData,
+): TimetableData {
+  const semesters = normalizedSemesters([
+    ...loadTimetableSemesterCatalog(account),
+    data.semester,
+    ...(Array.isArray(data.semesters) ? data.semesters : []),
+  ]);
+  try {
+    wx.setStorageSync(semesterCatalogKey(account), semesters);
+  } catch {
+    // 学期目录仍会随课表快照保存，不阻断课表首屏。
+  }
+  return { ...data, semesters };
 }
 
 function isTimetable(value: unknown): value is TimetableData {
@@ -56,15 +110,19 @@ export function loadTimetableSnapshot(
   );
   const cachedWeekDates = value.weekDates;
   const hasCachedWeekDates = isWeekDateCache(cachedWeekDates);
+  const data = mergeTimetableSemesterCatalog(account, value.data);
   const snapshot: TimetableSnapshot = {
-    data: value.data,
+    data,
     weekDates: hasCachedWeekDates
       ? cachedWeekDates
-      : buildTimetableWeekDateCache(value.data),
+      : buildTimetableWeekDateCache(data),
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || legacyUpdatedAt || 0,
   };
-  if (!hasCachedWeekDates) {
+  if (
+    !hasCachedWeekDates ||
+    data.semesters.length !== value.data.semesters?.length
+  ) {
     try {
       wx.setStorageSync(storageKey(account, semesterId), snapshot);
     } catch {
@@ -80,9 +138,10 @@ export function saveTimetableSnapshot(
   options: { semesterId?: string; serverFetchedAt?: string } = {},
 ): TimetableSnapshot | null {
   if (!account.trim()) return null;
+  const cachedData = mergeTimetableSemesterCatalog(account, data);
   const snapshot: TimetableSnapshot = {
-    data,
-    weekDates: buildTimetableWeekDateCache(data),
+    data: cachedData,
+    weekDates: buildTimetableWeekDateCache(cachedData),
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),
   };

@@ -222,7 +222,7 @@ function submenuHeight(semesterCount: number): number {
 }
 
 function weekMenuListHeight(weekCount: number): number {
-  return Math.min(440, 32 + Math.ceil(Math.max(1, weekCount) / 4) * 82);
+  return Math.min(448, 32 + Math.ceil(Math.max(1, weekCount) / 4) * 86);
 }
 
 function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
@@ -400,6 +400,7 @@ Page({
     semesterId: "",
     semesters: [] as TimetableData["semesters"],
     weekNumber: 1,
+    currentWeekNumber: 0,
     weekIndex: 0,
     weekLabel: "第 1 周",
     maxWeek: 1,
@@ -532,9 +533,10 @@ Page({
       if (shouldStore && stillViewingResult) {
         if (activate) pendingVisibleRequestId = null;
         activeSnapshot = stored;
-        activeTimetable = result.data;
-        if (!semester) defaultSemesterId = result.data.semester.id;
-        this.applyTimetable(result.data, refresh || !semester);
+        const cachedResult = stored?.data || result.data;
+        activeTimetable = cachedResult;
+        if (!semester) defaultSemesterId = cachedResult.semester.id;
+        this.applyTimetable(cachedResult, refresh || !semester);
       } else if (stillViewingResult && !activeTimetable && local) {
         if (activate) pendingVisibleRequestId = null;
         activeSnapshot = local;
@@ -547,7 +549,9 @@ Page({
       shouldRefreshAfterward =
         !refresh &&
         current !== null &&
-        (isCacheStale(current, WEEK_MS) ||
+        (result.meta.stale === true ||
+          result.meta.refreshing === true ||
+          isCacheStale(current, WEEK_MS) ||
           !hasSelectedSemesterCalendar(current.data)) &&
         claimAutomaticRefresh(
           `timetable:${semester || "default"}`,
@@ -617,6 +621,7 @@ Page({
       semesters: timetable.semesters,
       semesterMenuHeight: submenuHeight(timetable.semesters.length),
       weekNumber,
+      currentWeekNumber: detectedWeek || 0,
       weekIndex: weekNumber - 1,
       weekLabel: `第 ${weekNumber} 周`,
       maxWeek,

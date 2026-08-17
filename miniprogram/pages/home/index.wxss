@@ -104,6 +104,7 @@
 
 .campus-stack { display: flex; flex-direction: column; gap: 30rpx; }
 .campus-group { display: flex; flex-direction: column; gap: 16rpx; }
+.campus-open-container { display: block; border-radius: 44rpx; }
 .campus-card { position: relative; padding: 30rpx 30rpx 40rpx; }
 .campus-blob { width: 190rpx; height: 170rpx; opacity: 0.72; }
 .campus-blob--notice { top: -70rpx; right: -54rpx; background: #f9eae2; }

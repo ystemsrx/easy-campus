@@ -1,5 +1,5 @@
 <view class="page inbox-page {{themeClass}} {{motionClass}}">
-  <navigation-bar title="校园消息" subtitle="学校通知与教务安排" back transparent theme="{{theme}}"></navigation-bar>
+  <navigation-bar title="学校通知与教务安排" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="inbox-toolbar page-enter">
     <view class="segmented-control" aria-role="tablist">
@@ -12,7 +12,6 @@
   <swiper class="inbox-swiper" current="{{activeTab}}" duration="420" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
       <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
-        <view slot="refresher" class="inbox-refresher"><text>{{messageRefreshing ? '正在刷新' : '下拉刷新'}}</text></view>
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view class="list-heading-copy"><text class="list-title">教务消息</text><text class="list-caption">待阅与已阅已合并并按时间排序</text></view>
@@ -59,12 +58,12 @@
           <empty-state wx:elif="{{messageError}}" icon="circle-alert" icon-tone="danger" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
           <empty-state wx:elif="{{messageLoaded}}" icon="message-circle-more" title="没有符合条件的消息" description="更换筛选条件，或下拉刷新后再看看" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
         </view>
+        <view class="inbox-bottom-space"></view>
       </scroll-view>
     </swiper-item>
 
     <swiper-item>
       <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-threshold="68" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
-        <view slot="refresher" class="inbox-refresher"><text>{{noticeRefreshing ? '正在刷新' : '下拉刷新'}}</text></view>
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
             <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>
@@ -85,6 +84,7 @@
           <empty-state wx:elif="{{noticeError}}" icon="circle-alert" icon-tone="danger" title="通知加载失败" description="{{noticeError}}" action-text="重新加载" bindaction="refreshNotices"></empty-state>
           <empty-state wx:elif="{{noticeLoaded}}" icon="megaphone" title="没有找到通知" description="尝试更换关键词，或清空搜索条件" action-text="清空搜索" bindaction="clearNoticeQuery"></empty-state>
         </view>
+        <view class="inbox-bottom-space"></view>
       </scroll-view>
     </swiper-item>
   </swiper>
@@ -93,8 +93,11 @@
     <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
     <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;" catchtap="stopPropagation">
       <view class="message-filter-heading"><text>消息类型</text><text>{{messageFilterCount ? '已选 ' + messageFilterCount + ' 项' : '全部消息'}}</text></view>
-      <view class="message-type-grid">
-        <view wx:for="{{messageTypeOptions}}" wx:key="value" class="message-type-option {{item.selected ? 'message-type-option--active' : ''}}" data-value="{{item.value}}" catchtap="selectMessageType" hover-class="message-type-option--pressed"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="white" size="{{19}}"></lucide-icon></view>
+      <view class="message-type-list">
+        <block wx:for="{{messageTypeOptions}}" wx:key="value">
+          <view class="message-type-option" data-value="{{item.value}}" catchtap="selectMessageType" hover-class="message-type-option--pressed" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></view>
+          <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
+        </block>
       </view>
     </view>
   </view>

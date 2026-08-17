@@ -133,7 +133,7 @@
             wx:for-item="week"
             wx:key="weekNumber"
             id="week-option-{{week.weekNumber}}"
-            class="week-option pressable {{weekNumber === week.weekNumber ? 'week-option--active' : ''}}"
+            class="week-option pressable {{currentWeekNumber === week.weekNumber ? 'week-option--current' : ''}} {{weekNumber === week.weekNumber ? 'week-option--active' : ''}}"
             data-week="{{week.weekNumber}}"
             bindtap="selectWeek"
             hover-class="week-option--pressed"

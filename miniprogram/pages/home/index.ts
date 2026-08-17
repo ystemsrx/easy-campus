@@ -141,6 +141,7 @@ let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
+let inboxRouteOpening = false;
 let activeTimetable: TimetableData | null = null;
 
 function dateAtLocalMidnight(value: string): number | null {
@@ -240,6 +241,14 @@ function getTimetableCardRadius(): number {
     return (wx.getWindowInfo().windowWidth * 56) / 750;
   } catch {
     return 28;
+  }
+}
+
+function getCampusCardRadius(): number {
+  try {
+    return (wx.getWindowInfo().windowWidth * 44) / 750;
+  } catch {
+    return 22;
   }
 }
 
@@ -419,6 +428,7 @@ Page({
     todayCourses: [] as TodayCoursePreview[],
     remainingCourseCount: 0,
     timetableCardRadius: getTimetableCardRadius(),
+    campusCardRadius: getCampusCardRadius(),
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
     gradeCourseCount: 0,
@@ -443,6 +453,8 @@ Page({
   onLoad() {
     hydratedAccount = "";
     activeTimetable = null;
+    timetableRouteOpening = false;
+    inboxRouteOpening = false;
     credentialExitInFlight = false;
     this.applyAppearance();
   },
@@ -973,7 +985,7 @@ Page({
     haptic("light");
     if (route === "inbox") {
       wx.setStorageSync("easy-swu:inbox-tab", "messages");
-      void navigateTo("/pages/inbox/index", "wx://upwards");
+      wx.navigateTo({ url: "/pages/inbox/index" });
       return;
     }
     if (route) {
@@ -992,12 +1004,38 @@ Page({
     });
   },
   openMessages() {
+    haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
-    void navigateTo("/pages/inbox/index", "wx://upwards");
+    wx.navigateTo({ url: "/pages/inbox/index" });
   },
   openNotices() {
+    haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
-    void navigateTo("/pages/inbox/index", "wx://upwards");
+    wx.navigateTo({ url: "/pages/inbox/index" });
+  },
+  openMessagesFromCard() {
+    if (inboxRouteOpening) return;
+    inboxRouteOpening = true;
+    haptic("light");
+    wx.setStorageSync("easy-swu:inbox-tab", "messages");
+    wx.navigateTo({
+      url: "/pages/inbox/index",
+      complete: () => {
+        inboxRouteOpening = false;
+      },
+    });
+  },
+  openNoticesFromCard() {
+    if (inboxRouteOpening) return;
+    inboxRouteOpening = true;
+    haptic("light");
+    wx.setStorageSync("easy-swu:inbox-tab", "notices");
+    wx.navigateTo({
+      url: "/pages/inbox/index",
+      complete: () => {
+        inboxRouteOpening = false;
+      },
+    });
   },
   openSchedule() {
     haptic("light");

@@ -476,7 +476,7 @@
 }
 
 .week-option-scroll {
-  max-height: 440rpx;
+  max-height: 448rpx;
 }
 
 .week-options {
@@ -493,8 +493,9 @@
   align-items: center;
   justify-content: center;
   width: calc(25% - 8rpx);
-  min-height: 72rpx;
-  border-radius: 21rpx;
+  min-height: 76rpx;
+  border: 3rpx solid transparent;
+  border-radius: 999rpx;
   color: #817b70;
   background: #f3f1eb;
   transition: color 180ms ease, background-color 180ms ease,
@@ -505,7 +506,13 @@
   transform: scale(0.94);
 }
 
+.week-option--current {
+  border-color: #0862ad;
+  color: #0862ad;
+}
+
 .week-option--active {
+  border-color: #0862ad;
   color: #fff;
   background: #0862ad;
   box-shadow: 0 10rpx 24rpx rgba(8, 98, 173, 0.22);
@@ -516,7 +523,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transform: translateY(2rpx);
+  transform: translateY(5rpx);
 }
 
 .week-option-number {
