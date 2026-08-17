@@ -3,7 +3,7 @@ import type { Notice, TeachingMessage } from "../types/api";
 const PREFIX = "easy-swu:teaching-preview:";
 const ITEM_LIMIT = 15;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const MESSAGE_SCHEMA_VERSION = 3;
+const MESSAGE_SCHEMA_VERSION = 4;
 
 export interface TeachingPreview {
   messageSchemaVersion: number;

@@ -88,16 +88,18 @@
     </swiper-item>
   </swiper>
 
-  <view wx:if="{{messageFilterMounted}}" class="message-filter-layer {{messageFilterOpen ? 'message-filter-layer--open' : ''}}">
-    <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
-    <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;" catchtap="stopPropagation">
-      <view class="message-filter-heading"><text>消息类型</text></view>
-      <view class="message-type-list">
-        <block wx:for="{{messageTypeOptions}}" wx:key="value">
-          <view class="message-type-option" data-index="{{index}}" bindtap="selectMessageType" hover-class="message-type-option--pressed" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></view>
-          <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
-        </block>
+  <root-portal enable="{{messageFilterMounted}}">
+    <view wx:if="{{messageFilterMounted}}" class="message-filter-layer {{messageFilterOpen ? 'message-filter-layer--open' : ''}}">
+      <view class="message-filter-dismiss" catchtap="closeMessageFilter"></view>
+      <view class="message-filter-popover" style="top: {{messageFilterTop}}px; right: {{messageFilterRight}}px;">
+        <view class="message-filter-heading"><text>消息类型</text></view>
+        <view class="message-type-list">
+          <block wx:for="{{messageTypeOptions}}" wx:key="label">
+            <button class="message-type-option" data-index="{{index}}" bindtap="selectMessageType" hover-class="message-type-option--pressed" hover-start-time="0" aria-role="checkbox" aria-checked="{{item.selected}}"><text>{{item.label}}</text><lucide-icon wx:if="{{item.selected}}" name="check" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon></button>
+            <view wx:if="{{index < messageTypeOptions.length - 1}}" class="message-type-separator"></view>
+          </block>
+        </view>
       </view>
     </view>
-  </view>
+  </root-portal>
 </view>

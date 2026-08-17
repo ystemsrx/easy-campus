@@ -123,11 +123,13 @@ if (
   );
 }
 if (
+  !inboxTemplate.includes('<root-portal enable="{{messageFilterMounted}}">') ||
+  !inboxTemplate.includes('<button class="message-type-option"') ||
   !inboxTemplate.includes('data-index="{{index}}"') ||
   !inboxTemplate.includes('bindtap="selectMessageType"')
 ) {
   failures.push(
-    "pages/inbox/index.wxml: 消息筛选必须以稳定索引触发可见的勾选状态",
+    "pages/inbox/index.wxml: 消息筛选必须位于根级交互层，并以独立按钮和稳定索引触发勾选状态",
   );
 }
 

@@ -443,7 +443,6 @@ Page({
       filterTransitionTimer = undefined;
     }, 260);
   },
-  stopPropagation() {},
   selectMessageType(event: WechatMiniprogram.TouchEvent) {
     const index = Number(event.currentTarget.dataset.index);
     const value = MESSAGE_TYPE_OPTIONS[index]?.value;
