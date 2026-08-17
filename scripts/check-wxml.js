@@ -135,6 +135,33 @@ if (
   );
 }
 
+const homeTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "home", "index.wxml"),
+  "utf8",
+);
+const electricityTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "electricity", "index.wxml"),
+  "utf8",
+);
+if (
+  !homeTemplate.includes('class="feature-open-container"') ||
+  !homeTemplate.includes('bind:tap="openElectricity"') ||
+  !electricityTemplate.includes("inline-title")
+) {
+  failures.push(
+    "pages/home/index.wxml: 寝室电费必须使用与课表一致的卡片放大转场，并保持返回按钮与标题同行",
+  );
+}
+if (
+  electricityTemplate.includes("<bottom-sheet") ||
+  !electricityTemplate.includes('class="building-picker-scroll"') ||
+  !electricityTemplate.includes('type="list" scroll-y')
+) {
+  failures.push(
+    "pages/electricity/index.wxml: 宿舍楼选择必须使用独立可滚动浮层，不得回退到底部抽屉",
+  );
+}
+
 if (failures.length > 0) {
   console.error(failures.join("\n"));
   process.exitCode = 1;

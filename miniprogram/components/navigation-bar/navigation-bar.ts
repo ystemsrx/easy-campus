@@ -6,6 +6,7 @@ Component({
     title: { type: String, value: "" },
     subtitle: { type: String, value: "" },
     back: { type: Boolean, value: false },
+    inlineTitle: { type: Boolean, value: false },
     transparent: { type: Boolean, value: false },
     scrolled: { type: Boolean, value: false },
     theme: { type: String, value: "light" },

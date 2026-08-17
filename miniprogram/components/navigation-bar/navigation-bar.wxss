@@ -42,6 +42,25 @@
 .nav-side--left { justify-content: flex-start; }
 .nav-side--right { justify-content: flex-end; }
 
+.nav-inline-leading {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 22rpx;
+  min-width: 0;
+  height: 100%;
+}
+
+.nav-inline-title-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+}
+
 .back-button {
   display: flex;
   align-items: center;

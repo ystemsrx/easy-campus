@@ -42,6 +42,7 @@ let activeSnapshot: ElectricitySnapshot | null = null;
 let bindingToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+let buildingPickerUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 
 function formatDecimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
@@ -87,6 +88,13 @@ function clearBindingToastTimers(): void {
   }
 }
 
+function clearBuildingPickerTimer(): void {
+  if (buildingPickerUnmountTimer !== undefined) {
+    clearTimeout(buildingPickerUnmountTimer);
+    buildingPickerUnmountTimer = undefined;
+  }
+}
+
 function filterBuildings(
   buildings: ElectricityBuilding[],
   query: string,
@@ -118,6 +126,7 @@ Page({
     draftBuildingId: "",
     buildingQuery: "",
     buildingSearchFocused: false,
+    buildingPickerMounted: false,
     buildingPickerVisible: false,
     bindingEditing: false,
     roomNumber: "",
@@ -142,6 +151,7 @@ Page({
   },
   onUnload() {
     clearBindingToastTimers();
+    clearBuildingPickerTimer();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -278,15 +288,29 @@ Page({
       return;
     }
     haptic("light");
-    this.setData({
-      buildingPickerVisible: true,
-      draftBuildingId: this.data.buildingId,
-      buildingQuery: "",
-      buildings: this.data.allBuildings,
-    });
+    clearBuildingPickerTimer();
+    this.setData(
+      {
+        buildingPickerMounted: true,
+        buildingPickerVisible: false,
+        draftBuildingId: this.data.buildingId,
+        buildingQuery: "",
+        buildings: this.data.allBuildings,
+      },
+      () => {
+        wx.nextTick(() => this.setData({ buildingPickerVisible: true }));
+      },
+    );
   },
   closeBuildingPicker() {
     this.setData({ buildingPickerVisible: false });
+    clearBuildingPickerTimer();
+    buildingPickerUnmountTimer = setTimeout(() => {
+      buildingPickerUnmountTimer = undefined;
+      if (!this.data.buildingPickerVisible) {
+        this.setData({ buildingPickerMounted: false });
+      }
+    }, 300);
   },
   onBuildingSearch(event: WechatMiniprogram.Input) {
     const buildingQuery = String(event.detail.value || "");
@@ -312,10 +336,11 @@ Page({
       draftBuildingId: selected.id,
       buildingId: selected.id,
       buildingName: selected.name,
-      buildingPickerVisible: false,
       errorMessage: "",
     });
+    this.closeBuildingPicker();
   },
+  noop() {},
   onRoomInput(event: WechatMiniprogram.Input): string {
     const roomNumber = String(event.detail.value || "")
       .toUpperCase()

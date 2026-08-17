@@ -84,14 +84,30 @@
           <view class="score-ring"><text class="score-ring-value tnum">{{gradeAverageLabel}}</text></view>
           <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 绩点 ' + gradePointAverageLabel : '查看成绩明细'}}</text>
         </view>
-        <view class="feature-card feature-card--utility pressable" data-route="/pages/electricity/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
-          <view class="ambient-blob feature-blob feature-blob--utility"></view>
-          <view class="feature-kicker feature-kicker--icon"><lucide-icon name="zap" tone="white" size="{{21}}"></lucide-icon><text>寝室电费</text></view>
-          <view wx:if="{{electricityBound}}" class="utility-balance"><text class="utility-currency">¥</text><text class="utility-value tnum">{{electricityBalanceLabel}}</text></view>
-          <text wx:else class="utility-unbound">未绑定</text>
-          <text class="utility-caption">{{electricityBound ? '剩余金额' : '选择宿舍与寝室号'}}</text>
-          <view class="utility-pill"><text>{{electricityUsageLabel}}</text></view>
-        </view>
+        <open-container
+          class="feature-open-container"
+          closed-color="#7d8f6e"
+          middle-color="{{theme === 'dark' ? '#66735b' : '#acbe97'}}"
+          open-color="{{theme === 'dark' ? '#171613' : '#f7f5ef'}}"
+          closed-elevation="{{0}}"
+          closed-border-radius="{{electricityCardRadius}}"
+          open-elevation="{{0}}"
+          open-border-radius="{{0}}"
+          transition-type="fadeThrough"
+          transition-duration="{{380}}"
+          bind:tap="openElectricity"
+          aria-role="button"
+          aria-label="展开寝室电费"
+        >
+          <view class="feature-card feature-card--utility pressable" hover-class="feature-card--pressed">
+            <view class="ambient-blob feature-blob feature-blob--utility"></view>
+            <view class="feature-kicker feature-kicker--icon"><lucide-icon name="zap" tone="white" size="{{21}}"></lucide-icon><text>寝室电费</text></view>
+            <view wx:if="{{electricityBound}}" class="utility-balance"><text class="utility-currency">¥</text><text class="utility-value tnum">{{electricityBalanceLabel}}</text></view>
+            <text wx:else class="utility-unbound">未绑定</text>
+            <text class="utility-caption">{{electricityBound ? '剩余金额' : '选择宿舍与寝室号'}}</text>
+            <view class="utility-pill"><text>{{electricityUsageLabel}}</text></view>
+          </view>
+        </open-container>
       </view>
 
       <view class="exam-layout stagger-item stagger-2">

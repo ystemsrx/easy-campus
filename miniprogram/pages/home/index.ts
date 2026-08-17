@@ -141,6 +141,7 @@ let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
+let electricityRouteOpening = false;
 let inboxRouteOpening = false;
 let activeTimetable: TimetableData | null = null;
 
@@ -249,6 +250,14 @@ function getCampusCardRadius(): number {
     return (wx.getWindowInfo().windowWidth * 44) / 750;
   } catch {
     return 22;
+  }
+}
+
+function getFeatureCardRadius(): number {
+  try {
+    return (wx.getWindowInfo().windowWidth * 48) / 750;
+  } catch {
+    return 24;
   }
 }
 
@@ -429,6 +438,7 @@ Page({
     remainingCourseCount: 0,
     timetableCardRadius: getTimetableCardRadius(),
     campusCardRadius: getCampusCardRadius(),
+    electricityCardRadius: getFeatureCardRadius(),
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
     gradeCourseCount: 0,
@@ -455,6 +465,7 @@ Page({
     hydratedAccount = "";
     activeTimetable = null;
     timetableRouteOpening = false;
+    electricityRouteOpening = false;
     inboxRouteOpening = false;
     credentialExitInFlight = false;
     this.applyAppearance();
@@ -1014,6 +1025,17 @@ Page({
       url: "/pages/timetable/index",
       complete: () => {
         timetableRouteOpening = false;
+      },
+    });
+  },
+  openElectricity() {
+    if (electricityRouteOpening) return;
+    electricityRouteOpening = true;
+    haptic("light");
+    wx.navigateTo({
+      url: "/pages/electricity/index",
+      complete: () => {
+        electricityRouteOpening = false;
       },
     });
   },

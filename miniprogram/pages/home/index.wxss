@@ -40,7 +40,9 @@
 .today-empty-title { display: block; font-size: 46rpx; font-weight: 820; letter-spacing: 8rpx; }
 
 .feature-grid { display: flex; flex-direction: row; gap: 20rpx; margin-top: 24rpx; }
+.feature-open-container { display: block; flex: 1; flex-basis: 0; min-width: 0; border-radius: 48rpx; }
 .feature-card { position: relative; display: flex; flex: 1; flex-basis: 0; flex-direction: column; min-width: 0; min-height: 320rpx; padding: 30rpx; overflow: hidden; border-radius: 48rpx; color: #fff; box-shadow: var(--shadow-card); transition: transform 150ms ease, opacity 150ms ease; }
+.feature-open-container .feature-card { box-sizing: border-box; width: 100%; }
 .feature-card--pressed { transform: scale(0.97); opacity: 0.88; }
 .feature-card--grades { background: linear-gradient(160deg, #c98a2d, #e5b86e); }
 .feature-card--utility { background: linear-gradient(160deg, #7d8f6e, #acbe97); }
