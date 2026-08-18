@@ -3,6 +3,7 @@ import {
   buildTimetableWeekDateCache,
   type TimetableWeekDateCache,
 } from "../data/timetable";
+import { prewarmTimetableFirstScreen } from "../data/timetable-render";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:timetable:";
@@ -149,6 +150,11 @@ export function saveTimetableSnapshot(
     wx.setStorageSync(storageKey(account, options.semesterId), snapshot);
   } catch {
     // 本地快照只是首屏加速层，服务端仍保存完整的用户课表。
+  }
+  try {
+    prewarmTimetableFirstScreen(account, snapshot);
+  } catch {
+    // 预渲染失败不影响已保存的原始课表，下次进入页面仍可即时构建。
   }
   return snapshot;
 }

@@ -280,6 +280,14 @@ assert(
   timetable.teachingWeekForDate(data, duringFirstCourse) === 1,
   "应根据学校返回的结构化周次计算教学周",
 );
+assert(
+  timetable.timetableWeekForDisplay(data, new Date(2026, 7, 1)) === 1,
+  "学期开始前应预加载下一学期第一周",
+);
+assert(
+  timetable.timetableWeekForDisplay(data, new Date(2026, 11, 10)) === 16,
+  "学期结束后应预加载上一学期最后一周",
+);
 const vacationSelection = {
   ...data,
   currentSemester: {
@@ -416,6 +424,20 @@ const timetableStoreSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "store", "timetable.ts"),
   "utf8",
 );
+const timetableRenderSource = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "timetable-render.ts",
+  ),
+  "utf8",
+);
+const appSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "app.ts"),
+  "utf8",
+);
 const dayColumnRule = timetablePageStyles.match(
   /\.grid-day-column\s*\{[^}]*\}/s,
 )?.[0];
@@ -462,6 +484,16 @@ assert(
     timetablePageScript.includes("refresh || !semester") &&
     timetablePageScript.includes("result.meta.stale === true"),
   "静默刷新必须允许其他学期请求、识别旧服务端快照并保留当前周",
+);
+assert(
+  appSource.includes("prewarmTimetableFirstScreen(account, timetable)") &&
+    timetableStoreSource.includes("prewarmTimetableFirstScreen(account, snapshot)") &&
+    timetablePageScript.includes("getPrewarmedTimetableFirstScreen") &&
+    timetablePageScript.includes("queueRemainingWeekPages") &&
+    timetablePageTemplate.includes('wx:if="{{weekPage.ready}}"') &&
+    !timetablePageTemplate.includes('class="week-page page-enter"') &&
+    timetableRenderSource.includes("buildTimetableWeekPlaceholder"),
+  "应用启动时必须只预渲染首屏周次，进入课表后再静默补齐其他周",
 );
 assert(
   timetableStoreSource.includes(

@@ -44,7 +44,7 @@
     cache-extent="1"
   >
     <swiper-item wx:for="{{weekPages}}" wx:for-item="weekPage" wx:key="weekNumber">
-      <view class="week-page page-enter">
+      <view wx:if="{{weekPage.ready}}" class="week-page">
         <view class="week-grid-head">
           <view class="month-head">
             <text class="month-number tnum">{{weekPage.monthNumber}}</text>

@@ -8,6 +8,15 @@ const tones = ["ink", "muted", "white", "coral", "amber", "sage", "rose", "dange
 const usedNames = new Set(["circle-help", "eye", "eye-off"]);
 const failures = [];
 
+function declaredStringArray(source, constantName) {
+  const body = source.match(
+    new RegExp(`const ${constantName} = \\[([\\s\\S]*?)\\] as const`),
+  )?.[1];
+  return new Set(
+    [...(body || "").matchAll(/"([^"]+)"/g)].map((match) => match[1]),
+  );
+}
+
 function visit(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
@@ -54,6 +63,40 @@ const projectConfig = JSON.parse(
 );
 if (projectConfig.setting?.ignoreUploadUnusedFiles !== false) {
   failures.push("project.config.json: 必须打包动态引用的 Lucide 图标资源");
+}
+
+const iconPreloaderPath = path.join(
+  miniprogramRoot,
+  "utils",
+  "icon-preload.ts",
+);
+if (!fs.existsSync(iconPreloaderPath)) {
+  failures.push("utils/icon-preload.ts: 缺少启动时 SVG 预加载器");
+} else {
+  const preloadSource = fs.readFileSync(iconPreloaderPath, "utf8");
+  const preloadedNames = declaredStringArray(preloadSource, "ICON_NAMES");
+  const preloadedTones = declaredStringArray(preloadSource, "ICON_TONES");
+  for (const fileName of fs
+    .readdirSync(iconRoot)
+    .filter((fileName) => fileName.endsWith(".svg"))) {
+    const match = fileName.match(
+      /^(.*)-(ink|muted|white|coral|amber|sage|rose|danger)\.svg$/,
+    );
+    if (
+      !match ||
+      !preloadedNames.has(match[1]) ||
+      !preloadedTones.has(match[2])
+    ) {
+      failures.push(`assets/icons/${fileName}: 未纳入启动预加载清单`);
+    }
+  }
+  const appSource = fs.readFileSync(
+    path.join(miniprogramRoot, "app.ts"),
+    "utf8",
+  );
+  if (!appSource.includes("preloadAllSvgIcons();")) {
+    failures.push("app.ts: 必须在小程序启动时开始预加载 SVG 图标");
+  }
 }
 
 if (failures.length) {

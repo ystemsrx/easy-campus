@@ -1,11 +1,21 @@
 import {
   coursesForWeek,
-  layoutGridCourseText,
   teachingWeekForDate,
   timetableWeekCount,
-  weekDateKeys,
+  timetableWeekForDisplay,
   type TimetableCourse,
 } from "../../data/timetable";
+import {
+  buildTimetablePeriodRows,
+  buildTimetableWeekPage,
+  buildTimetableWeekPlaceholder,
+  getPrewarmedTimetableFirstScreen,
+  timetableGridLayoutMetrics,
+  timetableMaxPeriod,
+  type TimetableGridLayoutMetrics,
+  type TimetablePeriodRow,
+  type TimetableWeekPage,
+} from "../../data/timetable-render";
 import { getTimetable } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
@@ -19,11 +29,7 @@ import {
   saveTimetableSnapshot,
   type TimetableSnapshot,
 } from "../../store/timetable";
-import type {
-  AcademicSemesterOption,
-  TimetableData,
-  TimetablePeriod,
-} from "../../types/api";
+import type { AcademicSemesterOption, TimetableData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
@@ -31,44 +37,6 @@ import {
   shortAcademicSemesterLabel,
   timetableSemesterMenuLabel,
 } from "../../utils/semester";
-
-interface DayOption {
-  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  shortLabel: string;
-  dateLabel: string;
-  date: string;
-  isToday: boolean;
-}
-
-interface GridCourse extends TimetableCourse {
-  topPercent: string;
-  heightPercent: string;
-  nameRows: Array<{ key: string; text: string }>;
-  locationRows: Array<{ key: string; text: string }>;
-  teacherRows: Array<{ key: string; text: string }>;
-  nameLines: number;
-  nameStyle: string;
-  locationStyle: string;
-  teacherStyle: string;
-}
-
-interface GridDay extends DayOption {
-  courses: GridCourse[];
-}
-
-interface WeekPage {
-  weekNumber: number;
-  monthNumber: string;
-  startDateLabel: string;
-  days: DayOption[];
-  gridDays: GridDay[];
-}
-
-interface PeriodRow {
-  period: number;
-  startTime: string;
-  endTime: string;
-}
 
 interface TimetableThemeOption {
   id: string;
@@ -81,17 +49,6 @@ interface TimetableSemesterOption extends AcademicSemesterOption {
   displayLabel: string;
 }
 
-interface GridLayoutMetrics {
-  rowHeightPx: number;
-  nameFontSizePx: number;
-  locationFontSizePx: number;
-  teacherFontSizePx: number;
-  contentWidthPx: number;
-  contentInsetPx: number;
-  scale: number;
-}
-
-const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
@@ -120,13 +77,11 @@ let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
+let weekBuildSequence = 0;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
 let pageAlive = false;
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
 
 function timetableSemesterOptions(
   semesters: AcademicSemesterOption[],
@@ -135,95 +90,6 @@ function timetableSemesterOptions(
     ...semester,
     displayLabel: timetableSemesterMenuLabel(semester),
   }));
-}
-
-function buildDays(
-  timetable: TimetableData,
-  week: number,
-  cachedDates?: string[],
-): DayOption[] {
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-  const dates = cachedDates || weekDateKeys(timetable, week);
-  return DAY_LABELS.map((shortLabel, index) => {
-    const date = dates[index] || "";
-    return {
-      weekday: (index + 1) as DayOption["weekday"],
-      shortLabel,
-      dateLabel: date ? String(Number(date.slice(-2))) : "—",
-      date,
-      isToday: date === todayKey,
-    };
-  });
-}
-
-function courseOccursOnDay(course: TimetableCourse, day: DayOption): boolean {
-  return day.date ? course.date === day.date : course.weekday === day.weekday;
-}
-
-function maxPeriodFor(timetable: TimetableData): number {
-  const periods = timetable.periods.map((item) => item.period);
-  const coursePeriods = timetable.courses.flatMap((course) =>
-    course.arrangements.map((arrangement) => arrangement.periodEnd),
-  );
-  return Math.max(12, ...periods, ...coursePeriods);
-}
-
-function toGridCourse(
-  course: TimetableCourse,
-  maxPeriod: number,
-  metrics: GridLayoutMetrics,
-): GridCourse {
-  const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
-  const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
-  const span = end - start + 1;
-  const textLayout = layoutGridCourseText(
-    course,
-    span * metrics.rowHeightPx,
-    metrics,
-  );
-  return {
-    ...course,
-    topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
-    heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    ...textLayout,
-  };
-}
-
-function gridLayoutMetrics(
-  maxPeriod: number,
-  headerHeight: number,
-): GridLayoutMetrics {
-  let viewportWidth = 375;
-  let viewportHeight = 667;
-  try {
-    const windowInfo = wx.getWindowInfo();
-    viewportWidth = windowInfo.windowWidth || viewportWidth;
-    viewportHeight = windowInfo.windowHeight || viewportHeight;
-  } catch {
-    // 默认视口仅用于旧基础库，真实设备会读取窗口尺寸。
-  }
-  const scale = viewportWidth / 750;
-  const columnWidth = (viewportWidth - 84 * scale) / 7;
-  // 槽内边距 4rpx、课程边框 6rpx、课程内边距 8rpx。
-  const contentWidth = Math.max(1, columnWidth - 18 * scale);
-  const widthSafetyPx = 1;
-  const fittedFontSize = (charactersPerLine: number, maximum: number) =>
-    Math.max(
-      1,
-      Math.min(maximum, (contentWidth - widthSafetyPx) / charactersPerLine),
-    );
-  const gridHeight = Math.max(160, viewportHeight - headerHeight - 84 * scale);
-  return {
-    rowHeightPx: gridHeight / Math.max(1, maxPeriod),
-    nameFontSizePx: fittedFontSize(3, 15),
-    locationFontSizePx: fittedFontSize(3, 14),
-    teacherFontSizePx: fittedFontSize(3, 12),
-    contentWidthPx: contentWidth,
-    // 卡片槽上下内边距 4rpx + 卡片边框 6rpx + 内边距 8rpx。
-    contentInsetPx: 18 * scale,
-    scale,
-  };
 }
 
 function submenuHeight(semesterCount: number): number {
@@ -240,65 +106,6 @@ function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
       timetable.semesterCalendar.weeks.length) ||
     timetable.currentSemester?.id === timetable.semester.id,
   );
-}
-
-function monthNumber(days: DayOption[]): string {
-  const datedDays = days.filter((day) => day.date);
-  const displayDate = datedDays[datedDays.length - 1]?.date;
-  return displayDate ? String(Number(displayDate.slice(5, 7))) : "—";
-}
-
-function weekStartDateLabel(days: DayOption[]): string {
-  const date = days.find((day) => day.date)?.date;
-  return date ? `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}` : "";
-}
-
-function buildWeekPage(
-  timetable: TimetableData,
-  weekNumber: number,
-  maxPeriod: number,
-  metrics: GridLayoutMetrics,
-  cachedDates?: string[],
-): WeekPage {
-  const courses = coursesForWeek(timetable, weekNumber);
-  const days = buildDays(timetable, weekNumber, cachedDates);
-  return {
-    weekNumber,
-    monthNumber: monthNumber(days),
-    startDateLabel: weekStartDateLabel(days),
-    days,
-    gridDays: days.map((day) => ({
-      ...day,
-      courses: courses
-        .filter((course) => courseOccursOnDay(course, day))
-        .map((course) => toGridCourse(course, maxPeriod, metrics)),
-    })),
-  };
-}
-
-function buildPeriodRows(
-  timetable: TimetableData,
-  maxPeriod: number,
-  courses: TimetableCourse[],
-): PeriodRow[] {
-  const source = new Map<number, TimetablePeriod>(
-    timetable.periods.map((period) => [period.period, period]),
-  );
-  const starts = new Map<number, string>();
-  const ends = new Map<number, string>();
-  for (const course of courses) {
-    if (course.startTime !== "--:--")
-      starts.set(course.periodStart, course.startTime);
-    if (course.endTime !== "--:--") ends.set(course.periodEnd, course.endTime);
-  }
-  return Array.from({ length: maxPeriod }, (_, index) => {
-    const period = index + 1;
-    return {
-      period,
-      startTime: starts.get(period) || source.get(period)?.startTime || "--:--",
-      endTime: ends.get(period) || source.get(period)?.endTime || "--:--",
-    };
-  });
 }
 
 function backgroundMetrics(): {
@@ -387,6 +194,14 @@ function clearRefreshToastTimers(): void {
   }
 }
 
+function cancelPendingWeekBuilds(): void {
+  weekBuildSequence += 1;
+  if (weekBuildTimer !== undefined) {
+    clearTimeout(weekBuildTimer);
+    weekBuildTimer = undefined;
+  }
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -413,8 +228,8 @@ Page({
     weekIndex: 0,
     weekLabel: "第 1 周",
     maxWeek: 1,
-    weekPages: [] as WeekPage[],
-    periodRows: [] as PeriodRow[],
+    weekPages: [] as TimetableWeekPage[],
+    periodRows: [] as TimetablePeriodRow[],
     selectedCourse: null as TimetableCourse | null,
     courseSheetVisible: false,
     hasHydrated: false,
@@ -430,6 +245,7 @@ Page({
       weekMenuUnmountTimer = undefined;
     }
     clearRefreshToastTimers();
+    cancelPendingWeekBuilds();
     activeAccount = "";
     activeTimetable = null;
     activeSnapshot = null;
@@ -461,6 +277,58 @@ Page({
       weekMenuUnmountTimer = undefined;
     }
     clearRefreshToastTimers();
+    cancelPendingWeekBuilds();
+  },
+  queueRemainingWeekPages(
+    timetable: TimetableData,
+    maxPeriod: number,
+    layoutMetrics: TimetableGridLayoutMetrics,
+    selectedWeek: number,
+    cachedWeekDates: Map<number, string[]>,
+  ) {
+    cancelPendingWeekBuilds();
+    const sequence = weekBuildSequence;
+    const remainingWeeks = Array.from(
+      { length: this.data.maxWeek },
+      (_, index) => index + 1,
+    )
+      .filter((week) => week !== selectedWeek)
+      .sort(
+        (left, right) =>
+          Math.abs(left - selectedWeek) - Math.abs(right - selectedWeek),
+      );
+
+    const buildNext = () => {
+      weekBuildTimer = undefined;
+      if (
+        !pageAlive ||
+        activeTimetable !== timetable ||
+        sequence !== weekBuildSequence
+      ) {
+        return;
+      }
+      const weekNumber = remainingWeeks.shift();
+      if (weekNumber === undefined) return;
+      const index = weekNumber - 1;
+      if (this.data.weekPages[index]?.ready) {
+        weekBuildTimer = setTimeout(buildNext, 0);
+        return;
+      }
+      const page = buildTimetableWeekPage(
+        timetable,
+        weekNumber,
+        maxPeriod,
+        layoutMetrics,
+        cachedWeekDates.get(weekNumber),
+      );
+      this.setData({ [`weekPages[${index}]`]: page }, () => {
+        if (sequence === weekBuildSequence) {
+          weekBuildTimer = setTimeout(buildNext, 16);
+        }
+      });
+    };
+
+    weekBuildTimer = setTimeout(buildNext, 0);
   },
   hydrate() {
     const account = getSession()?.user.account || "";
@@ -598,46 +466,77 @@ Page({
         ? activeSnapshot.weekDates.map((week) => [week.weekNumber, week.dates])
         : [],
     );
-    const detectedWeek = teachingWeekForDate(timetable);
+    const maxPeriod = timetableMaxPeriod(timetable);
+    const layoutMetrics = timetableGridLayoutMetrics(
+      maxPeriod,
+      Number(this.data.headerHeight) || 64,
+    );
+    const prewarmed = activeSnapshot
+      ? getPrewarmedTimetableFirstScreen(
+          activeAccount,
+          activeSnapshot,
+          layoutMetrics,
+        )
+      : null;
+    const detectedWeek =
+      prewarmed?.currentWeekNumber || teachingWeekForDate(timetable) || 0;
     const weekNumber = Math.min(
       maxWeek,
       Math.max(
         1,
         preserveWeek && this.data.semesterId === timetable.semester.id
           ? this.data.weekNumber
-          : detectedWeek || 1,
+          : prewarmed?.weekNumber || timetableWeekForDisplay(timetable),
       ),
     );
-    const maxPeriod = maxPeriodFor(timetable);
-    const layoutMetrics = gridLayoutMetrics(
-      maxPeriod,
-      Number(this.data.headerHeight) || 64,
-    );
-    const periodCourses = coursesForWeek(timetable, weekNumber);
+    const firstScreen =
+      prewarmed?.weekNumber === weekNumber ? prewarmed : null;
+    const periodCourses = firstScreen
+      ? firstScreen.courses
+      : coursesForWeek(timetable, weekNumber);
     const weekPages = Array.from({ length: maxWeek }, (_, index) =>
-      buildWeekPage(
+      buildTimetableWeekPlaceholder(
         timetable,
         index + 1,
-        maxPeriod,
-        layoutMetrics,
         cachedWeekDates.get(index + 1),
       ),
     );
+    weekPages[weekNumber - 1] = firstScreen
+      ? firstScreen.weekPage
+      : buildTimetableWeekPage(
+          timetable,
+          weekNumber,
+          maxPeriod,
+          layoutMetrics,
+          cachedWeekDates.get(weekNumber),
+        );
     visibleCourses = periodCourses;
-    this.setData({
-      semesterShortLabel: shortAcademicSemesterLabel(timetable.semester),
-      semesterId: timetable.semester.id,
-      semesters: timetableSemesterOptions(timetable.semesters),
-      semesterMenuHeight: submenuHeight(timetable.semesters.length),
-      weekNumber,
-      currentWeekNumber: detectedWeek || 0,
-      weekIndex: weekNumber - 1,
-      weekLabel: `第 ${weekNumber} 周`,
-      maxWeek,
-      weekMenuListHeight: weekMenuListHeight(maxWeek),
-      periodRows: buildPeriodRows(timetable, maxPeriod, periodCourses),
-      weekPages,
-    });
+    this.setData(
+      {
+        semesterShortLabel: shortAcademicSemesterLabel(timetable.semester),
+        semesterId: timetable.semester.id,
+        semesters: timetableSemesterOptions(timetable.semesters),
+        semesterMenuHeight: submenuHeight(timetable.semesters.length),
+        weekNumber,
+        currentWeekNumber: detectedWeek,
+        weekIndex: weekNumber - 1,
+        weekLabel: `第 ${weekNumber} 周`,
+        maxWeek,
+        weekMenuListHeight: weekMenuListHeight(maxWeek),
+        periodRows: firstScreen
+          ? firstScreen.periodRows
+          : buildTimetablePeriodRows(timetable, maxPeriod, periodCourses),
+        weekPages,
+      },
+      () =>
+        this.queueRemainingWeekPages(
+          timetable,
+          maxPeriod,
+          layoutMetrics,
+          weekNumber,
+          cachedWeekDates,
+        ),
+    );
   },
   setWeek(weekNumber: number, feedback = false) {
     if (!activeTimetable) return;
@@ -646,15 +545,36 @@ Page({
       Math.max(1, Math.floor(weekNumber)),
     );
     visibleCourses = coursesForWeek(activeTimetable, normalizedWeek);
+    const maxPeriod =
+      this.data.periodRows.length || timetableMaxPeriod(activeTimetable);
+    const weekIndex = normalizedWeek - 1;
+    const weekPage = this.data.weekPages[weekIndex];
+    const pagePatch = weekPage?.ready
+      ? {}
+      : {
+          [`weekPages[${weekIndex}]`]: buildTimetableWeekPage(
+            activeTimetable,
+            normalizedWeek,
+            maxPeriod,
+            timetableGridLayoutMetrics(
+              maxPeriod,
+              Number(this.data.headerHeight) || 64,
+            ),
+            activeSnapshot?.weekDates.find(
+              (week) => week.weekNumber === normalizedWeek,
+            )?.dates,
+          ),
+        };
     this.setData({
       weekNumber: normalizedWeek,
-      weekIndex: normalizedWeek - 1,
+      weekIndex,
       weekLabel: `第 ${normalizedWeek} 周`,
-      periodRows: buildPeriodRows(
+      periodRows: buildTimetablePeriodRows(
         activeTimetable,
-        this.data.periodRows.length || maxPeriodFor(activeTimetable),
+        maxPeriod,
         visibleCourses,
       ),
+      ...pagePatch,
     });
     if (feedback) haptic("light");
   },

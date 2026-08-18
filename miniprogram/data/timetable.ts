@@ -460,6 +460,47 @@ export function teachingWeekForDate(
   return Math.floor((current - start) / ONE_DAY / 7) + 1;
 }
 
+/**
+ * 进入课表时要展示的周次。教学周内显示当前周；学期尚未开始时显示
+ * 第一周；学期结束后显示最后一周。结构化周次存在间隔时选择离今天
+ * 最近的一周，避免假期首屏退回无意义的第一周。
+ */
+export function timetableWeekForDisplay(
+  data: TimetableData | null,
+  date = new Date(),
+): number {
+  if (!data) return 1;
+  const maximum = timetableWeekCount(data);
+  const teachingWeek = teachingWeekForDate(data, date);
+  if (teachingWeek !== null) {
+    return Math.min(maximum, Math.max(1, teachingWeek));
+  }
+
+  const currentDate = campusToday(date);
+  const calendar = data.semesterCalendar;
+  if (calendar?.semesterId === data.semester.id && calendar.weeks.length) {
+    if (currentDate < calendar.startDate) return 1;
+    if (currentDate > calendar.endDate) return maximum;
+    const weeks = [...calendar.weeks].sort(
+      (left, right) => left.weekNumber - right.weekNumber,
+    );
+    const next = weeks.find((week) => currentDate < week.startDate);
+    if (next) return Math.min(maximum, Math.max(1, next.weekNumber));
+    const previous = [...weeks]
+      .reverse()
+      .find((week) => currentDate > week.endDate);
+    if (previous) {
+      return Math.min(maximum, Math.max(1, previous.weekNumber));
+    }
+  }
+
+  if (data.currentSemester?.id === data.semester.id) {
+    if (currentDate < data.currentSemester.startDate) return 1;
+    if (currentDate > data.currentSemester.endDate) return maximum;
+  }
+  return 1;
+}
+
 export function coursesForWeek(
   data: TimetableData | null,
   week: number,
