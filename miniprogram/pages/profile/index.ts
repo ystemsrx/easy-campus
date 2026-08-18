@@ -44,7 +44,7 @@ Page({
     themePreference: "system" as ThemePreference,
     themePreferenceLabel: "跟随系统",
     reducedMotion: false,
-    haptics: true,
+    haptics: false,
     themeSheetVisible: false,
     themeOptions: [
       { value: "system", label: "跟随系统", caption: "自动匹配设备外观" },

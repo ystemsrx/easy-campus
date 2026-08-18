@@ -9,5 +9,5 @@ export interface AppPreferences {
 export const DEFAULT_PREFERENCES: AppPreferences = {
   theme: "system",
   reducedMotion: false,
-  haptics: true,
+  haptics: false,
 };
