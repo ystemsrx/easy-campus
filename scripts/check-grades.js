@@ -195,5 +195,22 @@ assert(
   ),
   "默认成绩排序不得显式发送 sort=default，以兼容尚未重启的旧服务进程",
 );
+assert(
+  gradesPageScript.includes("displayScore: formatScore(course.finalScore)") &&
+    fs
+      .readFileSync(
+        path.resolve(
+          __dirname,
+          "..",
+          "miniprogram",
+          "pages",
+          "grade-detail",
+          "index.ts",
+        ),
+        "utf8",
+      )
+      .includes('{ label: "教师", value: course.teacherName || "—" }'),
+  "课程成绩详情必须显示成绩接口返回的教师原文",
+);
 
 console.log("Grade preview checks passed.");

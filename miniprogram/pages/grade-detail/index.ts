@@ -69,6 +69,7 @@ Page({
     const rows = [
       { label: "课程代码", value: course.courseCode || "—" },
       { label: "教学班", value: course.teachingClass || "—" },
+      { label: "教师", value: course.teacherName || "—" },
       { label: "开课学院", value: course.department || "—" },
       { label: "课程性质", value: course.courseNature || "—" },
       { label: "学年", value: course.academicYear || "—" },

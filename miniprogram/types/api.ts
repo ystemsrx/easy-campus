@@ -231,6 +231,7 @@ export interface GradeCourse {
   courseCode: string;
   courseName: string;
   teachingClass: string;
+  teacherName: string;
   department: string;
   courseNatureCode: string | null;
   courseNature: string | null;
