@@ -333,7 +333,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.title,
         subtitle: message.content,
-        dateLabel: "",
+        dateLabel: formatDateTime(message.createdAt),
         label: "消息",
         tone: "gray",
       };

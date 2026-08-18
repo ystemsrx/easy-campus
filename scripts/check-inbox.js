@@ -14,6 +14,15 @@ const pageRoot = path.resolve(
   "inbox",
 );
 const source = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
+const homeRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "pages",
+  "home",
+);
+const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
+const homeTemplate = fs.readFileSync(path.join(homeRoot, "index.wxml"), "utf8");
 const output = ts.transpileModule(source, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -105,6 +114,17 @@ assert(
   "点击全部必须清除其他筛选并恢复全部勾选",
 );
 assert(loadCount === 4, "每次筛选变化都必须重新读取对应消息");
+
+assert(
+  /case "other":[\s\S]*?dateLabel: formatDateTime\(message\.createdAt\),[\s\S]*?label: "消息"/.test(
+    homeSource,
+  ) &&
+    (homeSource.match(/dateLabel: formatScheduleDate\(/g) || []).length === 3 &&
+    homeTemplate.includes(
+      '<text wx:if="{{item.dateLabel}}" class="campus-line-schedule">{{item.dateLabel}}</text>',
+    ),
+  "主页普通消息必须显示消息时间，课程消息必须继续显示课程安排日期",
+);
 
 page.data.messageFilterMounted = true;
 page.data.messageFilterOpen = true;
