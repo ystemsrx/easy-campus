@@ -490,6 +490,7 @@ Page({
     publicationPanelMounted: false,
     publicationPanelOpen: false,
     publicationPanelTop: 132,
+    publicationPanelTransformOrigin: "318px -31px",
     announcementModalMounted: false,
     announcementModalOpen: false,
     activeAnnouncement: null as PublicationPreview | null,
@@ -698,11 +699,27 @@ Page({
     wx.createSelectorQuery()
       .select(".publication-bell")
       .boundingClientRect((rect) => {
+        const windowWidth = wx.getWindowInfo().windowWidth || 375;
+        const panelInset = (24 * windowWidth) / 750;
+        const rectLeft = Number(rect?.left);
+        const rectTop = Number(rect?.top);
+        const rectWidth = Number(rect?.width);
+        const rectHeight = Number(rect?.height);
         const bottom = Number(rect?.bottom);
+        const panelTop = Number.isFinite(bottom) ? bottom + 10 : 132;
+        const originX =
+          Number.isFinite(rectLeft) && Number.isFinite(rectWidth)
+            ? rectLeft + rectWidth / 2 - panelInset
+            : windowWidth - (114 * windowWidth) / 750;
+        const originY =
+          Number.isFinite(rectTop) && Number.isFinite(rectHeight)
+            ? rectTop + rectHeight / 2 - panelTop
+            : -(42 * windowWidth) / 750 - 10;
         this.setData(
           {
             publicationPanelMounted: true,
-            publicationPanelTop: Number.isFinite(bottom) ? bottom + 10 : 132,
+            publicationPanelTop: panelTop,
+            publicationPanelTransformOrigin: `${originX}px ${originY}px`,
           },
           () => {
             setTimeout(() => {

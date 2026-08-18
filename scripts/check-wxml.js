@@ -331,6 +331,18 @@ if (
 }
 if (
   !homeTemplate.includes(
+    "transform-origin: {{publicationPanelTransformOrigin}}",
+  ) ||
+  !homeScript.includes("rectLeft + rectWidth / 2 - panelInset") ||
+  !homeScript.includes("rectTop + rectHeight / 2 - panelTop") ||
+  homeStyles.includes("transform-origin: calc(100% - 44rpx) 0")
+) {
+  failures.push(
+    "pages/home/index.wxml: 通知弹窗必须以铃铛中心作为缩放原点",
+  );
+}
+if (
+  !homeTemplate.includes(
     'class="score-ring-image" src="{{gradeRingSource}}" mode="aspectFit"',
   ) ||
   !gradesTemplate.includes(
