@@ -63,6 +63,10 @@ const homeScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.ts"),
   "utf8",
 );
+const homeTemplate = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxml"),
+  "utf8",
+);
 const homeStyles = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
@@ -89,6 +93,15 @@ assert(
       homeScript,
     ),
   "首页从本地教学缓存恢复时，消息和通知预览都必须限制为 3 条",
+);
+
+assert(
+  homeTemplate.indexOf(">教务消息</text>") <
+    homeTemplate.indexOf(">学校通知</text>") &&
+    /教务消息<\/text>[\s\S]*?openMessagesFromCard[\s\S]*?学校通知<\/text>[\s\S]*?openNoticesFromCard/.test(
+      homeTemplate,
+    ),
+  "首页校园消息必须先展示教务消息，再展示学校通知，并保持卡片跳转一致",
 );
 
 assert(
