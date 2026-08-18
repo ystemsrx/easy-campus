@@ -6,6 +6,12 @@ const failures = [];
 const appConfig = JSON.parse(
   fs.readFileSync(path.join(miniprogramRoot, "app.json"), "utf8"),
 );
+const skylineOptions = appConfig.rendererOptions?.skyline || {};
+for (const option of ["tagNameStyleIsolation", "enableScrollViewAutoSize"]) {
+  if (Object.prototype.hasOwnProperty.call(skylineOptions, option)) {
+    failures.push(`app.json: rendererOptions.skyline 包含无效配置 ${option}`);
+  }
+}
 
 for (const page of appConfig.pages || []) {
   const configPath = path.join(miniprogramRoot, `${page}.json`);
@@ -337,9 +343,7 @@ if (
   !homeScript.includes("rectTop + rectHeight / 2 - panelTop") ||
   homeStyles.includes("transform-origin: calc(100% - 44rpx) 0")
 ) {
-  failures.push(
-    "pages/home/index.wxml: 通知弹窗必须以铃铛中心作为缩放原点",
-  );
+  failures.push("pages/home/index.wxml: 通知弹窗必须以铃铛中心作为缩放原点");
 }
 if (
   !homeTemplate.includes(

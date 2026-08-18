@@ -16,7 +16,8 @@ import {
   type TimetablePeriodRow,
   type TimetableWeekPage,
 } from "../../data/timetable-render";
-import { getTimetable } from "../../services/teaching";
+import { getErrorMessage } from "../../services/request";
+import { getPassRates, getTimetable } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
   isCacheStale,
@@ -29,8 +30,15 @@ import {
   saveTimetableSnapshot,
   type TimetableSnapshot,
 } from "../../store/timetable";
-import type { AcademicSemesterOption, TimetableData } from "../../types/api";
+import type {
+  AcademicSemesterOption,
+  PassRateCourse,
+  PassRateStatistics,
+  TimetableData,
+} from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
+import { courseStatisticsKey } from "../../utils/course-statistics";
+import { formatScore } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import {
@@ -47,6 +55,26 @@ interface TimetableThemeOption {
 
 interface TimetableSemesterOption extends AcademicSemesterOption {
   displayLabel: string;
+}
+
+interface TimetableWeekMenuOption {
+  weekNumber: number;
+  startDateLabel: string;
+}
+
+interface TimetableWeekMenuRow {
+  id: string;
+  weeks: TimetableWeekMenuOption[];
+}
+
+interface PassRateSheetHeightInput {
+  loading: boolean;
+  errorMessage: string;
+  courseName: string;
+  status: "ready" | "collecting";
+  hasStatistics: boolean;
+  showOwnScore: boolean;
+  message: string;
 }
 
 const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
@@ -81,6 +109,7 @@ let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
 let weekBuildSequence = 0;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
+let passRateRequestSequence = 0;
 let pageAlive = false;
 
 function timetableSemesterOptions(
@@ -98,6 +127,138 @@ function submenuHeight(semesterCount: number): number {
 
 function weekMenuListHeight(weekCount: number): number {
   return Math.min(448, 32 + Math.ceil(Math.max(1, weekCount) / 4) * 86);
+}
+
+function weekMenuRowId(weekNumber: number): string {
+  return `week-option-row-${Math.floor((Math.max(1, weekNumber) - 1) / 4)}`;
+}
+
+function timetableWeekMenuRows(
+  weekPages: TimetableWeekPage[],
+): TimetableWeekMenuRow[] {
+  const options = weekPages.map(({ weekNumber, startDateLabel }) => ({
+    weekNumber,
+    startDateLabel,
+  }));
+  return Array.from({ length: Math.ceil(options.length / 4) }, (_, index) => ({
+    id: `week-option-row-${index}`,
+    weeks: options.slice(index * 4, index * 4 + 4),
+  }));
+}
+
+function estimatedTextLines(value: string, charactersPerLine: number): number {
+  return Math.max(
+    1,
+    Math.ceil(Array.from(value.trim()).length / charactersPerLine),
+  );
+}
+
+function viewportSheetHeight(
+  contentHeightRpx: number,
+  minimumPercent: number,
+  maximumPercent: number,
+  fallbackPercent: number,
+): number {
+  try {
+    const windowInfo = wx.getWindowInfo();
+    const width = Math.max(1, windowInfo.windowWidth || 375);
+    const height = Math.max(1, windowInfo.windowHeight || 667);
+    const safeBottom = Math.max(
+      0,
+      height - Number(windowInfo.safeArea?.bottom || height),
+    );
+    const desiredPercent =
+      (((contentHeightRpx * width) / 750 + safeBottom) / height) * 100;
+    return Number(
+      Math.min(
+        maximumPercent,
+        Math.max(minimumPercent, desiredPercent),
+      ).toFixed(1),
+    );
+  } catch {
+    return Math.min(maximumPercent, Math.max(minimumPercent, fallbackPercent));
+  }
+}
+
+function courseSheetHeight(course: TimetableCourse): number {
+  const detailValues = [
+    course.location,
+    course.displayTimeLabel,
+    course.weekText,
+    ...(course.credits !== null ? [String(course.credits)] : []),
+    ...(course.teachingClass ? [course.teachingClass] : []),
+    ...(course.nature ? [course.nature] : []),
+    ...(course.assessmentMethod ? [course.assessmentMethod] : []),
+  ];
+  const detailHeight = detailValues.reduce(
+    (height, value) =>
+      height + 46 + Math.min(3, estimatedTextLines(value, 18)) * 35,
+    0,
+  );
+  const titleLines = Math.min(3, estimatedTextLines(course.name, 10));
+  const teacherLines = Math.min(
+    2,
+    estimatedTextLines(`${course.teacher} · ${course.activityTypeLabel}`, 18),
+  );
+  const contentHeightRpx =
+    100 +
+    30 +
+    68 +
+    32 +
+    6 +
+    titleLines * 56 +
+    7 +
+    teacherLines * 33 +
+    22 +
+    detailHeight +
+    24;
+  return viewportSheetHeight(
+    contentHeightRpx,
+    44,
+    82,
+    42 + detailValues.length * 5,
+  );
+}
+
+function passRateSheetHeight(input: PassRateSheetHeightInput): number {
+  let headingHeight = 0;
+  let bodyHeight = 230;
+  let minimumPercent = 42;
+  let fallbackPercent = 46;
+
+  if (input.loading) {
+    bodyHeight = 330;
+  } else if (input.errorMessage) {
+    const descriptionLines = Math.min(
+      4,
+      estimatedTextLines(input.errorMessage, 16),
+    );
+    bodyHeight = Math.max(230, 278 + descriptionLines * 38);
+  } else if (input.courseName) {
+    const nameLines = Math.min(2, estimatedTextLines(input.courseName, 16));
+    headingHeight = 63 + nameLines * 40;
+    if (input.status === "ready" && input.hasStatistics) {
+      bodyHeight = 872 + (input.showOwnScore ? 58 : 0);
+      minimumPercent = 56;
+      fallbackPercent = input.showOwnScore ? 82 : 78;
+    } else {
+      const messageLines = Math.min(
+        4,
+        estimatedTextLines(input.message || "统计中，请稍后查看", 16),
+      );
+      bodyHeight = Math.max(330, 245 + messageLines * 35);
+      minimumPercent = 44;
+      fallbackPercent = 52;
+    }
+  }
+
+  const contentHeightRpx = 84 + 30 + 10 + headingHeight + bodyHeight + 32;
+  return viewportSheetHeight(
+    contentHeightRpx,
+    minimumPercent,
+    82,
+    fallbackPercent,
+  );
 }
 
 function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
@@ -229,9 +390,23 @@ Page({
     weekLabel: "第 1 周",
     maxWeek: 1,
     weekPages: [] as TimetableWeekPage[],
+    weekMenuRows: [] as TimetableWeekMenuRow[],
     periodRows: [] as TimetablePeriodRow[],
     selectedCourse: null as TimetableCourse | null,
     courseSheetVisible: false,
+    courseSheetHeight: 60,
+    passRateSheetVisible: false,
+    passRateSheetHeight: 46,
+    passRateLoading: false,
+    passRateErrorMessage: "",
+    passRateCourseName: "",
+    passRateCourse: null as PassRateCourse | null,
+    passRateStatistics: null as PassRateStatistics | null,
+    passRateStatus: "collecting" as "ready" | "collecting",
+    passRateMessage: "统计中，请稍后查看",
+    passRateCohortLabel: "",
+    passRateOwnScore: -1,
+    passRateDisplayScore: "—",
     hasHydrated: false,
   },
   onLoad() {
@@ -251,6 +426,7 @@ Page({
     activeSnapshot = null;
     defaultSemesterId = "";
     visibleRequestSequence += 1;
+    passRateRequestSequence += 1;
     pendingVisibleRequestId = null;
     this.setData({
       ...resolveAppearance(),
@@ -278,6 +454,7 @@ Page({
     }
     clearRefreshToastTimers();
     cancelPendingWeekBuilds();
+    passRateRequestSequence += 1;
   },
   queueRemainingWeekPages(
     timetable: TimetableData,
@@ -489,8 +666,7 @@ Page({
           : prewarmed?.weekNumber || timetableWeekForDisplay(timetable),
       ),
     );
-    const firstScreen =
-      prewarmed?.weekNumber === weekNumber ? prewarmed : null;
+    const firstScreen = prewarmed?.weekNumber === weekNumber ? prewarmed : null;
     const periodCourses = firstScreen
       ? firstScreen.courses
       : coursesForWeek(timetable, weekNumber);
@@ -501,6 +677,7 @@ Page({
         cachedWeekDates.get(index + 1),
       ),
     );
+    const weekMenuRows = timetableWeekMenuRows(weekPages);
     weekPages[weekNumber - 1] = firstScreen
       ? firstScreen.weekPage
       : buildTimetableWeekPage(
@@ -523,6 +700,7 @@ Page({
         weekLabel: `第 ${weekNumber} 周`,
         maxWeek,
         weekMenuListHeight: weekMenuListHeight(maxWeek),
+        weekMenuRows,
         periodRows: firstScreen
           ? firstScreen.periodRows
           : buildTimetablePeriodRows(timetable, maxPeriod, periodCourses),
@@ -640,13 +818,19 @@ Page({
         semesterOpen: false,
         menuHeight: MAIN_MENU_HEIGHT,
         weekMenuMounted: true,
-        weekScrollIntoView: `week-option-${this.data.weekNumber}`,
+        weekScrollIntoView: "",
       },
       () => {
-        weekMenuOpenTimer = setTimeout(() => {
-          weekMenuOpenTimer = undefined;
-          if (this.data.weekMenuMounted) this.setData({ weekMenuOpen: true });
-        }, 16);
+        wx.nextTick(() => {
+          if (!this.data.weekMenuMounted) return;
+          this.setData({
+            weekScrollIntoView: weekMenuRowId(this.data.weekNumber),
+          });
+          weekMenuOpenTimer = setTimeout(() => {
+            weekMenuOpenTimer = undefined;
+            if (this.data.weekMenuMounted) this.setData({ weekMenuOpen: true });
+          }, 16);
+        });
       },
     );
   },
@@ -773,13 +957,138 @@ Page({
     const course = visibleCourses.find((item) => item.id === id);
     if (!course) return;
     haptic("light");
-    this.setData({ selectedCourse: course, courseSheetVisible: true });
+    this.setData({
+      selectedCourse: course,
+      courseSheetHeight: courseSheetHeight(course),
+      courseSheetVisible: true,
+    });
+  },
+  async openCoursePassRate() {
+    const selectedCourse = this.data.selectedCourse;
+    if (!selectedCourse || this.data.passRateLoading) return;
+    const courseKey = courseStatisticsKey(selectedCourse.name);
+    if (!courseKey) return;
+    const sequence = ++passRateRequestSequence;
+    haptic("light");
+    this.setData({
+      passRateSheetVisible: true,
+      passRateSheetHeight: passRateSheetHeight({
+        loading: true,
+        errorMessage: "",
+        courseName: selectedCourse.name,
+        status: "collecting",
+        hasStatistics: false,
+        showOwnScore: false,
+        message: "统计中，请稍后查看",
+      }),
+      passRateLoading: true,
+      passRateErrorMessage: "",
+      passRateCourseName: selectedCourse.name,
+      passRateCourse: null,
+      passRateStatistics: null,
+      passRateStatus: "collecting",
+      passRateMessage: "统计中，请稍后查看",
+      passRateCohortLabel: "",
+      passRateOwnScore: -1,
+      passRateDisplayScore: "—",
+    });
+    try {
+      const result = await getPassRates(courseKey);
+      if (sequence !== passRateRequestSequence) return;
+      const course = result.data.selectedCourse;
+      const statistics = result.data.statistics;
+      const ownScore =
+        typeof course?.calculationScore === "number"
+          ? course.calculationScore
+          : -1;
+      const message = result.data.message || "统计中，请稍后查看";
+      const showOwnScore = Boolean(course?.hasOwnGrade && ownScore >= 0);
+      this.setData({
+        passRateLoading: false,
+        passRateSheetHeight: passRateSheetHeight({
+          loading: false,
+          errorMessage: "",
+          courseName: course?.courseName || selectedCourse.name,
+          status: result.data.status,
+          hasStatistics: Boolean(statistics),
+          showOwnScore,
+          message,
+        }),
+        passRateCourse: course,
+        passRateStatistics: statistics,
+        passRateStatus: result.data.status,
+        passRateMessage: message,
+        passRateCohortLabel: statistics
+          ? statistics.cohorts
+              .map((year) => `${String(year).slice(-2)}级`)
+              .join("、")
+          : "",
+        passRateOwnScore: ownScore,
+        passRateDisplayScore: formatScore(course?.finalScore ?? null),
+      });
+    } catch (error) {
+      if (sequence !== passRateRequestSequence) return;
+      const errorMessage = getErrorMessage(
+        error,
+        "通过率加载失败，请稍后重试。",
+      );
+      this.setData({
+        passRateLoading: false,
+        passRateErrorMessage: errorMessage,
+        passRateSheetHeight: passRateSheetHeight({
+          loading: false,
+          errorMessage,
+          courseName: selectedCourse.name,
+          status: "collecting",
+          hasStatistics: false,
+          showOwnScore: false,
+          message: "",
+        }),
+      });
+    }
+  },
+  closeCoursePassRate() {
+    passRateRequestSequence += 1;
+    this.setData({
+      passRateSheetVisible: false,
+      passRateLoading: false,
+    });
   },
   closeCourse() {
-    this.setData({ courseSheetVisible: false, selectedCourse: null });
+    passRateRequestSequence += 1;
+    this.setData({
+      courseSheetVisible: false,
+      passRateSheetVisible: false,
+      passRateLoading: false,
+      selectedCourse: null,
+    });
   },
   onResize() {
-    this.setData(backgroundMetrics());
+    const selectedCourse = this.data.selectedCourse;
+    const passRateCourse = this.data.passRateCourse;
+    const passRateOwnScore = Number(this.data.passRateOwnScore);
+    this.setData({
+      ...backgroundMetrics(),
+      ...(selectedCourse
+        ? { courseSheetHeight: courseSheetHeight(selectedCourse) }
+        : {}),
+      ...(this.data.passRateSheetVisible
+        ? {
+            passRateSheetHeight: passRateSheetHeight({
+              loading: this.data.passRateLoading,
+              errorMessage: this.data.passRateErrorMessage,
+              courseName:
+                passRateCourse?.courseName || this.data.passRateCourseName,
+              status: this.data.passRateStatus,
+              hasStatistics: Boolean(this.data.passRateStatistics),
+              showOwnScore: Boolean(
+                passRateCourse?.hasOwnGrade && passRateOwnScore >= 0,
+              ),
+              message: this.data.passRateMessage,
+            }),
+          }
+        : {}),
+    });
     if (activeTimetable) this.applyTimetable(activeTimetable, true);
   },
 });

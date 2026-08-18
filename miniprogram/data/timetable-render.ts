@@ -23,6 +23,7 @@ export interface TimetableDayOption {
 export interface TimetableGridCourse extends TimetableCourse {
   topPercent: string;
   heightPercent: string;
+  topInsetPx: string;
   nameRows: Array<{ key: string; text: string }>;
   locationRows: Array<{ key: string; text: string }>;
   teacherRows: Array<{ key: string; text: string }>;
@@ -53,6 +54,8 @@ export interface TimetablePeriodRow {
 
 export interface TimetableGridLayoutMetrics {
   rowHeightPx: number;
+  courseTopInsetPx: number;
+  courseHeightExtensionPx: number;
   nameFontSizePx: number;
   locationFontSizePx: number;
   teacherFontSizePx: number;
@@ -97,7 +100,7 @@ function buildDays(
   const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
     now.getDate(),
   )}`;
-  const dates = cachedDates || weekDateKeys(timetable, week);
+  const dates = resolvedWeekDates(timetable, week, cachedDates);
   return DAY_LABELS.map((shortLabel, index) => {
     const date = dates[index] || "";
     return {
@@ -133,11 +136,25 @@ function toGridCourse(
   const start = Math.max(1, Math.min(maxPeriod, course.periodStart));
   const end = Math.max(start, Math.min(maxPeriod, course.periodEnd));
   const span = end - start + 1;
+  const gridHeightPx = metrics.rowHeightPx * maxPeriod;
+  const heightExtensionPx =
+    end < maxPeriod ? metrics.courseHeightExtensionPx : 0;
+  const textMetrics = heightExtensionPx
+    ? metrics
+    : {
+        ...metrics,
+        contentInsetPx:
+          metrics.contentInsetPx + metrics.courseHeightExtensionPx,
+      };
   return {
     ...course,
     topPercent: (((start - 1) / maxPeriod) * 100).toFixed(5),
-    heightPercent: ((span / maxPeriod) * 100).toFixed(5),
-    ...layoutGridCourseText(course, span * metrics.rowHeightPx, metrics),
+    heightPercent: (
+      ((span * metrics.rowHeightPx + heightExtensionPx) / gridHeightPx) *
+      100
+    ).toFixed(5),
+    topInsetPx: metrics.courseTopInsetPx.toFixed(2),
+    ...layoutGridCourseText(course, span * metrics.rowHeightPx, textMetrics),
   };
 }
 
@@ -188,18 +205,27 @@ export function timetableGridLayoutMetrics(
       1,
       Math.min(maximum, (contentWidth - widthSafetyPx) / charactersPerLine),
     );
-  const gridHeight = Math.max(
-    160,
-    viewport.height - headerHeight - 84 * scale,
+  const gridHeight = Math.max(160, viewport.height - headerHeight - 84 * scale);
+  const rowHeightPx = gridHeight / Math.max(1, maxPeriod);
+  // 左侧节次由 25rpx 数字、两行 16rpx 时间和两个 5rpx 间距组成。
+  // 课程卡片比这组内容的顶部略高 3rpx，保留轻微超出而不贴住整行边界。
+  const periodLabelHeightPx = 67 * scale;
+  const courseTopInsetPx = Math.max(
+    2 * scale,
+    (rowHeightPx - periodLabelHeightPx) / 2 - 3 * scale,
   );
+  // 下沿比顶部偏移少延长 1rpx，与槽底部 2rpx 合计形成 3rpx 课程间距。
+  const courseHeightExtensionPx = Math.max(0, courseTopInsetPx - scale);
   return {
-    rowHeightPx: gridHeight / Math.max(1, maxPeriod),
+    rowHeightPx,
+    courseTopInsetPx,
+    courseHeightExtensionPx,
     nameFontSizePx: fittedFontSize(3, 15),
     locationFontSizePx: fittedFontSize(3, 14),
     teacherFontSizePx: fittedFontSize(3, 12),
     contentWidthPx: contentWidth,
-    // 卡片槽上下内边距 4rpx + 卡片边框 6rpx + 内边距 8rpx。
-    contentInsetPx: 18 * scale,
+    // 扣除未被下沿补回的顶部距离、底部 2rpx、边框和内边距。
+    contentInsetPx: courseTopInsetPx - courseHeightExtensionPx + 16 * scale,
     scale,
     viewportKey: `${viewport.width}x${viewport.height}:${headerHeight}`,
   };
@@ -216,12 +242,25 @@ function weekStartDateLabel(dates: string[]): string {
   return date ? `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}` : "";
 }
 
+function resolvedWeekDates(
+  timetable: TimetableData,
+  weekNumber: number,
+  cachedDates?: string[],
+): string[] {
+  const calculatedDates = weekDateKeys(timetable, weekNumber);
+  if (!cachedDates?.some(Boolean)) return calculatedDates;
+  return Array.from(
+    { length: 7 },
+    (_, index) => cachedDates[index] || calculatedDates[index] || "",
+  );
+}
+
 export function buildTimetableWeekPlaceholder(
   timetable: TimetableData,
   weekNumber: number,
   cachedDates?: string[],
 ): TimetableWeekPage {
-  const dates = cachedDates || weekDateKeys(timetable, weekNumber);
+  const dates = resolvedWeekDates(timetable, weekNumber, cachedDates);
   return {
     weekNumber,
     monthNumber: "—",

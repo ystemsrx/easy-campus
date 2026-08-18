@@ -270,9 +270,9 @@
 
 .period-time {
   display: block;
-  margin-top: 3rpx;
+  margin-top: 5rpx;
   color: rgba(255, 255, 255, 0.52);
-  font-size: 13rpx;
+  font-size: 16rpx;
   font-weight: 620;
   line-height: 1;
   white-space: nowrap;
@@ -479,21 +479,35 @@
   max-height: 448rpx;
 }
 
-.week-options {
+.week-options-top-space {
+  width: 100%;
+  height: 8rpx;
+}
+
+.week-options-bottom-space {
+  width: 100%;
+  height: 24rpx;
+}
+
+.week-option-row {
   display: flex;
+  flex: none;
   flex-direction: row;
-  flex-wrap: wrap;
   gap: 10rpx;
-  padding: 8rpx 20rpx 24rpx;
+  width: 100%;
+  height: 86rpx;
+  padding: 0 20rpx 10rpx;
 }
 
 .week-option {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: calc(25% - 8rpx);
-  min-height: 76rpx;
+  width: 0;
+  min-width: 0;
+  height: 76rpx;
   border: 3rpx solid transparent;
   border-radius: 999rpx;
   color: #817b70;
@@ -518,30 +532,33 @@
   box-shadow: 0 10rpx 24rpx rgba(8, 98, 173, 0.22);
 }
 
-.week-option-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(5rpx);
-}
-
 .week-option-number {
   display: block;
+  flex: none;
+  width: 100%;
   font-size: 24rpx;
   font-weight: 820;
   line-height: 26rpx;
+  text-align: center;
 }
 
 .week-option-date {
-  min-height: 18rpx;
-  margin-top: 4rpx;
-  color: currentColor;
-  font-size: 16rpx;
+  display: block;
+  flex: none;
+  width: 100%;
+  height: 22rpx;
+  min-height: 22rpx;
+  margin-top: 5rpx;
+  color: #9f9a90;
+  font-size: 17rpx;
   font-weight: 620;
-  line-height: 1;
-  opacity: 0.62;
+  line-height: 22rpx;
+  text-align: center;
+  white-space: nowrap;
 }
+
+.week-option--current .week-option-date { color: #6e9abf; }
+.week-option--active .week-option-date { color: #d5e7f4; }
 
 .refresh-confirmation {
   position: fixed;
@@ -807,12 +824,20 @@
   background: linear-gradient(140deg, #d97757, #eba97f);
 }
 
+.course-sheet-scroll { width: 100%; height: 100%; }
+.course-sheet { width: 100%; }
+.course-sheet-bottom-space { width: 100%; height: 24rpx; }
 .course-sheet-hero--cyan { background: linear-gradient(140deg, #70a89d, #a7ccc4); }
 .course-sheet-hero--purple { background: linear-gradient(140deg, #8b70a5, #bca9cd); }
 .course-sheet-hero--green { background: linear-gradient(140deg, #7d8f6e, #acbe97); }
 .course-sheet-hero--orange { background: linear-gradient(140deg, #c98a2d, #e5b86e); }
 .course-sheet-blob { top: -60rpx; right: -50rpx; width: 210rpx; height: 190rpx; background: rgba(255, 255, 255, 0.16); }
-.course-sheet-kicker { position: relative; display: block; color: rgba(255, 255, 255, 0.72); font-size: 21rpx; font-weight: 750; letter-spacing: 2rpx; }
+.course-sheet-hero-main { position: relative; display: flex; flex-direction: row; align-items: center; gap: 22rpx; }
+.course-sheet-hero-copy { flex: 1; min-width: 0; }
+.course-sheet-kicker { display: block; width: 100%; overflow: hidden; color: rgba(255, 255, 255, 0.72); font-size: 21rpx; font-weight: 750; letter-spacing: 2rpx; text-overflow: ellipsis; white-space: nowrap; }
+.course-pass-rate-action { position: relative; display: flex; flex: none; flex-direction: row; align-items: center; align-self: center; gap: 4rpx; min-height: 64rpx; padding: 0 9rpx 0 18rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); font-size: 22rpx; font-weight: 760; white-space: nowrap; backdrop-filter: blur(10px); transition: transform 110ms ease-out, opacity 110ms ease-out; }
+.course-pass-rate-action > text { display: block; flex: none; white-space: nowrap; }
+.course-pass-rate-action--pressed { transform: scale(0.95); opacity: 0.78; }
 .course-sheet-title { position: relative; display: block; margin-top: 6rpx; font-size: 43rpx; font-weight: 700; line-height: 1.3; }
 .course-sheet-teacher { position: relative; display: block; margin-top: 7rpx; color: rgba(255, 255, 255, 0.8); font-size: 22rpx; }
 .course-sheet-info { margin-top: 22rpx; overflow: hidden; }
@@ -820,6 +845,16 @@
 .course-sheet-row:last-child { border-bottom: 0; }
 .course-sheet-row text:first-child { flex: none; color: #9a9aa3; font-size: 22rpx; }
 .course-sheet-row text:last-child { color: var(--color-text); font-size: 23rpx; font-weight: 650; text-align: right; }
+
+.course-pass-rate-scroll { width: 100%; height: 100%; }
+.course-pass-rate-content { width: 100%; padding-top: 10rpx; }
+.course-pass-rate-heading { padding: 4rpx 4rpx 22rpx; }
+.course-pass-rate-name { display: block; color: var(--color-text); font-size: 31rpx; font-weight: 760; line-height: 1.28; }
+.course-pass-rate-meta { display: block; margin-top: 7rpx; color: var(--color-text-tertiary); font-size: 20rpx; font-weight: 650; }
+.course-pass-rate-collecting { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 330rpx; padding: 50rpx; text-align: center; }
+.course-pass-rate-collecting-icon { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; border-radius: 30rpx; background: #f8eedd; }
+.course-pass-rate-collecting > text { display: block; margin-top: 22rpx; color: var(--color-text); font-size: 27rpx; font-weight: 750; }
+.course-pass-rate-bottom-space { width: 100%; height: 32rpx; }
 
 @keyframes popover-materialize {
   0% { opacity: 0; transform: scale(0.72); }

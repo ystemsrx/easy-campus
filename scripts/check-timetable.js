@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const path = require("node:path");
 const ts = require("typescript");
 
@@ -21,6 +22,32 @@ function loadTimetable() {
     moduleRecord,
     moduleRecord.exports,
     require,
+  );
+  return moduleRecord.exports;
+}
+
+function loadTimetableRender(timetableModule) {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "timetable-render.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    (request) => {
+      if (request === "./timetable") return timetableModule;
+      return require(request);
+    },
   );
   return moduleRecord.exports;
 }
@@ -77,13 +104,53 @@ function loadSemesterFormat() {
   return moduleRecord.exports;
 }
 
+function loadCourseStatistics() {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "utils",
+    "course-statistics.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", output)(moduleRecord, moduleRecord.exports);
+  return moduleRecord.exports;
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 const timetable = loadTimetable();
+const timetableRender = loadTimetableRender(timetable);
 const messageFormat = loadMessageFormat();
 const semesterFormat = loadSemesterFormat();
+const courseStatistics = loadCourseStatistics();
+
+for (const courseName of [
+  "高等数学",
+  "  大学 英语（四） ",
+  "Software Engineering 🚀",
+  "新时代中国特色社会主义理论与实践课程设计综合训练一二三四五六七八九十",
+]) {
+  const normalized = courseName
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 255)
+    .toLocaleLowerCase("zh-CN");
+  assert(
+    courseStatistics.courseStatisticsKey(courseName) ===
+      crypto.createHash("sha256").update(normalized).digest("hex"),
+    "课表课程的通过率键必须与服务端课程名规范化和 SHA-256 规则一致",
+  );
+}
 
 const summerSemester = {
   id: "2025-3",
@@ -313,6 +380,49 @@ assert(
     cachedWeekDates[0].dates[0] === "2026-08-10",
   "本地课表快照必须包含全部周次及每周日期",
 );
+assert(
+  timetableRender.buildTimetableWeekPlaceholder(data, 1, []).startDateLabel ===
+    "8/10",
+  "空的旧周次日期缓存不得覆盖可由当前校历重新计算出的日期",
+);
+const alignedGridMetrics = timetableRender.timetableGridLayoutMetrics(13, 64);
+const alignedWeekPage = timetableRender.buildTimetableWeekPage(
+  data,
+  1,
+  13,
+  alignedGridMetrics,
+);
+const alignedCourse = alignedWeekPage.gridDays
+  .flatMap((day) => day.courses)
+  .find(Boolean);
+const finalPeriodCourse = alignedWeekPage.gridDays
+  .flatMap((day) => day.courses)
+  .find((course) => course.periodEnd === 13);
+const alignedPeriodLabelTopPx =
+  (alignedGridMetrics.rowHeightPx - 67 * alignedGridMetrics.scale) / 2;
+assert(
+  alignedCourse &&
+    Number(alignedCourse.topInsetPx) > 2 * alignedGridMetrics.scale &&
+    Number(alignedCourse.heightPercent) >
+      ((alignedCourse.periodEnd - alignedCourse.periodStart + 1) / 13) * 100 &&
+    Math.abs(
+      alignedPeriodLabelTopPx -
+        alignedGridMetrics.courseTopInsetPx -
+        3 * alignedGridMetrics.scale,
+    ) < 0.001 &&
+    Math.abs(
+      alignedGridMetrics.courseHeightExtensionPx -
+        (alignedGridMetrics.courseTopInsetPx - alignedGridMetrics.scale),
+    ) < 0.001 &&
+    Math.abs(
+      alignedGridMetrics.contentInsetPx - 17 * alignedGridMetrics.scale,
+    ) < 0.001 &&
+    finalPeriodCourse &&
+    Number(finalPeriodCourse.topPercent) +
+      Number(finalPeriodCourse.heightPercent) <=
+      100,
+  "课程块顶部必须略高于节次数字，并保留约 3rpx 的相邻课程间距",
+);
 
 const textMetrics = {
   nameFontSizePx: 10,
@@ -425,17 +535,55 @@ const timetableStoreSource = fs.readFileSync(
   "utf8",
 );
 const timetableRenderSource = fs.readFileSync(
-  path.resolve(
-    __dirname,
-    "..",
-    "miniprogram",
-    "data",
-    "timetable-render.ts",
-  ),
+  path.resolve(__dirname, "..", "miniprogram", "data", "timetable-render.ts"),
   "utf8",
 );
 const appSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
+  "utf8",
+);
+const passRatePageTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "pages",
+    "pass-rates",
+    "index.wxml",
+  ),
+  "utf8",
+);
+const passRateCardTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "pass-rate-card",
+    "pass-rate-card.wxml",
+  ),
+  "utf8",
+);
+const bottomSheetScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "bottom-sheet",
+    "bottom-sheet.ts",
+  ),
+  "utf8",
+);
+const bottomSheetTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "bottom-sheet",
+    "bottom-sheet.wxml",
+  ),
   "utf8",
 );
 const dayColumnRule = timetablePageStyles.match(
@@ -463,11 +611,41 @@ assert(
   "顶部周次必须提供可直接切换周次的弹出菜单",
 );
 assert(
-  timetablePageTemplate.includes('class="week-option-content"') &&
-    /\.week-option-content\s*\{[^}]*translateY\(5rpx\)/s.test(
+  timetablePageTemplate.includes(
+    '<view class="week-option-number tnum">{{week.weekNumber}}</view>',
+  ) &&
+    timetablePageTemplate.includes(
+      '<view class="week-option-date tnum">{{week.startDateLabel}}</view>',
+    ) &&
+    !timetablePageTemplate.includes('class="week-option-content"'),
+  "周次数字和日期必须作为胶囊内的两个直接块级节点纵向排列",
+);
+assert(
+  timetablePageTemplate.includes('wx:for="{{weekMenuRows}}"') &&
+    timetablePageTemplate.includes('id="{{weekRow.id}}"') &&
+    !timetablePageTemplate.includes('class="week-options"') &&
+    timetablePageScript.includes("function timetableWeekMenuRows(") &&
+    timetablePageScript.includes("weekMenuRowId(this.data.weekNumber)") &&
+    /\.week-option-row\s*\{[^}]*flex:\s*none[^}]*height:\s*86rpx/s.test(
       timetablePageStyles,
     ),
-  "周次选项的数字和日期必须按视觉中心向下校正",
+  "Skyline 周次选择器必须使用独立轻量数据和可直接虚拟化的固定高度行",
+);
+assert(
+  /\.week-option-date\s*\{[^}]*display:\s*block[^}]*height:\s*22rpx[^}]*font-size:\s*17rpx[^}]*line-height:\s*22rpx[^}]*text-align:\s*center/s.test(
+    timetablePageStyles,
+  ),
+  "周次日期必须使用 Skyline 可稳定渲染的显式块级高度与行高",
+);
+assert(
+  /\.period-time\s*\{[^}]*margin-top:\s*5rpx[^}]*font-size:\s*16rpx/s.test(
+    timetablePageStyles,
+  ),
+  "左侧节次时间必须保持清晰字号，并与节次数字留出间距",
+);
+assert(
+  timetablePageTemplate.includes("padding-top: {{course.topInsetPx}}px;"),
+  "课程块必须应用按屏幕行高计算的顶部对齐距离",
 );
 assert(
   timetablePageTemplate.includes("week-option--current") &&
@@ -487,7 +665,9 @@ assert(
 );
 assert(
   appSource.includes("prewarmTimetableFirstScreen(account, timetable)") &&
-    timetableStoreSource.includes("prewarmTimetableFirstScreen(account, snapshot)") &&
+    timetableStoreSource.includes(
+      "prewarmTimetableFirstScreen(account, snapshot)",
+    ) &&
     timetablePageScript.includes("getPrewarmedTimetableFirstScreen") &&
     timetablePageScript.includes("queueRemainingWeekPages") &&
     timetablePageTemplate.includes('wx:if="{{weekPage.ready}}"') &&
@@ -507,6 +687,50 @@ assert(
   timetablePageTemplate.includes("menu-glyph--open") &&
     timetablePageStyles.includes(".menu-glyph--open > view:nth-child(1)"),
   "课表菜单按钮必须在三横线和关闭图标之间平滑变形",
+);
+assert(
+  timetablePageTemplate.includes(
+    '<bottom-sheet visible="{{courseSheetVisible}}" expanded="{{true}}" scrollable="{{false}}"',
+  ) &&
+    timetablePageTemplate.includes('expanded-height="{{courseSheetHeight}}"') &&
+    !timetablePageTemplate.includes("用户所在时区") &&
+    timetablePageScript.includes("function courseSheetHeight(") &&
+    timetablePageScript.includes("const detailValues = [") &&
+    timetablePageScript.includes(
+      "courseSheetHeight: courseSheetHeight(course)",
+    ) &&
+    timetablePageScript.includes("function viewportSheetHeight(") &&
+    timetablePageScript.includes("contentHeightRpx,\n    44,\n    82,") &&
+    bottomSheetScript.includes("expandedHeight: { type: Number, value: 86 }") &&
+    bottomSheetTemplate.includes("'height:' + expandedHeight + 'vh;'") &&
+    timetablePageTemplate.includes('bindtap="openCoursePassRate"') &&
+    timetablePageTemplate.includes("查看通过率") &&
+    timetablePageTemplate.includes(
+      '<lucide-icon name="chevron-right" tone="white" size="{{28}}"',
+    ) &&
+    /\.course-sheet-hero-main\s*\{[^}]*align-items:\s*center/s.test(
+      timetablePageStyles,
+    ) &&
+    /\.course-pass-rate-action\s*\{[^}]*align-self:\s*center[^}]*min-height:\s*64rpx[^}]*font-size:\s*22rpx/s.test(
+      timetablePageStyles,
+    ) &&
+    timetablePageTemplate.includes(
+      '<bottom-sheet visible="{{passRateSheetVisible}}" expanded="{{true}}"',
+    ) &&
+    timetablePageTemplate.includes(
+      'expanded-height="{{passRateSheetHeight}}"',
+    ) &&
+    timetablePageScript.includes("function passRateSheetHeight(") &&
+    timetablePageScript.includes('input.status === "ready"') &&
+    timetablePageScript.includes(
+      "passRateSheetHeight: passRateSheetHeight({",
+    ) &&
+    timetablePageTemplate.includes("<pass-rate-card") &&
+    passRatePageTemplate.includes("<pass-rate-card") &&
+    passRateCardTemplate.includes('id="pass-rate-ring-canvas"') &&
+    timetablePageScript.includes("courseStatisticsKey(selectedCourse.name)") &&
+    timetablePageScript.includes("await getPassRates(courseKey)"),
+  "课程详情必须直接展开，并从课程卡片打开复用的当前课程通过率统计卡片",
 );
 assert(
   timetablePageTemplate.includes("refresh-confirmation--visible") &&

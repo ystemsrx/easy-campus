@@ -78,7 +78,7 @@
                 wx:for-item="course"
                 wx:key="id"
                 class="grid-course-slot"
-                style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%;"
+                style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%; padding-top: {{course.topInsetPx}}px;"
               >
                 <view
                   class="grid-course grid-course--{{course.tone}} pressable"
@@ -127,12 +127,18 @@
         show-scrollbar="{{false}}"
         scroll-into-view="{{weekScrollIntoView}}"
       >
-        <view class="week-options">
+        <view class="week-options-top-space"></view>
+        <view
+          wx:for="{{weekMenuRows}}"
+          wx:for-item="weekRow"
+          wx:key="id"
+          id="{{weekRow.id}}"
+          class="week-option-row"
+        >
           <view
-            wx:for="{{weekPages}}"
+            wx:for="{{weekRow.weeks}}"
             wx:for-item="week"
             wx:key="weekNumber"
-            id="week-option-{{week.weekNumber}}"
             class="week-option pressable {{currentWeekNumber === week.weekNumber ? 'week-option--current' : ''}} {{weekNumber === week.weekNumber ? 'week-option--active' : ''}}"
             data-week="{{week.weekNumber}}"
             bindtap="selectWeek"
@@ -140,12 +146,11 @@
             aria-role="button"
             aria-label="第{{week.weekNumber}}周，{{week.startDateLabel}}开始"
           >
-            <view class="week-option-content">
-              <text class="week-option-number tnum">{{week.weekNumber}}</text>
-              <text class="week-option-date tnum">{{week.startDateLabel}}</text>
-            </view>
+            <view class="week-option-number tnum">{{week.weekNumber}}</view>
+            <view class="week-option-date tnum">{{week.startDateLabel}}</view>
           </view>
         </view>
+        <view class="week-options-bottom-space"></view>
       </scroll-view>
     </view>
   </view>
@@ -231,23 +236,55 @@
     </view>
   </view>
 
-  <bottom-sheet visible="{{courseSheetVisible}}" title="课程详情" theme="{{theme}}" bindclose="closeCourse">
-    <view wx:if="{{selectedCourse}}" class="course-sheet">
-      <view class="course-sheet-hero course-sheet-hero--{{selectedCourse.tone}}">
-        <view class="ambient-blob course-sheet-blob"></view>
-        <text class="course-sheet-kicker">{{selectedCourse.periodLabel}} · {{selectedCourse.weekText}}</text>
-        <text class="course-sheet-title display-title">{{selectedCourse.name}}</text>
-        <text class="course-sheet-teacher">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text>
+  <bottom-sheet visible="{{courseSheetVisible}}" expanded="{{true}}" scrollable="{{false}}" expanded-height="{{courseSheetHeight}}" title="课程详情" theme="{{theme}}" bindclose="closeCourse">
+    <scroll-view class="course-sheet-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
+      <view wx:if="{{selectedCourse}}" class="course-sheet">
+        <view class="course-sheet-hero course-sheet-hero--{{selectedCourse.tone}}">
+          <view class="ambient-blob course-sheet-blob"></view>
+          <view class="course-sheet-hero-main">
+            <view class="course-sheet-hero-copy">
+              <text class="course-sheet-kicker" overflow="ellipsis" max-lines="1">{{selectedCourse.periodLabel}} · {{selectedCourse.weekText}}</text>
+              <text class="course-sheet-title display-title">{{selectedCourse.name}}</text>
+              <text class="course-sheet-teacher" overflow="ellipsis" max-lines="1">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text>
+            </view>
+            <view class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
+              <text>查看通过率</text>
+              <lucide-icon name="chevron-right" tone="white" size="{{28}}"></lucide-icon>
+            </view>
+          </view>
+        </view>
+        <view class="course-sheet-info card">
+          <view class="course-sheet-row"><text>上课地点</text><text>{{selectedCourse.location}}</text></view>
+          <view class="course-sheet-row"><text>上课时间</text><text>{{selectedCourse.displayTimeLabel}}</text></view>
+          <view class="course-sheet-row"><text>教学周次</text><text>{{selectedCourse.weekText}}</text></view>
+          <view wx:if="{{selectedCourse.credits !== null}}" class="course-sheet-row"><text>学分</text><text>{{selectedCourse.credits}}</text></view>
+          <view wx:if="{{selectedCourse.teachingClass}}" class="course-sheet-row"><text>教学班</text><text>{{selectedCourse.teachingClass}}</text></view>
+          <view wx:if="{{selectedCourse.nature}}" class="course-sheet-row"><text>课程性质</text><text>{{selectedCourse.nature}}</text></view>
+          <view wx:if="{{selectedCourse.assessmentMethod}}" class="course-sheet-row"><text>考核方式</text><text>{{selectedCourse.assessmentMethod}}</text></view>
+        </view>
       </view>
-      <view class="course-sheet-info card">
-        <view class="course-sheet-row"><text>上课地点</text><text>{{selectedCourse.location}}</text></view>
-        <view class="course-sheet-row"><text>上课时间</text><text>{{selectedCourse.displayTimeLabel}}{{selectedCourse.localized ? ' · 用户所在时区' : ''}}</text></view>
-        <view class="course-sheet-row"><text>教学周次</text><text>{{selectedCourse.weekText}}</text></view>
-        <view wx:if="{{selectedCourse.credits !== null}}" class="course-sheet-row"><text>学分</text><text>{{selectedCourse.credits}}</text></view>
-        <view wx:if="{{selectedCourse.teachingClass}}" class="course-sheet-row"><text>教学班</text><text>{{selectedCourse.teachingClass}}</text></view>
-        <view wx:if="{{selectedCourse.nature}}" class="course-sheet-row"><text>课程性质</text><text>{{selectedCourse.nature}}</text></view>
-        <view wx:if="{{selectedCourse.assessmentMethod}}" class="course-sheet-row"><text>考核方式</text><text>{{selectedCourse.assessmentMethod}}</text></view>
+      <view class="course-sheet-bottom-space"></view>
+    </scroll-view>
+  </bottom-sheet>
+
+  <bottom-sheet visible="{{passRateSheetVisible}}" expanded="{{true}}" expanded-height="{{passRateSheetHeight}}" compact-header="{{true}}" scrollable="{{false}}" title="课程通过率" theme="{{theme}}" bindclose="closeCoursePassRate">
+    <scroll-view class="course-pass-rate-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
+      <view class="course-pass-rate-content">
+        <loading-view wx:if="{{passRateLoading}}" label="正在加载通过率"></loading-view>
+        <empty-state wx:elif="{{passRateErrorMessage}}" compact icon="circle-alert" icon-tone="danger" title="通过率加载失败" description="{{passRateErrorMessage}}" action-text="重试" bindaction="openCoursePassRate"></empty-state>
+        <block wx:elif="{{passRateCourse}}">
+          <view class="course-pass-rate-heading">
+            <text class="course-pass-rate-name" overflow="ellipsis" max-lines="2">{{passRateCourse.courseName || passRateCourseName}}</text>
+            <text class="course-pass-rate-meta">通过率 · 得分分布{{passRateCohortLabel ? ' · ' + passRateCohortLabel : ''}}</text>
+          </view>
+          <pass-rate-card wx:if="{{passRateStatus === 'ready' && passRateStatistics}}" statistics="{{passRateStatistics}}" own-score="{{passRateOwnScore}}" display-score="{{passRateDisplayScore}}" show-own-score="{{passRateCourse.hasOwnGrade && passRateOwnScore >= 0}}" theme="{{theme}}"></pass-rate-card>
+          <view wx:else class="course-pass-rate-collecting card">
+            <view class="course-pass-rate-collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{40}}"></lucide-icon></view>
+            <text>{{passRateMessage}}</text>
+          </view>
+        </block>
       </view>
-    </view>
+      <view class="course-pass-rate-bottom-space"></view>
+    </scroll-view>
   </bottom-sheet>
 </view>

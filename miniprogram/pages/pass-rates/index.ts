@@ -2,9 +2,7 @@ import { getPassRates } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import type {
   PassRateCourse,
-  PassRateDistributionItem,
   PassRatesData,
-  PassRateScoreItem,
   PassRateStatistics,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
@@ -46,16 +44,6 @@ interface ComponentView {
   opacity: number;
 }
 
-interface DistributionView extends PassRateDistributionItem {
-  height: number;
-  mine: boolean;
-}
-
-interface ScoreView extends PassRateScoreItem {
-  height: number;
-  mine: boolean;
-}
-
 let requestSequence = 0;
 let pickerTransitionTimer: number | undefined;
 
@@ -64,23 +52,6 @@ function clearPickerTransitionTimer() {
     clearTimeout(pickerTransitionTimer);
     pickerTransitionTimer = undefined;
   }
-}
-
-function scoreLabel(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "";
-  if (value < 60) return "<60";
-  return Number.isInteger(value)
-    ? String(value)
-    : String(Number(value.toFixed(2)));
-}
-
-function scoreBand(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "";
-  if (value < 60) return "<60";
-  if (value < 70) return "60–69";
-  if (value < 80) return "70–79";
-  if (value < 90) return "80–89";
-  return "90–100";
 }
 
 function toCourseView(course: PassRateCourse): CourseView {
@@ -139,9 +110,7 @@ function courseGroups(courses: CourseView[]): CourseGroup[] {
       courses: [course],
     });
   }
-  return [...grouped.values()].sort(
-    (left, right) => right.order - left.order,
-  );
+  return [...grouped.values()].sort((left, right) => right.order - left.order);
 }
 
 function toCourseRows(courses: CourseView[]): CoursePickerRow[] {
@@ -190,35 +159,6 @@ function componentViews(course: PassRateCourse): ComponentView[] {
   }));
 }
 
-function distributionViews(
-  statistics: PassRateStatistics,
-  ownScore: number | null,
-): DistributionView[] {
-  const maximum = Math.max(
-    0,
-    ...statistics.distribution.map((item) => item.count),
-  );
-  const mine = scoreBand(ownScore);
-  return statistics.distribution.map((item) => ({
-    ...item,
-    height: maximum ? Math.max(4, (item.count / maximum) * 100) : 0,
-    mine: item.band === mine,
-  }));
-}
-
-function scoreViews(
-  statistics: PassRateStatistics,
-  ownScore: number | null,
-): ScoreView[] {
-  const maximum = Math.max(0, ...statistics.scores.map((item) => item.count));
-  const mine = scoreLabel(ownScore);
-  return statistics.scores.map((item) => ({
-    ...item,
-    height: maximum ? Math.max(4, (item.count / maximum) * 100) : 0,
-    mine: item.score === mine,
-  }));
-}
-
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -242,20 +182,14 @@ Page({
     message: "统计中，请稍后查看",
     averageScoreLabel: "—",
     cohortLabel: "",
-    distribution: [] as DistributionView[],
-    scoreEntries: [] as ScoreView[],
-    scoreChartWidth: 620,
+    ownScore: -1,
   },
   onLoad() {
     this.setData(resolveAppearance());
   },
   onShow() {
     if (!ensureAuthenticated()) return;
-    this.setData(resolveAppearance(), () => {
-      if (this.data.statistics) {
-        this.drawPassRing(this.data.statistics.passRate);
-      }
-    });
+    this.setData(resolveAppearance());
     if (!this.data.loaded) void this.loadPassRates();
   },
   onUnload() {
@@ -294,88 +228,33 @@ Page({
       ? toCourseView(data.selectedCourse)
       : null;
     const statistics = data.statistics;
-    const ownScore = course?.calculationScore ?? null;
     const groups = courseGroups(courses);
-    const pickerState = coursePickerState(
-      groups,
-      this.data.selectedSemesterId,
-    );
-    this.setData(
-      {
-        courses,
-        courseGroups: groups,
-        ...pickerState,
-        course,
-        components: course ? componentViews(course) : [],
-        statistics,
-        status: data.status,
-        message: data.message || "统计中，请稍后查看",
-        averageScoreLabel: statistics
-          ? Number.isInteger(statistics.averageScore)
-            ? String(statistics.averageScore)
-            : statistics.averageScore.toFixed(1)
-          : "—",
-        cohortLabel: statistics
-          ? statistics.cohorts
-              .map((year) => `${String(year).slice(-2)}级`)
-              .join("、")
-          : "",
-        distribution: statistics ? distributionViews(statistics, ownScore) : [],
-        scoreEntries: statistics ? scoreViews(statistics, ownScore) : [],
-        scoreChartWidth: statistics
-          ? Math.max(620, statistics.scores.length * 38)
-          : 620,
-        loaded: true,
-        errorMessage: "",
-      },
-      () => {
-        if (statistics) this.drawPassRing(statistics.passRate);
-      },
-    );
-  },
-  drawPassRing(passRate: number) {
-    const query = wx.createSelectorQuery();
-    query.select("#pass-rate-ring-canvas").fields({ node: true, size: true });
-    query.exec((results) => {
-      const result = results[0] as {
-        node?: WechatMiniprogram.Canvas;
-        width?: number;
-        height?: number;
-      };
-      const canvas = result?.node;
-      const width = Number(result?.width || 0);
-      const height = Number(result?.height || 0);
-      if (!canvas || !width || !height) return;
-      const pixelRatio = wx.getWindowInfo().pixelRatio || 1;
-      canvas.width = Math.round(width * pixelRatio);
-      canvas.height = Math.round(height * pixelRatio);
-      const context = canvas.getContext("2d");
-      context.scale(pixelRatio, pixelRatio);
-      context.clearRect(0, 0, width, height);
-      const lineWidth = (width * 17) / 184;
-      const radius = Math.max(0, Math.min(width, height) / 2 - lineWidth / 2);
-      const centerX = width / 2;
-      const centerY = height / 2;
-      context.lineWidth = lineWidth;
-      context.lineCap = "round";
-      context.beginPath();
-      context.strokeStyle =
-        this.data.theme === "dark"
-          ? "rgba(255, 255, 255, 0.08)"
-          : "rgba(43, 38, 32, 0.06)";
-      context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      context.stroke();
-      context.beginPath();
-      context.strokeStyle = "#7d8f6e";
-      context.arc(
-        centerX,
-        centerY,
-        radius,
-        -Math.PI / 2,
-        -Math.PI / 2 +
-          Math.PI * 2 * (Math.max(0, Math.min(100, passRate)) / 100),
-      );
-      context.stroke();
+    const pickerState = coursePickerState(groups, this.data.selectedSemesterId);
+    this.setData({
+      courses,
+      courseGroups: groups,
+      ...pickerState,
+      course,
+      components: course ? componentViews(course) : [],
+      statistics,
+      status: data.status,
+      message: data.message || "统计中，请稍后查看",
+      averageScoreLabel: statistics
+        ? Number.isInteger(statistics.averageScore)
+          ? String(statistics.averageScore)
+          : statistics.averageScore.toFixed(1)
+        : "—",
+      cohortLabel: statistics
+        ? statistics.cohorts
+            .map((year) => `${String(year).slice(-2)}级`)
+            .join("、")
+        : "",
+      ownScore:
+        typeof course?.calculationScore === "number"
+          ? course.calculationScore
+          : -1,
+      loaded: true,
+      errorMessage: "",
     });
   },
   retry() {
@@ -412,9 +291,7 @@ Page({
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semesterId = String(event.currentTarget.dataset.semester || "");
     if (!semesterId || semesterId === this.data.selectedSemesterId) return;
-    const group = this.data.courseGroups.find(
-      (item) => item.id === semesterId,
-    );
+    const group = this.data.courseGroups.find((item) => item.id === semesterId);
     if (!group) return;
     haptic("light");
     this.setData({

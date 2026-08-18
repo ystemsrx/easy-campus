@@ -40,7 +40,8 @@
   background: #fbf9f4;
   box-shadow: 0 -22rpx 80rpx rgba(20, 20, 30, 0.18);
   transform: translateY(105%);
-  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: height 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .sheet-layer--dark .sheet-card { background: #211f1b; }

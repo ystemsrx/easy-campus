@@ -1,0 +1,40 @@
+<view wx:if="{{statistics}}" class="pass-rate-card {{theme === 'dark' ? 'pass-rate-card--dark' : ''}} card">
+  <view class="statistics-overview">
+    <view class="pass-ring">
+      <canvas id="pass-rate-ring-canvas" class="pass-ring-canvas" type="2d"></canvas>
+      <view class="pass-ring-inner">
+        <view class="pass-ring-value"><text class="tnum">{{statistics.passRate}}</text><text>%</text></view>
+        <text class="pass-ring-label">通过率</text>
+      </view>
+    </view>
+    <view class="outcome-stack">
+      <view class="outcome-row outcome-row--pass"><text>通过</text><text class="tnum">{{statistics.passedCount}} 人</text></view>
+      <view class="outcome-row outcome-row--fail"><text>未通过</text><text class="tnum">{{statistics.failedCount}} 人</text></view>
+    </view>
+  </view>
+
+  <view class="band-chart">
+    <view wx:for="{{distribution}}" wx:key="band" class="band-column {{item.mine ? 'band-column--mine' : ''}}">
+      <text class="band-count tnum">{{item.count}}人</text>
+      <view class="band-track"><view class="band-fill" style="height: {{item.height}}%;"></view></view>
+      <text class="band-label tnum">{{item.band}}</text>
+    </view>
+  </view>
+
+  <view class="exact-section">
+    <text class="exact-title">全部分数分布 <text>· 仅显示有人获得的分数</text></text>
+    <scroll-view class="exact-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+      <view class="exact-chart" style="width: {{scoreChartWidth}}rpx;">
+        <view wx:for="{{scoreEntries}}" wx:key="score" class="exact-column {{item.mine ? 'exact-column--mine' : ''}}">
+          <text class="exact-count tnum">{{item.count}}</text>
+          <view class="exact-track"><view class="exact-fill" style="height: {{item.height}}%;"></view></view>
+          <text class="exact-label tnum">{{item.score}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{showOwnScore}}" class="own-score-note">
+    <lucide-icon name="sparkles" tone="coral" size="{{23}}"></lucide-icon>
+    <text>你的成绩为 <text class="own-score-value tnum">{{displayScore}}</text>，图中高亮为对应区间</text>
+  </view>
+</view>

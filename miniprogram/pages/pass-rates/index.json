@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "disableScroll": true
+  "disableScroll": true,
+  "usingComponents": {
+    "pass-rate-card": "/components/pass-rate-card/pass-rate-card"
+  }
 }
