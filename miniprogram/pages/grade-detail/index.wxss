@@ -46,7 +46,8 @@
 .component-score--great,
 .component-score--good { color: #5f7350; }
 .component-score--warning { color: #a66f1f; }
-.component-score--text { color: #a55357; max-width: 170rpx; font-size: 23rpx; text-align: right; }
+.component-score--text { color: #a55357; max-width: 170rpx; text-align: right; }
+.component-score--compact { font-size: 23rpx; }
 .component-score--muted { color: #9a9aa3; }
 .progress-track { height: 10rpx; margin-top: 14rpx; overflow: hidden; border-radius: 999rpx; background: rgba(43, 38, 32, 0.05); }
 .progress-fill { height: 100%; border-radius: 999rpx; background: #d97757; }

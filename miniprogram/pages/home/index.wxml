@@ -122,21 +122,36 @@
       </view>
 
       <view class="exam-layout stagger-item stagger-2">
-        <view class="exam-card card pressable" data-route="/pages/exams/index" bindtap="onQuickAction" hover-class="pressing">
+        <open-container
+          class="exam-open-container"
+          closed-color="{{theme === 'dark' ? '#2d2a24' : '#ffffff'}}"
+          middle-color="{{theme === 'dark' ? '#39352e' : '#f1eee6'}}"
+          open-color="{{theme === 'dark' ? '#171613' : '#f7f5ef'}}"
+          closed-elevation="{{0}}"
+          closed-border-radius="{{examCardRadius}}"
+          open-elevation="{{0}}"
+          open-border-radius="{{0}}"
+          transition-type="fadeThrough"
+          transition-duration="{{380}}"
+          bind:tap="openExams"
+          aria-role="button"
+          aria-label="展开考试安排"
+        >
+          <view class="exam-card card pressable" hover-class="pressing">
           <view class="exam-card-head"><view class="exam-card-title"><lucide-icon name="clock-3" tone="rose" size="{{23}}"></lucide-icon><text>考试安排</text></view><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
           <view wx:if="{{examPreviews.length}}" class="exam-preview-list">
             <view wx:for="{{examPreviews}}" wx:key="id" class="exam-preview-row {{index ? 'exam-preview-row--divided' : ''}}">
               <view class="exam-badge exam-badge--{{item.badgeTone}}">
                 <view wx:if="{{item.badgeTone === 'current'}}" class="exam-badge-current-grid" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
                 <text wx:else class="exam-badge-value tnum">{{item.badgeText}}</text>
-                <text wx:if="{{item.badgeSub}}" class="exam-badge-sub">{{item.badgeSub}}</text>
               </view>
               <view class="exam-preview-copy"><view class="exam-course-line"><text class="exam-course-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text wx:if="{{item.typeLabel !== '正常考试'}}" class="exam-type">{{item.typeLabel}}</text></view><view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{16}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}}</text></view></view>
               <view class="exam-time"><text class="exam-date tnum">{{item.dateLabel}}</text><text class="exam-clock tnum">{{item.timeLabel}}</text></view>
             </view>
           </view>
           <view wx:else class="exam-empty"><text>{{examEmptyLabel}}</text></view>
-        </view>
+          </view>
+        </open-container>
         <view class="side-actions">
           <view class="side-action card pressable" data-route="/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
           <view class="side-action card pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>

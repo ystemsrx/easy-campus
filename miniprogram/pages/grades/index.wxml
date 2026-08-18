@@ -1,5 +1,5 @@
 <view class="page grades-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onGradeScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="成绩" back extra-left transparent theme="{{theme}}">
       <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="刷新成绩">
         <lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
@@ -9,7 +9,6 @@
     <view class="grades-content page-content page-enter">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
-          <view class="semester-chip pressable {{activeSemesterId === 'all' ? 'semester-chip--active' : ''}}" data-id="all" bindtap="selectSemesterQuick" hover-class="pressing"><text>全部成绩</text></view>
           <view wx:for="{{semesterChips}}" wx:key="id" class="semester-chip pressable {{activeSemesterId === item.id ? 'semester-chip--active' : ''}}" data-id="{{item.id}}" bindtap="selectSemesterQuick" hover-class="pressing"><text>{{item.label}}</text></view>
         </view>
       </scroll-view>
@@ -36,9 +35,9 @@
 
       <loading-view wx:if="{{loading}}" label="正在整理成绩与分项"></loading-view>
       <view wx:elif="{{gradeItems.length}}" class="grade-list">
-        <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;">
-          <view class="grade-card card pressable" data-id="{{item.id}}" bindtap="openGrade" hover-class="pressing">
-            <view class="score-tile score-tile--{{item.scoreTone}} {{item.isTextGrade ? 'score-tile--text' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
+        <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}" style="animation-delay: {{item.animationDelay}}ms;">
+          <view class="grade-card card pressable" data-id="{{item.id}}" bindtouchstart="onGradeTouchStart" bindtouchmove="onGradeTouchMove" bindtouchend="onGradeTouchEnd" bindtouchcancel="onGradeTouchCancel" bindtap="openGrade" hover-class="pressing">
+            <view class="score-tile score-tile--{{item.scoreTone}} {{item.compactScore ? 'score-tile--compact' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
             <view class="course-copy">
               <text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text>
               <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>

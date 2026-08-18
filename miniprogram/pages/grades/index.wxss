@@ -3,9 +3,10 @@
 .nav-button-pressed { transform: scale(0.93); opacity: 0.82; }
 .nav-refresh--loading { opacity: 0.7; }
 .nav-refresh--loading lucide-icon { animation-name: grade-refresh-spin; animation-duration: 850ms; animation-timing-function: linear; animation-iteration-count: infinite; }
-.semester-scroll { width: calc(100% + 80rpx); margin-left: -40rpx; }
-.semester-row { display: flex; flex-direction: row; gap: 14rpx; padding: 8rpx 40rpx 18rpx; }
-.semester-chip { flex: none; padding: 14rpx 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; white-space: nowrap; }
+.semester-scroll { position: relative; z-index: 2; display: block; flex: none; width: calc(100% + 80rpx); height: 96rpx; margin-left: -40rpx; }
+.semester-row { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 14rpx; height: 96rpx; padding: 8rpx 40rpx 18rpx; }
+.semester-chip { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; height: 60rpx; padding: 0 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; line-height: 1; white-space: nowrap; }
+.semester-chip > text { display: block; line-height: 30rpx; }
 .semester-chip--active { color: #fff; background: linear-gradient(135deg, #c98a2d, #e5b86e); }
 
 .grade-overview { position: relative; margin-top: 18rpx; padding: 38rpx 38rpx 30rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(140deg, #c98a2d, #e5b86e); box-shadow: var(--shadow-pop); }
@@ -43,9 +44,9 @@
 .score-tile--warning { color: #a66f1f; background: linear-gradient(135deg, #f8eedd, #f0dfbd); }
 .score-tile--text { color: #a55357; background: linear-gradient(135deg, #f7e9e8, #efd6d5); }
 .score-tile--muted { color: #8b8b94; background: #f1f1f3; }
-.score-tile--text { padding: 10rpx; }
 .score-value { max-width: 100%; font-size: 34rpx; font-weight: 800; line-height: 1.12; text-align: center; }
-.score-tile--text .score-value { font-size: 21rpx; }
+.score-tile--compact { padding: 10rpx; }
+.score-tile--compact .score-value { font-size: 23rpx; }
 .course-copy { display: flex; flex: 1; flex-direction: column; justify-content: center; min-width: 0; min-height: 104rpx; }
 .course-name { display: block; min-width: 0; color: var(--color-text); font-size: 27rpx; font-weight: 750; line-height: 1.32; }
 .component-preview { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 7rpx; max-width: 100%; margin-top: 7rpx; overflow: hidden; }

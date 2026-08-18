@@ -2,7 +2,10 @@ import type { GradeCourse } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { academicTermLabel } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
-import { gradeComponentWidths } from "../../utils/grades";
+import {
+  gradeComponentWidths,
+  isMakeupOrDeferredGrade,
+} from "../../utils/grades";
 
 interface ComponentView {
   name: string;
@@ -12,6 +15,7 @@ interface ComponentView {
   progress: number;
   tone: string;
   isText: boolean;
+  compactScore: boolean;
 }
 
 interface DetailRow {
@@ -24,11 +28,18 @@ function scoreProgress(score: number | string | null): number {
   return Math.max(0, Math.min(100, score));
 }
 
+function isCompactScore(value: string): boolean {
+  const normalized = value.trim();
+  if (/^-?\d{1,3}$/.test(normalized)) return false;
+  return Array.from(normalized).length > 2;
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
+    detailTitle: "课程成绩与组成",
     course: null as GradeCourse | null,
     displayScore: "—",
     scoreTone: "muted",
@@ -36,6 +47,7 @@ Page({
     creditsLabel: "—",
     gradePointLabel: "—",
     termLabel: "学期未知",
+    showComponentsSection: true,
     components: [] as ComponentView[],
     detailRows: [] as DetailRow[],
   },
@@ -53,25 +65,32 @@ Page({
     this.setData(resolveAppearance());
   },
   applyCourse(course: GradeCourse) {
-    const widths = gradeComponentWidths(course.components);
-    const components = course.components.map((component, index) => ({
-      name: component.name,
-      score: formatScore(component.score),
-      weight:
-        component.weightPercent === null
-          ? "权重未提供"
-          : `占比 ${component.weightPercent}%`,
-      width: widths[index],
-      progress: scoreProgress(component.score),
-      tone: scoreTone(component.score),
-      isText: typeof component.score === "string",
-    }));
+    const showComponentsSection = !isMakeupOrDeferredGrade(course);
+    const sourceComponents = showComponentsSection ? course.components : [];
+    const widths = gradeComponentWidths(sourceComponents);
+    const components = sourceComponents.map((component, index) => {
+      const displayScore = formatScore(component.score);
+      return {
+        name: component.name,
+        score: displayScore,
+        weight:
+          component.weightPercent === null
+            ? "权重未提供"
+            : `占比 ${component.weightPercent}%`,
+        width: widths[index],
+        progress: scoreProgress(component.score),
+        tone: scoreTone(component.score),
+        isText: typeof component.score === "string",
+        compactScore: isCompactScore(displayScore),
+      };
+    });
     const rows = [
       { label: "课程代码", value: course.courseCode || "—" },
       { label: "教学班", value: course.teachingClass || "—" },
       { label: "教师", value: course.teacherName || "—" },
       { label: "开课学院", value: course.department || "—" },
       { label: "课程性质", value: course.courseNature || "—" },
+      { label: "成绩性质", value: course.gradeNature || "—" },
       { label: "学年", value: course.academicYear || "—" },
       { label: "学期", value: academicTermLabel(course.term) },
       {
@@ -84,6 +103,7 @@ Page({
     ];
     this.setData({
       course,
+      detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩",
       displayScore: formatScore(course.finalScore),
       scoreTone: scoreTone(course.finalScore),
       scoreIsText: typeof course.finalScore === "string",
@@ -93,6 +113,7 @@ Page({
           ? course.gradePoint.toFixed(1)
           : "—",
       termLabel: academicTermLabel(course.term),
+      showComponentsSection,
       components,
       detailRows: rows,
     });

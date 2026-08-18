@@ -59,9 +59,14 @@ import {
   formatFriendlyDate,
   formatShortDate,
   formatTimestampTime,
-  localDateKey,
   today,
 } from "../../utils/date";
+import {
+  examCountdown,
+  examDateKey,
+  examTimestamp,
+  type ExamCountdownTone,
+} from "../../utils/exams";
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
 import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
@@ -118,8 +123,7 @@ interface ExamPreview {
   timeLabel: string;
   typeLabel: string;
   badgeText: string;
-  badgeSub: string;
-  badgeTone: "current" | "future" | "past" | "pending";
+  badgeTone: ExamCountdownTone;
 }
 
 interface ShortcutCachePatch {
@@ -146,51 +150,16 @@ let hydratedAccount = "";
 let timetableRouteOpening = false;
 let gradesRouteOpening = false;
 let electricityRouteOpening = false;
+let examsRouteOpening = false;
 let inboxRouteOpening = false;
 let activeTimetable: TimetableData | null = null;
 
-function dateAtLocalMidnight(value: string): number | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  return new Date(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-  ).getTime();
-}
-
-function examDateKey(exam: Exam): string {
-  return exam.time.startAt ? localDateKey(exam.time.startAt) : exam.time.date;
-}
-
-function examTimestamp(exam: Exam): number {
-  if (exam.time.startAt) {
-    const value = new Date(exam.time.startAt).getTime();
-    if (Number.isFinite(value)) return value;
-  }
-  const date = dateAtLocalMidnight(examDateKey(exam));
-  return date ?? Number.MAX_SAFE_INTEGER;
-}
-
-function examBadge(
-  exam: Exam,
-): Pick<ExamPreview, "badgeText" | "badgeSub" | "badgeTone"> {
-  const target = dateAtLocalMidnight(examDateKey(exam));
-  const current = dateAtLocalMidnight(today());
-  if (target === null || current === null) {
-    return { badgeText: "待", badgeSub: "定", badgeTone: "pending" };
-  }
-  const days = Math.round((target - current) / (24 * 60 * 60 * 1000));
-  if (days === 0)
-    return { badgeText: "逢考必过", badgeSub: "", badgeTone: "current" };
-  if (days > 0) {
-    return {
-      badgeText: String(days),
-      badgeSub: "",
-      badgeTone: "future",
-    };
-  }
-  return { badgeText: "过", badgeSub: "", badgeTone: "past" };
+function examBadge(exam: Exam): Pick<ExamPreview, "badgeText" | "badgeTone"> {
+  const countdown = examCountdown(exam);
+  return {
+    badgeText: countdown.label,
+    badgeTone: countdown.tone,
+  };
 }
 
 function toExamPreview(exam: Exam): ExamPreview {
@@ -469,6 +438,7 @@ Page({
     remainingCourseCount: 0,
     timetableCardRadius: getTimetableCardRadius(),
     campusCardRadius: getCampusCardRadius(),
+    examCardRadius: getCampusCardRadius(),
     gradeCardRadius: getFeatureCardRadius(),
     electricityCardRadius: getFeatureCardRadius(),
     gradeRingSource: progressRingSource(null),
@@ -1078,6 +1048,17 @@ Page({
       url: "/pages/electricity/index",
       complete: () => {
         electricityRouteOpening = false;
+      },
+    });
+  },
+  openExams() {
+    if (examsRouteOpening) return;
+    examsRouteOpening = true;
+    haptic("light");
+    wx.navigateTo({
+      url: "/pages/exams/index",
+      complete: () => {
+        examsRouteOpening = false;
       },
     });
   },

@@ -16,12 +16,22 @@ import type {
   GradesQuery,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { academicTermLabel, formatDateTime } from "../../utils/date";
+import { formatDateTime } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
-import { gradesForSemester, latestGradedSemester } from "../../utils/grades";
+import {
+  gradesForSemester,
+  isMakeupOrDeferredGrade,
+  latestGradedSemester,
+} from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
+import { numberedAcademicSemesterLabel } from "../../utils/semester";
+import {
+  canActivateTap,
+  movementExceedsTapThreshold,
+  type TapPoint,
+} from "../../utils/tap-guard";
 
 interface GradeComponentPreview {
   name: string;
@@ -30,9 +40,11 @@ interface GradeComponentPreview {
 
 interface GradeView extends GradeCourse {
   renderKey: string;
+  animateEntry: boolean;
+  animationDelay: number;
   displayScore: string;
   scoreTone: string;
-  isTextGrade: boolean;
+  compactScore: boolean;
   creditsLabel: string;
   hasGradePoint: boolean;
   gradePointLabel: string;
@@ -76,25 +88,55 @@ const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
 let requestSequence = 0;
 let hydratedGradesAccount = "";
 let gradeRenderBatch = 0;
+let gradeListAnimationRequested = true;
+let gradeTouchStart: TapPoint | null = null;
+let gradeTouchMoved = false;
+let lastGradeScrollAt = 0;
 
-function toGradeView(course: GradeCourse, renderKey: string): GradeView {
+function isCompactScore(value: string): boolean {
+  const normalized = value.trim();
+  if (/^-?\d{1,3}$/.test(normalized)) return false;
+  return Array.from(normalized).length > 2;
+}
+
+function toGradeView(
+  course: GradeCourse,
+  renderKey: string,
+  animateEntry: boolean,
+  animationDelay: number,
+): GradeView {
+  const displayScore = formatScore(course.finalScore);
+  const components = isMakeupOrDeferredGrade(course) ? [] : course.components;
   return {
     ...course,
+    components,
     renderKey,
-    displayScore: formatScore(course.finalScore),
+    animateEntry,
+    animationDelay,
+    displayScore,
     scoreTone: scoreTone(course.finalScore),
-    isTextGrade: typeof course.finalScore === "string",
+    compactScore: isCompactScore(displayScore),
     creditsLabel: formatCredits(course.credits),
     hasGradePoint: typeof course.gradePoint === "number",
     gradePointLabel:
       typeof course.gradePoint === "number"
         ? course.gradePoint.toFixed(1)
         : "—",
-    componentPreview: course.components.slice(0, 3).map((component) => ({
+    componentPreview: components.slice(0, 3).map((component) => ({
       name: component.name,
       score: formatScore(component.score),
     })),
   };
+}
+
+function touchPoint(
+  event: WechatMiniprogram.TouchEvent,
+  changed = false,
+): TapPoint | null {
+  const touches = changed ? event.changedTouches : event.touches;
+  const touch = touches[0];
+  if (!touch) return null;
+  return { x: Number(touch.clientX), y: Number(touch.clientY) };
 }
 
 function buildSemesterChips(
@@ -102,7 +144,7 @@ function buildSemesterChips(
 ): SemesterChip[] {
   return semesters.map((semester) => ({
     id: `${semester.academicYear}-${semester.term}`,
-    label: `${semester.academicYearLabel} · ${academicTermLabel(semester.term)}`,
+    label: numberedAcademicSemesterLabel(semester),
     academicYear: semester.academicYear,
     term: semester.term,
   }));
@@ -158,6 +200,11 @@ Page({
   onLoad() {
     hydratedGradesAccount = "";
     requestSequence += 1;
+    gradeRenderBatch = 0;
+    gradeListAnimationRequested = true;
+    gradeTouchStart = null;
+    gradeTouchMoved = false;
+    lastGradeScrollAt = 0;
     this.applyAppearance();
   },
   onShow() {
@@ -203,9 +250,23 @@ Page({
   },
   applyGradesData(data: GradesData, fetchedAtValue = "", append = false) {
     const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
-    const renderBatch = ++gradeRenderBatch;
+    const animateEntries = gradeListAnimationRequested;
+    if (animateEntries) {
+      gradeRenderBatch += 1;
+      gradeListAnimationRequested = false;
+    }
+    const animatedIds = new Set(
+      this.data.gradeItems
+        .filter((item) => item.animateEntry)
+        .map((item) => item.id),
+    );
     const incoming = data.items.map((course, index) =>
-      toGradeView(course, `${renderBatch}:${course.id}:${index}`),
+      toGradeView(
+        course,
+        `${gradeRenderBatch}:${course.id}`,
+        animateEntries || animatedIds.has(course.id),
+        index < 8 ? index * 45 : 0,
+      ),
     );
     this.setData({
       gradeItems: append ? [...this.data.gradeItems, ...incoming] : incoming,
@@ -328,20 +389,17 @@ Page({
     void this.loadGrades(true, true);
   },
   selectSemesterQuick(event: WechatMiniprogram.TouchEvent) {
-    const id = String(event.currentTarget.dataset.id || "all");
+    const id = String(event.currentTarget.dataset.id || "");
+    if (!id) return;
     if (id === this.data.activeSemesterId) return;
     haptic("light");
-    if (id === "all") {
-      this.setData({ academicYear: 0, term: 0, activeSemesterId: "all" });
-    } else {
-      const chip = this.data.semesterChips.find((item) => item.id === id);
-      if (!chip) return;
-      this.setData({
-        academicYear: chip.academicYear,
-        term: chip.term,
-        activeSemesterId: chip.id,
-      });
-    }
+    const chip = this.data.semesterChips.find((item) => item.id === id);
+    if (!chip) return;
+    this.setData({
+      academicYear: chip.academicYear,
+      term: chip.term,
+      activeSemesterId: chip.id,
+    });
     wx.nextTick(() => {
       this.setData({ filterLabel: this.buildFilterLabel() });
       void this.loadGrades(true, false);
@@ -389,6 +447,7 @@ Page({
     const mode = String(event.detail.value) as GradeSortMode;
     const config = SORT_CONFIG[mode];
     if (!config || mode === this.data.sortMode) return;
+    gradeListAnimationRequested = true;
     this.setData({
       sortMode: mode,
       sort: config.sort,
@@ -397,7 +456,44 @@ Page({
     });
     wx.nextTick(() => void this.loadGrades(true, false));
   },
+  onGradeTouchStart(event: WechatMiniprogram.TouchEvent) {
+    gradeTouchStart = touchPoint(event);
+    gradeTouchMoved = false;
+  },
+  onGradeTouchMove(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event);
+    if (
+      gradeTouchStart &&
+      current &&
+      movementExceedsTapThreshold(gradeTouchStart, current)
+    ) {
+      gradeTouchMoved = true;
+    }
+  },
+  onGradeTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event, true);
+    if (
+      gradeTouchStart &&
+      current &&
+      movementExceedsTapThreshold(gradeTouchStart, current)
+    ) {
+      gradeTouchMoved = true;
+    }
+    gradeTouchStart = null;
+  },
+  onGradeTouchCancel() {
+    gradeTouchStart = null;
+    gradeTouchMoved = true;
+  },
+  onGradeScroll() {
+    lastGradeScrollAt = Date.now();
+    if (gradeTouchStart) gradeTouchMoved = true;
+  },
   openGrade(event: WechatMiniprogram.TouchEvent) {
+    const canOpen = canActivateTap(gradeTouchMoved, lastGradeScrollAt);
+    gradeTouchStart = null;
+    gradeTouchMoved = false;
+    if (!canOpen) return;
     const id = String(event.currentTarget.dataset.id || "");
     const grade = this.data.gradeItems.find((item) => item.id === id);
     if (!grade) return;

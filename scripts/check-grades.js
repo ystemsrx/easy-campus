@@ -26,9 +26,67 @@ new Function("module", "exports", "require", output)(
 const {
   gradeComponentWidths,
   gradePointRingValue,
+  isMakeupOrDeferredGrade,
   latestGradedSemester,
   latestSemesterGrades,
 } = moduleRecord.exports;
+
+const regularGrade = {
+  gradeNatureCode: "01",
+  gradeNature: "正常考试",
+  finalScore: 88,
+  gradeRemark: null,
+};
+assert(
+  !isMakeupOrDeferredGrade(regularGrade) &&
+    isMakeupOrDeferredGrade({
+      ...regularGrade,
+      gradeNatureCode: "11",
+      gradeNature: "补考",
+    }) &&
+    isMakeupOrDeferredGrade({
+      ...regularGrade,
+      gradeNatureCode: "12",
+      gradeNature: "缓考",
+    }) &&
+    isMakeupOrDeferredGrade({
+      ...regularGrade,
+      gradeNature: null,
+      finalScore: "补/缓考",
+    }),
+  "补考和缓考必须统一识别为仅展示总评的成绩",
+);
+
+const tapGuardSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "utils", "tap-guard.ts"),
+  "utf8",
+);
+const tapGuardOutput = ts.transpileModule(tapGuardSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const tapGuardModule = { exports: {} };
+new Function("module", "exports", "require", tapGuardOutput)(
+  tapGuardModule,
+  tapGuardModule.exports,
+  require,
+);
+const {
+  canActivateTap,
+  movementExceedsTapThreshold,
+  SCROLL_TAP_SETTLE_MS,
+} = tapGuardModule.exports;
+
+assert(
+  !movementExceedsTapThreshold({ x: 10, y: 10 }, { x: 15, y: 15 }) &&
+    movementExceedsTapThreshold({ x: 10, y: 10 }, { x: 10, y: 18 }) &&
+    !canActivateTap(true, 0, 1_000) &&
+    !canActivateTap(false, 900, 900 + SCROLL_TAP_SETTLE_MS - 1) &&
+    canActivateTap(false, 900, 900 + SCROLL_TAP_SETTLE_MS),
+  "成绩卡片必须区分轻触、拖动和刚结束的滚动",
+);
 
 const latestCourses = [
   {
@@ -178,12 +236,45 @@ const gradesPageTemplate = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxml"),
   "utf8",
 );
+const gradesPageStyles = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxss"),
+  "utf8",
+);
+const gradeDetailScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "pages",
+    "grade-detail",
+    "index.ts",
+  ),
+  "utf8",
+);
+const gradeDetailTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "pages",
+    "grade-detail",
+    "index.wxml",
+  ),
+  "utf8",
+);
+const gradesStore = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "store", "grades.ts"),
+  "utf8",
+);
 const teachingService = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "services", "teaching.ts"),
   "utf8",
 );
 assert(
-  gradesPageScript.includes("displayScore: formatScore(course.finalScore)") &&
+  gradesPageScript.includes(
+    "const displayScore = formatScore(course.finalScore)",
+  ) &&
+    gradesPageScript.includes("displayScore,") &&
     !gradesPageScript.includes("formatScore(course.calculationScore)") &&
     gradesPageTemplate.includes("{{item.displayScore}}") &&
     !gradesPageTemplate.includes("calculationScore"),
@@ -196,21 +287,77 @@ assert(
   "默认成绩排序不得显式发送 sort=default，以兼容尚未重启的旧服务进程",
 );
 assert(
-  gradesPageScript.includes("displayScore: formatScore(course.finalScore)") &&
-    fs
-      .readFileSync(
-        path.resolve(
-          __dirname,
-          "..",
-          "miniprogram",
-          "pages",
-          "grade-detail",
-          "index.ts",
-        ),
-        "utf8",
-      )
-      .includes('{ label: "教师", value: course.teacherName || "—" }'),
+  gradesPageScript.includes(
+    "const displayScore = formatScore(course.finalScore)",
+  ) &&
+    gradeDetailScript.includes(
+      '{ label: "教师", value: course.teacherName || "—" }',
+    ) &&
+    gradeDetailScript.includes(
+      '{ label: "成绩性质", value: course.gradeNature || "—" }',
+    ),
   "课程成绩详情必须显示成绩接口返回的教师原文",
+);
+assert(
+  !gradesPageTemplate.includes('data-id="all"') &&
+    !gradesPageTemplate.includes("<text>全部成绩</text>"),
+  "成绩学期栏不得提供全部成绩选项",
+);
+assert(
+  gradesPageTemplate.includes("item.compactScore") &&
+    gradesPageStyles.includes(".score-tile--compact .score-value") &&
+    !gradesPageStyles.includes(".score-tile--text .score-value"),
+  "等级字母和低于 60 分的数字必须保持正常字号，只有长文字成绩才能缩小",
+);
+assert(
+  gradesPageScript.includes(
+    "const components = isMakeupOrDeferredGrade(course) ? [] : course.components;",
+  ) &&
+    gradeDetailScript.includes(
+      "const showComponentsSection = !isMakeupOrDeferredGrade(course);",
+    ) &&
+    gradeDetailScript.includes(
+      "const sourceComponents = showComponentsSection ? course.components : [];",
+    ) &&
+    gradeDetailScript.includes(
+      'detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩"',
+    ) &&
+    gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
+    gradeDetailTemplate.includes(
+      '<block wx:if="{{showComponentsSection}}">',
+    ) &&
+    gradesStore.includes("const SCHEMA_VERSION = 6;"),
+  "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
+);
+assert(
+  gradesPageTemplate.includes('bindscroll="onGradeScroll"') &&
+    gradesPageTemplate.includes('bindtouchstart="onGradeTouchStart"') &&
+    gradesPageTemplate.includes('bindtouchmove="onGradeTouchMove"') &&
+    gradesPageTemplate.includes('bindtouchend="onGradeTouchEnd"') &&
+    gradesPageTemplate.includes('bindtouchcancel="onGradeTouchCancel"') &&
+    gradesPageScript.includes(
+      "movementExceedsTapThreshold(gradeTouchStart, current)",
+    ) &&
+    gradesPageScript.includes(
+      "canActivateTap(gradeTouchMoved, lastGradeScrollAt)",
+    ),
+  "成绩列表滑动及惯性滚动结束前不得打开课程详情",
+);
+assert(
+  gradesPageTemplate.includes(
+    "class=\"grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}\"",
+  ) &&
+    gradesPageTemplate.includes(
+      'style="animation-delay: {{item.animationDelay}}ms;"',
+    ) &&
+    gradesPageScript.includes("let gradeListAnimationRequested = true;") &&
+    gradesPageScript.includes("const animateEntries = gradeListAnimationRequested;") &&
+    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}`") &&
+    gradesPageScript.includes("animateEntries || animatedIds.has(course.id)") &&
+    (gradesPageScript.match(/^\s+gradeListAnimationRequested = true;/gm) || [])
+      .length === 2 &&
+    !gradesPageScript.includes("gradeAnimationTimer"),
+  "成绩卡片只应在首次进入和切换排序时整批播放逐步进入动效",
 );
 
 console.log("Grade preview checks passed.");

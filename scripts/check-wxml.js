@@ -387,11 +387,15 @@ if (
   !gradesScript.includes("this.selectComponent(") ||
   !gradesScript.includes('"#grade-sort-filter",') ||
   !gradesTemplate.includes('wx:key="renderKey"') ||
-  !gradesTemplate.includes('class="grade-card-motion stagger-item"') ||
+  !gradesTemplate.includes(
+    "class=\"grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}\"",
+  ) ||
   !gradesTemplate.includes('class="grade-card card pressable"') ||
   gradesTemplate.includes('class="grade-card card pressable stagger-item"') ||
   !gradesScript.includes("let gradeRenderBatch = 0;") ||
-  !gradesScript.includes("`${renderBatch}:${course.id}:${index}`") ||
+  !gradesScript.includes("`${gradeRenderBatch}:${course.id}`") ||
+  !gradesScript.includes("let gradeListAnimationRequested = true;") ||
+  !gradesScript.includes("animateEntries || animatedIds.has(course.id)") ||
   gradesScript.includes("gradeAnimationTimer") ||
   !gradeSortTemplate.includes('class="grade-sort-popover"') ||
   !gradeSortScript.includes("分数高→低") ||
@@ -409,20 +413,26 @@ if (
   gradesScript.includes("缓存更新于")
 ) {
   failures.push(
-    "pages/grades: 排序浮窗必须隔离页面状态，切换排序时所有成绩卡片必须整批重播动画",
+    "pages/grades: 排序浮窗必须隔离页面状态，成绩卡片只在首次进入和切换排序时整批播放动画",
   );
 }
 if (
-  !gradeDetailTemplate.includes('title="课程成绩与组成"') ||
+  !gradeDetailTemplate.includes('title="{{detailTitle}}"') ||
   !gradeDetailTemplate.includes('inset-back="{{true}}"') ||
   !gradeDetailTemplate.includes('style="width: {{item.width}}%;"') ||
-  !gradeDetailScript.includes("gradeComponentWidths(course.components)") ||
+  !gradeDetailScript.includes("gradeComponentWidths(sourceComponents)") ||
+  !gradeDetailScript.includes(
+    'detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩"',
+  ) ||
+  !gradeDetailTemplate.includes(
+    '<block wx:if="{{showComponentsSection}}">',
+  ) ||
   gradeDetailTemplate.includes("教务系统返回的全部细分项目") ||
   gradeDetailTemplate.includes("只保留查询有用的字段") ||
   gradeDetailTemplate.includes("数字成绩以数字展示")
 ) {
   failures.push(
-    "pages/grade-detail: 抽屉标题、内嵌返回按钮与按真实权重绘制的成绩组成必须保留",
+    "pages/grade-detail: 详情标题、内嵌返回按钮及普通成绩的真实权重组成必须正确展示",
   );
 }
 if (

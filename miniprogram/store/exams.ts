@@ -2,8 +2,10 @@ import type { ExamsData } from "../types/api";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:exams:";
+const SCHEMA_VERSION = 3;
 
 export interface ExamsSnapshot extends CacheMetadata {
+  schemaVersion: typeof SCHEMA_VERSION;
   data: ExamsData;
   refreshedForSignInAt: number;
 }
@@ -30,8 +32,15 @@ export function loadExamsSnapshot(
   if (!account.trim()) return null;
   const value = wx.getStorageSync(storageKey(account, semesterId)) as
     Partial<ExamsSnapshot> | undefined;
-  if (!value || !isExamsData(value.data)) return null;
+  if (
+    !value ||
+    value.schemaVersion !== SCHEMA_VERSION ||
+    !isExamsData(value.data)
+  ) {
+    return null;
+  }
   return {
+    schemaVersion: SCHEMA_VERSION,
     data: value.data,
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || 0,
@@ -50,6 +59,7 @@ export function saveExamsSnapshot(
 ): ExamsSnapshot | null {
   if (!account.trim()) return null;
   const snapshot: ExamsSnapshot = {
+    schemaVersion: SCHEMA_VERSION,
     data,
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),

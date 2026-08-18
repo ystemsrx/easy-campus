@@ -1,38 +1,52 @@
 <view class="page exams-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" lower-threshold="180">
-    <navigation-bar title="考试安排" subtitle="按学期实时查询" back transparent theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
+    <navigation-bar title="考试安排" back extra-left transparent theme="{{theme}}">
+      <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="刷新考试安排">
+        <lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+      </view>
+    </navigation-bar>
+
     <view class="exams-content page-content page-enter">
+      <scroll-view wx:if="{{semesters.length}}" class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+        <view class="semester-row">
+          <view wx:for="{{semesters}}" wx:key="id" class="semester-chip pressable {{semesterId === item.id ? 'semester-chip--active' : ''}}" data-id="{{item.id}}" bindtap="selectSemesterQuick" hover-class="pressing"><text>{{item.selectorLabel}}</text></view>
+        </view>
+      </scroll-view>
+
       <view class="exam-hero stagger-item stagger-1">
         <view class="ambient-blob exam-blob exam-blob--one"></view><view class="ambient-blob exam-blob exam-blob--two"></view>
         <text class="exam-hero-kicker">EXAM SCHEDULE</text>
         <text class="exam-hero-title display-title">{{filterLabel}}</text>
-        <text class="exam-hero-caption">{{summaryLabel}}</text>
+        <view class="exam-hero-stats">
+          <view class="exam-hero-stat"><text class="exam-hero-stat-value tnum">{{statusSummary.total}}</text><text class="exam-hero-stat-label">总数</text></view>
+          <view class="exam-hero-stat"><text class="exam-hero-stat-value tnum">{{statusSummary.pending}}</text><text class="exam-hero-stat-label">待考</text></view>
+          <view class="exam-hero-stat"><text class="exam-hero-stat-value tnum">{{statusSummary.past}}</text><text class="exam-hero-stat-label">已过</text></view>
+        </view>
         <view class="exam-symbol"><lucide-icon name="clipboard-check" tone="white" size="{{58}}"></lucide-icon></view>
       </view>
 
-      <view class="semester-picker card pressable stagger-item stagger-2" bindtap="openFilter" hover-class="pressing"><view class="semester-icon"><lucide-icon name="notebook-tabs" tone="rose" size="{{31}}"></lucide-icon></view><view class="semester-copy"><text class="semester-caption">查询学期</text><text class="semester-value" overflow="ellipsis" max-lines="1">{{filterLabel}}</text></view><lucide-icon name="chevron-right" tone="muted" size="{{28}}"></lucide-icon></view>
-
-      <view class="result-heading"><view><text class="result-title">考试日程</text><text class="result-caption">按实际考试时间从早到晚排列</text></view><view class="realtime-pill"><view></view><text>静默更新</text></view></view>
+      <view class="result-heading"><text class="result-title">考试日程</text></view>
       <loading-view wx:if="{{loading}}" label="正在读取考试安排"></loading-view>
       <view wx:elif="{{examItems.length}}" class="exam-list">
-        <view wx:for="{{examItems}}" wx:key="id" class="exam-card exam-card--{{item.arrangementType}} card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">
-          <view class="exam-date exam-date--{{item.arrangementType}}"><text class="exam-date-label">{{item.dateLabel}}</text><text class="exam-time-label">{{item.timeLabel}}</text></view>
-          <view class="exam-copy"><view class="exam-tags"><text class="exam-type exam-type--{{item.arrangementType}}">{{item.arrangementTypeLabel}}</text><text wx:if="{{item.method}}" class="exam-method">{{item.method}}</text></view><text class="exam-name" overflow="ellipsis" max-lines="2">{{item.course.name}}</text><view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.locationLabel}}</text></view></view>
-          <view class="exam-seat"><text>{{item.seatLabel}}</text><text>座位</text></view><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
+        <view wx:for="{{examItems}}" wx:key="id" class="exam-card card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">
+          <view class="exam-countdown exam-countdown--{{item.countdownTone}}">
+            <view wx:if="{{item.countdownTone === 'current'}}" class="exam-countdown-current" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
+            <text wx:else class="exam-countdown-value tnum">{{item.countdownLabel}}</text>
+          </view>
+          <view class="exam-copy">
+            <text class="exam-name" overflow="ellipsis" max-lines="2">{{item.course.name}}<text wx:if="{{item.retakeMarker}}" class="exam-course-marker">（重修）</text><text wx:if="{{item.makeupDeferredMarker}}" class="exam-course-marker">（补缓考）</text></text>
+            <view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.locationLabel}}</text></view>
+          </view>
+          <view class="exam-schedule"><text class="exam-date-label tnum">{{item.dateLabel}}</text><text class="exam-time-label tnum">{{item.timeLabel}}</text></view>
         </view>
         <view wx:if="{{loadingMore}}" class="exam-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="exam-end">以上是全部考试安排</text>
       </view>
-      <empty-state wx:elif="{{!errorMessage}}" icon="clipboard-check" icon-tone="rose" title="本学期暂无考试" description="考试安排由教务系统实时提供，可切换其他已有学期查看" action-text="选择学期" bindaction="openFilter"></empty-state>
+      <empty-state wx:elif="{{!errorMessage}}" icon="clipboard-check" icon-tone="rose" title="本学期暂无考试" description="可切换其他学期查看"></empty-state>
       <empty-state wx:else icon="circle-alert" icon-tone="danger" title="考试信息加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>
     </view>
   </scroll-view>
 
-  <bottom-sheet visible="{{filterVisible}}" title="选择学期" theme="{{theme}}" bindclose="closeFilter">
-    <scroll-view class="exam-filter-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}"><text class="exam-filter-hint">仅显示教务系统中与你有关的学期；第三学期有实际记录时才会出现。</text><view class="semester-options"><view wx:for="{{semesters}}" wx:key="id" class="semester-option {{draftSemesterId === item.id ? 'semester-option--active' : ''}}" data-id="{{item.id}}" bindtap="selectDraftSemester" hover-class="semester-option--pressed"><view><text class="semester-year">{{item.academicYearLabel}}</text><text class="semester-term">第 {{item.term}} 学期</text></view><view class="semester-radio"><view wx:if="{{draftSemesterId === item.id}}"></view></view></view></view></scroll-view>
-    <view slot="footer" class="exam-filter-actions"><button class="secondary-button" hover-class="button-pressed" bindtap="resetFilter">最新学期</button><button class="primary-button" hover-class="button-pressed" bindtap="applyFilter">查看安排</button></view>
-  </bottom-sheet>
-
-  <bottom-sheet visible="{{selectedExamVisible}}" title="{{selectedExam.title || '考试详情'}}" theme="{{theme}}" bindclose="closeExam">
-    <scroll-view wx:if="{{selectedExam}}" class="exam-detail-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}"><view class="exam-detail-card card"><view wx:for="{{selectedExam.rows}}" wx:key="label" class="exam-detail-row {{index < selectedExam.rows.length - 1 ? 'exam-detail-row--divided' : ''}}"><text>{{item.label}}</text><text overflow="ellipsis" max-lines="4">{{item.value}}</text></view></view><view wx:if="{{selectedExam.note}}" class="exam-note"><text>备注</text><text>{{selectedExam.note}}</text></view></scroll-view>
+  <bottom-sheet visible="{{selectedExamVisible}}" title="{{selectedExamTitle}}" theme="{{theme}}" scrollable="{{false}}" bindclose="closeExam">
+    <scroll-view wx:if="{{selectedExam}}" class="exam-detail-scroll" type="custom" style="{{selectedExamDetailHeight > 0 ? 'height:' + selectedExamDetailHeight + 'px;' : ''}}" scroll-y enhanced show-scrollbar="{{false}}"><view id="exam-detail-content" class="exam-detail-content"><view class="exam-detail-card card"><view wx:for="{{selectedExam.rows}}" wx:key="label" class="exam-detail-row {{index < selectedExam.rows.length - 1 ? 'exam-detail-row--divided' : ''}}"><text>{{item.label}}</text><text overflow="ellipsis" max-lines="4">{{item.value}}</text></view></view><view wx:if="{{selectedExam.note}}" class="exam-note"><text>备注</text><text>{{selectedExam.note}}</text></view><view class="exam-detail-spacer"></view></view></scroll-view>
   </bottom-sheet>
 </view>

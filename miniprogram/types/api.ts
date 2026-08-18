@@ -235,6 +235,8 @@ export interface GradeCourse {
   department: string;
   courseNatureCode: string | null;
   courseNature: string | null;
+  gradeNatureCode: string | null;
+  gradeNature: string | null;
   credits: number | null;
   finalScore: GradeValue;
   calculationScore: number | null;
@@ -448,7 +450,6 @@ export interface Exam {
     room: string;
     campus: string;
   };
-  seatNumber?: string;
   method?: string;
   retake?: boolean;
   teachingClass: string;

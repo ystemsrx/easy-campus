@@ -7,7 +7,6 @@ import { getSession } from "../../store/session";
 import type {
   AcademicSemesterOption,
   Exam,
-  ExamSummary,
   ExamsData,
   ExamsQuery,
 } from "../../types/api";
@@ -21,21 +20,34 @@ import {
 } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import {
+  examBatchLabel,
+  examCountdown,
+  summarizeExamProgress,
+  type ExamCountdownTone,
+} from "../../utils/exams";
+import { numberedAcademicSemesterLabel } from "../../utils/semester";
 
 interface ExamView extends Exam {
   dateLabel: string;
   timeLabel: string;
+  countdownLabel: string;
+  countdownTone: ExamCountdownTone;
   locationLabel: string;
-  seatLabel: string;
   teachersLabel: string;
   classLabel: string;
   creditsLabel: string;
   methodLabel: string;
-  retakeLabel: string;
+  batchLabel: string;
+  retakeMarker: boolean;
+  makeupDeferredMarker: boolean;
+}
+
+interface SemesterChip extends AcademicSemesterOption {
+  selectorLabel: string;
 }
 
 interface SelectedExamDetail {
-  title: string;
   rows: Array<{ label: string; value: string }>;
   note: string;
 }
@@ -44,27 +56,17 @@ const PAGE_SIZE = 50;
 let examsSequence = 0;
 let hydratedExamsAccount = "";
 
-function emptySummary(): ExamSummary {
-  return {
-    total: 0,
-    regular: 0,
-    makeup: 0,
-    deferred: 0,
-    makeupDeferred: 0,
-  };
-}
-
-function summaryLabel(summary: ExamSummary): string {
-  if (!summary.total) return "本学期暂无考试";
-  const parts: string[] = [];
-  if (summary.regular) parts.push(`${summary.regular} 场正常考试`);
-  if (summary.makeup) parts.push(`${summary.makeup} 场补考`);
-  if (summary.deferred) parts.push(`${summary.deferred} 场缓考`);
-  if (summary.makeupDeferred) parts.push(`${summary.makeupDeferred} 场补/缓考`);
-  return parts.join(" · ");
+function buildSemesterChips(
+  semesters: AcademicSemesterOption[],
+): SemesterChip[] {
+  return semesters.map((semester) => ({
+    ...semester,
+    selectorLabel: numberedAcademicSemesterLabel(semester),
+  }));
 }
 
 function toExamView(exam: Exam): ExamView {
+  const countdown = examCountdown(exam);
   const dateLabel = exam.time.startAt
     ? formatTimestampDate(exam.time.startAt)
     : exam.time.date
@@ -92,30 +94,29 @@ function toExamView(exam: Exam): ExamView {
     arrangementTypeLabel: exam.arrangementTypeLabel || "正常考试",
     dateLabel,
     timeLabel,
+    countdownLabel: countdown.label,
+    countdownTone: countdown.tone,
     locationLabel:
       [exam.location.campus, exam.location.room].filter(Boolean).join(" · ") ||
       "考场待定",
-    seatLabel: exam.seatNumber || "待定",
     teachersLabel: exam.teacherNames.join("、") || "—",
     classLabel: exam.classComposition.join("、") || exam.teachingClass || "—",
     creditsLabel:
       exam.course.credits === undefined ? "—" : `${exam.course.credits}`,
     methodLabel: exam.method || "未说明",
-    retakeLabel: exam.retake === undefined ? "—" : exam.retake ? "是" : "否",
+    batchLabel: examBatchLabel(exam),
+    retakeMarker: exam.retake === true,
+    makeupDeferredMarker: exam.examName.includes("补缓考"),
   };
 }
 
 function makeExamDetail(exam: ExamView): SelectedExamDetail {
   return {
-    title: exam.course.name,
     rows: [
-      { label: "考试类型", value: exam.arrangementTypeLabel },
-      { label: "教务批次", value: exam.examName || "—" },
+      { label: "考试批次", value: exam.batchLabel },
       { label: "考试时间", value: `${exam.dateLabel} ${exam.timeLabel}` },
       { label: "考场", value: exam.locationLabel },
-      { label: "座位号", value: exam.seatLabel },
       { label: "考试方式", value: exam.methodLabel },
-      { label: "重修标记", value: exam.retakeLabel },
       { label: "课程代码", value: exam.course.code || "—" },
       {
         label: "课程学分",
@@ -141,17 +142,16 @@ Page({
     errorMessage: "",
     loaded: false,
     semesterId: "",
-    semesters: [] as AcademicSemesterOption[],
+    semesters: [] as SemesterChip[],
     examItems: [] as ExamView[],
-    summary: emptySummary(),
-    summaryLabel: "正在读取考试安排",
+    statusSummary: { total: 0, pending: 0, past: 0 },
     page: 1,
     totalPages: 0,
     total: 0,
     filterLabel: "最新学期",
-    filterVisible: false,
-    draftSemesterId: "",
     selectedExamVisible: false,
+    selectedExamTitle: "考试详情",
+    selectedExamDetailHeight: 0,
     selectedExam: null as SelectedExamDetail | null,
   },
   onLoad() {
@@ -167,35 +167,38 @@ Page({
   applyAppearance() {
     this.setData(resolveAppearance());
   },
-  hydrateExams(semesterId = "default") {
+  hydrateExams(semesterId = "default"): boolean {
     const account = getSession()?.user.account || "";
-    if (!account) return;
+    if (!account) return false;
     if (
       semesterId === "default" &&
       hydratedExamsAccount === account &&
       this.data.loaded
     ) {
-      return;
+      return true;
     }
     hydratedExamsAccount = account;
     const cached = loadExamsSnapshot(account, semesterId);
-    if (cached) this.applyExamsData(cached.data);
+    if (!cached) return false;
+    this.applyExamsData(cached.data);
+    return true;
   },
   applyExamsData(data: ExamsData) {
     const semesterId = data.semester?.id || "";
+    const examItems = data.items.map(toExamView);
     this.setData({
-      examItems: data.items.map(toExamView),
-      semesters: data.semesters,
+      examItems,
+      semesters: buildSemesterChips(data.semesters),
       semesterId,
-      draftSemesterId: semesterId,
-      summary: data.summary,
-      summaryLabel: summaryLabel(data.summary),
+      statusSummary: summarizeExamProgress(examItems, data.summary.total),
       page: data.pagination.page,
       totalPages: data.pagination.totalPages,
       total: data.pagination.total,
       loaded: true,
       loading: false,
-      filterLabel: data.semester?.label || "暂无可用学期",
+      filterLabel: data.semester
+        ? numberedAcademicSemesterLabel(data.semester)
+        : "暂无可用学期",
     });
   },
   async loadExams(reset: boolean, refresh: boolean) {
@@ -210,7 +213,7 @@ Page({
     const sequence = ++examsSequence;
     this.setData({
       loading: reset && !this.data.loaded,
-      refreshing: false,
+      refreshing: refresh,
       loadingMore: !reset,
       errorMessage: "",
     });
@@ -244,11 +247,16 @@ Page({
           });
           this.applyExamsData(result.data);
         } else {
+          const examItems = [
+            ...this.data.examItems,
+            ...result.data.items.map(toExamView),
+          ];
           this.setData({
-            examItems: [
-              ...this.data.examItems,
-              ...result.data.items.map(toExamView),
-            ],
+            examItems,
+            statusSummary: summarizeExamProgress(
+              examItems,
+              result.data.summary.total,
+            ),
             page: result.data.pagination.page,
             totalPages: result.data.pagination.totalPages,
             total: result.data.pagination.total,
@@ -286,6 +294,7 @@ Page({
     }
   },
   onRefresh() {
+    if (this.data.refreshing) return;
     haptic("medium");
     void this.loadExams(true, true);
   },
@@ -294,37 +303,25 @@ Page({
       void this.loadExams(false, false);
     }
   },
-  openFilter() {
-    haptic("light");
-    this.setData({
-      filterVisible: true,
-      draftSemesterId: this.data.semesterId,
-    });
-  },
-  closeFilter() {
-    this.setData({ filterVisible: false });
-  },
-  selectDraftSemester(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({
-      draftSemesterId: String(event.currentTarget.dataset.id || ""),
-    });
-  },
-  resetFilter() {
-    this.setData({ draftSemesterId: this.data.semesters[0]?.id || "" });
-  },
-  applyFilter() {
-    const semesterId = this.data.draftSemesterId;
-    if (semesterId === this.data.semesterId) {
-      this.closeFilter();
-      return;
-    }
+  selectSemesterQuick(event: WechatMiniprogram.TouchEvent) {
+    const semesterId = String(event.currentTarget.dataset.id || "");
+    if (!semesterId || semesterId === this.data.semesterId) return;
+    const semester = this.data.semesters.find((item) => item.id === semesterId);
+    if (!semester) return;
     haptic("medium");
     this.setData({
       semesterId,
-      filterVisible: false,
+      filterLabel: semester.selectorLabel,
     });
-    this.hydrateExams(semesterId);
+    if (!this.hydrateExams(semesterId)) {
+      this.setData({
+        examItems: [],
+        statusSummary: { total: 0, pending: 0, past: 0 },
+        loaded: false,
+        loading: true,
+        errorMessage: "",
+      });
+    }
     void this.loadExams(true, false);
   },
   openExam(event: WechatMiniprogram.TouchEvent) {
@@ -332,10 +329,53 @@ Page({
     const exam = this.data.examItems.find((item) => item.id === id);
     if (!exam) return;
     haptic("light");
-    this.setData({
-      selectedExam: makeExamDetail(exam),
-      selectedExamVisible: true,
-    });
+    this.setData(
+      {
+        selectedExam: makeExamDetail(exam),
+        selectedExamTitle: exam.course.name,
+        selectedExamDetailHeight: 0,
+        selectedExamVisible: true,
+      },
+      () => {
+        wx.nextTick(() => wx.nextTick(() => this.measureExamDetailHeight()));
+      },
+    );
+  },
+  measureExamDetailHeight(attempt = 0) {
+    this.createSelectorQuery()
+      .select("#exam-detail-content")
+      .boundingClientRect((rect) => {
+        const contentHeight = Math.ceil(Number(rect?.height) || 0);
+        if (!contentHeight) {
+          if (attempt < 2 && this.data.selectedExamVisible) {
+            wx.nextTick(() => this.measureExamDetailHeight(attempt + 1));
+          }
+          return;
+        }
+        const windowInfo = wx.getWindowInfo();
+        const windowHeight = Math.max(1, windowInfo.windowHeight || 667);
+        const windowWidth = Math.max(1, windowInfo.windowWidth || 375);
+        const safeBottom = Math.max(
+          0,
+          windowHeight - Number(windowInfo.safeArea?.bottom || windowHeight),
+        );
+        const sheetChromeHeight = (130 * windowWidth) / 750 + safeBottom;
+        const maximumHeight = Math.max(
+          1,
+          Math.floor(windowHeight * 0.86 - sheetChromeHeight),
+        );
+        const selectedExamDetailHeight = Math.min(
+          contentHeight,
+          maximumHeight,
+        );
+        if (
+          this.data.selectedExamVisible &&
+          selectedExamDetailHeight !== this.data.selectedExamDetailHeight
+        ) {
+          this.setData({ selectedExamDetailHeight });
+        }
+      })
+      .exec();
   },
   closeExam() {
     this.setData({ selectedExamVisible: false });

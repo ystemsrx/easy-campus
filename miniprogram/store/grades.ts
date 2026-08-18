@@ -2,7 +2,7 @@ import type { GradesData } from "../types/api";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:grades:";
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 6;
 
 export interface GradesSnapshot extends CacheMetadata {
   schemaVersion: typeof SCHEMA_VERSION;

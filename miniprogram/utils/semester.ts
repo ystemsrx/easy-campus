@@ -18,6 +18,12 @@ export function shortAcademicSemesterLabel(
   return season ? `${start}-${end}${separator}${season}` : `${start}-${end}`;
 }
 
+export function numberedAcademicSemesterLabel(
+  semester: AcademicSemesterOption,
+): string {
+  return `${semester.academicYearLabel} · ${semester.term}`;
+}
+
 export function timetableSemesterMenuLabel(
   semester: AcademicSemesterOption,
 ): string {

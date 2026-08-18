@@ -1,6 +1,6 @@
 <view class="page grade-detail-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-    <navigation-bar title="课程成绩与组成" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
+    <navigation-bar title="{{detailTitle}}" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view wx:if="{{course}}" class="detail-content page-content page-enter">
       <view class="detail-hero detail-hero--{{scoreTone}}">
         <view class="ambient-blob detail-blob detail-blob--one"></view><view class="ambient-blob detail-blob detail-blob--two"></view>
@@ -16,15 +16,17 @@
 
       <view wx:if="{{course.gradeRemark}}" class="detail-remark"><view class="detail-remark-symbol"><lucide-icon name="circle-alert" tone="danger" size="{{29}}"></lucide-icon></view><view><text class="detail-remark-title">成绩备注</text><text class="detail-remark-value">{{course.gradeRemark}}</text></view></view>
 
-      <view class="section-header"><view><text class="section-title">成绩组成</text></view></view>
-      <view wx:if="{{components.length}}" class="components-card card">
-        <view class="composition-strip"><view wx:for="{{components}}" wx:key="name" class="composition-segment composition-segment--{{item.tone}}" style="width: {{item.width}}%;"></view></view>
-        <view wx:for="{{components}}" wx:key="name" class="component-row {{index < components.length - 1 ? 'component-row--divided' : ''}}">
-          <view class="component-head"><view class="component-copy"><view class="component-dot component-dot--{{item.tone}}"></view><text class="component-name">{{item.name}}</text><text class="component-weight">{{item.weight}}</text></view><text class="component-score component-score--{{item.tone}}">{{item.score}}</text></view>
-          <view wx:if="{{!item.isText && item.progress > 0}}" class="progress-track"><view class="progress-fill progress-fill--{{item.tone}}" style="width: {{item.progress}}%;"></view></view>
+      <block wx:if="{{showComponentsSection}}">
+        <view class="section-header"><view><text class="section-title">成绩组成</text></view></view>
+        <view wx:if="{{components.length}}" class="components-card card">
+          <view class="composition-strip"><view wx:for="{{components}}" wx:key="name" class="composition-segment composition-segment--{{item.tone}}" style="width: {{item.width}}%;"></view></view>
+          <view wx:for="{{components}}" wx:key="name" class="component-row {{index < components.length - 1 ? 'component-row--divided' : ''}}">
+            <view class="component-head"><view class="component-copy"><view class="component-dot component-dot--{{item.tone}}"></view><text class="component-name">{{item.name}}</text><text class="component-weight">{{item.weight}}</text></view><text class="component-score component-score--{{item.tone}} {{item.compactScore ? 'component-score--compact' : ''}}">{{item.score}}</text></view>
+            <view wx:if="{{!item.isText && item.progress > 0}}" class="progress-track"><view class="progress-fill progress-fill--{{item.tone}}" style="width: {{item.progress}}%;"></view></view>
+          </view>
         </view>
-      </view>
-      <empty-state wx:else compact icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无分项成绩" description="当前课程只提供总评成绩"></empty-state>
+        <empty-state wx:else compact icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无分项成绩" description="当前课程只提供总评成绩"></empty-state>
+      </block>
 
       <view class="section-header"><view><text class="section-title">课程信息</text></view></view>
       <view class="detail-info-card card"><view wx:for="{{detailRows}}" wx:key="label" class="detail-info-row {{index < detailRows.length - 1 ? 'detail-info-row--divided' : ''}}"><text class="detail-info-label">{{item.label}}</text><text class="detail-info-value" overflow="ellipsis" max-lines="3">{{item.value}}</text></view></view>

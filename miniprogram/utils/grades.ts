@@ -6,6 +6,24 @@ import type {
   GradesData,
 } from "../types/api";
 
+function hasMakeupOrDeferredMarker(value: unknown): boolean {
+  return /补考|缓考|补[/、]?缓考/.test(String(value ?? ""));
+}
+
+export function isMakeupOrDeferredGrade(
+  course: Pick<
+    GradeCourse,
+    "gradeNatureCode" | "gradeNature" | "finalScore" | "gradeRemark"
+  >,
+): boolean {
+  return (
+    course.gradeNatureCode === "11" ||
+    hasMakeupOrDeferredMarker(course.gradeNature) ||
+    hasMakeupOrDeferredMarker(course.finalScore) ||
+    hasMakeupOrDeferredMarker(course.gradeRemark)
+  );
+}
+
 export function gradeComponentWidths(components: GradeComponent[]): number[] {
   const declared = components.map((component) =>
     typeof component.weightPercent === "number" && component.weightPercent >= 0

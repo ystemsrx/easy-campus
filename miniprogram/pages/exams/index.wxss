@@ -1,58 +1,69 @@
 .exams-content { padding-top: 20rpx; }
-.nav-refresh { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; border-radius: 50%; color: #8b8578; background: #fff; box-shadow: var(--shadow-card); font-size: 36rpx; }
-.exam-hero { position: relative; min-height: 270rpx; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(145deg, #c2767a, #dfa6a0); box-shadow: var(--shadow-pop); }
+.nav-refresh { display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border-radius: 50%; color: #2b2620; background: #fff; box-shadow: 0 2rpx 4rpx rgba(20, 20, 30, 0.04), 0 14rpx 40rpx -12rpx rgba(20, 20, 30, 0.14); transition: transform 120ms ease-out, opacity 120ms ease-out; }
+.nav-button-pressed { transform: scale(0.93); opacity: 0.82; }
+.nav-refresh--loading { opacity: 0.7; }
+.nav-refresh--loading lucide-icon { animation-name: exam-refresh-spin; animation-duration: 850ms; animation-timing-function: linear; animation-iteration-count: infinite; }
+
+.semester-scroll { position: relative; z-index: 2; display: block; flex: none; width: calc(100% + 80rpx); height: 96rpx; margin-left: -40rpx; }
+.semester-row { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 14rpx; height: 96rpx; padding: 8rpx 40rpx 18rpx; }
+.semester-chip { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; height: 60rpx; padding: 0 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; line-height: 1; white-space: nowrap; }
+.semester-chip > text { display: block; line-height: 30rpx; }
+.semester-chip--active { color: #fff; background: linear-gradient(135deg, #c2767a, #dfa6a0); }
+
+.exam-hero { position: relative; min-height: 286rpx; margin-top: 18rpx; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(145deg, #c2767a, #dfa6a0); box-shadow: var(--shadow-pop); }
 .exam-blob { background: rgba(255, 255, 255, 0.15); }
 .exam-blob--one { top: -90rpx; right: -70rpx; width: 300rpx; height: 270rpx; }
 .exam-blob--two { bottom: -115rpx; left: -65rpx; width: 240rpx; height: 215rpx; background: rgba(0, 0, 0, 0.06); animation-delay: -4s; }
 .exam-hero-kicker { position: relative; display: block; color: rgba(255, 255, 255, 0.72); font-size: 20rpx; font-weight: 750; letter-spacing: 4rpx; }
 .exam-hero-title { position: relative; display: block; max-width: 510rpx; margin-top: 12rpx; font-size: 45rpx; font-weight: 700; line-height: 1.3; }
-.exam-hero-caption { position: relative; display: block; max-width: 500rpx; margin-top: 10rpx; color: rgba(255, 255, 255, 0.8); font-size: 22rpx; }
-.exam-symbol { position: absolute; right: 35rpx; bottom: 30rpx; display: flex; align-items: center; justify-content: center; width: 82rpx; height: 82rpx; border-radius: 28rpx; background: rgba(255, 255, 255, 0.2); font-family: Georgia, "Songti SC", serif; font-size: 34rpx; font-weight: 750; backdrop-filter: blur(8px); }
-.semester-picker { display: flex; flex-direction: row; align-items: center; gap: 22rpx; margin-top: 22rpx; padding: 24rpx 28rpx; }
-.semester-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; background: #f7e9e8; }
-.semester-copy { flex: 1; min-width: 0; }
-.semester-caption { display: block; color: #a39e92; font-size: 20rpx; }
-.semester-value { display: block; margin-top: 3rpx; color: var(--color-text); font-size: 26rpx; font-weight: 700; }
-.result-heading { display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; margin: 48rpx 2rpx 22rpx; }
+.exam-hero-stats { position: relative; display: flex; flex-direction: row; width: 420rpx; margin-top: 24rpx; overflow: hidden; border: 1rpx solid rgba(255, 255, 255, 0.18); border-radius: 28rpx; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); }
+.exam-hero-stat { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 14rpx 8rpx; }
+.exam-hero-stat + .exam-hero-stat { border-left: 1rpx solid rgba(255, 255, 255, 0.16); }
+.exam-hero-stat-value { display: block; font-size: 31rpx; font-weight: 800; line-height: 1; white-space: nowrap; }
+.exam-hero-stat-label { display: block; margin-top: 5rpx; color: rgba(255, 255, 255, 0.72); font-size: 17rpx; font-weight: 650; white-space: nowrap; }
+.exam-symbol { position: absolute; right: 35rpx; bottom: 36rpx; display: flex; align-items: center; justify-content: center; width: 82rpx; height: 82rpx; border-radius: 28rpx; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); }
+
+.result-heading { display: flex; flex-direction: row; align-items: center; margin: 48rpx 2rpx 22rpx; }
 .result-title { display: block; color: var(--color-text); font-size: 38rpx; font-weight: 750; }
-.result-caption { display: block; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
-.realtime-pill { display: flex; flex-direction: row; align-items: center; gap: 8rpx; padding: 8rpx 15rpx; border-radius: 999rpx; color: #5f7350; background: #edf1e6; font-size: 19rpx; font-weight: 700; }
-.realtime-pill view { width: 9rpx; height: 9rpx; border-radius: 50%; background: #7d8f6e; }
 .exam-list { display: flex; flex-direction: column; gap: 18rpx; }
-.exam-card { display: flex; flex-direction: row; align-items: center; gap: 20rpx; padding: 24rpx; }
-.exam-date { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 118rpx; min-height: 104rpx; padding: 12rpx 8rpx; border-radius: 34rpx; color: #a55357; background: #f7e9e8; text-align: center; }
-.exam-date--makeup,
-.exam-date--deferred { color: #a66f1f; background: #f8eedd; }
-.exam-date-label { font-size: 22rpx; font-weight: 800; }
-.exam-time-label { margin-top: 5rpx; font-size: 18rpx; font-weight: 650; }
+.exam-card { display: flex; flex-direction: row; align-items: center; gap: 18rpx; min-height: 104rpx; padding: 24rpx; }
+.exam-countdown { box-sizing: border-box; display: flex; flex: none; align-items: center; justify-content: center; width: 104rpx; height: 104rpx; border-radius: 32rpx; color: #a55357; background: #f7e9e8; text-align: center; }
+.exam-countdown--current,
+.exam-countdown--urgent { color: #a55357; background: #f7e9e8; }
+.exam-countdown--soon { color: #a86439; background: #f9eae2; }
+.exam-countdown--week { color: #936a27; background: #f8eedd; }
+.exam-countdown--later { color: #5f7350; background: #edf1e6; }
+.exam-countdown--past { color: #a39e92; background: #efede6; }
+.exam-countdown--pending { color: #8b8b94; background: #f1f1f3; }
+.exam-countdown-value { display: block; max-width: 92rpx; font-size: 34rpx; font-weight: 820; line-height: 1; text-align: center; }
+.exam-countdown-current { box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; width: 100%; height: 100%; padding: 19rpx 20rpx; font-size: 26rpx; font-weight: 850; line-height: 1; }
+.exam-countdown-current > view { display: flex; flex-direction: row; justify-content: space-between; width: 100%; }
+.exam-countdown-current text { display: block; flex: none; line-height: 1; text-align: center; }
 .exam-copy { flex: 1; min-width: 0; }
-.exam-tags { display: flex; flex-direction: row; gap: 8rpx; }
-.exam-type,
-.exam-method { padding: 4rpx 11rpx; border-radius: 999rpx; color: #a55357; background: #f7e9e8; font-size: 17rpx; font-weight: 750; }
-.exam-type--makeup,
-.exam-type--deferred { color: #a66f1f; background: #f8eedd; }
-.exam-method { color: #8b8b94; background: #f1f1f3; }
-.exam-name { display: block; margin-top: 8rpx; color: var(--color-text); font-size: 27rpx; font-weight: 750; line-height: 1.38; }
-.exam-location { display: flex; flex-direction: row; align-items: center; gap: 8rpx; margin-top: 7rpx; color: var(--color-text-tertiary); font-size: 20rpx; }
-.exam-seat { display: flex; flex: none; flex-direction: column; align-items: flex-end; }
-.exam-seat text:first-child { color: #a55357; font-size: 29rpx; font-weight: 800; }.exam-seat text:last-child { color: #b5b0a3; font-size: 17rpx; }
+.exam-name { display: block; color: var(--color-text); font-size: 27rpx; font-weight: 750; line-height: 1.38; }
+.exam-course-marker { color: var(--color-text-tertiary); font-size: 19rpx; font-weight: 600; }
+.exam-location { display: flex; flex-direction: row; align-items: center; gap: 8rpx; min-width: 0; margin-top: 7rpx; color: var(--color-text-tertiary); font-size: 20rpx; }
+.exam-location > text { flex: 1; min-width: 0; }
+.exam-schedule { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 170rpx; }
+.exam-date-label { display: block; flex: none; color: var(--color-text); font-size: 20rpx; font-weight: 750; text-align: right; white-space: nowrap; }
+.exam-time-label { display: block; flex: none; max-width: 170rpx; margin-top: 5rpx; color: var(--color-text-tertiary); font-size: 17rpx; font-weight: 650; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .exam-load-more,
 .exam-end { display: block; padding: 26rpx; color: #b5b0a3; font-size: 21rpx; text-align: center; }
 
-.exam-filter-scroll { max-height: 58vh; }
-.exam-filter-hint { display: block; margin: 5rpx 2rpx 22rpx; color: #9a9aa3; font-size: 21rpx; line-height: 1.55; }
-.semester-options { display: flex; flex-direction: column; gap: 12rpx; }
-.semester-option { display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 22rpx 26rpx; border-radius: 32rpx; color: #8b8b94; background: rgba(43, 38, 32, 0.045); transition: transform 120ms ease, background-color 220ms ease; }
-.semester-option--active { color: #a55357; background: #f7e9e8; }
-.semester-option--pressed { transform: scale(0.98); }
-.semester-year { display: block; font-size: 25rpx; font-weight: 750; }.semester-term { display: block; margin-top: 2rpx; font-size: 20rpx; opacity: 0.7; }
-.semester-radio { display: flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; border: 3rpx solid currentColor; border-radius: 50%; }.semester-radio view { width: 18rpx; height: 18rpx; border-radius: 50%; background: currentColor; }
-.exam-filter-actions { display: flex; flex-direction: row; gap: 16rpx; }
-.exam-filter-actions .secondary-button { flex: 2; }
-.exam-filter-actions .primary-button { flex: 3; }
-.exam-detail-scroll { max-height: 58vh; }
+.exam-detail-scroll { display: block; width: 100%; height: 58vh; }
+.exam-detail-content { width: 100%; }
 .exam-detail-card { overflow: hidden; }
 .exam-detail-row { display: flex; flex-direction: row; justify-content: space-between; gap: 30rpx; padding: 23rpx 28rpx; }
 .exam-detail-row--divided { border-bottom: 1rpx solid var(--color-separator); }
-.exam-detail-row text:first-child { flex: none; color: #9a9aa3; font-size: 22rpx; }.exam-detail-row text:last-child { flex: 1; color: var(--color-text); font-size: 23rpx; font-weight: 650; text-align: right; }
-.exam-note { margin-top: 20rpx; padding: 24rpx 28rpx; border-radius: 34rpx; color: #a66f1f; background: #f8eedd; }.exam-note text:first-child { display: block; font-size: 22rpx; font-weight: 750; }.exam-note text:last-child { display: block; margin-top: 5rpx; font-size: 22rpx; line-height: 1.6; }
+.exam-detail-row text:first-child { flex: none; color: #9a9aa3; font-size: 22rpx; }
+.exam-detail-row text:last-child { flex: 1; color: var(--color-text); font-size: 23rpx; font-weight: 650; text-align: right; }
+.exam-note { margin-top: 20rpx; padding: 24rpx 28rpx; border-radius: 34rpx; color: #a66f1f; background: #f8eedd; }
+.exam-note text:first-child { display: block; font-size: 22rpx; font-weight: 750; }
+.exam-note text:last-child { display: block; margin-top: 5rpx; font-size: 22rpx; line-height: 1.6; }
+.exam-detail-spacer { height: 24rpx; }
+
+.theme-dark .nav-refresh,
+.theme-dark .semester-chip { background: #2d2a24; }
+.motion-reduced .nav-refresh--loading lucide-icon { animation-name: none; }
+
+@keyframes exam-refresh-spin { to { transform: rotate(360deg); } }
