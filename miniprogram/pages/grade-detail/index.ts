@@ -2,11 +2,13 @@ import type { GradeCourse } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { academicTermLabel } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
+import { gradeComponentWidths } from "../../utils/grades";
 
 interface ComponentView {
   name: string;
   score: string;
   weight: string;
+  width: number;
   progress: number;
   tone: string;
   isText: boolean;
@@ -51,13 +53,15 @@ Page({
     this.setData(resolveAppearance());
   },
   applyCourse(course: GradeCourse) {
-    const components = course.components.map((component) => ({
+    const widths = gradeComponentWidths(course.components);
+    const components = course.components.map((component, index) => ({
       name: component.name,
       score: formatScore(component.score),
       weight:
         component.weightPercent === null
           ? "权重未提供"
           : `占比 ${component.weightPercent}%`,
+      width: widths[index],
       progress: scoreProgress(component.score),
       tone: scoreTone(component.score),
       isText: typeof component.score === "string",

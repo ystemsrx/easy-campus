@@ -55,7 +55,7 @@
   height: 100%;
 }
 
-.nav-side--left { justify-content: flex-start; }
+.nav-side--left { justify-content: flex-start; gap: 12rpx; }
 .nav-side--right { justify-content: flex-end; }
 
 .back-button {
@@ -92,6 +92,8 @@
   justify-content: center;
   min-width: 0;
 }
+
+.nav-title-wrap--extra-left { left: 216rpx; }
 
 .nav-title {
   max-width: 100%;

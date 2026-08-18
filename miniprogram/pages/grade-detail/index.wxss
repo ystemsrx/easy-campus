@@ -23,8 +23,8 @@
 .detail-remark-value { display: block; margin-top: 3rpx; font-size: 22rpx; line-height: 1.55; }
 
 .components-card { padding: 32rpx; }
-.composition-strip { display: flex; flex-direction: row; gap: 5rpx; height: 20rpx; margin-bottom: 16rpx; overflow: hidden; border-radius: 999rpx; }
-.composition-segment { flex: 1; border-radius: 999rpx; background: #d97757; }
+.composition-strip { display: flex; flex-direction: row; height: 20rpx; margin-bottom: 16rpx; overflow: hidden; border-radius: 999rpx; }
+.composition-segment { flex: none; background: #d97757; }
 .composition-segment--great { background: #7d8f6e; }
 .composition-segment--good { background: #acbe97; }
 .composition-segment--warning { background: #e5b86e; }
@@ -53,11 +53,9 @@
 .progress-fill--great { background: #7d8f6e; }
 .progress-fill--good { background: #acbe97; }
 .progress-fill--warning { background: #e5b86e; }
-.text-status-note { display: block; margin-top: 12rpx; color: #a39e92; font-size: 20rpx; }
 
 .detail-info-card { overflow: hidden; }
 .detail-info-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 32rpx; min-height: 92rpx; padding: 22rpx 34rpx; }
 .detail-info-row--divided { border-bottom: 1rpx solid var(--color-separator); }
 .detail-info-label { flex: none; color: var(--color-text-tertiary); font-size: 24rpx; }
 .detail-info-value { flex: 1; min-width: 0; color: var(--color-text); font-size: 25rpx; font-weight: 650; text-align: right; }
-.accuracy-note { display: flex; flex-direction: row; align-items: flex-start; gap: 13rpx; margin: 26rpx 8rpx 0; color: #a39e92; font-size: 20rpx; line-height: 1.6; }

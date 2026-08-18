@@ -9,6 +9,7 @@ Component({
     title: { type: String, value: "" },
     subtitle: { type: String, value: "" },
     back: { type: Boolean, value: false },
+    extraLeft: { type: Boolean, value: false },
     insetBack: { type: Boolean, value: false },
     transparent: { type: Boolean, value: false },
     theme: { type: String, value: "light" },

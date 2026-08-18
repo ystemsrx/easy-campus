@@ -76,8 +76,12 @@ export function getNoticeDetail(
 export function getGrades(
   query: GradesQuery = {},
 ): Promise<TeachingResult<GradesData>> {
+  const requestQuery: GradesQuery = {
+    ...query,
+    sort: query.sort === "default" ? undefined : query.sort,
+  };
   return teachingRequest<GradesData>(
-    `/teaching/grades${buildQuery(asQuery(query))}`,
+    `/teaching/grades${buildQuery(asQuery(requestQuery))}`,
   );
 }
 

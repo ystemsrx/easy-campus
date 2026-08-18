@@ -46,6 +46,7 @@ import {
 import type {
   CredentialState,
   Exam,
+  GradesData,
   Notice,
   Publication,
   TeachingMessage,
@@ -62,9 +63,11 @@ import {
   today,
 } from "../../utils/date";
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
+import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import { progressRingSource } from "../../utils/progress-ring";
 
 interface MessagePreview {
   id: string;
@@ -141,6 +144,7 @@ let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
+let gradesRouteOpening = false;
 let electricityRouteOpening = false;
 let inboxRouteOpening = false;
 let activeTimetable: TimetableData | null = null;
@@ -259,6 +263,35 @@ function getFeatureCardRadius(): number {
   } catch {
     return 24;
   }
+}
+
+function displayGradeAverage(value: number | null, digits: number): string {
+  if (value === null) return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(digits);
+}
+
+function gradePreviewPatch(
+  data: GradesData,
+  animate: boolean,
+): {
+  gradeRingSource: string;
+  gradeAverageLabel: string;
+  gradePointAverageLabel: string;
+  gradeCourseCount: number;
+} {
+  const summary = latestSemesterGrades(data).summary;
+  return {
+    gradeRingSource: progressRingSource(
+      gradePointRingValue(summary.gradePointAverage),
+      animate,
+    ),
+    gradeAverageLabel: displayGradeAverage(summary.weightedAverage, 1),
+    gradePointAverageLabel:
+      summary.gradePointAverage === null
+        ? "—"
+        : summary.gradePointAverage.toFixed(2),
+    gradeCourseCount: summary.courseCount,
+  };
 }
 
 function publicationPreview(
@@ -436,7 +469,9 @@ Page({
     remainingCourseCount: 0,
     timetableCardRadius: getTimetableCardRadius(),
     campusCardRadius: getCampusCardRadius(),
+    gradeCardRadius: getFeatureCardRadius(),
     electricityCardRadius: getFeatureCardRadius(),
+    gradeRingSource: progressRingSource(null),
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
     gradeCourseCount: 0,
@@ -463,6 +498,7 @@ Page({
     hydratedAccount = "";
     activeTimetable = null;
     timetableRouteOpening = false;
+    gradesRouteOpening = false;
     electricityRouteOpening = false;
     inboxRouteOpening = false;
     credentialExitInFlight = false;
@@ -551,19 +587,12 @@ Page({
     this.setData({
       messages,
       notices,
-      gradeAverageLabel: (() => {
-        const average = cachedGrades?.data.summary.weightedAverage;
-        if (average === null || average === undefined) return "—";
-        return Number.isInteger(average) ? String(average) : average.toFixed(1);
-      })(),
-      gradePointAverageLabel: (() => {
-        const gradePointAverage = cachedGrades?.data.summary.gradePointAverage;
-        if (gradePointAverage === null || gradePointAverage === undefined) {
-          return "—";
-        }
-        return gradePointAverage.toFixed(2);
-      })(),
-      gradeCourseCount: cachedGrades?.data.summary.courseCount || 0,
+      ...(cachedGrades
+        ? gradePreviewPatch(
+            cachedGrades.data,
+            this.data.motionClass !== "motion-reduced",
+          )
+        : {}),
       loaded:
         messages.length > 0 || notices.length > 0 || Boolean(cachedTimetable),
       ...(changedAccount ? { errorMessage: "" } : {}),
@@ -919,18 +948,13 @@ Page({
           gradeResult.value.data,
           gradeResult.value.meta.fetchedAt,
         );
-        const average = gradeResult.value.data.summary.weightedAverage;
-        patch.gradeAverageLabel =
-          average === null
-            ? "—"
-            : Number.isInteger(average)
-              ? String(average)
-              : average.toFixed(1);
-        const gradePointAverage =
-          gradeResult.value.data.summary.gradePointAverage;
-        patch.gradePointAverageLabel =
-          gradePointAverage === null ? "—" : gradePointAverage.toFixed(2);
-        patch.gradeCourseCount = gradeResult.value.data.summary.courseCount;
+        Object.assign(
+          patch,
+          gradePreviewPatch(
+            gradeResult.value.data,
+            this.data.motionClass !== "motion-reduced",
+          ),
+        );
       }
     }
     if (timetableResult.status === "fulfilled" && timetableResult.value) {
@@ -1015,6 +1039,17 @@ Page({
       url: "/pages/timetable/index",
       complete: () => {
         timetableRouteOpening = false;
+      },
+    });
+  },
+  openGrades() {
+    if (gradesRouteOpening) return;
+    gradesRouteOpening = true;
+    haptic("light");
+    wx.navigateTo({
+      url: "/pages/grades/index",
+      complete: () => {
+        gradesRouteOpening = false;
       },
     });
   },

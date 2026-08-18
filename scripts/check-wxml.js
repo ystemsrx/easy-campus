@@ -149,9 +149,7 @@ if (
   navigationTemplate.includes("scrolled") ||
   navigationScript.includes("scrolled") ||
   navigationScript.includes("backOffset") ||
-  !navigationScript.includes(
-    'insetBack: { type: Boolean, value: false }',
-  ) ||
+  !navigationScript.includes("insetBack: { type: Boolean, value: false }") ||
   !navigationScript.includes("const NAVIGATION_INSET_RPX = 28") ||
   !navigationScript.includes(
     "(NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750",
@@ -159,35 +157,23 @@ if (
   !navigationScript.includes(
     "controlTop + (contentHeight - backButtonSize) / 2",
   ) ||
-  !navigationScript.includes(
-    "naturalBackTop - navigationInset",
-  ) ||
+  !navigationScript.includes("naturalBackTop - navigationInset") ||
   !navigationScript.includes("backLift,") ||
   !navigationScript.includes("const controlTop = menu.top") ||
-  !navigationScript.includes(
-    "const nativeControlBottom = menu.bottom",
-  ) ||
+  !navigationScript.includes("const nativeControlBottom = menu.bottom") ||
   !navigationScript.includes(
     "const insetBack = this.data.back && this.data.insetBack",
   ) ||
-  !navigationScript.includes(
-    "const coverHeight = insetBack",
-  ) ||
-  !navigationScript.includes(
-    ": nativeControlBottom",
-  ) ||
+  !navigationScript.includes("const coverHeight = insetBack") ||
+  !navigationScript.includes(": nativeControlBottom") ||
   !navigationScript.includes("const backLift = insetBack") ||
-  !navigationScript.includes(
-    "totalHeight: coverHeight",
-  ) ||
+  !navigationScript.includes("totalHeight: coverHeight") ||
   pageNavigationSources.includes("headerScrolled") ||
   !navigationStyles.includes(
     ".nav-cover {\n  position: fixed;\n  top: 0;\n  right: 0;\n  left: 0;\n  z-index: 700;",
   ) ||
   !navigationStyles.includes("pointer-events: none;") ||
-  !navigationStyles.includes(
-    ".nav-spacer {\n  flex: none;\n  width: 100%;",
-  ) ||
+  !navigationStyles.includes(".nav-spacer {\n  flex: none;\n  width: 100%;") ||
   !navigationStyles.includes(
     ".nav-shell {\n  position: fixed;\n  top: 0;\n  right: 0;\n  left: 0;\n  z-index: 800;",
   ) ||
@@ -244,6 +230,38 @@ const homeTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "home", "index.wxml"),
   "utf8",
 );
+const homeScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "home", "index.ts"),
+  "utf8",
+);
+const homeStyles = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "home", "index.wxss"),
+  "utf8",
+);
+const gradesTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "grades", "index.wxml"),
+  "utf8",
+);
+const gradesScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "grades", "index.ts"),
+  "utf8",
+);
+const gradesStyles = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "grades", "index.wxss"),
+  "utf8",
+);
+const gradeDetailTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "grade-detail", "index.wxml"),
+  "utf8",
+);
+const gradeDetailScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "grade-detail", "index.ts"),
+  "utf8",
+);
+const progressRingScript = fs.readFileSync(
+  path.join(miniprogramRoot, "utils", "progress-ring.ts"),
+  "utf8",
+);
 const electricityTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "electricity", "index.wxml"),
   "utf8",
@@ -266,11 +284,77 @@ const passRateStyles = fs.readFileSync(
 );
 if (
   !homeTemplate.includes('class="feature-open-container"') ||
+  !homeTemplate.includes('bind:tap="openGrades"') ||
+  !homeScript.includes("openGrades()") ||
   !homeTemplate.includes('bind:tap="openElectricity"') ||
   !electricityTemplate.includes('title="宿舍用电与余额"')
 ) {
   failures.push(
-    "pages/home/index.wxml: 寝室电费必须使用与课表一致的卡片放大转场，并保留完整页面标题",
+    "pages/home/index.wxml: 成绩与寝室电费必须使用与课表一致的卡片放大转场",
+  );
+}
+if (
+  !homeTemplate.includes(
+    'class="score-ring-image" src="{{gradeRingSource}}" mode="aspectFit"',
+  ) ||
+  !gradesTemplate.includes(
+    'class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"',
+  ) ||
+  homeTemplate.includes("home-grade-ring-canvas") ||
+  gradesTemplate.includes("grades-average-ring-canvas") ||
+  homeTemplate.includes("score-ring-progress") ||
+  gradesTemplate.includes("average-ring-progress") ||
+  homeTemplate.includes("score-ring-half") ||
+  gradesTemplate.includes("average-ring-half") ||
+  !homeScript.includes("gradeRingSource: progressRingSource(") ||
+  !homeScript.includes("gradePointRingValue(summary.gradePointAverage)") ||
+  !homeTemplate.includes("{{gradePointAverageLabel}}") ||
+  !homeTemplate.includes("· 均分 ") ||
+  !gradesScript.includes("averageRingSource: progressRingSource(") ||
+  !homeScript.includes('this.data.motionClass !== "motion-reduced"') ||
+  !gradesScript.includes('this.data.motionClass !== "motion-reduced"') ||
+  !progressRingScript.includes("Math.min(100, value)") ||
+  !progressRingScript.includes('fill="none"') ||
+  !progressRingScript.includes("stroke-dasharray") ||
+  !progressRingScript.includes('attributeName="stroke-dasharray"') ||
+  homeStyles.includes("mask-image") ||
+  gradesStyles.includes("mask-image") ||
+  /\.score-ring\s*\{[^}]*\bborder\s*:/.test(homeStyles) ||
+  /\.average-ring\s*\{[^}]*\bborder\s*:/.test(gradesStyles)
+) {
+  failures.push(
+    "pages/home、pages/grades: 首页绩点圆环须以 5.0 为满环，成绩页均分圆环须以 100 为满环",
+  );
+}
+if (
+  gradesTemplate.includes("<bottom-sheet") ||
+  gradesTemplate.includes("学年</text>") ||
+  !gradesTemplate.includes('class="grade-sort-popover"') ||
+  !gradesScript.includes("分数高→低") ||
+  !gradesScript.includes("分数低→高") ||
+  !gradesTemplate.includes("extra-left") ||
+  !gradesScript.includes('sort: "default"') ||
+  !gradesScript.includes("initializeLatestSemester") ||
+  !gradesScript.includes("this.applyGradesData(\n          result.data,") ||
+  gradesScript.includes("!canonical ||") ||
+  !gradesScript.includes("最后更新于") ||
+  gradesScript.includes("缓存更新于")
+) {
+  failures.push(
+    "pages/grades: 默认最新学期、刷新按钮与三项排序浮窗必须保持独立页面交互",
+  );
+}
+if (
+  !gradeDetailTemplate.includes('title="课程成绩与组成"') ||
+  !gradeDetailTemplate.includes('inset-back="{{true}}"') ||
+  !gradeDetailTemplate.includes('style="width: {{item.width}}%;"') ||
+  !gradeDetailScript.includes("gradeComponentWidths(course.components)") ||
+  gradeDetailTemplate.includes("教务系统返回的全部细分项目") ||
+  gradeDetailTemplate.includes("只保留查询有用的字段") ||
+  gradeDetailTemplate.includes("数字成绩以数字展示")
+) {
+  failures.push(
+    "pages/grade-detail: 抽屉标题、内嵌返回按钮与按真实权重绘制的成绩组成必须保留",
   );
 }
 if (
@@ -312,12 +396,12 @@ if (
     'wx:for="{{courseRows}}" wx:key="id" wx:for-item="row"',
   ) ||
   passRateTemplate.includes('scroll-into-view="{{coursePickerTarget}}"') ||
-  !passRateTemplate.includes('({{item.courses.length}})') ||
+  !passRateTemplate.includes("({{item.courses.length}})") ||
   passRateTemplate.includes("back-offset") ||
   !passRateTemplate.includes('inset-back="{{true}}"') ||
   !passRateScript.includes("function toCourseRows(") ||
   !passRateScript.includes("function coursePickerState(") ||
-  !passRateScript.includes('shortAcademicSemesterLabel(') ||
+  !passRateScript.includes("shortAcademicSemesterLabel(") ||
   !passRateScript.includes(
     "coursePickerState(groups, this.data.selectedSemesterId)",
   ) ||

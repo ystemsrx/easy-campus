@@ -18,8 +18,10 @@ import type {
 import { resolveAppearance } from "../../utils/appearance";
 import { academicTermLabel, formatDateTime } from "../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../utils/format";
+import { gradesForSemester, latestGradedSemester } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import { progressRingSource } from "../../utils/progress-ring";
 
 interface GradeComponentPreview {
   name: string;
@@ -33,18 +35,7 @@ interface GradeView extends GradeCourse {
   creditsLabel: string;
   hasGradePoint: boolean;
   gradePointLabel: string;
-  termLabel: string;
   componentPreview: GradeComponentPreview[];
-}
-
-interface YearOption {
-  value: number;
-  label: string;
-}
-
-interface TermOption {
-  value: number;
-  label: string;
 }
 
 interface SemesterChip {
@@ -54,7 +45,29 @@ interface SemesterChip {
   term: number;
 }
 
+type GradeSortMode = "default" | "score-desc" | "score-asc";
+
+interface SortConfig {
+  sort: NonNullable<GradesQuery["sort"]>;
+  order: NonNullable<GradesQuery["order"]>;
+  label: string;
+}
+
 const PAGE_SIZE = 200;
+const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
+  default: { sort: "default", order: "desc", label: "默认" },
+  "score-desc": {
+    sort: "finalScore",
+    order: "desc",
+    label: "分数高→低",
+  },
+  "score-asc": {
+    sort: "finalScore",
+    order: "asc",
+    label: "分数低→高",
+  },
+};
+
 let requestSequence = 0;
 let hydratedGradesAccount = "";
 
@@ -70,48 +83,11 @@ function toGradeView(course: GradeCourse): GradeView {
       typeof course.gradePoint === "number"
         ? course.gradePoint.toFixed(1)
         : "—",
-    termLabel: academicTermLabel(course.term),
     componentPreview: course.components.slice(0, 3).map((component) => ({
       name: component.name,
       score: formatScore(component.score),
     })),
   };
-}
-
-function buildAcademicYearOptions(
-  semesters: AcademicSemesterOption[],
-): YearOption[] {
-  const years = [
-    ...new Map(
-      semesters.map((semester) => [semester.academicYear, semester]),
-    ).values(),
-  ];
-  return [
-    { value: 0, label: "全部学年" },
-    ...years.map((semester) => ({
-      value: semester.academicYear,
-      label: semester.academicYearLabel,
-    })),
-  ];
-}
-
-function buildTermOptions(
-  semesters: AcademicSemesterOption[],
-  academicYear = 0,
-): TermOption[] {
-  const terms = [
-    ...new Set(
-      semesters
-        .filter(
-          (semester) => !academicYear || semester.academicYear === academicYear,
-        )
-        .map((semester) => semester.term),
-    ),
-  ].sort((left, right) => left - right);
-  return [
-    { value: 0, label: "全部" },
-    ...terms.map((term) => ({ value: term, label: academicTermLabel(term) })),
-  ];
 }
 
 function buildSemesterChips(
@@ -153,6 +129,7 @@ Page({
     queryText: "",
     gradeItems: [] as GradeView[],
     summary: summaryDefaults(),
+    averageRingSource: progressRingSource(null),
     averageLabel: "—",
     gradePointAverageLabel: "—",
     page: 1,
@@ -160,42 +137,53 @@ Page({
     total: 0,
     academicYear: 0,
     term: 0,
-    sort: "academicYear" as NonNullable<GradesQuery["sort"]>,
+    sort: "default" as NonNullable<GradesQuery["sort"]>,
     order: "desc" as NonNullable<GradesQuery["order"]>,
+    sortMode: "default" as GradeSortMode,
+    sortLabel: "默认",
     filterVisible: false,
-    draftAcademicYear: 0,
-    draftTerm: 0,
-    draftSort: "academicYear" as NonNullable<GradesQuery["sort"]>,
-    draftOrder: "desc" as NonNullable<GradesQuery["order"]>,
+    filterTop: 0,
+    filterRight: 20,
     filterLabel: "全部成绩",
-    sourceLabel: "每周按需自动更新",
-    cached: false,
-    fetchedAt: "",
+    sourceLabel: "尚未更新",
     availableSemesters: [] as AcademicSemesterOption[],
     semesterChips: [] as SemesterChip[],
     activeSemesterId: "all",
-    academicYearOptions: [{ value: 0, label: "全部学年" }] as YearOption[],
-    termOptions: [{ value: 0, label: "全部" }] as TermOption[],
+    semesterInitialized: false,
     sortOptions: [
-      { value: "academicYear", label: "按学期" },
-      { value: "courseName", label: "按课程名" },
-      { value: "finalScore", label: "按总评" },
+      { value: "default", label: "默认" },
+      { value: "score-desc", label: "分数高→低" },
+      { value: "score-asc", label: "分数低→高" },
     ],
   },
   onLoad() {
     hydratedGradesAccount = "";
+    requestSequence += 1;
     this.applyAppearance();
   },
   onShow() {
-    if (!ensureAuthenticated()) {
-      return;
-    }
+    if (!ensureAuthenticated()) return;
     this.applyAppearance();
     this.hydrateGrades();
     void this.loadGrades(true, false);
   },
+  onHide() {
+    this.setData({ filterVisible: false });
+  },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  initializeLatestSemester(data: GradesData): AcademicSemesterOption | null {
+    if (this.data.semesterInitialized) return null;
+    const semester = latestGradedSemester(data);
+    this.setData({
+      semesterInitialized: true,
+      academicYear: semester?.academicYear || 0,
+      term: semester?.term || 0,
+      activeSemesterId: semester?.id || "all",
+      filterLabel: semester?.label || "全部成绩",
+    });
+    return semester;
   },
   hydrateGrades() {
     const account = getSession()?.user.account || "";
@@ -203,24 +191,30 @@ Page({
     hydratedGradesAccount = account;
     const cached = loadGradesSnapshot(account);
     if (!cached) return;
-    this.applyGradesData(cached.data, true, cached.serverFetchedAt);
+    const semester = this.initializeLatestSemester(cached.data);
+    this.applyGradesData(
+      semester ? gradesForSemester(cached.data, semester) : cached.data,
+      cached.serverFetchedAt,
+    );
   },
-  buildFilterLabel(): string {
-    const parts: string[] = [];
-    if (this.data.academicYear) {
-      parts.push(`${this.data.academicYear}-${this.data.academicYear + 1}`);
-    }
-    if (this.data.term) {
-      parts.push(academicTermLabel(this.data.term));
-    }
-    return parts.length ? parts.join(" · ") : "全部成绩";
+  buildFilterLabel(semesters?: AcademicSemesterOption[]): string {
+    const semester = (semesters || this.data.availableSemesters).find(
+      (item) =>
+        item.academicYear === this.data.academicYear &&
+        item.term === this.data.term,
+    );
+    return semester?.label || "全部成绩";
   },
-  applyGradesData(data: GradesData, cached: boolean, fetchedAtValue = "") {
+  applyGradesData(data: GradesData, fetchedAtValue = "", append = false) {
     const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
     const incoming = data.items.map(toGradeView);
     this.setData({
-      gradeItems: incoming,
+      gradeItems: append ? [...this.data.gradeItems, ...incoming] : incoming,
       summary: data.summary,
+      averageRingSource: progressRingSource(
+        data.summary.weightedAverage,
+        this.data.motionClass !== "motion-reduced",
+      ),
       averageLabel: displayAverage(data.summary.weightedAverage),
       gradePointAverageLabel: displayAverage(data.summary.gradePointAverage),
       page: data.pagination.page,
@@ -232,77 +226,80 @@ Page({
         this.data.academicYear && this.data.term
           ? `${this.data.academicYear}-${this.data.term}`
           : "all",
-      academicYearOptions: buildAcademicYearOptions(data.semesters),
-      termOptions: buildTermOptions(data.semesters, this.data.academicYear),
       loaded: true,
       loading: false,
-      cached,
-      fetchedAt,
-      sourceLabel: cached
-        ? fetchedAt
-          ? `缓存更新于 ${fetchedAt}`
-          : "使用已保存成绩"
-        : "刚刚从教务系统更新",
-      filterLabel: this.buildFilterLabel(),
+      sourceLabel: fetchedAt ? `最后更新于 ${fetchedAt}` : "尚未更新",
+      filterLabel: this.buildFilterLabel(data.semesters),
     });
   },
   async loadGrades(reset: boolean, refresh: boolean) {
     if (
-      (this.data.loading || this.data.loadingMore) &&
-      this.data.loaded &&
-      !refresh
+      !reset &&
+      (this.data.loading || this.data.loadingMore || this.data.refreshing)
     ) {
       return;
     }
     const page = reset ? 1 : this.data.page + 1;
+    const academicYear = this.data.academicYear;
+    const term = this.data.term;
+    const queryText = this.data.queryText.trim();
+    const sort = this.data.sort;
+    const order = this.data.order;
     const sequence = ++requestSequence;
     this.setData({
       loading: reset && !this.data.gradeItems.length,
-      refreshing: false,
+      refreshing: refresh,
       loadingMore: !reset,
       errorMessage: "",
     });
 
     let shouldRefreshAfterward = false;
+    let loadInitializedSemester = false;
     try {
       const result = await getGrades({
         page,
         pageSize: PAGE_SIZE,
-        academicYear: this.data.academicYear || undefined,
-        term: (this.data.term || undefined) as 1 | 2 | 3 | undefined,
-        q: this.data.queryText.trim() || undefined,
-        sort: this.data.sort,
-        order: this.data.order,
+        academicYear: academicYear || undefined,
+        term: (term || undefined) as 1 | 2 | 3 | undefined,
+        q: queryText || undefined,
+        sort,
+        order,
         refresh,
       });
-      if (sequence !== requestSequence) {
-        return;
-      }
+      if (sequence !== requestSequence) return;
+
       const account = getSession()?.user.account || "";
       const canonical =
         page === 1 &&
-        !this.data.academicYear &&
-        !this.data.term &&
-        !this.data.queryText.trim() &&
-        this.data.sort === "academicYear" &&
-        this.data.order === "desc";
-      const local = canonical ? loadGradesSnapshot(account) : null;
+        !academicYear &&
+        !term &&
+        !queryText &&
+        sort === "default" &&
+        order === "desc";
+      const local = loadGradesSnapshot(account);
       if (
-        !canonical ||
-        refresh ||
-        shouldUseServerSnapshot(local, result.meta.fetchedAt)
+        canonical &&
+        (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt))
       ) {
-        if (canonical) {
-          saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
-        }
+        saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
+      }
+
+      const initializedSemester = this.initializeLatestSemester(result.data);
+      if (initializedSemester) {
         this.applyGradesData(
-          result.data,
-          result.meta.cached,
+          gradesForSemester(result.data, initializedSemester),
           result.meta.fetchedAt,
         );
+        loadInitializedSemester = true;
+      } else {
+        this.applyGradesData(
+          result.data,
+          result.meta.fetchedAt,
+          !reset && page > 1,
+        );
       }
+
       shouldRefreshAfterward =
-        canonical &&
         !refresh &&
         isCacheStale(loadGradesSnapshot(account), WEEK_MS) &&
         claimAutomaticRefresh("grades", account);
@@ -315,13 +312,19 @@ Page({
     } finally {
       if (sequence === requestSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
-        if (shouldRefreshAfterward) {
+        if (loadInitializedSemester) {
+          setTimeout(
+            () => void this.loadGrades(true, shouldRefreshAfterward),
+            0,
+          );
+        } else if (shouldRefreshAfterward) {
           setTimeout(() => void this.loadGrades(true, true), 0);
         }
       }
     }
   },
   onRefresh() {
+    if (this.data.refreshing) return;
     haptic("medium");
     void this.loadGrades(true, true);
   },
@@ -368,88 +371,50 @@ Page({
   },
   openFilter() {
     haptic("light");
-    this.setData({
-      filterVisible: true,
-      draftAcademicYear: this.data.academicYear,
-      draftTerm: this.data.term,
-      draftSort: this.data.sort,
-      draftOrder: this.data.order,
-      termOptions: buildTermOptions(
-        this.data.availableSemesters,
-        this.data.academicYear,
-      ),
-    });
+    if (this.data.filterVisible) {
+      this.closeFilter();
+      return;
+    }
+    wx.createSelectorQuery()
+      .select(".grade-filter-button")
+      .boundingClientRect((rect) => {
+        const windowInfo = wx.getWindowInfo();
+        const bottom = Number(rect?.bottom);
+        const right = Number(rect?.right);
+        this.setData({
+          filterVisible: true,
+          filterTop: Number.isFinite(bottom)
+            ? Math.max(12, Math.min(bottom + 8, windowInfo.windowHeight - 190))
+            : 180,
+          filterRight: Number.isFinite(right)
+            ? Math.max(16, windowInfo.windowWidth - right)
+            : 20,
+        });
+      })
+      .exec();
   },
   closeFilter() {
     this.setData({ filterVisible: false });
   },
-  selectDraftAcademicYear(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    const draftAcademicYear = Number(event.currentTarget.dataset.value);
-    const termOptions = buildTermOptions(
-      this.data.availableSemesters,
-      draftAcademicYear,
-    );
-    const validTerms = termOptions.map((option) => option.value);
-    this.setData({
-      draftAcademicYear,
-      draftTerm: validTerms.includes(this.data.draftTerm)
-        ? this.data.draftTerm
-        : 0,
-      termOptions,
-    });
-  },
-  selectDraftTerm(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({ draftTerm: Number(event.currentTarget.dataset.value) });
-  },
-  selectDraftSort(event: WechatMiniprogram.TouchEvent) {
+  stopPropagation() {},
+  selectSortMode(event: WechatMiniprogram.TouchEvent) {
+    const mode = String(event.currentTarget.dataset.value) as GradeSortMode;
+    const config = SORT_CONFIG[mode];
+    if (!config) return;
     haptic("light");
     this.setData({
-      draftSort: String(event.currentTarget.dataset.value) as NonNullable<
-        GradesQuery["sort"]
-      >,
-    });
-  },
-  selectDraftOrder(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({
-      draftOrder: String(event.currentTarget.dataset.value) as "asc" | "desc",
-    });
-  },
-  resetFilter() {
-    this.setData({
-      draftAcademicYear: 0,
-      draftTerm: 0,
-      draftSort: "academicYear",
-      draftOrder: "desc",
-      termOptions: buildTermOptions(this.data.availableSemesters),
-    });
-  },
-  applyFilter() {
-    haptic("medium");
-    this.setData({
-      academicYear: this.data.draftAcademicYear,
-      term: this.data.draftTerm,
-      sort: this.data.draftSort,
-      order: this.data.draftOrder,
+      sortMode: mode,
+      sort: config.sort,
+      order: config.order,
+      sortLabel: config.label,
       filterVisible: false,
-      activeSemesterId:
-        this.data.draftAcademicYear && this.data.draftTerm
-          ? `${this.data.draftAcademicYear}-${this.data.draftTerm}`
-          : "all",
     });
-    wx.nextTick(() => {
-      this.setData({ filterLabel: this.buildFilterLabel() });
-      void this.loadGrades(true, false);
-    });
+    wx.nextTick(() => void this.loadGrades(true, false));
   },
   openGrade(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
     const grade = this.data.gradeItems.find((item) => item.id === id);
-    if (!grade) {
-      return;
-    }
+    if (!grade) return;
     haptic("light");
     getApp<IAppOption>().globalData.selectedGrade = grade;
     void navigateTo(

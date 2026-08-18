@@ -600,7 +600,7 @@ export interface GradesQuery {
   academicYear?: number;
   term?: 1 | 2 | 3;
   q?: string;
-  sort?: "academicYear" | "courseName" | "finalScore";
+  sort?: "default" | "academicYear" | "courseName" | "finalScore";
   order?: "asc" | "desc";
   refresh?: boolean;
 }

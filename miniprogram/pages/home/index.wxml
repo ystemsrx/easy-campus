@@ -73,12 +73,28 @@
       </open-container>
 
       <view class="feature-grid stagger-item stagger-2">
-        <view class="feature-card feature-card--grades pressable" data-route="/pages/grades/index" bindtap="onQuickAction" hover-class="feature-card--pressed">
-          <view class="ambient-blob feature-blob"></view>
-          <text class="feature-kicker">加权平均分</text>
-          <view class="score-ring"><text class="score-ring-value tnum">{{gradeAverageLabel}}</text></view>
-          <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 绩点 ' + gradePointAverageLabel : '查看成绩明细'}}</text>
-        </view>
+        <open-container
+          class="feature-open-container"
+          closed-color="#c98a2d"
+          middle-color="{{theme === 'dark' ? '#966c36' : '#e5b86e'}}"
+          open-color="{{theme === 'dark' ? '#171613' : '#f7f5ef'}}"
+          closed-elevation="{{0}}"
+          closed-border-radius="{{gradeCardRadius}}"
+          open-elevation="{{0}}"
+          open-border-radius="{{0}}"
+          transition-type="fadeThrough"
+          transition-duration="{{380}}"
+          bind:tap="openGrades"
+          aria-role="button"
+          aria-label="展开成绩页"
+        >
+          <view class="feature-card feature-card--grades pressable" hover-class="feature-card--pressed">
+            <view class="ambient-blob feature-blob"></view>
+            <text class="feature-kicker">平均绩点</text>
+            <view class="score-ring"><image class="score-ring-image" src="{{gradeRingSource}}" mode="aspectFit"></image><text class="score-ring-value tnum">{{gradePointAverageLabel}}</text></view>
+            <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 均分 ' + gradeAverageLabel : '查看成绩明细'}}</text>
+          </view>
+        </open-container>
         <open-container
           class="feature-open-container"
           closed-color="#7d8f6e"

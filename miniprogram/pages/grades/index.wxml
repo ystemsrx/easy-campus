@@ -1,6 +1,11 @@
 <view class="page grades-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="none" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh" bindscrolltolower="loadMore" lower-threshold="180">
-    <navigation-bar title="成绩" subtitle="成绩单 · 含历史学期" back transparent theme="{{theme}}"><view slot="right" class="nav-refresh pressable" bindtap="onRefresh" hover-class="pressing"><lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'muted'}}" size="{{30}}"></lucide-icon></view></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
+    <navigation-bar title="成绩" back extra-left transparent theme="{{theme}}">
+      <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="刷新成绩">
+        <lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+      </view>
+    </navigation-bar>
+
     <view class="grades-content page-content page-enter">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
@@ -12,46 +17,52 @@
       <view class="grade-overview stagger-item stagger-1">
         <view class="ambient-blob grade-blob grade-blob--one"></view><view class="ambient-blob grade-blob grade-blob--two"></view>
         <view class="grade-overview-main">
-          <view class="average-ring"><view class="average-inner"><text class="average-value tnum">{{averageLabel}}</text><text class="average-unit">加权平均</text></view></view>
+          <view class="average-ring"><image class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"></image><view class="average-inner"><text class="average-value tnum">{{averageLabel}}</text></view></view>
           <view class="overview-stats">
             <view class="overview-stat"><text>平均绩点</text><text class="tnum">{{gradePointAverageLabel}}</text></view>
             <view class="overview-stat"><text>课程门数</text><text class="tnum">{{summary.courseCount}}</text></view>
             <view class="overview-stat"><text>已修学分</text><text class="tnum">{{summary.totalCredits}}</text></view>
           </view>
         </view>
-        <view class="overview-foot"><text>{{filterLabel}}</text><text>{{sourceLabel}}</text></view>
+        <view class="overview-foot"><text>{{sourceLabel}}</text></view>
       </view>
 
       <view class="grade-tools stagger-item stagger-2">
         <view class="search-field grade-search {{searchFocused ? 'search-field--focus' : ''}}"><lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon><input class="search-input" value="{{queryText}}" placeholder="课程、成绩或分项" placeholder-class="grade-placeholder" bindinput="onQueryInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindconfirm="search" confirm-type="search" /><view wx:if="{{queryText}}" class="grade-clear" bindtap="clearSearch"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view></view>
-        <view class="grade-filter-button pressable" bindtap="openFilter" hover-class="pressing"><lucide-icon name="list-filter" tone="muted" size="{{31}}"></lucide-icon></view>
+        <view class="grade-filter-button pressable {{filterVisible ? 'grade-filter-button--active' : ''}}" bindtap="openFilter" hover-class="pressing" aria-role="button" aria-label="选择排序方式"><lucide-icon name="list-filter" tone="{{filterVisible ? 'white' : 'muted'}}" size="{{31}}"></lucide-icon></view>
       </view>
 
-      <view class="result-heading"><view><text class="result-title">各科成绩</text><text class="result-count">{{filterLabel}} · 共 {{total}} 门</text></view><text class="result-sort">{{order === 'desc' ? '降序' : '升序'}}</text></view>
+      <view class="result-heading"><view><text class="result-title">各科成绩</text><text class="result-count">{{filterLabel}} · 共 {{total}} 门</text></view><text class="result-sort">{{sortLabel}}</text></view>
 
       <loading-view wx:if="{{loading}}" label="正在整理成绩与分项"></loading-view>
       <view wx:elif="{{gradeItems.length}}" class="grade-list">
         <view wx:for="{{gradeItems}}" wx:key="id" class="grade-card card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openGrade" hover-class="pressing">
           <view class="score-tile score-tile--{{item.scoreTone}} {{item.isTextGrade ? 'score-tile--text' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
           <view class="course-copy">
-            <view class="course-title-line"><text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text><view class="course-tags"><text wx:if="{{item.hasGradePoint}}" class="course-tag course-tag--gpa">绩点 {{item.gradePointLabel}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view></view>
-            <text class="course-term">{{item.academicYear}} · {{item.termLabel}} · {{item.department || item.courseCode}}</text>
+            <text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text>
             <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>
-            <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text>{{item.gradeRemark}}</text></view>
+            <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text overflow="ellipsis" max-lines="1">{{item.gradeRemark}}</text></view>
           </view>
-          <lucide-icon name="chevron-right" tone="muted" size="{{28}}"></lucide-icon>
+          <view class="course-tags"><text wx:if="{{item.hasGradePoint}}" class="course-tag course-tag--gpa">绩点 {{item.gradePointLabel}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view>
+          <lucide-icon class="course-chevron" name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
         </view>
         <view wx:if="{{loadingMore}}" class="grade-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="grade-end">以上是全部成绩</text>
       </view>
-      <empty-state wx:elif="{{!errorMessage}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="没有找到成绩" description="调整学年、学期或搜索条件后再试" action-text="调整筛选" bindaction="openFilter"></empty-state>
+      <empty-state wx:elif="{{!errorMessage}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="没有找到成绩" description="更换学期或搜索关键词后再试"></empty-state>
       <empty-state wx:else icon="circle-alert" icon-tone="danger" title="成绩加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>
     </view>
   </scroll-view>
 
-  <bottom-sheet visible="{{filterVisible}}" title="筛选与排序" theme="{{theme}}" bindclose="closeFilter">
-    <view class="grade-filter-section"><text class="grade-filter-title">学年</text><view class="filter-wrap"><view wx:for="{{academicYearOptions}}" wx:key="value" class="filter-chip {{draftAcademicYear === item.value ? 'filter-chip--active' : ''}}" data-value="{{item.value}}" bindtap="selectDraftAcademicYear" hover-class="filter-chip--pressed"><text>{{item.label}}</text></view></view></view>
-    <view class="grade-filter-section"><text class="grade-filter-title">学期</text><view class="term-grid"><view wx:for="{{termOptions}}" wx:key="value" class="term-option {{draftTerm === item.value ? 'term-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectDraftTerm" hover-class="term-option--pressed"><text>{{item.label}}</text></view></view></view>
-    <view class="grade-filter-section"><text class="grade-filter-title">排序方式</text><view class="sort-row"><view wx:for="{{sortOptions}}" wx:key="value" class="sort-option {{draftSort === item.value ? 'sort-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectDraftSort" hover-class="sort-option--pressed"><text>{{item.label}}</text></view></view><view class="order-control"><view class="order-indicator {{draftOrder === 'asc' ? 'order-indicator--asc' : ''}}"></view><view class="order-item {{draftOrder === 'desc' ? 'order-item--active' : ''}}" data-value="desc" bindtap="selectDraftOrder"><text>从高到低</text></view><view class="order-item {{draftOrder === 'asc' ? 'order-item--active' : ''}}" data-value="asc" bindtap="selectDraftOrder"><text>从低到高</text></view></view></view>
-    <view slot="footer" class="grade-filter-actions"><button class="secondary-button grade-reset" hover-class="button-pressed" bindtap="resetFilter">重置</button><button class="primary-button grade-apply" hover-class="button-pressed" bindtap="applyFilter">应用筛选</button></view>
-  </bottom-sheet>
+  <view wx:if="{{filterVisible}}" class="grade-sort-layer">
+    <view class="grade-sort-dismiss" bindtap="closeFilter"></view>
+    <view class="grade-sort-popover" style="top: {{filterTop}}px; right: {{filterRight}}px;" catchtap="stopPropagation">
+      <text class="grade-sort-title">排序方式</text>
+      <view class="grade-sort-options">
+        <view wx:for="{{sortOptions}}" wx:key="value" class="grade-sort-option pressable {{sortMode === item.value ? 'grade-sort-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectSortMode" hover-class="grade-sort-option--pressed">
+          <text>{{item.label}}</text>
+          <lucide-icon wx:if="{{sortMode === item.value}}" name="check" tone="amber" size="{{24}}"></lucide-icon>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

@@ -19,9 +19,10 @@
         <lucide-icon name="arrow-left" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{34}}" label="返回"></lucide-icon>
       </view>
       <slot wx:else name="left"></slot>
+      <slot name="after-left"></slot>
     </view>
 
-    <view class="nav-title-wrap">
+    <view class="nav-title-wrap {{back && extraLeft ? 'nav-title-wrap--extra-left' : ''}}">
       <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
       <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
       <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
