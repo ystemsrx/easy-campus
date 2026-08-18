@@ -218,7 +218,7 @@
 
   <view wx:if="{{publicationPanelMounted}}" class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}">
     <view class="publication-popover-dismiss" catchtap="closePublicationPanel"></view>
-    <view class="publication-popover" style="top: {{publicationPanelTop}}px; transform-origin: {{publicationPanelTransformOrigin}};" catchtap="stopPropagation">
+    <view class="publication-popover {{!announcements.length && !platformNotifications.length ? 'publication-popover--empty' : ''}}" style="top: {{publicationPanelTop}}px; transform-origin: {{publicationPanelTransformOrigin}};" catchtap="stopPropagation">
       <view class="publication-popover-header">
         <text class="publication-popover-title display-title">消息</text>
         <text class="publication-summary">{{publicationUnreadCount ? publicationUnreadCount + ' 条未读' : '已全部读完'}}</text>

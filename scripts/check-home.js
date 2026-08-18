@@ -114,4 +114,18 @@ assert(
   "首页必须在服务器成绩快照返回时立即缓存并渲染，不能等待其他首页请求",
 );
 
+assert(
+  homeTemplate.includes("publication-popover--empty") &&
+    /\.publication-popover \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*height: 62vh;[^}]*\}/.test(
+      homeStyles,
+    ) &&
+    /\.publication-popover--empty \{[^}]*height: 400rpx;[^}]*min-height: 400rpx;[^}]*\}/.test(
+      homeStyles,
+    ) &&
+    /\.publication-popover-scroll \{[^}]*flex: 1;[^}]*height: 0;[^}]*min-height: 0;[^}]*\}/.test(
+      homeStyles,
+    ),
+  "首页消息弹窗必须给列表明确高度，并在无内容时保留空状态区域",
+);
+
 console.log("Home cache and identity checks passed.");
