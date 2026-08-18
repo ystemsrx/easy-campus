@@ -1,4 +1,4 @@
-<view class="tabbar-shell {{themeClass}} {{motionClass}}">
+<view wx:if="{{!hidden}}" class="tabbar-shell {{themeClass}} {{motionClass}}">
   <view class="tabbar-material">
     <view class="tabbar-indicator tabbar-indicator--{{selected}}"></view>
     <view

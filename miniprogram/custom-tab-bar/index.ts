@@ -10,6 +10,7 @@ interface TabItem {
 Component({
   data: {
     selected: 0,
+    hidden: false,
     themeClass: "theme-light",
     motionClass: "motion-normal",
     items: [

@@ -10,7 +10,7 @@
     <view class="schedule-content page-content page-content--tab page-enter">
       <view class="schedule-header">
         <view>
-          <text class="schedule-eyebrow">{{teachingWeekLabel}} · {{monthLabel}}</text>
+          <text wx:if="{{teachingWeekLabel}}" class="schedule-eyebrow">{{teachingWeekLabel}} · {{monthLabel}}</text>
           <text class="schedule-title display-title">日程</text>
         </view>
         <view class="schedule-header-actions">
@@ -24,17 +24,22 @@
       </view>
 
       <view class="week-strip">
+        <view class="week-selection week-selection--{{selectedWeekday}}">
+          <view class="week-selection-circle"></view>
+        </view>
         <view
           wx:for="{{days}}"
           wx:key="weekday"
-          class="week-day pressable {{selectedWeekday === item.weekday ? 'week-day--active' : ''}}"
+          class="week-day {{selectedWeekday === item.weekday ? 'week-day--active' : ''}}"
           data-weekday="{{item.weekday}}"
           bindtap="selectDay"
-          hover-class="week-day--pressed"
         >
           <text class="week-day-name">{{item.isToday ? '今' : item.shortLabel}}</text>
-          <text class="week-day-date tnum">{{item.dateLabel}}</text>
-          <view wx:if="{{item.hasEntries}}" class="week-day-dot"></view>
+          <view class="week-day-number">
+            <view wx:if="{{item.isToday}}" class="week-day-today-ring"></view>
+            <text class="week-day-date tnum">{{item.dateLabel}}</text>
+          </view>
+          <view wx:if="{{item.hasPlan}}" class="week-day-dot"></view>
         </view>
       </view>
 
@@ -56,22 +61,37 @@
           <view
             wx:for="{{entries}}"
             wx:key="id"
-            class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} stagger-item"
-            style="top: {{item.top}}rpx; height: {{item.height}}rpx; animation-delay: {{index < 7 ? index * 45 : 0}}ms;"
+            class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}} stagger-item"
+            style="top: {{item.top}}rpx; height: {{item.height}}rpx; left: calc({{item.leftPercent}}% + {{item.leftInset}}rpx); width: calc({{item.widthPercent}}% - {{item.widthInset}}rpx); animation-delay: {{index < 7 ? index * 45 : 0}}ms;"
+            data-id="{{item.id}}"
+            data-kind="{{item.kind}}"
+            bindtap="openPlanEditor"
           >
-            <view wx:if="{{item.kind === 'plan'}}" class="plan-check" data-id="{{item.id}}" catchtap="togglePlan">
-              <lucide-icon wx:if="{{item.done}}" name="check" tone="rose" size="{{18}}"></lucide-icon>
+            <view wx:if="{{item.kind === 'plan'}}" class="plan-dashed-border"></view>
+            <view wx:if="{{item.kind === 'plan'}}" class="plan-border-corners">
+              <image class="plan-border-corner plan-border-corner--top-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+              <image class="plan-border-corner plan-border-corner--top-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+              <image class="plan-border-corner plan-border-corner--bottom-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+              <image class="plan-border-corner plan-border-corner--bottom-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+            </view>
+            <view wx:if="{{item.kind === 'plan'}}" class="plan-check {{item.done ? 'plan-check--checked' : ''}}" data-id="{{item.id}}" catchtap="togglePlan">
+              <lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon>
             </view>
             <view class="entry-copy">
-              <text class="entry-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
-              <text class="entry-meta" overflow="ellipsis" max-lines="1">{{item.timeLabel}} · {{item.subtitle}}</text>
+              <view class="entry-line">
+                <text class="entry-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
+                <view wx:if="{{item.done}}" class="entry-strike entry-strike--title"></view>
+              </view>
+              <view class="entry-line entry-line--meta">
+                <text class="entry-meta" overflow="ellipsis" max-lines="1">{{item.displayMeta}}</text>
+                <view wx:if="{{item.done}}" class="entry-strike entry-strike--meta"></view>
+              </view>
             </view>
           </view>
         </view>
         <view class="timeline-legend">
           <view><view class="legend-square legend-square--course"></view><text>课堂</text></view>
           <view><view class="legend-square legend-square--plan"></view><text>我的安排</text></view>
-          <text class="legend-note">时间按用户所在时区</text>
         </view>
       </view>
 
@@ -84,7 +104,7 @@
     </view>
   </scroll-view>
 
-  <bottom-sheet visible="{{creating}}" title="添加待办" theme="{{theme}}" bindclose="closeCreator">
+  <bottom-sheet visible="{{creating}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator">
     <view class="creator-form">
       <input class="creator-title" value="{{title}}" placeholder="要做什么？" placeholder-class="creator-placeholder" maxlength="80" bindinput="onTitleInput" />
       <text class="creator-label">开始</text>
@@ -92,12 +112,15 @@
         <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange"><view class="creator-value tnum"><text>{{startDate}}</text></view></picker>
         <picker mode="time" value="{{startTime}}" bindchange="onStartTimeChange"><view class="creator-value tnum"><text>{{startTime}}</text></view></picker>
       </view>
-      <text class="creator-label">结束 <text class="creator-hint">· 默认晚 1 小时</text></text>
+      <text class="creator-label">结束</text>
       <view class="creator-grid">
         <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange"><view class="creator-value tnum"><text>{{endDate}}</text></view></picker>
         <picker mode="time" value="{{endTime}}" bindchange="onEndTimeChange"><view class="creator-value tnum"><text>{{endTime}}</text></view></picker>
       </view>
     </view>
-    <button slot="footer" class="primary-button" hover-class="button-pressed" bindtap="addPlan">添加到日程</button>
+    <view slot="footer" class="creator-footer">
+      <button wx:if="{{editingPlanId}}" class="danger-button creator-delete" hover-class="button-pressed" bindtap="deletePlan">删除</button>
+      <button class="primary-button creator-submit" hover-class="button-pressed" bindtap="savePlan">{{editingPlanId ? '保存' : '添加到日程'}}</button>
+    </view>
   </bottom-sheet>
 </view>

@@ -80,6 +80,7 @@ interface PassRateSheetHeightInput {
 const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
+const MODAL_HEADER_EDGE_INSET_RPX = 24;
 const MAIN_MENU_HEIGHT = 478;
 const THEMES: TimetableThemeOption[] = [
   { id: "image", label: "默认壁纸", color: "#0862ad", image: true },
@@ -269,7 +270,7 @@ function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
   );
 }
 
-function backgroundMetrics(): {
+function backgroundMetrics(compactHeader = false): {
   headerTop: number;
   headerHeight: number;
   headerControlSize: number;
@@ -296,6 +297,22 @@ function backgroundMetrics(): {
     const width = BACKGROUND_WIDTH * scale;
     const height = BACKGROUND_HEIGHT * scale;
     const left = (windowInfo.windowWidth - width) / 2;
+    const imageStyle = `width:${width}px;height:${height}px;left:${left}px;top:0px;`;
+    if (compactHeader) {
+      const edgeInset =
+        (MODAL_HEADER_EDGE_INSET_RPX * windowInfo.windowWidth) / 750;
+      const compactHeaderHeight = headerControlSize + edgeInset * 2;
+      const compactControlBottom = edgeInset + headerControlSize;
+      return {
+        headerTop: 0,
+        headerHeight: compactHeaderHeight,
+        headerControlSize,
+        headerControlCenter: edgeInset + headerControlSize / 2,
+        menuTop: compactHeaderHeight + 4,
+        weekMenuTop: compactControlBottom + 8,
+        imageStyle,
+      };
+    }
     return {
       headerTop: statusBarHeight,
       headerHeight,
@@ -303,9 +320,20 @@ function backgroundMetrics(): {
       headerControlCenter: headerControlTop + headerControlSize / 2,
       menuTop: Math.max(headerHeight, headerControlBottom) + 4,
       weekMenuTop: headerControlBottom + 8,
-      imageStyle: `width:${width}px;height:${height}px;left:${left}px;top:0px;`,
+      imageStyle,
     };
   } catch {
+    if (compactHeader) {
+      return {
+        headerTop: 0,
+        headerHeight: 56,
+        headerControlSize: 32,
+        headerControlCenter: 28,
+        menuTop: 60,
+        weekMenuTop: 52,
+        imageStyle: "width:100%;height:100%;left:0;top:0;",
+      };
+    }
     return {
       headerTop: 24,
       headerHeight: 64,
@@ -368,6 +396,7 @@ Page({
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
+    compactHeader: false,
     ...backgroundMetrics(),
     ...themePatch("image"),
     timetableThemes: THEMES,
@@ -409,7 +438,7 @@ Page({
     passRateDisplayScore: "—",
     hasHydrated: false,
   },
-  onLoad() {
+  onLoad(options: Record<string, string | undefined>) {
     pageAlive = true;
     if (weekMenuOpenTimer !== undefined) {
       clearTimeout(weekMenuOpenTimer);
@@ -428,9 +457,11 @@ Page({
     visibleRequestSequence += 1;
     passRateRequestSequence += 1;
     pendingVisibleRequestId = null;
+    const compactHeader = options.source === "schedule";
     this.setData({
       ...resolveAppearance(),
-      ...backgroundMetrics(),
+      compactHeader,
+      ...backgroundMetrics(compactHeader),
       ...themePatch(loadThemeId()),
     });
     this.hydrate();
@@ -438,7 +469,10 @@ Page({
   },
   onShow() {
     if (!ensureAuthenticated()) return;
-    this.setData({ ...resolveAppearance(), ...backgroundMetrics() });
+    this.setData({
+      ...resolveAppearance(),
+      ...backgroundMetrics(this.data.compactHeader),
+    });
     this.hydrate();
     this.syncTimetableIfNeeded();
   },
@@ -1068,7 +1102,7 @@ Page({
     const passRateCourse = this.data.passRateCourse;
     const passRateOwnScore = Number(this.data.passRateOwnScore);
     this.setData({
-      ...backgroundMetrics(),
+      ...backgroundMetrics(this.data.compactHeader),
       ...(selectedCourse
         ? { courseSheetHeight: courseSheetHeight(selectedCourse) }
         : {}),

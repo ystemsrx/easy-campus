@@ -7,6 +7,13 @@ import {
   type TimetableCourse,
 } from "../../data/timetable";
 import {
+  defaultPlanEnd,
+  layoutScheduleOverlaps,
+  nextWholeHour,
+  vacationLabelForDate,
+  type ScheduleColumnLayout,
+} from "../../data/schedule";
+import {
   getLocalSchedule,
   getTimetable,
   putLocalSchedule,
@@ -39,10 +46,10 @@ interface DayOption {
   dateLabel: string;
   date: string;
   isToday: boolean;
-  hasEntries: boolean;
+  hasPlan: boolean;
 }
 
-interface ScheduleEntry {
+interface ScheduleEntryBase {
   id: string;
   kind: "course" | "plan";
   title: string;
@@ -54,6 +61,10 @@ interface ScheduleEntry {
   done: boolean;
   top: number;
   height: number;
+}
+
+interface ScheduleEntry extends ScheduleEntryBase, ScheduleColumnLayout {
+  displayMeta: string;
 }
 
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -77,12 +88,22 @@ function entryGeometry(startTime: string, endTime: string) {
   };
 }
 
+function dateFromKey(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 12);
+}
+
 function buildEntries(
   timetable: TimetableData | null,
   date: string,
   plans: LocalSchedulePlan[],
 ): ScheduleEntry[] {
-  const courses = coursesForDate(timetable, date).map((course) => ({
+  const selectedDate = dateFromKey(date);
+  const courses: ScheduleEntryBase[] = coursesForDate(
+    timetable,
+    date,
+    selectedDate,
+  ).map((course) => ({
     id: course.id,
     kind: "course" as const,
     title: course.name,
@@ -94,14 +115,14 @@ function buildEntries(
     done: false,
     ...entryGeometry(course.startTime, course.endTime),
   }));
-  const planEntries = plans
+  const planEntries: ScheduleEntryBase[] = plans
     .filter((plan) => plan.date === date)
     .map((plan) => ({
       id: plan.id,
       kind: "plan" as const,
       title: plan.title,
       subtitle:
-        plan.endDate === plan.date ? "我的安排" : `延续至 ${plan.endDate}`,
+        plan.endDate === plan.date ? "日程" : `日程 · 延续至 ${plan.endDate}`,
       startTime: plan.startTime,
       endTime: plan.endTime,
       timeLabel: `${plan.startTime}–${plan.endDate === plan.date ? "" : "次日 "}${plan.endTime}`,
@@ -112,21 +133,18 @@ function buildEntries(
         plan.endDate === plan.date ? plan.endTime : "22:30",
       ),
     }));
-  return [...courses, ...planEntries].sort(
-    (left, right) =>
-      timeToMinutes(left.startTime) - timeToMinutes(right.startTime),
-  );
+  return layoutScheduleOverlaps([...courses, ...planEntries]).map((entry) => ({
+    ...entry,
+    displayMeta: entry.compact
+      ? entry.timeLabel
+      : `${entry.timeLabel} · ${entry.subtitle}`,
+  }));
 }
 
 let activeTimetable: TimetableData | null = null;
 let activeAccount = "";
 let timetableRequestInFlight = false;
 let scheduleSyncInFlight = false;
-
-function addHour(value: string): string {
-  const total = timeToMinutes(value) + 60;
-  return `${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
 
 Page({
   data: {
@@ -135,7 +153,7 @@ Page({
     motionClass: "motion-normal",
     currentTime: formatClock(),
     monthLabel: "",
-    teachingWeekLabel: "学期外",
+    teachingWeekLabel: "",
     days: [] as DayOption[],
     selectedWeekday: currentIsoWeekday(),
     selectedDate: toDateString(new Date()),
@@ -148,6 +166,8 @@ Page({
     startTime: "20:00",
     endDate: toDateString(new Date()),
     endTime: "21:00",
+    endDirty: false,
+    editingPlanId: "",
   },
   onLoad() {
     this.setData(resolveAppearance());
@@ -157,15 +177,27 @@ Page({
   onShow() {
     if (!ensureAuthenticated()) return;
     this.setData(resolveAppearance());
-    this.getTabBar().setData({
-      selected: 1,
-      themeClass: this.data.themeClass,
-      motionClass: this.data.motionClass,
-    });
+    const tabBar = this.getTabBar();
+    if (tabBar) {
+      tabBar.setData({
+        selected: 1,
+        themeClass: this.data.themeClass,
+        motionClass: this.data.motionClass,
+        hidden: false,
+      });
+    }
     this.hydrateTimetable();
     this.rebuildWeek();
     void this.loadTimetable();
     void this.syncSchedule();
+  },
+  onHide() {
+    this.setData({ creating: false, editingPlanId: "" });
+    this.setTabBarHidden(false);
+  },
+  setTabBarHidden(hidden: boolean) {
+    const tabBar = this.getTabBar();
+    if (tabBar) tabBar.setData({ hidden });
   },
   hydrateTimetable() {
     const account = getSession()?.user.account || "";
@@ -258,20 +290,13 @@ Page({
         dateLabel: String(date.getDate()),
         date: dateKey,
         isToday: dateKey === todayKey,
-        hasEntries:
-          coursesForDate(activeTimetable, dateKey, now).length > 0 ||
-          plans.some((plan) => plan.date === dateKey),
+        hasPlan: plans.some((plan) => plan.date === dateKey),
       };
     });
     const selected =
       days.find((day) => day.weekday === this.data.selectedWeekday) || days[0];
     this.setData({
       currentTime: formatClock(now),
-      monthLabel: `${now.getMonth() + 1} 月`,
-      teachingWeekLabel: (() => {
-        const week = teachingWeekForDate(activeTimetable, now);
-        return week === null ? "学期外" : `第 ${week} 教学周`;
-      })(),
       days,
     });
     this.applyDay(selected.weekday, days, plans);
@@ -286,9 +311,16 @@ Page({
       planOptions || loadScheduleData(activeAccount).plans;
     const selected = days.find((day: DayOption) => day.weekday === weekday);
     if (!selected) return;
+    const selectedDate = dateFromKey(selected.date);
+    const teachingWeek = teachingWeekForDate(activeTimetable, selectedDate);
     this.setData({
       selectedWeekday: weekday,
       selectedDate: selected.date,
+      monthLabel: `${selectedDate.getMonth() + 1} 月`,
+      teachingWeekLabel:
+        teachingWeek === null
+          ? vacationLabelForDate(activeTimetable, selected.date) || ""
+          : `第 ${teachingWeek} 教学周`,
       selectedDateLabel: `${formatFriendlyDate(selected.date)}${selected.isToday ? " · 今天" : ""}`,
       entries: buildEntries(activeTimetable, selected.date, plans),
     });
@@ -298,7 +330,6 @@ Page({
       event.currentTarget.dataset.weekday,
     ) as DayOption["weekday"];
     if (weekday === this.data.selectedWeekday) return;
-    haptic("light");
     this.applyDay(weekday);
   },
   goToday() {
@@ -307,43 +338,82 @@ Page({
   },
   openTimetable() {
     haptic("light");
-    void navigateTo("/pages/timetable/index");
+    void navigateTo("/pages/timetable/index?source=schedule");
   },
   openCreator() {
     haptic("light");
-    const startDate = this.data.selectedDate;
+    const now = new Date();
+    const nextStart = nextWholeHour(now);
+    const startDate =
+      this.data.selectedDate === toDateString(now)
+        ? nextStart.startDate
+        : this.data.selectedDate;
+    const startTime = nextStart.startTime;
+    const defaultEnd = defaultPlanEnd(startDate, startTime);
+    this.setTabBarHidden(true);
     this.setData({
       creating: true,
       title: "",
       startDate,
-      endDate: startDate,
-      startTime: "20:00",
-      endTime: "21:00",
+      startTime,
+      ...defaultEnd,
+      endDirty: false,
+      editingPlanId: "",
+    });
+  },
+  openPlanEditor(event: WechatMiniprogram.TouchEvent) {
+    if (String(event.currentTarget.dataset.kind || "") !== "plan") return;
+    const id = String(event.currentTarget.dataset.id || "");
+    const plan = loadScheduleData(activeAccount).plans.find(
+      (candidate) => candidate.id === id,
+    );
+    if (!plan) return;
+    haptic("light");
+    this.setTabBarHidden(true);
+    this.setData({
+      creating: true,
+      editingPlanId: plan.id,
+      title: plan.title,
+      startDate: plan.date,
+      startTime: plan.startTime,
+      endDate: plan.endDate,
+      endTime: plan.endTime,
+      endDirty: true,
     });
   },
   closeCreator() {
-    this.setData({ creating: false });
+    this.setData({ creating: false, editingPlanId: "" });
+    this.setTabBarHidden(false);
   },
   onTitleInput(event: WechatMiniprogram.Input) {
     this.setData({ title: event.detail.value });
   },
   onStartDateChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
-    this.setData({
-      startDate: event.detail.value,
-      endDate: event.detail.value,
-    });
+    const startDate = event.detail.value;
+    this.setData(
+      this.data.endDirty
+        ? { startDate }
+        : { startDate, ...defaultPlanEnd(startDate, this.data.startTime) },
+    );
   },
   onEndDateChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
-    this.setData({ endDate: event.detail.value });
+    this.setData({ endDate: event.detail.value, endDirty: true });
   },
   onStartTimeChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
     const startTime = event.detail.value;
-    this.setData({ startTime, endTime: addHour(startTime) });
+    this.setData(
+      this.data.endDirty
+        ? { startTime }
+        : {
+            startTime,
+            ...defaultPlanEnd(this.data.startDate, startTime),
+          },
+    );
   },
   onEndTimeChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
-    this.setData({ endTime: event.detail.value });
+    this.setData({ endTime: event.detail.value, endDirty: true });
   },
-  addPlan() {
+  savePlan() {
     const title = this.data.title.trim();
     if (!title) {
       wx.showToast({ title: "先写下要做什么", icon: "none" });
@@ -357,22 +427,59 @@ Page({
       wx.showToast({ title: "结束时间需要晚于开始时间", icon: "none" });
       return;
     }
-    const plans = loadScheduleData(activeAccount).plans;
-    plans.push({
-      id: `plan-${Date.now()}`,
+    const storedPlans = loadScheduleData(activeAccount).plans;
+    const editingPlanId = this.data.editingPlanId;
+    const planPatch = {
       title,
       date: this.data.startDate,
       startTime: this.data.startTime,
       endDate: this.data.endDate,
       endTime: this.data.endTime,
-      done: false,
-    });
+    };
+    const plans = editingPlanId
+      ? storedPlans.map((plan) =>
+          plan.id === editingPlanId ? { ...plan, ...planPatch } : plan,
+        )
+      : [
+          ...storedPlans,
+          {
+            id: `plan-${Date.now()}`,
+            ...planPatch,
+            done: false,
+          },
+        ];
     this.persistPlans(plans);
     haptic("medium");
-    this.setData({ creating: false, selectedDate: this.data.startDate });
-    const selectedDate = new Date(`${this.data.startDate}T12:00:00`);
+    this.setData({
+      creating: false,
+      editingPlanId: "",
+      selectedDate: this.data.startDate,
+    });
+    this.setTabBarHidden(false);
+    const selectedDate = dateFromKey(this.data.startDate);
     this.setData({ selectedWeekday: currentIsoWeekday(selectedDate) });
     this.rebuildWeek();
+  },
+  deletePlan() {
+    const editingPlanId = this.data.editingPlanId;
+    if (!editingPlanId) return;
+    wx.showModal({
+      title: "删除日程",
+      content: "确定删除这个日程？",
+      confirmText: "删除",
+      confirmColor: "#c0452d",
+      success: (result) => {
+        if (!result.confirm) return;
+        const plans = loadScheduleData(activeAccount).plans.filter(
+          (plan) => plan.id !== editingPlanId,
+        );
+        this.persistPlans(plans);
+        haptic("medium");
+        this.setData({ creating: false, editingPlanId: "" });
+        this.setTabBarHidden(false);
+        this.rebuildWeek();
+      },
+    });
   },
   togglePlan(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
