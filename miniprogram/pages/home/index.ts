@@ -27,7 +27,7 @@ import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
 import { loadElectricitySnapshot } from "../../store/electricity";
 import { loadExamsSnapshot } from "../../store/exams";
 import { loadScheduleData } from "../../store/schedule";
-import { getSession } from "../../store/session";
+import { getSession, loadCurrentUser } from "../../store/session";
 import {
   cleanupTeachingPreview,
   loadTeachingPreview,
@@ -45,6 +45,7 @@ import {
 } from "../../data/timetable";
 import type {
   CredentialState,
+  CurrentUserData,
   Exam,
   GradesData,
   Notice,
@@ -70,6 +71,7 @@ import {
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
 import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
+import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
@@ -125,6 +127,8 @@ interface ExamPreview {
   badgeText: string;
   badgeTone: ExamCountdownTone;
 }
+
+const HOME_PREVIEW_ITEM_LIMIT = 3;
 
 interface ShortcutCachePatch {
   electricityBound: boolean;
@@ -401,7 +405,7 @@ function mergeMessagePreviews(
       seen.add(item.id);
       return true;
     })
-    .slice(0, 3);
+    .slice(0, HOME_PREVIEW_ITEM_LIMIT);
 }
 
 function mergeNoticePreviews(
@@ -416,7 +420,7 @@ function mergeNoticePreviews(
       seen.add(identity);
       return true;
     })
-    .slice(0, 3);
+    .slice(0, HOME_PREVIEW_ITEM_LIMIT);
 }
 
 Page({
@@ -431,7 +435,7 @@ Page({
     serviceLabel: "正在连接服务",
     greeting: getGreeting(),
     dateLabel: formatFriendlyDate(today()),
-    userName: "同学",
+    userName: "",
     organizationName: "",
     currentTime: formatClock(),
     todayCourses: [] as TodayCoursePreview[],
@@ -474,6 +478,7 @@ Page({
     inboxRouteOpening = false;
     credentialExitInFlight = false;
     this.applyAppearance();
+    this.hydrateIdentity();
   },
   onShow() {
     if (!ensureAuthenticated()) {
@@ -482,6 +487,7 @@ Page({
     homeVisible = true;
     automaticPopupsThisEntry = new Set<string>();
     this.applyAppearance();
+    this.hydrateIdentity();
     this.hydrateCachedDashboard();
     this.hydrateShortcutCaches();
     this.getTabBar().setData({
@@ -536,6 +542,14 @@ Page({
   applyAppearance() {
     this.setData(resolveAppearance());
   },
+  hydrateIdentity(user?: CurrentUserData) {
+    const identity = resolveHomeIdentity(
+      getSession(),
+      user || loadCurrentUser(),
+    );
+    if (!identity.userName) return;
+    this.setData(identity);
+  },
   hydrateShortcutCaches() {
     const account = getSession()?.user.account || "";
     if (!account) return;
@@ -553,8 +567,12 @@ Page({
     const cachedTimetable = loadTimetableSnapshot(account);
     const cachedGrades = loadGradesSnapshot(account);
     activeTimetable = cachedTimetable?.data || null;
-    const messages = (cached?.messages || []).map(toMessagePreview);
-    const notices = (cached?.notices || []).map(toNoticePreview);
+    const messages = (cached?.messages || [])
+      .slice(0, HOME_PREVIEW_ITEM_LIMIT)
+      .map(toMessagePreview);
+    const notices = (cached?.notices || [])
+      .slice(0, HOME_PREVIEW_ITEM_LIMIT)
+      .map(toNoticePreview);
     this.setData({
       messages,
       notices,
@@ -569,6 +587,26 @@ Page({
       ...(changedAccount ? { errorMessage: "" } : {}),
     });
     this.updateTodayCourses();
+  },
+  hydrateServerGrade(
+    account: string,
+    result: Awaited<ReturnType<typeof getGrades>>,
+    refresh: boolean,
+  ) {
+    const local = loadGradesSnapshot(account);
+    const useServer =
+      refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt);
+    if (useServer) {
+      saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
+    }
+    if (useServer && getSession()?.user.account === account) {
+      this.setData(
+        gradePreviewPatch(
+          result.data,
+          this.data.motionClass !== "motion-reduced",
+        ),
+      );
+    }
   },
   stopCredentialPoll() {
     if (credentialPollTimer !== undefined) {
@@ -871,6 +909,19 @@ Page({
       dateLabel: formatFriendlyDate(today()),
     });
 
+    const userRequest = includeStableData
+      ? getCurrentUser().then((user) => {
+          if (homeVisible) this.hydrateIdentity(user);
+          return user;
+        })
+      : Promise.resolve(null);
+    const account = getSession()?.user.account || "";
+    const gradeRequest = includeStableData
+      ? getGrades({ page: 1, pageSize: 200, refresh }).then((result) => {
+          this.hydrateServerGrade(account, result, refresh);
+          return result;
+        })
+      : Promise.resolve(null);
     const [
       userResult,
       messageResult,
@@ -878,12 +929,10 @@ Page({
       gradeResult,
       timetableResult,
     ] = await Promise.allSettled([
-      includeStableData ? getCurrentUser() : Promise.resolve(null),
+      userRequest,
       getMessages({ page: 1, pageSize: 15, refresh }),
       getNotices({ page: 1, pageSize: 15, refresh }),
-      includeStableData
-        ? getGrades({ page: 1, pageSize: 200, refresh })
-        : Promise.resolve(null),
+      gradeRequest,
       includeStableData ? getTimetable({ refresh }) : Promise.resolve(null),
     ]);
 
@@ -900,9 +949,7 @@ Page({
       serviceLabel: serviceHealthy ? "服务连接正常" : "服务连接异常",
     };
     if (userResult.status === "fulfilled" && userResult.value) {
-      patch.userName = userResult.value.name || "同学";
-      patch.organizationName =
-        userResult.value.profile.organizationName || "西南大学";
+      Object.assign(patch, resolveHomeIdentity(getSession(), userResult.value));
       this.handleCredentialState(userResult.value.credential);
     }
     if (messageResult.status === "fulfilled") {
@@ -922,27 +969,6 @@ Page({
         noticeResult.value.data.items.map(toNoticePreview),
         this.data.notices,
       );
-    }
-    if (gradeResult.status === "fulfilled" && gradeResult.value) {
-      const account = getSession()?.user.account || "";
-      const local = loadGradesSnapshot(account);
-      if (
-        refresh ||
-        shouldUseServerSnapshot(local, gradeResult.value.meta.fetchedAt)
-      ) {
-        saveGradesSnapshot(
-          account,
-          gradeResult.value.data,
-          gradeResult.value.meta.fetchedAt,
-        );
-        Object.assign(
-          patch,
-          gradePreviewPatch(
-            gradeResult.value.data,
-            this.data.motionClass !== "motion-reduced",
-          ),
-        );
-      }
     }
     if (timetableResult.status === "fulfilled" && timetableResult.value) {
       const account = getSession()?.user.account || "";
