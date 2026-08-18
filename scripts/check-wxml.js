@@ -151,6 +151,7 @@ if (
   navigationScript.includes("backOffset") ||
   !navigationScript.includes("insetBack: { type: Boolean, value: false }") ||
   !navigationScript.includes("const NAVIGATION_INSET_RPX = 28") ||
+  !navigationScript.includes("const STANDARD_BACK_BOTTOM_GAP_PX = 4") ||
   !navigationScript.includes(
     "(NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750",
   ) ||
@@ -164,7 +165,15 @@ if (
   !navigationScript.includes(
     "const insetBack = this.data.back && this.data.insetBack",
   ) ||
+  !navigationScript.includes("const standardBackCoverHeight =") ||
+  !navigationScript.includes(
+    "naturalBackTop + backButtonSize + STANDARD_BACK_BOTTOM_GAP_PX",
+  ) ||
   !navigationScript.includes("const coverHeight = insetBack") ||
+  !navigationScript.includes(": this.data.back") ||
+  !navigationScript.includes(
+    "? Math.max(nativeControlBottom, standardBackCoverHeight)",
+  ) ||
   !navigationScript.includes(": nativeControlBottom") ||
   !navigationScript.includes("const backLift = insetBack") ||
   !navigationScript.includes("totalHeight: coverHeight") ||
@@ -180,7 +189,7 @@ if (
   !navigationStyles.includes(".nav-content {\n  position: absolute;")
 ) {
   failures.push(
-    "components/navigation-bar: 顶部窄遮罩与固定导航操作层必须按原生胶囊位置对齐，且不得触发滚动状态重绘",
+    "components/navigation-bar: 普通页面遮罩必须低于返回按钮，紧凑页保持等距定位，且不得触发滚动状态重绘",
   );
 }
 

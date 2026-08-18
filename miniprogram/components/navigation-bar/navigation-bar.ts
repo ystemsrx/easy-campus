@@ -1,5 +1,6 @@
 const BACK_BUTTON_SIZE_RPX = 76;
 const NAVIGATION_INSET_RPX = 28;
+const STANDARD_BACK_BOTTOM_GAP_PX = 4;
 
 Component({
   options: {
@@ -35,11 +36,15 @@ Component({
           (NAVIGATION_INSET_RPX * windowInfo.windowWidth) / 750;
         const nativeControlBottom = menu.bottom || controlTop + contentHeight;
         const insetBack = this.data.back && this.data.insetBack;
-        const coverHeight = insetBack
-          ? navigationInset * 2 + backButtonSize
-          : nativeControlBottom;
         const naturalBackTop =
           controlTop + (contentHeight - backButtonSize) / 2;
+        const standardBackCoverHeight =
+          naturalBackTop + backButtonSize + STANDARD_BACK_BOTTOM_GAP_PX;
+        const coverHeight = insetBack
+          ? navigationInset * 2 + backButtonSize
+          : this.data.back
+            ? Math.max(nativeControlBottom, standardBackCoverHeight)
+            : nativeControlBottom;
         const backLift = insetBack
           ? Math.max(0, naturalBackTop - navigationInset)
           : 0;
