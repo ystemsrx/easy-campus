@@ -8,9 +8,14 @@ import type {
   SelectOption,
 } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime, formatFriendlyDate } from "../../utils/date";
+import { formatFriendlyDate, toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import {
+  formatRoomResultDate,
+  resolveInitialRoomDate,
+} from "../../utils/room-date";
+import { groupRoomsByFloor, type FloorRoomGroup } from "../../utils/room-floor";
 
 interface PeriodView extends PeriodOption {
   selected: boolean;
@@ -20,40 +25,127 @@ interface BuildingView extends SelectOption {
   selected: boolean;
 }
 
+interface PeriodGroupView extends PeriodGroup {
+  selected: boolean;
+}
+
+interface QuickDateView {
+  date: string;
+  weekdayLabel: string;
+  dayLabel: string;
+  selected: boolean;
+}
+
 interface RoomView extends EmptyRoom {
   capacityLabel: string;
-  locationLabel: string;
   metaLabel: string;
 }
 
 const PAGE_SIZE = 30;
 const MAX_BUILDINGS = 30;
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const PICKER_TRANSITION_MS = 380;
 let optionsSequence = 0;
 let roomsSequence = 0;
+let pickerTransitionTimer: ReturnType<typeof setTimeout> | undefined;
+let resultTransitionTimer: ReturnType<typeof setTimeout> | undefined;
 
-function selectedLabels(options: SelectOption[], values: string[]): string {
-  return options
-    .filter((option) => values.includes(option.value))
-    .map((option) => option.label)
-    .join("、");
+function parseLocalDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const parsed = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function quickDates(startDate: string, selectedDate: string): QuickDateView[] {
+  const start = parseLocalDate(startDate);
+  if (!start) return [];
+  return Array.from({ length: 7 }, (_item, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const value = toDateString(date);
+    return {
+      date: value,
+      weekdayLabel: WEEKDAYS[date.getDay()],
+      dayLabel: String(date.getDate()),
+      selected: value === selectedDate,
+    };
+  });
+}
+
+function quickDateIndicatorStyle(options: QuickDateView[]): string {
+  if (!options.length) return "";
+  const selectedIndex = options.findIndex((item) => item.selected);
+  const index = Math.max(0, selectedIndex);
+  return `width: ${100 / options.length}%; transform: translateX(${index * 100}%); opacity: ${selectedIndex < 0 ? 0 : 1};`;
+}
+
+function selectQuickDate(
+  options: QuickDateView[],
+  date: string,
+): { quickDates: QuickDateView[]; quickDateIndicatorStyle: string } {
+  const next = options.map((item) => ({
+    ...item,
+    selected: item.date === date,
+  }));
+  return {
+    quickDates: next,
+    quickDateIndicatorStyle: quickDateIndicatorStyle(next),
+  };
+}
+
+function campusIndicatorStyle(
+  campuses: SelectOption[],
+  campusId: string,
+): string {
+  if (!campuses.length) return "";
+  const index = Math.max(
+    0,
+    campuses.findIndex((item) => item.value === campusId),
+  );
+  return `width: ${100 / campuses.length}%; transform: translateX(${index * 100}%);`;
+}
+
+function periodGroupsWithSelection(
+  groups: PeriodGroup[],
+  selectedPeriods: number[],
+): PeriodGroupView[] {
+  return groups.map((group) => ({
+    ...group,
+    selected: group.periods.every((period) => selectedPeriods.includes(period)),
+  }));
+}
+
+function selectedPeriodLabel(periods: number[]): string {
+  if (!periods.length) return "选择节次";
+  if (periods.length === 1) return `第 ${periods[0]} 节`;
+  return `第 ${periods.join("、")} 节`;
+}
+
+function clearPickerTransitionTimer() {
+  if (pickerTransitionTimer) {
+    clearTimeout(pickerTransitionTimer);
+    pickerTransitionTimer = undefined;
+  }
+}
+
+function clearResultTransitionTimer() {
+  if (resultTransitionTimer) {
+    clearTimeout(resultTransitionTimer);
+    resultTransitionTimer = undefined;
+  }
 }
 
 function toRoomView(room: EmptyRoom): RoomView {
-  const location = [
-    room.campus.name,
-    room.building.name,
-    room.floor ? `${room.floor} 层` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const meta = [room.type, room.capacity ? `${room.capacity} 人` : ""]
-    .filter(Boolean)
-    .join(" · ");
   return {
     ...room,
-    capacityLabel: room.capacity ? `${room.capacity}` : "—",
-    locationLabel: location || "位置信息待定",
-    metaLabel: meta || "普通教室",
+    capacityLabel:
+      typeof room.capacity === "number" ? `${room.capacity} 人` : "—",
+    metaLabel: room.type || "普通教室",
   };
 }
 
@@ -64,40 +156,38 @@ Page({
     motionClass: "motion-normal",
     optionsLoading: true,
     querying: false,
-    refreshing: false,
     loadingMore: false,
     errorMessage: "",
     hasQueried: false,
     date: "",
-    dateDay: "日",
+    dateTouched: false,
     dateLabel: "选择日期",
     minDate: "",
     maxDate: "",
+    quickDates: [] as QuickDateView[],
+    quickDateIndicatorStyle: "",
     campuses: [] as SelectOption[],
     campusId: "",
-    campusLabel: "选择校区",
+    campusIndicatorStyle: "",
+    buildingsByCampus: {} as Record<string, SelectOption[]>,
     buildings: [] as BuildingView[],
     selectedBuildingIds: [] as string[],
-    buildingLabel: "选择楼栋",
     periods: [] as PeriodView[],
-    periodGroups: [] as PeriodGroup[],
+    periodGroups: [] as PeriodGroupView[],
     selectedPeriods: [] as number[],
     periodLabel: "选择节次",
-    sourceName: "学校教务管理系统",
-    sourceUpdatedAt: "",
     pickerVisible: false,
-    pickerMode: "campus" as "campus" | "buildings" | "periods",
-    pickerTitle: "",
-    draftCampusId: "",
-    draftBuildingIds: [] as string[],
+    pickerMounted: false,
+    pickerActive: false,
     draftPeriods: [] as number[],
+    resultVisible: false,
+    resultMounted: false,
+    resultActive: false,
+    resultDateLabel: "",
+    resultPeriodLabel: "",
     roomItems: [] as RoomView[],
+    roomGroups: [] as FloorRoomGroup<RoomView>[],
     totalRooms: 0,
-    buildingSummary: [] as Array<{
-      id: string;
-      name: string;
-      roomCount: number;
-    }>,
     page: 1,
     totalPages: 1,
   },
@@ -109,34 +199,58 @@ Page({
     this.applyAppearance();
     if (!this.data.campuses.length) {
       void this.loadInitialOptions();
+    } else {
+      this.syncLateDateDefault();
     }
+  },
+  onUnload() {
+    clearPickerTransitionTimer();
+    clearResultTransitionTimer();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
   },
   applyOptionData(data: RoomOptionsData) {
     const selectedPeriods = this.data.selectedPeriods;
-    const selectedBuildingIds = this.data.selectedBuildingIds;
+    const campusId = data.campuses.some(
+      (item) => item.value === this.data.campusId,
+    )
+      ? this.data.campusId
+      : data.campuses[0]?.value || "";
+    const buildingsByCampus = data.buildingsByCampus || {};
+    const campusBuildings = buildingsByCampus[campusId] || data.buildings;
+    const selectedBuildingIds = this.data.selectedBuildingIds.filter((value) =>
+      campusBuildings.some((building) => building.value === value),
+    );
+    const date = resolveInitialRoomDate(
+      data.minDate,
+      this.data.dateTouched ? this.data.date : "",
+    );
+    const dateOptions = quickDates(data.minDate, date);
     this.setData({
       minDate: data.minDate,
       maxDate: data.maxDate,
-      date: this.data.date || data.minDate,
-      dateDay: (this.data.date || data.minDate).slice(8, 10),
-      dateLabel: formatFriendlyDate(this.data.date || data.minDate),
+      date,
+      dateLabel: formatFriendlyDate(date),
+      quickDates: dateOptions,
+      quickDateIndicatorStyle: quickDateIndicatorStyle(dateOptions),
       campuses: data.campuses,
-      buildings: data.buildings.map((building) => ({
+      campusId,
+      campusIndicatorStyle: campusIndicatorStyle(data.campuses, campusId),
+      buildingsByCampus,
+      buildings: campusBuildings.map((building) => ({
         ...building,
         selected: selectedBuildingIds.includes(building.value),
       })),
+      selectedBuildingIds,
       periods: data.periods.map((period) => ({
         ...period,
         selected: selectedPeriods.includes(period.period),
       })),
-      periodGroups: data.periodGroups,
-      sourceName: data.source.name || "学校教务管理系统",
-      sourceUpdatedAt: data.source.updatedAt
-        ? formatDateTime(data.source.updatedAt)
-        : "",
+      periodGroups: periodGroupsWithSelection(
+        data.periodGroups,
+        selectedPeriods,
+      ),
     });
   },
   async loadInitialOptions() {
@@ -156,52 +270,55 @@ Page({
       if (sequence === optionsSequence) this.setData({ optionsLoading: false });
     }
   },
-  async loadBuildings(campusId: string) {
-    const sequence = ++optionsSequence;
-    this.setData({ optionsLoading: true, errorMessage: "" });
-    try {
-      const result = await getRoomOptions(campusId);
-      if (sequence !== optionsSequence) return;
-      this.applyOptionData(result.data);
-      const campus = result.data.campuses.find(
-        (item) => item.value === campusId,
-      );
-      this.setData({
-        campusId,
-        campusLabel: campus?.label || "已选校区",
-        selectedBuildingIds: [],
-        buildingLabel: "选择楼栋",
-        buildings: result.data.buildings.map((building) => ({
-          ...building,
-          selected: false,
-        })),
-      });
-    } catch (error) {
-      if (sequence === optionsSequence) {
-        this.setData({
-          errorMessage: getErrorMessage(error, "楼栋选项加载失败。"),
-        });
-      }
-    } finally {
-      if (sequence === optionsSequence) this.setData({ optionsLoading: false });
-    }
-  },
   onDateChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
     const date = event.detail.value;
     haptic("light");
     this.setData({
       date,
-      dateDay: date.slice(8, 10),
+      dateTouched: true,
       dateLabel: formatFriendlyDate(date),
+      ...selectQuickDate(this.data.quickDates, date),
       hasQueried: false,
+    });
+  },
+  selectQuickDate(event: WechatMiniprogram.TouchEvent) {
+    const date = String(event.currentTarget.dataset.date || "");
+    if (!date || date === this.data.date) return;
+    haptic("light");
+    this.setData({
+      date,
+      dateTouched: true,
+      dateLabel: formatFriendlyDate(date),
+      ...selectQuickDate(this.data.quickDates, date),
+      hasQueried: false,
+    });
+  },
+  syncLateDateDefault() {
+    if (this.data.dateTouched || !this.data.minDate) return;
+    const date = resolveInitialRoomDate(this.data.minDate, "");
+    if (!date || date === this.data.date) return;
+    this.setData({
+      date,
+      dateLabel: formatFriendlyDate(date),
+      ...selectQuickDate(this.data.quickDates, date),
+      hasQueried: false,
+      roomItems: [],
     });
   },
   selectCampusInline(event: WechatMiniprogram.TouchEvent) {
     const campusId = String(event.currentTarget.dataset.value || "");
     if (!campusId || campusId === this.data.campusId) return;
     haptic("light");
-    void this.loadBuildings(campusId);
-    this.setData({ hasQueried: false, roomItems: [] });
+    this.setData({
+      campusId,
+      campusIndicatorStyle: campusIndicatorStyle(this.data.campuses, campusId),
+      buildings: (this.data.buildingsByCampus[campusId] || []).map(
+        (building) => ({ ...building, selected: false }),
+      ),
+      selectedBuildingIds: [],
+      hasQueried: false,
+      roomItems: [],
+    });
   },
   toggleBuildingInline(event: WechatMiniprogram.TouchEvent) {
     const value = String(event.currentTarget.dataset.value || "");
@@ -219,10 +336,6 @@ Page({
     haptic("light");
     this.setData({
       selectedBuildingIds,
-      draftBuildingIds: selectedBuildingIds,
-      buildingLabel: selectedBuildingIds.length
-        ? selectedLabels(this.data.buildings, selectedBuildingIds)
-        : "选择楼栋",
       buildings: this.data.buildings.map((item) => ({
         ...item,
         selected: selectedBuildingIds.includes(item.value),
@@ -230,113 +343,60 @@ Page({
       hasQueried: false,
     });
   },
-  togglePeriodInline(event: WechatMiniprogram.TouchEvent) {
-    const period = Number(event.currentTarget.dataset.period);
-    if (!period) return;
-    const selectedPeriods = this.data.selectedPeriods.includes(period)
-      ? this.data.selectedPeriods.filter((item) => item !== period)
-      : [...this.data.selectedPeriods, period].sort((a, b) => a - b);
-    haptic("light");
-    this.setData({
-      selectedPeriods,
-      draftPeriods: selectedPeriods,
-      periodLabel: selectedPeriods.length
-        ? selectedPeriods.length === 1
-          ? `第 ${selectedPeriods[0]} 节`
-          : `第 ${selectedPeriods.join("、")} 节`
-        : "选择节次",
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: selectedPeriods.includes(item.period),
-      })),
-      hasQueried: false,
-    });
-  },
-  openCampusPicker() {
-    haptic("light");
-    this.setData({
-      pickerVisible: true,
-      pickerMode: "campus",
-      pickerTitle: "选择校区",
-      draftCampusId: this.data.campusId,
-    });
-  },
-  openBuildingPicker() {
-    if (!this.data.campusId) {
-      wx.showToast({ title: "请先选择校区", icon: "none" });
-      return;
-    }
-    haptic("light");
-    this.setData({
-      pickerVisible: true,
-      pickerMode: "buildings",
-      pickerTitle: "选择楼栋",
-      draftBuildingIds: [...this.data.selectedBuildingIds],
-      buildings: this.data.buildings.map((item) => ({
-        ...item,
-        selected: this.data.selectedBuildingIds.includes(item.value),
-      })),
-    });
-  },
   openPeriodPicker() {
     haptic("light");
+    clearPickerTransitionTimer();
+    const draftPeriods = [...this.data.selectedPeriods];
+    this.setData(
+      {
+        pickerVisible: true,
+        pickerMounted: true,
+        pickerActive: false,
+        draftPeriods,
+        periods: this.data.periods.map((item) => ({
+          ...item,
+          selected: draftPeriods.includes(item.period),
+        })),
+        periodGroups: periodGroupsWithSelection(
+          this.data.periodGroups,
+          draftPeriods,
+        ),
+      },
+      () => {
+        wx.nextTick(() => {
+          if (this.data.pickerVisible) this.setData({ pickerActive: true });
+        });
+      },
+    );
+  },
+  closePeriodPicker() {
+    clearPickerTransitionTimer();
+    const periods = [...this.data.draftPeriods].sort((a, b) => a - b);
+    const selectionChanged =
+      periods.length !== this.data.selectedPeriods.length ||
+      periods.some(
+        (period, index) => period !== this.data.selectedPeriods[index],
+      );
     this.setData({
-      pickerVisible: true,
-      pickerMode: "periods",
-      pickerTitle: "选择节次",
-      draftPeriods: [...this.data.selectedPeriods],
+      pickerVisible: false,
+      pickerActive: false,
+      selectedPeriods: periods,
+      periodLabel: selectedPeriodLabel(periods),
       periods: this.data.periods.map((item) => ({
         ...item,
-        selected: this.data.selectedPeriods.includes(item.period),
+        selected: periods.includes(item.period),
       })),
+      periodGroups: periodGroupsWithSelection(this.data.periodGroups, periods),
+      ...(selectionChanged ? { hasQueried: false } : {}),
     });
+    pickerTransitionTimer = setTimeout(() => {
+      if (!this.data.pickerVisible) this.setData({ pickerMounted: false });
+      pickerTransitionTimer = undefined;
+    }, PICKER_TRANSITION_MS);
   },
-  closePicker() {
-    this.setData({ pickerVisible: false });
-  },
-  selectCampus(event: WechatMiniprogram.TouchEvent) {
-    haptic("light");
-    this.setData({ draftCampusId: String(event.currentTarget.dataset.value) });
-  },
-  toggleBuilding(event: WechatMiniprogram.TouchEvent) {
-    const value = String(event.currentTarget.dataset.value);
-    if (
-      !this.data.draftBuildingIds.includes(value) &&
-      this.data.draftBuildingIds.length >= MAX_BUILDINGS
-    ) {
-      wx.showToast({ title: `最多选择 ${MAX_BUILDINGS} 栋楼`, icon: "none" });
-      return;
-    }
-    const next = this.data.draftBuildingIds.includes(value)
-      ? this.data.draftBuildingIds.filter((item) => item !== value)
-      : [...this.data.draftBuildingIds, value];
-    haptic("light");
-    this.setData({
-      draftBuildingIds: next,
-      buildings: this.data.buildings.map((item) => ({
-        ...item,
-        selected: next.includes(item.value),
-      })),
-    });
-  },
-  selectAllBuildings() {
-    const all = this.data.buildings.map((item) => item.value);
-    const selectable = all.slice(0, MAX_BUILDINGS);
-    const next = this.data.draftBuildingIds.length ? [] : selectable;
-    if (all.length > MAX_BUILDINGS && next.length) {
-      wx.showToast({ title: `已选择前 ${MAX_BUILDINGS} 栋楼`, icon: "none" });
-    }
-    haptic("light");
-    this.setData({
-      draftBuildingIds: next,
-      buildings: this.data.buildings.map((item) => ({
-        ...item,
-        selected: next.includes(item.value),
-      })),
-    });
-  },
-  togglePeriod(event: WechatMiniprogram.TouchEvent) {
+  toggleDraftPeriod(event: WechatMiniprogram.TouchEvent) {
     const period = Number(event.currentTarget.dataset.period);
+    if (!period) return;
     const next = this.data.draftPeriods.includes(period)
       ? this.data.draftPeriods.filter((item) => item !== period)
       : [...this.data.draftPeriods, period].sort((a, b) => a - b);
@@ -347,6 +407,7 @@ Page({
         ...item,
         selected: next.includes(item.period),
       })),
+      periodGroups: periodGroupsWithSelection(this.data.periodGroups, next),
     });
   },
   togglePeriodGroup(event: WechatMiniprogram.TouchEvent) {
@@ -369,59 +430,48 @@ Page({
         ...item,
         selected: next.includes(item.period),
       })),
+      periodGroups: periodGroupsWithSelection(this.data.periodGroups, next),
     });
   },
-  applyPicker() {
-    const mode = this.data.pickerMode;
-    if (mode === "campus") {
-      if (!this.data.draftCampusId) {
-        wx.showToast({ title: "请选择校区", icon: "none" });
-        return;
-      }
-      const changed = this.data.draftCampusId !== this.data.campusId;
-      this.setData({ pickerVisible: false });
-      if (changed) void this.loadBuildings(this.data.draftCampusId);
-      return;
-    }
-    if (mode === "buildings") {
-      if (!this.data.draftBuildingIds.length) {
-        wx.showToast({ title: "请至少选择一栋楼", icon: "none" });
-        return;
-      }
-      const label = selectedLabels(
-        this.data.buildings,
-        this.data.draftBuildingIds,
-      );
-      this.setData({
-        selectedBuildingIds: [...this.data.draftBuildingIds],
-        buildingLabel: label,
-        buildings: this.data.buildings.map((item) => ({
-          ...item,
-          selected: this.data.draftBuildingIds.includes(item.value),
-        })),
-        pickerVisible: false,
-        hasQueried: false,
-      });
-      return;
-    }
+  applyPeriodPicker() {
     if (!this.data.draftPeriods.length) {
       wx.showToast({ title: "请至少选择一个节次", icon: "none" });
       return;
     }
-    const periods = [...this.data.draftPeriods].sort((a, b) => a - b);
-    this.setData({
-      selectedPeriods: periods,
-      periodLabel:
-        periods.length === 1
-          ? `第 ${periods[0]} 节`
-          : `第 ${periods.join("、")} 节`,
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: periods.includes(item.period),
-      })),
-      pickerVisible: false,
-      hasQueried: false,
-    });
+    this.closePeriodPicker();
+  },
+  openResultDrawer() {
+    clearResultTransitionTimer();
+    this.setData(
+      {
+        resultVisible: true,
+        resultMounted: true,
+        resultActive: false,
+      },
+      () => {
+        wx.nextTick(() => {
+          if (this.data.resultVisible) this.setData({ resultActive: true });
+        });
+      },
+    );
+  },
+  closeResultDrawer() {
+    clearResultTransitionTimer();
+    this.setData({ resultVisible: false, resultActive: false });
+    resultTransitionTimer = setTimeout(() => {
+      if (!this.data.resultVisible) this.setData({ resultMounted: false });
+      resultTransitionTimer = undefined;
+    }, PICKER_TRANSITION_MS);
+  },
+  noop() {
+    // 用于阻止遮罩层手势穿透。
+  },
+  retry() {
+    if (!this.data.campuses.length || !this.data.buildings.length) {
+      void this.loadInitialOptions();
+      return;
+    }
+    void this.queryRooms(true);
   },
   validateQuery(): boolean {
     if (!this.data.date) {
@@ -445,17 +495,19 @@ Page({
   async queryRooms(reset: boolean) {
     if (!this.validateQuery()) return;
     const page = reset ? 1 : this.data.page + 1;
+    const queryDate = this.data.date;
+    const queryPeriods = [...this.data.selectedPeriods];
+    const queryPeriodLabel = selectedPeriodLabel(queryPeriods);
     const sequence = ++roomsSequence;
     this.setData({
-      querying: reset && !this.data.roomItems.length,
-      refreshing: false,
+      querying: reset,
       loadingMore: !reset,
       errorMessage: "",
     });
     try {
       const result = await getRooms({
-        date: this.data.date,
-        periods: this.data.selectedPeriods,
+        date: queryDate,
+        periods: queryPeriods,
         campusId: this.data.campusId,
         buildingIds: this.data.selectedBuildingIds,
         page,
@@ -463,29 +515,51 @@ Page({
       });
       if (sequence !== roomsSequence) return;
       const incoming = result.data.items.map(toRoomView);
-      this.setData({
-        roomItems: reset ? incoming : [...this.data.roomItems, ...incoming],
-        totalRooms: result.data.summary.totalRooms,
-        buildingSummary: result.data.summary.buildings,
-        sourceUpdatedAt: result.data.dataUpdatedAt
-          ? formatDateTime(result.data.dataUpdatedAt)
-          : this.data.sourceUpdatedAt,
-        page: result.data.pagination.page,
-        totalPages: result.data.pagination.totalPages,
-        hasQueried: true,
-      });
+      const roomItems = reset
+        ? incoming
+        : [...this.data.roomItems, ...incoming];
+      this.setData(
+        {
+          roomItems,
+          roomGroups: groupRoomsByFloor(roomItems),
+          totalRooms: result.data.summary.totalRooms,
+          resultDateLabel: formatRoomResultDate(queryDate),
+          resultPeriodLabel: queryPeriodLabel,
+          page: result.data.pagination.page,
+          totalPages: result.data.pagination.totalPages,
+          hasQueried: true,
+        },
+        () => {
+          if (reset) this.openResultDrawer();
+        },
+      );
       if (reset) haptic("medium");
     } catch (error) {
       if (sequence === roomsSequence) {
-        this.setData({
-          errorMessage: getErrorMessage(error, "空教室查询失败。"),
-        });
+        const errorMessage = getErrorMessage(error, "空教室查询失败。");
+        if (reset) {
+          this.setData(
+            {
+              errorMessage,
+              hasQueried: true,
+              roomItems: [],
+              roomGroups: [],
+              totalRooms: 0,
+              resultDateLabel: formatRoomResultDate(queryDate),
+              resultPeriodLabel: queryPeriodLabel,
+              page: 1,
+              totalPages: 1,
+            },
+            () => this.openResultDrawer(),
+          );
+        } else {
+          wx.showToast({ title: errorMessage, icon: "none" });
+        }
       }
     } finally {
       if (sequence === roomsSequence) {
         this.setData({
           querying: false,
-          refreshing: false,
           loadingMore: false,
         });
       }
@@ -494,12 +568,14 @@ Page({
   onQuery() {
     void this.queryRooms(true);
   },
-  onRefresh() {
-    if (this.data.hasQueried) void this.queryRooms(true);
-    else void this.loadInitialOptions();
-  },
   loadMore() {
-    if (this.data.hasQueried && this.data.page < this.data.totalPages) {
+    if (
+      this.data.resultVisible &&
+      !this.data.querying &&
+      !this.data.loadingMore &&
+      this.data.hasQueried &&
+      this.data.page < this.data.totalPages
+    ) {
       void this.queryRooms(false);
     }
   },

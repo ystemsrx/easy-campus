@@ -86,11 +86,13 @@
 
 .sheet-title {
   display: block;
-  color: currentColor;
+  color: #16161a;
   font-size: 34rpx;
   font-weight: 750;
   line-height: 1.2;
 }
+
+.sheet-layer--dark .sheet-title { color: #f7f3e9; }
 
 .sheet-close {
   position: relative;

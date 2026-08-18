@@ -86,24 +86,29 @@
   right: 178rpx;
   bottom: 0;
   left: 118rpx;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   min-width: 0;
+  pointer-events: none;
 }
 
 .nav-title-wrap--extra-left { left: 216rpx; }
 
 .nav-title {
+  display: block;
   max-width: 100%;
-  color: currentColor;
+  color: #16161a;
   font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 42rpx;
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: -1rpx;
 }
+
+.nav-shell--dark .nav-title { color: #f7f3e9; }
 
 .nav-subtitle {
   max-width: 100%;

@@ -322,6 +322,7 @@ export interface RoomOptionsData {
   maxDate: string;
   campuses: SelectOption[];
   buildings: SelectOption[];
+  buildingsByCampus: Record<string, SelectOption[]>;
   periods: PeriodOption[];
   periodGroups: PeriodGroup[];
   source: {

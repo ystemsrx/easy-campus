@@ -22,7 +22,7 @@
       <slot name="after-left"></slot>
     </view>
 
-    <view class="nav-title-wrap {{back && extraLeft ? 'nav-title-wrap--extra-left' : ''}}">
+    <view class="nav-title-wrap {{back && extraLeft ? 'nav-title-wrap--extra-left' : ''}}" style="{{back && insetBack ? 'transform: translateY(-' + backLift + 'px);' : ''}}">
       <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
       <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
       <slot wx:if="{{!title && !subtitle}}" name="center"></slot>

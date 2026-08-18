@@ -42,7 +42,7 @@
 .pass-picker-card--active { transform: translateY(0); }
 .pass-picker-handle { position: absolute; top: 14rpx; left: 50%; z-index: 3; width: 70rpx; height: 8rpx; border-radius: 999rpx; background: rgba(43, 38, 32, 0.15); transform: translateX(-50%); }
 .pass-picker-header { position: relative; z-index: 2; display: flex; flex: none; flex-direction: row; align-items: center; justify-content: space-between; min-height: 84rpx; padding: 18rpx 38rpx 6rpx 44rpx; background: rgba(251, 249, 244, 0.92); backdrop-filter: blur(16px); }
-.pass-picker-title { display: block; min-width: 0; color: currentColor; font-size: 34rpx; font-weight: 750; line-height: 1.2; }
+.pass-picker-title { display: block; min-width: 0; color: #16161a; font-size: 34rpx; font-weight: 750; line-height: 1.2; }
 .pass-picker-close { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 60rpx; height: 60rpx; border-radius: 50%; background: rgba(43, 38, 32, 0.06); transition: transform 110ms ease-out, opacity 110ms ease-out; }
 .pass-picker-close--pressed { transform: scale(0.9); opacity: 0.72; }
 .pass-picker-semesters { flex: none; width: 100%; padding: 6rpx 40rpx 0; }
@@ -66,6 +66,7 @@
 .theme-dark .pass-picker-card,
 .theme-dark .course-picker-scroll { background: #211f1b; }
 .theme-dark .pass-picker-header { background: rgba(33, 31, 27, 0.92); }
+.theme-dark .pass-picker-title { color: #f7f3e9; }
 .theme-dark .pass-picker-close { background: rgba(255, 255, 255, 0.08); }
 
 .motion-reduced .pass-picker-scrim,
