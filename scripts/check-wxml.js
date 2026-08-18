@@ -339,6 +339,15 @@ if (
   );
 }
 
+if (
+  !/\.composition-title\s*\{[^}]*font-size:\s*20rpx/.test(passRateStyles) ||
+  !/\.composition-tags text\s*\{[^}]*font-size:\s*19rpx/.test(passRateStyles)
+) {
+  failures.push(
+    "pages/pass-rates: 顶部卡片的成绩组成标题和个人成绩明细必须保持放大后的字号",
+  );
+}
+
 if (failures.length > 0) {
   console.error(failures.join("\n"));
   process.exitCode = 1;

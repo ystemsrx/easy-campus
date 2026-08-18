@@ -23,11 +23,11 @@
 .pass-mini-stat text:first-child { display: block; max-width: 70rpx; font-size: 30rpx; font-weight: 800; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pass-mini-stat text:last-child { display: block; margin-top: 8rpx; color: rgba(255, 255, 255, 0.72); font-size: 18rpx; white-space: nowrap; }
 .hero-composition { flex: none; width: 190rpx; padding-bottom: 3rpx; }
-.composition-title { display: block; color: rgba(255, 255, 255, 0.62); font-size: 17rpx; font-weight: 700; letter-spacing: 2rpx; }
+.composition-title { display: block; color: rgba(255, 255, 255, 0.62); font-size: 20rpx; font-weight: 700; letter-spacing: 2rpx; }
 .composition-track { display: flex; flex-direction: row; width: 100%; height: 11rpx; margin-top: 12rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255, 255, 255, 0.18); }
 .composition-part { flex: none; height: 100%; background: #fff; }
 .composition-tags { display: flex; flex-direction: row; flex-wrap: wrap; gap: 7rpx; margin-top: 13rpx; }
-.composition-tags text { display: block; flex: none; max-width: 180rpx; padding: 6rpx 10rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.14); font-size: 16rpx; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(8px); }
+.composition-tags text { display: block; flex: none; max-width: 180rpx; padding: 6rpx 10rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.14); font-size: 19rpx; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(8px); }
 
 .pass-section-header { margin-top: 40rpx; }
 .statistics-card { padding: 38rpx; }
