@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "disableScroll": true
+  "disableScroll": true,
+  "usingComponents": {
+    "grade-sort-filter": "/components/grade-sort-filter/grade-sort-filter"
+  }
 }

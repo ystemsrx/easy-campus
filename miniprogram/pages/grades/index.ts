@@ -29,6 +29,7 @@ interface GradeComponentPreview {
 }
 
 interface GradeView extends GradeCourse {
+  renderKey: string;
   displayScore: string;
   scoreTone: string;
   isTextGrade: boolean;
@@ -53,6 +54,10 @@ interface SortConfig {
   label: string;
 }
 
+interface GradeSortFilterController {
+  toggle(anchor: { bottom: number; right: number }): void;
+}
+
 const PAGE_SIZE = 200;
 const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
   default: { sort: "default", order: "desc", label: "默认" },
@@ -70,10 +75,12 @@ const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
 
 let requestSequence = 0;
 let hydratedGradesAccount = "";
+let gradeRenderBatch = 0;
 
-function toGradeView(course: GradeCourse): GradeView {
+function toGradeView(course: GradeCourse, renderKey: string): GradeView {
   return {
     ...course,
+    renderKey,
     displayScore: formatScore(course.finalScore),
     scoreTone: scoreTone(course.finalScore),
     isTextGrade: typeof course.finalScore === "string",
@@ -141,20 +148,12 @@ Page({
     order: "desc" as NonNullable<GradesQuery["order"]>,
     sortMode: "default" as GradeSortMode,
     sortLabel: "默认",
-    filterVisible: false,
-    filterTop: 0,
-    filterRight: 20,
     filterLabel: "全部成绩",
     sourceLabel: "尚未更新",
     availableSemesters: [] as AcademicSemesterOption[],
     semesterChips: [] as SemesterChip[],
     activeSemesterId: "all",
     semesterInitialized: false,
-    sortOptions: [
-      { value: "default", label: "默认" },
-      { value: "score-desc", label: "分数高→低" },
-      { value: "score-asc", label: "分数低→高" },
-    ],
   },
   onLoad() {
     hydratedGradesAccount = "";
@@ -166,9 +165,6 @@ Page({
     this.applyAppearance();
     this.hydrateGrades();
     void this.loadGrades(true, false);
-  },
-  onHide() {
-    this.setData({ filterVisible: false });
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -207,7 +203,10 @@ Page({
   },
   applyGradesData(data: GradesData, fetchedAtValue = "", append = false) {
     const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
-    const incoming = data.items.map(toGradeView);
+    const renderBatch = ++gradeRenderBatch;
+    const incoming = data.items.map((course, index) =>
+      toGradeView(course, `${renderBatch}:${course.id}:${index}`),
+    );
     this.setData({
       gradeItems: append ? [...this.data.gradeItems, ...incoming] : incoming,
       summary: data.summary,
@@ -371,43 +370,30 @@ Page({
   },
   openFilter() {
     haptic("light");
-    if (this.data.filterVisible) {
-      this.closeFilter();
-      return;
-    }
     wx.createSelectorQuery()
       .select(".grade-filter-button")
       .boundingClientRect((rect) => {
-        const windowInfo = wx.getWindowInfo();
-        const bottom = Number(rect?.bottom);
-        const right = Number(rect?.right);
-        this.setData({
-          filterVisible: true,
-          filterTop: Number.isFinite(bottom)
-            ? Math.max(12, Math.min(bottom + 8, windowInfo.windowHeight - 190))
-            : 180,
-          filterRight: Number.isFinite(right)
-            ? Math.max(16, windowInfo.windowWidth - right)
-            : 20,
+        const filter = this.selectComponent(
+          "#grade-sort-filter",
+        ) as unknown as GradeSortFilterController | null;
+        filter?.toggle({
+          bottom: Number(rect?.bottom),
+          right: Number(rect?.right),
         });
       })
       .exec();
   },
-  closeFilter() {
-    this.setData({ filterVisible: false });
-  },
-  stopPropagation() {},
-  selectSortMode(event: WechatMiniprogram.TouchEvent) {
-    const mode = String(event.currentTarget.dataset.value) as GradeSortMode;
+  selectSortMode(
+    event: WechatMiniprogram.CustomEvent<{ value: GradeSortMode }>,
+  ) {
+    const mode = String(event.detail.value) as GradeSortMode;
     const config = SORT_CONFIG[mode];
-    if (!config) return;
-    haptic("light");
+    if (!config || mode === this.data.sortMode) return;
     this.setData({
       sortMode: mode,
       sort: config.sort,
       order: config.order,
       sortLabel: config.label,
-      filterVisible: false,
     });
     wx.nextTick(() => void this.loadGrades(true, false));
   },

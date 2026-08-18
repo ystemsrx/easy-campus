@@ -29,22 +29,24 @@
 
       <view class="grade-tools stagger-item stagger-2">
         <view class="search-field grade-search {{searchFocused ? 'search-field--focus' : ''}}"><lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon><input class="search-input" value="{{queryText}}" placeholder="课程、成绩或分项" placeholder-class="grade-placeholder" bindinput="onQueryInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindconfirm="search" confirm-type="search" /><view wx:if="{{queryText}}" class="grade-clear" bindtap="clearSearch"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view></view>
-        <view class="grade-filter-button pressable {{filterVisible ? 'grade-filter-button--active' : ''}}" bindtap="openFilter" hover-class="pressing" aria-role="button" aria-label="选择排序方式"><lucide-icon name="list-filter" tone="{{filterVisible ? 'white' : 'muted'}}" size="{{31}}"></lucide-icon></view>
+        <view class="grade-filter-button pressable" bindtap="openFilter" hover-class="pressing" aria-role="button" aria-label="选择排序方式"><lucide-icon name="list-filter" tone="muted" size="{{31}}"></lucide-icon></view>
       </view>
 
       <view class="result-heading"><view><text class="result-title">各科成绩</text><text class="result-count">{{filterLabel}} · 共 {{total}} 门</text></view><text class="result-sort">{{sortLabel}}</text></view>
 
       <loading-view wx:if="{{loading}}" label="正在整理成绩与分项"></loading-view>
       <view wx:elif="{{gradeItems.length}}" class="grade-list">
-        <view wx:for="{{gradeItems}}" wx:key="id" class="grade-card card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openGrade" hover-class="pressing">
-          <view class="score-tile score-tile--{{item.scoreTone}} {{item.isTextGrade ? 'score-tile--text' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
-          <view class="course-copy">
-            <text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text>
-            <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>
-            <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text overflow="ellipsis" max-lines="1">{{item.gradeRemark}}</text></view>
+        <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;">
+          <view class="grade-card card pressable" data-id="{{item.id}}" bindtap="openGrade" hover-class="pressing">
+            <view class="score-tile score-tile--{{item.scoreTone}} {{item.isTextGrade ? 'score-tile--text' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
+            <view class="course-copy">
+              <text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text>
+              <view wx:if="{{item.componentPreview.length}}" class="component-preview"><text wx:for="{{item.componentPreview}}" wx:for-item="component" wx:key="name">{{component.name}} {{component.score}}</text><text wx:if="{{item.components.length > 3}}">+{{item.components.length - 3}}</text></view>
+              <view wx:if="{{item.gradeRemark}}" class="grade-remark"><view></view><text overflow="ellipsis" max-lines="1">{{item.gradeRemark}}</text></view>
+            </view>
+            <view class="course-tags"><text wx:if="{{item.hasGradePoint}}" class="course-tag course-tag--gpa">绩点 {{item.gradePointLabel}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view>
+            <lucide-icon class="course-chevron" name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
           </view>
-          <view class="course-tags"><text wx:if="{{item.hasGradePoint}}" class="course-tag course-tag--gpa">绩点 {{item.gradePointLabel}}</text><text wx:if="{{item.credits !== null}}" class="course-tag">{{item.creditsLabel}} 学分</text></view>
-          <lucide-icon class="course-chevron" name="chevron-right" tone="muted" size="{{25}}"></lucide-icon>
         </view>
         <view wx:if="{{loadingMore}}" class="grade-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="grade-end">以上是全部成绩</text>
       </view>
@@ -53,16 +55,5 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{filterVisible}}" class="grade-sort-layer">
-    <view class="grade-sort-dismiss" bindtap="closeFilter"></view>
-    <view class="grade-sort-popover" style="top: {{filterTop}}px; right: {{filterRight}}px;" catchtap="stopPropagation">
-      <text class="grade-sort-title">排序方式</text>
-      <view class="grade-sort-options">
-        <view wx:for="{{sortOptions}}" wx:key="value" class="grade-sort-option pressable {{sortMode === item.value ? 'grade-sort-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectSortMode" hover-class="grade-sort-option--pressed">
-          <text>{{item.label}}</text>
-          <lucide-icon wx:if="{{sortMode === item.value}}" name="check" tone="amber" size="{{24}}"></lucide-icon>
-        </view>
-      </view>
-    </view>
-  </view>
+  <grade-sort-filter id="grade-sort-filter" value="{{sortMode}}" theme="{{theme}}" bindchange="selectSortMode"></grade-sort-filter>
 </view>

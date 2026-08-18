@@ -259,6 +259,33 @@ const gradesStyles = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "grades", "index.wxss"),
   "utf8",
 );
+const gradeSortTemplate = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "grade-sort-filter",
+    "grade-sort-filter.wxml",
+  ),
+  "utf8",
+);
+const gradeSortScript = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "grade-sort-filter",
+    "grade-sort-filter.ts",
+  ),
+  "utf8",
+);
+const gradeSortStyles = fs.readFileSync(
+  path.join(
+    miniprogramRoot,
+    "components",
+    "grade-sort-filter",
+    "grade-sort-filter.wxss",
+  ),
+  "utf8",
+);
 const gradeDetailTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "grade-detail", "index.wxml"),
   "utf8",
@@ -338,9 +365,25 @@ if (
 if (
   gradesTemplate.includes("<bottom-sheet") ||
   gradesTemplate.includes("学年</text>") ||
-  !gradesTemplate.includes('class="grade-sort-popover"') ||
-  !gradesScript.includes("分数高→低") ||
-  !gradesScript.includes("分数低→高") ||
+  !gradesTemplate.includes('<grade-sort-filter id="grade-sort-filter"') ||
+  gradesTemplate.includes('class="grade-sort-popover"') ||
+  gradesScript.includes("filterVisible") ||
+  !gradesScript.includes("this.selectComponent(") ||
+  !gradesScript.includes('"#grade-sort-filter",') ||
+  !gradesTemplate.includes('wx:key="renderKey"') ||
+  !gradesTemplate.includes('class="grade-card-motion stagger-item"') ||
+  !gradesTemplate.includes('class="grade-card card pressable"') ||
+  gradesTemplate.includes('class="grade-card card pressable stagger-item"') ||
+  !gradesScript.includes("let gradeRenderBatch = 0;") ||
+  !gradesScript.includes("`${renderBatch}:${course.id}:${index}`") ||
+  gradesScript.includes("gradeAnimationTimer") ||
+  !gradeSortTemplate.includes('class="grade-sort-popover"') ||
+  !gradeSortScript.includes("分数高→低") ||
+  !gradeSortScript.includes("分数低→高") ||
+  !gradeSortScript.includes("if (value === this.data.value) {") ||
+  !gradeSortScript.includes("this.setData({ visible: false }, () => {") ||
+  !gradeSortScript.includes('this.triggerEvent("change", { value })') ||
+  !gradeSortStyles.includes("background: transparent") ||
   !gradesTemplate.includes("extra-left") ||
   !gradesScript.includes('sort: "default"') ||
   !gradesScript.includes("initializeLatestSemester") ||
@@ -350,7 +393,7 @@ if (
   gradesScript.includes("缓存更新于")
 ) {
   failures.push(
-    "pages/grades: 默认最新学期、刷新按钮与三项排序浮窗必须保持独立页面交互",
+    "pages/grades: 排序浮窗必须隔离页面状态，切换排序时所有成绩卡片必须整批重播动画",
   );
 }
 if (

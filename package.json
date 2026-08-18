@@ -5,7 +5,7 @@
   "description": "Easy SWU 微信小程序前端（TypeScript + Skyline）",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "check:wxss": "skyline wxss check --json --miniprogram-root miniprogram --files app.wxss custom-tab-bar/index.wxss components/lucide-icon/lucide-icon.wxss components/navigation-bar/navigation-bar.wxss components/bottom-sheet/bottom-sheet.wxss components/empty-state/empty-state.wxss components/loading-view/loading-view.wxss pages/login/index.wxss pages/home/index.wxss pages/inbox/index.wxss pages/profile/index.wxss pages/schedule/index.wxss pages/grades/index.wxss pages/pass-rates/index.wxss pages/grade-detail/index.wxss pages/rooms/index.wxss pages/exams/index.wxss pages/calendar/index.wxss pages/electricity/index.wxss pages/timetable/index.wxss pages/browser/index.wxss",
+    "check:wxss": "skyline wxss check --json --miniprogram-root miniprogram --files app.wxss custom-tab-bar/index.wxss components/lucide-icon/lucide-icon.wxss components/navigation-bar/navigation-bar.wxss components/bottom-sheet/bottom-sheet.wxss components/empty-state/empty-state.wxss components/loading-view/loading-view.wxss components/grade-sort-filter/grade-sort-filter.wxss pages/login/index.wxss pages/home/index.wxss pages/inbox/index.wxss pages/profile/index.wxss pages/schedule/index.wxss pages/grades/index.wxss pages/pass-rates/index.wxss pages/grade-detail/index.wxss pages/rooms/index.wxss pages/exams/index.wxss pages/calendar/index.wxss pages/electricity/index.wxss pages/timetable/index.wxss pages/browser/index.wxss",
     "check:json": "node scripts/check-json.js",
     "check:wxml": "node scripts/check-wxml.js",
     "check:icons": "node scripts/check-icons.js",

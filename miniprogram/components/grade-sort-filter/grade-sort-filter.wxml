@@ -1,0 +1,12 @@
+<view wx:if="{{visible}}" class="grade-sort-layer grade-sort-filter--{{theme}}">
+  <view class="grade-sort-dismiss" bindtap="close"></view>
+  <view class="grade-sort-popover" style="top: {{popoverTop}}px; right: {{popoverRight}}px;" catchtap="noop">
+    <text class="grade-sort-title">排序方式</text>
+    <view class="grade-sort-options">
+      <view wx:for="{{options}}" wx:key="value" class="grade-sort-option {{value === item.value ? 'grade-sort-option--active' : ''}}" data-value="{{item.value}}" bindtap="select" hover-class="grade-sort-option--pressed">
+        <text>{{item.label}}</text>
+        <lucide-icon wx:if="{{value === item.value}}" name="check" tone="amber" size="{{24}}"></lucide-icon>
+      </view>
+    </view>
+  </view>
+</view>
