@@ -3,7 +3,43 @@
   padding-bottom: 50rpx;
 }
 
-.rooms-loading { margin-top: 20rpx; }
+.rooms-content--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 132rpx);
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 132rpx;
+}
+
+.rooms-loading {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.rooms-loading-spinner {
+  width: 34rpx;
+  height: 34rpx;
+  border: 4rpx solid #f1d4c5;
+  border-top-color: #d97757;
+  border-radius: 50%;
+  animation-name: rooms-spin;
+  animation-duration: 760ms;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.rooms-loading-label {
+  margin-top: 18rpx;
+  color: var(--color-text-tertiary);
+  font-size: 24rpx;
+}
 
 .query-card {
   padding: 36rpx;
@@ -744,5 +780,6 @@
 .motion-reduced .room-results-card,
 .motion-reduced .period-picker-scrim,
 .motion-reduced .period-picker-card { transition-duration: 1ms; }
+.motion-reduced .rooms-loading-spinner { animation-name: none; }
 
 @keyframes rooms-spin { to { transform: rotate(360deg); } }

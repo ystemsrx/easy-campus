@@ -1,8 +1,11 @@
 <view class="page rooms-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
-    <view class="rooms-content page-content page-enter">
-      <view wx:if="{{optionsLoading && !campuses.length}}" class="rooms-loading card"><loading-view compact label="读取中"></loading-view></view>
+    <view class="rooms-content page-content page-enter {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
+      <view wx:if="{{optionsLoading && !campuses.length}}" class="rooms-loading" aria-role="alert">
+        <view class="rooms-loading-spinner"></view>
+        <text class="rooms-loading-label">读取中</text>
+      </view>
       <view wx:else class="query-card card stagger-item stagger-1">
         <view wx:if="{{campuses.length}}" class="campus-switch">
           <view class="campus-indicator" style="{{campusIndicatorStyle}}"></view>

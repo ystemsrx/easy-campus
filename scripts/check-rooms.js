@@ -93,9 +93,22 @@ assert(
 );
 
 assert(
-  template.includes('<loading-view compact label="读取中">') &&
+  template.includes('class="rooms-loading" aria-role="alert"') &&
+    template.includes('class="rooms-loading-spinner"') &&
+    template.includes(
+      '<text class="rooms-loading-label">读取中</text>',
+    ) &&
+    !/<view wx:if="{{optionsLoading && !campuses.length}}"[^>]*>\s*<loading-view/.test(
+      template,
+    ) &&
+    /\.rooms-content--loading\s*\{[\s\S]*?display:\s*flex;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*center;[\s\S]*?height:\s*calc\(100vh - 132rpx\);[\s\S]*?min-height:\s*0;[\s\S]*?padding-top:\s*0;[\s\S]*?padding-bottom:\s*132rpx;/.test(
+      styles,
+    ) &&
+    /\.rooms-loading\s*\{[\s\S]*?flex:\s*none;[\s\S]*?align-items:\s*center;[\s\S]*?justify-content:\s*center;/.test(
+      styles,
+    ) &&
     !template.includes("正在读取校区与节次"),
-  "空教室选项加载文案必须保持为“读取中”",
+  "空教室首次加载必须仅显示“读取中”和加载圈，并以导航栏等高底部留白保持整屏垂直居中",
 );
 
 assert(
