@@ -29,6 +29,12 @@ import {
 import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
 import { loadElectricitySnapshot } from "../../store/electricity";
 import { loadExamsSnapshot } from "../../store/exams";
+import {
+  loadPetPreferences,
+  savePetSelection,
+  shouldShowPet,
+  skipPetSetup,
+} from "../../store/pet";
 import { loadScheduleData } from "../../store/schedule";
 import { getSession, loadCurrentUser } from "../../store/session";
 import {
@@ -76,9 +82,14 @@ import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
-import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import {
+  ensureAuthenticated,
+  goToLogin,
+  navigateTo,
+} from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
 import { sortPublicationsNewestFirst } from "../../utils/publications";
+import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 
 interface MessagePreview {
   id: string;
@@ -163,6 +174,7 @@ let gradesRouteOpening = false;
 let electricityRouteOpening = false;
 let examsRouteOpening = false;
 let inboxRouteOpening = false;
+let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
 let activeTimetable: TimetableData | null = null;
 
 function examBadge(exam: Exam): Pick<ExamPreview, "badgeText" | "badgeTone"> {
@@ -470,6 +482,14 @@ Page({
     publications: [] as PublicationPreview[],
     publicationUnreadCount: 0,
     publicationUnreadLabel: "",
+    petShape: "blob" as PetShapeId,
+    petColor: "#111214",
+    petEnhanced: false,
+    petSelected: false,
+    petVisible: false,
+    petReducedMotion: false,
+    petSetupDrawerMounted: false,
+    petSetupDrawerOpen: false,
     publicationPanelMounted: false,
     publicationPanelOpen: false,
     publicationPanelTop: 132,
@@ -487,6 +507,10 @@ Page({
     gradesRouteOpening = false;
     electricityRouteOpening = false;
     inboxRouteOpening = false;
+    if (petSetupDrawerTimer !== undefined) {
+      clearTimeout(petSetupDrawerTimer);
+      petSetupDrawerTimer = undefined;
+    }
     credentialExitInFlight = false;
     lastPublicationRequestAt = 0;
     this.applyAppearance();
@@ -496,14 +520,16 @@ Page({
     if (!ensureAuthenticated()) {
       return;
     }
-    homeVisible = true;
     const sessionAccount = getSession()?.user.account || "";
+    this.applyAppearance();
+    this.hydratePet(sessionAccount);
+    const petSetupPending = this.openPendingPetSetup(sessionAccount);
+    homeVisible = true;
     const currentAutomaticPopupEntryKey = `${getApp<IAppOption>().globalData.foregroundEntryId}:${sessionAccount}`;
     if (currentAutomaticPopupEntryKey !== automaticPopupEntryKey) {
       automaticPopupEntryKey = currentAutomaticPopupEntryKey;
       automaticPopupsThisEntry = new Set<string>();
     }
-    this.applyAppearance();
     this.hydrateIdentity();
     this.hydrateCachedDashboard();
     this.hydrateShortcutCaches();
@@ -511,7 +537,7 @@ Page({
       selected: 0,
       themeClass: this.data.themeClass,
       motionClass: this.data.motionClass,
-      hidden: false,
+      hidden: petSetupPending,
     });
     this.updateTodayCourses();
     this.setData({
@@ -536,6 +562,10 @@ Page({
   },
   onUnload() {
     homeVisible = false;
+    if (petSetupDrawerTimer !== undefined) {
+      clearTimeout(petSetupDrawerTimer);
+      petSetupDrawerTimer = undefined;
+    }
     this.stopCourseClock();
     this.stopCredentialPoll();
     this.resetPublicationLayers();
@@ -558,7 +588,103 @@ Page({
     });
   },
   applyAppearance() {
-    this.setData(resolveAppearance());
+    const appearance = resolveAppearance();
+    this.setData({
+      ...appearance,
+      petReducedMotion: appearance.motionClass === "motion-reduced",
+    });
+  },
+  hydratePet(account: string) {
+    if (!account) return;
+    const preferences = loadPetPreferences(account);
+    this.setData({
+      petShape: preferences.shape,
+      petColor: preferences.color,
+      petEnhanced: preferences.enhanced,
+      petSelected: preferences.selected,
+      petVisible: shouldShowPet(preferences),
+    });
+  },
+  openPendingPetSetup(account: string): boolean {
+    if (!account) return false;
+    if (this.data.petSetupDrawerMounted) return true;
+    const preferences = loadPetPreferences(account);
+    if (preferences.completed) return false;
+    if (petSetupDrawerTimer !== undefined) {
+      clearTimeout(petSetupDrawerTimer);
+      petSetupDrawerTimer = undefined;
+    }
+    this.setData(
+      {
+        petShape: preferences.shape,
+        petColor: preferences.color,
+        petEnhanced: preferences.enhanced,
+        petSelected: preferences.selected,
+        petVisible: shouldShowPet(preferences),
+        petSetupDrawerMounted: true,
+        petSetupDrawerOpen: false,
+      },
+      () => {
+        wx.nextTick(() => {
+          if (this.data.petSetupDrawerMounted) {
+            this.setData({ petSetupDrawerOpen: true });
+          }
+        });
+      },
+    );
+    return true;
+  },
+  onPendingPetShapeChange(
+    event: WechatMiniprogram.CustomEvent<{ shape: PetShapeId }>,
+  ) {
+    haptic("light");
+    this.persistPendingPetSelection({ shape: event.detail.shape });
+  },
+  onPendingPetColorChange(
+    event: WechatMiniprogram.CustomEvent<{ color: string }>,
+  ) {
+    haptic("light");
+    this.persistPendingPetSelection({ color: event.detail.color });
+  },
+  persistPendingPetSelection(patch: {
+    shape?: PetShapeId;
+    color?: string;
+  }) {
+    const account = getSession()?.user.account || "";
+    if (!account || !this.data.petSetupDrawerMounted) return;
+    const preferences = savePetSelection(account, {
+      shape: patch.shape ?? this.data.petShape,
+      color: patch.color ?? this.data.petColor,
+      enabled: true,
+      enhanced: this.data.petEnhanced,
+    });
+    this.setData({
+      petShape: preferences.shape,
+      petColor: preferences.color,
+      petEnhanced: preferences.enhanced,
+      petSelected: preferences.selected,
+      petVisible: shouldShowPet(preferences),
+    });
+  },
+  finishPendingPetSetup() {
+    if (!this.data.petSetupDrawerMounted) return;
+    const account = getSession()?.user.account || "";
+    if (!account) return;
+    if (!this.data.petSelected) {
+      skipPetSetup(account);
+    }
+    haptic("light");
+    this.hydratePet(account);
+    this.setData({ petSetupDrawerOpen: false });
+    if (petSetupDrawerTimer !== undefined) {
+      clearTimeout(petSetupDrawerTimer);
+    }
+    petSetupDrawerTimer = setTimeout(() => {
+      this.setData({ petSetupDrawerMounted: false });
+      this.setTabBarHidden(false);
+      petSetupDrawerTimer = undefined;
+      if (homeVisible) this.showNextQueuedAnnouncement();
+    }, 420);
   },
   hydrateIdentity(user?: CurrentUserData) {
     const identity = resolveHomeIdentity(
@@ -673,7 +799,7 @@ Page({
           icon: "none",
           duration: 1800,
         });
-        setTimeout(() => wx.reLaunch({ url: "/pages/login/index" }), 360);
+        setTimeout(() => goToLogin(), 360);
       });
   },
   async loadPublicationFeed() {
@@ -711,7 +837,9 @@ Page({
         queuedAnnouncements = feed.announcements.filter(
           (item) => item.shouldPopup && !automaticPopupsThisEntry.has(item.id),
         );
-        this.showNextQueuedAnnouncement();
+        if (!this.data.petSetupDrawerMounted) {
+          this.showNextQueuedAnnouncement();
+        }
       }
     } catch {
       // 平台公告是附加信息。刷新失败时保留当前内容，不打断主页使用。
@@ -729,7 +857,7 @@ Page({
       clearTimeout(publicationPanelTimer);
       publicationPanelTimer = undefined;
     }
-    wx.createSelectorQuery()
+    this.createSelectorQuery()
       .select(".publication-bell")
       .boundingClientRect((rect) => {
         const windowWidth = wx.getWindowInfo().windowWidth || 375;
@@ -869,6 +997,7 @@ Page({
   showNextQueuedAnnouncement() {
     if (
       !homeVisible ||
+      this.data.petSetupDrawerMounted ||
       this.data.announcementModalMounted ||
       !queuedAnnouncements.length
     ) {

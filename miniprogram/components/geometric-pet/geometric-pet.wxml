@@ -1,0 +1,33 @@
+<view
+  class="geometric-pet"
+  style="--pet-color: {{color}}; --pet-halo: {{haloColor}}; --pet-shadow: {{shadowColor}};"
+  bindtap="handleTap"
+  bindtouchstart="updateGaze"
+  bindtouchmove="updateGaze"
+  bindtouchend="clearGaze"
+  bindtouchcancel="clearGaze"
+  aria-role="img"
+  aria-label="{{label}}"
+>
+  <view class="pet-halo" aria-hidden="true"></view>
+  <view class="pet-shadow" aria-hidden="true"></view>
+  <view
+    wx:if="{{petSource && rendererReady}}"
+    class="pet-engine-viewport"
+    aria-hidden="true"
+  >
+    <image
+      id="pet-engine-image"
+      class="pet-engine-image"
+      style="{{rendererStyle}}"
+      src="{{petSource}}"
+      mode="aspectFit"
+      fade-in="{{false}}"
+      draggable="{{false}}"
+      aria-hidden="true"
+    ></image>
+  </view>
+  <view wx:if="{{badgeText}}" class="pet-badge">
+    <text>{{badgeText}}</text>
+  </view>
+</view>

@@ -1,0 +1,162 @@
+
+const __PRODUCTION_SHAPE_SCALE = {
+  blob: 0.92,
+  pebble: 0.96,
+  squircle: 0.84,
+  tablet: 1,
+  wedge: 0.94,
+  hex: 0.94,
+  cloud: 1,
+  teardrop: 1,
+};
+
+const __PRODUCTION_FACE_TUNE = {
+  size: 0.86,
+  gap: 1.18,
+  height: 1,
+  eyeWidth: 0.96,
+  eyeHeight: 0.92,
+};
+
+const __PRODUCTION_POSE_HOME = { turn: 33, tilt: -19, roll: 38 };
+
+function __engineProperties(options) {
+  const shapeScale = __PRODUCTION_SHAPE_SCALE[options.shape] ?? 1;
+  return {
+    state: options.state,
+    shape: options.shape,
+    gazeTarget: options.gazeTarget ?? null,
+    paused: Boolean(options.paused),
+    emphasis: Boolean(options.emphasis),
+    pose: {
+      turn: 17,
+      tilt: -14,
+      roll: 29,
+      scale: shapeScale * (259 / 229),
+    },
+    poseHome: __PRODUCTION_POSE_HOME,
+    faceTune: __PRODUCTION_FACE_TUNE,
+    uniformEyes: true,
+    eyeTopology: true,
+    eyeScale: 0.92 / shapeScale,
+    badgeColor: options.badgeColor ?? "#d93d35",
+  };
+}
+
+class OriginalPetEngineRuntime {
+  constructor(canvas, context, options) {
+    this.options = { ...options };
+    const properties = __engineProperties(this.options);
+    this.environment = new __EngineEnvironment(canvas, context, {
+      color: this.options.color,
+      background: this.options.background,
+      reduceMotion: this.options.reduceMotion,
+      poseScale: properties.pose.scale,
+      scheduler: this.options.scheduler,
+      onFrame: this.options.onFrame,
+    });
+    this.host = new __HookHost(this.environment);
+    this.host.render(vzt, properties);
+  }
+
+  setMetrics(width, height, pixelRatio, overscan = 2.4, left = 0, top = 0) {
+    this.environment.setMetrics(width, height, pixelRatio, overscan, left, top);
+  }
+
+  update(options) {
+    const previousOptions = this.options;
+    this.options = { ...this.options, ...options };
+    const properties = __engineProperties(this.options);
+    const pausedVisualChanged =
+      properties.paused &&
+      (previousOptions.shape !== this.options.shape ||
+        previousOptions.state !== this.options.state ||
+        previousOptions.color !== this.options.color ||
+        previousOptions.emphasis !== this.options.emphasis ||
+        previousOptions.reduceMotion !== this.options.reduceMotion);
+    this.environment.color = this.options.color;
+    this.environment.background = this.options.background ?? "#fff";
+    this.environment.reduceMotion = Boolean(this.options.reduceMotion);
+    this.environment.poseScale = properties.pose.scale;
+    if (pausedVisualChanged) {
+      // A paused original engine has no pending RAF. Wake exactly one frame so
+      // static gallery previews adopt shape and emphasis changes, then return
+      // it to the paused branch before the callback runs.
+      this.host.render(vzt, { ...properties, paused: false });
+      this.host.render(vzt, properties);
+    } else {
+      this.host.render(vzt, properties);
+    }
+    // Color variables resolve during serialization rather than in the
+    // animator, so repaint synchronously instead of waiting for the wake-up.
+    this.environment.paint();
+  }
+
+  spin(turns = 1) {
+    this.host.imperativeRef.current?.spin(turns);
+  }
+
+  bounce() {
+    this.host.imperativeRef.current?.bounce();
+  }
+
+  burst() {
+    this.host.imperativeRef.current?.burst();
+  }
+
+  destroy() {
+    this.environment.destroyed = true;
+    this.host.destroy();
+    this.environment.scheduler?.clear?.();
+    if (this.environment.context && this.environment.canvas) {
+      this.environment.context.setTransform(1, 0, 0, 1, 0, 0);
+      this.environment.context.clearRect(
+        0,
+        0,
+        this.environment.canvas.width,
+        this.environment.canvas.height,
+      );
+    }
+  }
+}
+
+function __createFrameScheduler() {
+  let nextFrameId = 0;
+  const timers = new Map();
+  return {
+    requestAnimationFrame(callback) {
+      const requestId = ++nextFrameId;
+      const timer = setTimeout(() => {
+        timers.delete(requestId);
+        callback(Date.now());
+      }, 16);
+      timers.set(requestId, timer);
+      return requestId;
+    },
+    cancelAnimationFrame(requestId) {
+      const timer = timers.get(requestId);
+      if (timer == null) return;
+      clearTimeout(timer);
+      timers.delete(requestId);
+    },
+    clear() {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    },
+  };
+}
+
+export function createOriginalPetEngine(canvas, context, options) {
+  return new OriginalPetEngineRuntime(canvas, context, options);
+}
+
+export function createOriginalPetSvgEngine(options, onFrame) {
+  const scheduler = __createFrameScheduler();
+  return new OriginalPetEngineRuntime(null, null, {
+    ...options,
+    scheduler,
+    onFrame,
+  });
+}
+
+export const ORIGINAL_PET_ENGINE_VERSION = "Grok Bot 0.16.0";

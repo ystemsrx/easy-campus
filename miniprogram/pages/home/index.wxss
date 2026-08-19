@@ -9,9 +9,10 @@
 .welcome-title { flex: none; color: var(--color-text); white-space: nowrap; }
 .welcome-name { display: block; flex: 1; min-width: 0; color: #c4552d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.publication-bell { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 84rpx; height: 84rpx; margin-top: 6rpx; border-radius: 50%; color: #2b2620; background: #fff; box-shadow: var(--shadow-card); }
+.publication-bell { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 120rpx; height: 120rpx; margin-top: 0; overflow: visible; }
+.publication-pet-frame { position: relative; top: 10rpx; left: -10rpx; display: block; flex: none; width: 118rpx; height: 118rpx; overflow: visible; }
 .publication-bell--pressed { transform: scale(0.93); opacity: 0.82; }
-.publication-badge { position: absolute; top: -3rpx; right: -3rpx; display: flex; align-items: center; justify-content: center; min-width: 34rpx; height: 34rpx; padding: 0 7rpx; border: 4rpx solid var(--color-bg); border-radius: 999rpx; color: #fff; background: #c0452d; font-size: 18rpx; font-weight: 800; }
+.publication-badge { position: absolute; top: 0; right: 0; display: flex; align-items: center; justify-content: center; min-width: 34rpx; height: 34rpx; padding: 0 7rpx; border: 4rpx solid var(--color-bg); border-radius: 999rpx; color: #fff; background: #c0452d; font-size: 18rpx; font-weight: 800; }
 
 .timetable-open-container { display: block; margin-top: 38rpx; border-radius: 56rpx; }
 .today-card { position: relative; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(135deg, #d97757, #eba97f); box-shadow: var(--shadow-pop); transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms; }
@@ -36,7 +37,7 @@
 .today-course-meta { display: flex; flex-direction: row; align-items: center; gap: 7rpx; margin-top: 4rpx; color: rgba(255, 255, 255, 0.72); font-size: 23rpx; }
 .course-status { flex: none; max-width: 110rpx; color: rgba(255, 255, 255, 0.68); font-size: 18rpx; font-weight: 650; text-align: right; }
 .course-status--current { padding: 6rpx 10rpx; border-radius: 999rpx; color: #fff; background: rgba(255, 255, 255, 0.18); }
-.today-empty { display: flex; align-items: center; justify-content: center; min-height: 142rpx; margin-top: 28rpx; padding: 30rpx; border-radius: 32rpx; background: rgba(255, 255, 255, 0.14); text-align: center; }
+.today-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 28rpx; min-height: 156rpx; margin-top: 28rpx; padding: 18rpx 30rpx; border-radius: 32rpx; background: rgba(255, 255, 255, 0.14); text-align: center; }
 .today-empty-title { display: block; font-size: 46rpx; font-weight: 820; letter-spacing: 8rpx; }
 
 .feature-grid { display: flex; flex-direction: row; gap: 20rpx; margin-top: 24rpx; }
@@ -96,7 +97,7 @@
 .exam-time { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 130rpx; }
 .exam-date { color: var(--color-text); font-size: 20rpx; font-weight: 750; white-space: nowrap; }
 .exam-clock { max-width: 142rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.exam-empty { display: flex; align-items: center; justify-content: center; min-height: 192rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
+.exam-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 206rpx; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
 .side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
 .side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
@@ -112,7 +113,8 @@
 .plan-title { display: block; color: var(--color-text); font-size: 27rpx; font-weight: 700; }
 .plan-time { display: block; margin-top: 3rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
 .plan-tag { flex: none; padding: 7rpx 16rpx; border-radius: 999rpx; color: #a55357; background: #f7e9e8; font-size: 19rpx; font-weight: 700; }
-.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; box-sizing: border-box; gap: 10rpx; min-height: 224rpx; padding: 42rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; }
+.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; box-sizing: border-box; min-height: 224rpx; padding: 32rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; }
+.plan-empty > text { display: block; max-width: 420rpx; }
 
 .campus-stack { display: flex; flex-direction: column; gap: 30rpx; }
 .campus-group { display: flex; flex-direction: column; gap: 16rpx; }
@@ -152,10 +154,8 @@
 .publication-popover-content { box-sizing: border-box; width: 100%; padding: 0 20rpx 28rpx; }
 .publication-list { margin-top: 16rpx; }
 .publication-list-card { overflow: hidden; border-radius: 38rpx; background: #fff; }
-.publication-row { display: flex; flex-direction: row; align-items: flex-start; gap: 20rpx; padding: 20rpx; border-bottom: 1rpx solid rgba(43, 38, 32, 0.05); border-radius: 34rpx; transition: transform 100ms ease, background-color 100ms ease; }
+.publication-row { display: flex; flex-direction: row; align-items: flex-start; gap: 20rpx; padding: 20rpx; border-bottom: 1rpx solid rgba(43, 38, 32, 0.05); }
 .publication-row:last-child { border-bottom: 0; }
-.publication-row--unread { background: #fdfbf6; }
-.publication-row--pressed { transform: scale(0.995); background: rgba(184, 92, 56, 0.035); }
 .publication-icon { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border-radius: 28rpx; }
 .publication-icon--announcement { color: #a66f1f; background: #f8eedd; }
 .publication-icon--notification { color: #b85c38; background: #f9eae2; }

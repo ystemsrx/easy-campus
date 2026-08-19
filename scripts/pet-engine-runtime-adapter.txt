@@ -1,0 +1,744 @@
+// @ts-nocheck
+// Runtime bridge for the mechanically copied Grok Bot 0.16.0 SVG engine.
+// It supplies the tiny React/SVG surface used by the original source and emits
+// that retained tree as SVG frames (with an optional Canvas test renderer)
+// without changing the original animator.
+
+const __TWO_PI = Math.PI * 2;
+const __TOP_MOTION_GUTTER_RATIO = 0.22;
+// X is calibrated against the visible paint bounds in WeChat's native image
+// layer. Y retains the engine's top motion gutter; the component moves the
+// complete native bitmap upward without sacrificing that drawable space.
+const __PET_ANCHOR_OFFSET_X_RATIO = -0.1;
+const __PET_ANCHOR_OFFSET_Y_RATIO = -0.22;
+const __PET_VIEWPORT_SCALE = 0.85;
+let __activeHost = null;
+let __activeEnvironment = null;
+let __nextEngineId = 0;
+
+function __withEnvironment(environment, callback) {
+  const previousEnvironment = __activeEnvironment;
+  const previousHost = __activeHost;
+  __activeEnvironment = environment;
+  __activeHost = environment?.host ?? previousHost;
+  try {
+    return callback();
+  } finally {
+    __activeEnvironment = previousEnvironment;
+    __activeHost = previousHost;
+  }
+}
+
+const performance = { now: () => Date.now() };
+const window = {
+  matchMedia: () => ({ matches: Boolean(__activeEnvironment?.reduceMotion) }),
+};
+
+class __VirtualSvgNode {
+  constructor(tag, owner, key = null) {
+    this.tag = tag;
+    this.owner = owner;
+    this.key = key;
+    this.attributes = Object.create(null);
+    this.style = Object.create(null);
+    this.declaredAttributes = Object.create(null);
+    this.declaredStyle = Object.create(null);
+    this.children = [];
+    this.parent = null;
+    this.initialized = false;
+    this.removed = false;
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+    if (name === "id") this.owner.ids.set(String(value), this);
+  }
+
+  getAttribute(name) {
+    return this.attributes[name] ?? null;
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
+
+  appendChild(child) {
+    if (!child) return child;
+    if (child.parent && child.parent !== this) {
+      const oldIndex = child.parent.children.indexOf(child);
+      if (oldIndex >= 0) child.parent.children.splice(oldIndex, 1);
+    }
+    child.parent = this;
+    child.removed = false;
+    this.children.push(child);
+    return child;
+  }
+
+  remove() {
+    this.removed = true;
+    if (!this.parent) return;
+    const index = this.parent.children.indexOf(this);
+    if (index >= 0) this.parent.children.splice(index, 1);
+    this.parent = null;
+  }
+
+  getBoundingClientRect() {
+    return this.owner.getRootRect();
+  }
+}
+
+function __flattenChildren(value, output = []) {
+  if (Array.isArray(value)) {
+    for (const child of value) __flattenChildren(child, output);
+  } else if (value instanceof __VirtualSvgNode && !value.removed) {
+    output.push(value);
+  }
+  return output;
+}
+
+class __HookHost {
+  constructor(environment) {
+    this.environment = environment;
+    this.environment.host = this;
+    this.hooks = [];
+    this.hookCursor = 0;
+    this.nodes = [];
+    this.nodeCursor = 0;
+    this.pendingEffects = [];
+    this.root = null;
+    this.imperativeRef = { current: null };
+  }
+
+  useRef(initialValue) {
+    const index = this.hookCursor++;
+    if (!this.hooks[index]) this.hooks[index] = { kind: "ref", current: initialValue };
+    return this.hooks[index];
+  }
+
+  useId() {
+    const index = this.hookCursor++;
+    if (!this.hooks[index]) {
+      this.hooks[index] = { kind: "id", value: `gb${++__nextEngineId}` };
+    }
+    return this.hooks[index].value;
+  }
+
+  useEffect(effect, dependencies) {
+    const index = this.hookCursor++;
+    const previous = this.hooks[index];
+    const changed =
+      !previous ||
+      !dependencies ||
+      !previous.dependencies ||
+      dependencies.length !== previous.dependencies.length ||
+      dependencies.some((value, dependencyIndex) =>
+        !Object.is(value, previous.dependencies[dependencyIndex]),
+      );
+    const slot = previous ?? { kind: "effect", cleanup: null, dependencies: null };
+    slot.dependencies = dependencies ? [...dependencies] : null;
+    this.hooks[index] = slot;
+    if (changed) this.pendingEffects.push({ slot, effect });
+  }
+
+  useImperativeHandle(reference, create) {
+    this.hookCursor++;
+    if (reference) reference.current = create();
+  }
+
+  createNode(tag, properties = {}, key = null) {
+    const index = this.nodeCursor++;
+    let node = this.nodes[index];
+    if (!node || node.tag !== tag || node.key !== key) {
+      node = new __VirtualSvgNode(tag, this.environment, key);
+      this.nodes[index] = node;
+    }
+    node.removed = false;
+    for (const [name, value] of Object.entries(properties ?? {})) {
+      if (name === "children" || name === "ref" || name === "key") continue;
+      if (name === "style") {
+        for (const [styleName, styleValue] of Object.entries(value ?? {})) {
+          if (!Object.is(node.declaredStyle[styleName], styleValue)) {
+            node.declaredStyle[styleName] = styleValue;
+            node.style[styleName] = styleValue;
+          }
+        }
+      } else if (name !== "className" && name !== "aria-hidden") {
+        if (!Object.is(node.declaredAttributes[name], value)) {
+          node.declaredAttributes[name] = value;
+          node.setAttribute(name, value);
+        }
+      }
+    }
+    if (!node.initialized) {
+      node.children = __flattenChildren(properties?.children);
+      for (const child of node.children) child.parent = node;
+      node.initialized = true;
+    }
+    if (typeof properties?.ref === "function") properties.ref(node);
+    else if (properties?.ref) properties.ref.current = node;
+    return node;
+  }
+
+  render(component, properties) {
+    const firstRender = this.root === null;
+    this.hookCursor = 0;
+    this.nodeCursor = 0;
+    this.pendingEffects = [];
+    this.root = __withEnvironment(this.environment, () => {
+      __activeHost = this;
+      return component(properties, this.imperativeRef);
+    });
+    this.environment.root = this.root;
+    const effects = this.pendingEffects;
+    this.pendingEffects = [];
+    for (const { slot, effect } of effects) {
+      __withEnvironment(this.environment, () => {
+        if (typeof slot.cleanup === "function") slot.cleanup();
+        slot.cleanup = effect() ?? null;
+      });
+    }
+    if (firstRender) this.environment.paint();
+  }
+
+  destroy() {
+    for (const hook of this.hooks) {
+      if (hook?.kind === "effect" && typeof hook.cleanup === "function") {
+        __withEnvironment(this.environment, () => hook.cleanup());
+        hook.cleanup = null;
+      }
+    }
+  }
+}
+
+const React = {
+  forwardRef: (component) => component,
+  useRef: (initialValue) => __activeHost.useRef(initialValue),
+  useId: () => __activeHost.useId(),
+  useEffect: (effect, dependencies) => __activeHost.useEffect(effect, dependencies),
+  useImperativeHandle: (reference, create) =>
+    __activeHost.useImperativeHandle(reference, create),
+};
+
+function jsx(type, properties, key) {
+  if (typeof type === "string") {
+    return __activeHost.createNode(type, properties, key ?? null);
+  }
+  return type(properties ?? {});
+}
+
+const jsxs = jsx;
+
+const document = {
+  createElementNS: (_namespace, tag) =>
+    new __VirtualSvgNode(tag, __activeEnvironment),
+};
+
+function requestAnimationFrame(callback) {
+  const environment = __activeEnvironment;
+  if (!environment || environment.destroyed) return 0;
+  return environment.scheduler.requestAnimationFrame(() => {
+    if (environment.destroyed) return;
+    __withEnvironment(environment, () => callback(performance.now()));
+    environment.paint();
+  });
+}
+
+function cancelAnimationFrame(requestId) {
+  __activeEnvironment?.scheduler.cancelAnimationFrame(requestId);
+}
+
+function __numbers(value) {
+  return String(value ?? "")
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number);
+}
+
+function __hslToHex(value) {
+  const match = /^hsl\(\s*(-?\d+(?:\.\d+)?)(?:deg)?(?:\s+|,\s*)(\d+(?:\.\d+)?)%(?:\s+|,\s*)(\d+(?:\.\d+)?)%\s*\)$/i.exec(
+    String(value ?? ""),
+  );
+  if (!match) return value;
+  const hue = ((Number(match[1]) % 360) + 360) % 360;
+  const saturation = Math.max(0, Math.min(1, Number(match[2]) / 100));
+  const lightness = Math.max(0, Math.min(1, Number(match[3]) / 100));
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const hueSection = hue / 60;
+  const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  if (hueSection < 1) [red, green] = [chroma, secondary];
+  else if (hueSection < 2) [red, green] = [secondary, chroma];
+  else if (hueSection < 3) [green, blue] = [chroma, secondary];
+  else if (hueSection < 4) [green, blue] = [secondary, chroma];
+  else if (hueSection < 5) [red, blue] = [secondary, chroma];
+  else [red, blue] = [chroma, secondary];
+  const offset = lightness - chroma / 2;
+  return `#${[red, green, blue]
+    .map((channel) =>
+      Math.round((channel + offset) * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+function __applyTransform(context, transform) {
+  if (!transform) return;
+  const expression = /([a-zA-Z]+)\(([^)]*)\)/g;
+  let match;
+  while ((match = expression.exec(transform))) {
+    const values = __numbers(match[2]);
+    switch (match[1]) {
+      case "translate":
+        context.translate(values[0] || 0, values[1] || 0);
+        break;
+      case "scale":
+        context.scale(values[0] ?? 1, values[1] ?? values[0] ?? 1);
+        break;
+      case "rotate": {
+        const angle = ((values[0] || 0) * Math.PI) / 180;
+        if (values.length >= 3) {
+          context.translate(values[1], values[2]);
+          context.rotate(angle);
+          context.translate(-values[1], -values[2]);
+        } else {
+          context.rotate(angle);
+        }
+        break;
+      }
+      case "matrix":
+        if (values.length >= 6) context.transform(...values.slice(0, 6));
+        break;
+    }
+  }
+}
+
+function __arcTo(context, x1, y1, rxValue, ryValue, rotationValue, largeArc, sweep, x2, y2) {
+  let rx = Math.abs(rxValue);
+  let ry = Math.abs(ryValue);
+  if (!rx || !ry || (Math.abs(x1 - x2) < 1e-9 && Math.abs(y1 - y2) < 1e-9)) {
+    context.lineTo(x2, y2);
+    return;
+  }
+  const rotation = (rotationValue * Math.PI) / 180;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const dx = (x1 - x2) / 2;
+  const dy = (y1 - y2) / 2;
+  const xPrime = cos * dx + sin * dy;
+  const yPrime = -sin * dx + cos * dy;
+  const lambda = xPrime * xPrime / (rx * rx) + yPrime * yPrime / (ry * ry);
+  if (lambda > 1) {
+    const scale = Math.sqrt(lambda);
+    rx *= scale;
+    ry *= scale;
+  }
+  const rxSquared = rx * rx;
+  const rySquared = ry * ry;
+  const numerator = Math.max(
+    0,
+    rxSquared * rySquared - rxSquared * yPrime * yPrime - rySquared * xPrime * xPrime,
+  );
+  const denominator =
+    rxSquared * yPrime * yPrime + rySquared * xPrime * xPrime || 1;
+  const coefficient = (largeArc === sweep ? -1 : 1) * Math.sqrt(numerator / denominator);
+  const centerPrimeX = coefficient * ((rx * yPrime) / ry);
+  const centerPrimeY = coefficient * (-(ry * xPrime) / rx);
+  const centerX = cos * centerPrimeX - sin * centerPrimeY + (x1 + x2) / 2;
+  const centerY = sin * centerPrimeX + cos * centerPrimeY + (y1 + y2) / 2;
+  const angle = (ux, uy, vx, vy) => {
+    const length = Math.hypot(ux, uy) * Math.hypot(vx, vy) || 1;
+    const cosine = Math.max(-1, Math.min(1, (ux * vx + uy * vy) / length));
+    return (ux * vy - uy * vx < 0 ? -1 : 1) * Math.acos(cosine);
+  };
+  const ux = (xPrime - centerPrimeX) / rx;
+  const uy = (yPrime - centerPrimeY) / ry;
+  const vx = (-xPrime - centerPrimeX) / rx;
+  const vy = (-yPrime - centerPrimeY) / ry;
+  const start = angle(1, 0, ux, uy);
+  let delta = angle(ux, uy, vx, vy);
+  if (!sweep && delta > 0) delta -= __TWO_PI;
+  if (sweep && delta < 0) delta += __TWO_PI;
+  context.ellipse(centerX, centerY, rx, ry, rotation, start, start + delta, !sweep);
+}
+
+function __tracePath(context, data) {
+  const tokens = String(data ?? "").match(/[AaCcHhLlMmQqVvZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
+  context.beginPath();
+  let index = 0;
+  let command = "";
+  let x = 0;
+  let y = 0;
+  let startX = 0;
+  let startY = 0;
+  const read = () => Number(tokens[index++]);
+  const isCommand = (token) => /^[A-Za-z]$/.test(token ?? "");
+  while (index < tokens.length) {
+    if (isCommand(tokens[index])) command = tokens[index++];
+    if (!command) break;
+    const relative = command === command.toLowerCase();
+    const upper = command.toUpperCase();
+    if (upper === "Z") {
+      context.closePath();
+      x = startX;
+      y = startY;
+      command = "";
+      continue;
+    }
+    if (upper === "M" || upper === "L") {
+      let nextX = read();
+      let nextY = read();
+      if (relative) {
+        nextX += x;
+        nextY += y;
+      }
+      if (upper === "M") {
+        context.moveTo(nextX, nextY);
+        startX = nextX;
+        startY = nextY;
+        command = relative ? "l" : "L";
+      } else context.lineTo(nextX, nextY);
+      x = nextX;
+      y = nextY;
+    } else if (upper === "H") {
+      let nextX = read();
+      if (relative) nextX += x;
+      context.lineTo(nextX, y);
+      x = nextX;
+    } else if (upper === "V") {
+      let nextY = read();
+      if (relative) nextY += y;
+      context.lineTo(x, nextY);
+      y = nextY;
+    } else if (upper === "C") {
+      const values = [read(), read(), read(), read(), read(), read()];
+      if (relative) {
+        for (let valueIndex = 0; valueIndex < values.length; valueIndex += 2) {
+          values[valueIndex] += x;
+          values[valueIndex + 1] += y;
+        }
+      }
+      context.bezierCurveTo(...values);
+      x = values[4];
+      y = values[5];
+    } else if (upper === "Q") {
+      const values = [read(), read(), read(), read()];
+      if (relative) {
+        values[0] += x;
+        values[1] += y;
+        values[2] += x;
+        values[3] += y;
+      }
+      context.quadraticCurveTo(...values);
+      x = values[2];
+      y = values[3];
+    } else if (upper === "A") {
+      const rx = read();
+      const ry = read();
+      const rotation = read();
+      const largeArc = Boolean(read());
+      const sweep = Boolean(read());
+      let nextX = read();
+      let nextY = read();
+      if (relative) {
+        nextX += x;
+        nextY += y;
+      }
+      __arcTo(context, x, y, rx, ry, rotation, largeArc, sweep, nextX, nextY);
+      x = nextX;
+      y = nextY;
+    } else {
+      index++;
+    }
+  }
+}
+
+function __roundedRect(context, x, y, width, height, radius) {
+  const r = Math.max(0, Math.min(Number(radius) || 0, Math.abs(width) / 2, Math.abs(height) / 2));
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.lineTo(x + width - r, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + r);
+  context.lineTo(x + width, y + height - r);
+  context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  context.lineTo(x + r, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
+}
+
+class __EngineEnvironment {
+  constructor(canvas, context, options) {
+    this.canvas = canvas;
+    this.context = context;
+    this.scheduler = options.scheduler ?? canvas;
+    this.onFrame = options.onFrame ?? null;
+    this.ids = new Map();
+    this.root = null;
+    this.host = null;
+    this.destroyed = false;
+    this.reduceMotion = Boolean(options.reduceMotion);
+    this.color = options.color;
+    this.background = options.background ?? "#fff";
+    this.poseScale = options.poseScale ?? 1;
+    this.outerWidth = 1;
+    this.outerHeight = 1;
+    this.hostWidth = 1;
+    this.hostHeight = 1;
+    this.hostLeft = 0;
+    this.hostTop = 0;
+    this.pixelRatio = 1;
+  }
+
+  setMetrics(width, height, pixelRatio, overscan, left = 0, top = 0) {
+    this.outerWidth = Math.max(width, 1);
+    this.outerHeight = Math.max(height, 1);
+    this.hostWidth = this.outerWidth / overscan;
+    this.hostHeight = this.outerHeight / overscan;
+    this.hostLeft = left + (this.outerWidth - this.hostWidth) / 2;
+    this.hostTop = top + (this.outerHeight - this.hostHeight) / 2;
+    this.pixelRatio = Math.max(pixelRatio || 1, 1);
+    if (this.canvas) {
+      this.canvas.width = Math.max(1, Math.round(this.outerWidth * this.pixelRatio));
+      this.canvas.height = Math.max(1, Math.round(this.outerHeight * this.pixelRatio));
+    }
+    this.paint();
+  }
+
+  getRootRect() {
+    return {
+      left: this.hostLeft,
+      top: this.hostTop,
+      right: this.hostLeft + this.hostWidth,
+      bottom: this.hostTop + this.hostHeight,
+      width: this.hostWidth,
+      height: this.hostHeight,
+    };
+  }
+
+  resolveColor(value) {
+    if (!value) return "transparent";
+    if (value === "var(--fg)") return this.color;
+    if (value === "var(--bg)") return this.background;
+    if (value.startsWith("var(--gb-badge")) return "#1d9bf0";
+    return __hslToHex(value);
+  }
+
+  resolveGradient(value, context) {
+    const match = /^url\(#(.+)\)$/.exec(value ?? "");
+    if (!match) return this.resolveColor(value);
+    const definition = this.ids.get(match[1]);
+    if (!definition) return this.color;
+    const gradient = context.createLinearGradient(
+      Number(definition.attributes.x1) || 0,
+      Number(definition.attributes.y1) || 0,
+      Number(definition.attributes.x2) || 0,
+      Number(definition.attributes.y2) || 0,
+    );
+    for (const stop of definition.children) {
+      const offsetText = stop.attributes.offset ?? "0";
+      const offset = offsetText.endsWith("%")
+        ? Number.parseFloat(offsetText) / 100
+        : Number(offsetText);
+      gradient.addColorStop(
+        Math.max(0, Math.min(1, Number.isFinite(offset) ? offset : 0)),
+        this.resolveColor(stop.style.stopColor ?? stop.attributes["stop-color"] ?? this.color),
+      );
+    }
+    return gradient;
+  }
+
+  paintNode(node, inheritedOpacity = 1) {
+    if (!node || node.removed || node.style.display === "none") return;
+    if (node.tag === "defs" || node.tag === "clipPath" || node.tag === "linearGradient" || node.tag === "stop") return;
+    const context = this.context;
+    context.save();
+    __applyTransform(context, node.attributes.transform);
+    const ownOpacity = Number(node.attributes.opacity ?? node.style.opacity ?? 1);
+    const opacity = inheritedOpacity * (Number.isFinite(ownOpacity) ? ownOpacity : 1);
+    context.globalAlpha = opacity;
+
+    const clipReference = node.attributes.clipPath ?? node.attributes["clip-path"];
+    if (clipReference) {
+      const match = /#([^\)]+)/.exec(clipReference);
+      const clipNode = match ? this.ids.get(match[1]) : null;
+      const clipPath = clipNode?.children?.find((child) => child.tag === "path");
+      if (clipPath) {
+        __tracePath(context, clipPath.attributes.d);
+        context.clip();
+      }
+    }
+
+    let drawable = false;
+    if (node.tag === "path") {
+      __tracePath(context, node.attributes.d);
+      drawable = true;
+    } else if (node.tag === "circle") {
+      context.beginPath();
+      context.arc(
+        Number(node.attributes.cx) || 0,
+        Number(node.attributes.cy) || 0,
+        Math.max(Number(node.attributes.r) || 0, 0),
+        0,
+        __TWO_PI,
+      );
+      drawable = true;
+    } else if (node.tag === "rect") {
+      __roundedRect(
+        context,
+        Number(node.attributes.x) || 0,
+        Number(node.attributes.y) || 0,
+        Number(node.attributes.width) || 0,
+        Number(node.attributes.height) || 0,
+        Number(node.attributes.rx) || 0,
+      );
+      drawable = true;
+    }
+
+    if (drawable) {
+      const fill = node.attributes.fill ?? node.style.fill;
+      if (fill && fill !== "none") {
+        context.fillStyle = this.resolveGradient(fill, context);
+        context.fill();
+      }
+      const stroke = node.attributes.stroke ?? node.style.stroke;
+      if (stroke && stroke !== "none") {
+        context.strokeStyle = this.resolveColor(stroke);
+        context.lineWidth = Number(node.attributes["stroke-width"] ?? node.style.strokeWidth ?? 1);
+        context.lineCap = node.attributes["stroke-linecap"] ?? "butt";
+        context.lineJoin = node.attributes["stroke-linejoin"] ?? "miter";
+        const dash = __numbers(node.attributes["stroke-dasharray"]);
+        if (typeof context.setLineDash === "function") context.setLineDash(dash);
+        context.lineDashOffset = Number(node.attributes["stroke-dashoffset"] ?? 0);
+        context.stroke();
+      }
+    }
+
+    if (node.tag === "g" || node.tag === "svg") {
+      for (const child of node.children) this.paintNode(child, opacity);
+    }
+    context.restore();
+  }
+
+  paint() {
+    if (this.destroyed || !this.root) return;
+    if (this.onFrame) {
+      this.onFrame(this.toSvgDataUri());
+      return;
+    }
+    if (!this.context || !this.canvas) return;
+    const context = this.context;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, width, height);
+    context.save();
+    context.scale(this.pixelRatio, this.pixelRatio);
+    const marginX = (this.outerWidth - this.hostWidth) / 2;
+    const marginY = (this.outerHeight - this.hostHeight) / 2;
+    context.translate(marginX, marginY + this.hostHeight * 0.015);
+    context.translate(this.hostWidth / 2, this.hostHeight / 2);
+    context.scale(this.poseScale, this.poseScale);
+    context.translate(-this.hostWidth / 2, -this.hostHeight / 2);
+    const viewBox = __numbers(this.root.attributes.viewBox ?? "-15 -15 259 259");
+    const [minimumX, minimumY, viewWidth, viewHeight] = viewBox;
+    const scale = Math.min(this.hostWidth / viewWidth, this.hostHeight / viewHeight);
+    context.translate(
+      (this.hostWidth - viewWidth * scale) / 2 - minimumX * scale,
+      (this.hostHeight - viewHeight * scale) / 2 - minimumY * scale,
+    );
+    context.scale(scale, scale);
+    for (const child of this.root.children) this.paintNode(child, 1);
+    context.restore();
+  }
+
+  escapeAttribute(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  serializeNode(node) {
+    if (!node || node.removed || node.style.display === "none") return "";
+    const supportedTags = new Set([
+      "defs",
+      "clipPath",
+      "linearGradient",
+      "stop",
+      "g",
+      "path",
+      "circle",
+      "rect",
+    ]);
+    if (!supportedTags.has(node.tag)) return "";
+    const attributes = new Map(Object.entries(node.attributes));
+    const styleNames = {
+      fill: "fill",
+      stroke: "stroke",
+      strokeWidth: "stroke-width",
+      opacity: "opacity",
+      stopColor: "stop-color",
+    };
+    for (const [styleName, attributeName] of Object.entries(styleNames)) {
+      if (node.style[styleName] != null) {
+        attributes.set(attributeName, node.style[styleName]);
+      }
+    }
+    if (attributes.has("clipPath")) {
+      attributes.set("clip-path", attributes.get("clipPath"));
+      attributes.delete("clipPath");
+    }
+    for (const colorName of ["fill", "stroke", "stop-color"]) {
+      if (attributes.has(colorName)) {
+        attributes.set(colorName, this.resolveColor(attributes.get(colorName)));
+      }
+    }
+    const serializedAttributes = [...attributes.entries()]
+      .filter(([, value]) => value != null)
+      .map(
+        ([name, value]) =>
+          ` ${name}="${this.escapeAttribute(value)}"`,
+      )
+      .join("");
+    const children = node.children
+      .map((child) => this.serializeNode(child))
+      .join("");
+    return children
+      ? `<${node.tag}${serializedAttributes}>${children}</${node.tag}>`
+      : `<${node.tag}${serializedAttributes}/>`;
+  }
+
+  toSvgDataUri() {
+    const viewBox = __numbers(this.root.attributes.viewBox ?? "-15 -15 259 259");
+    const [minimumX, minimumY, viewWidth, viewHeight] = viewBox;
+    const centerX = minimumX + viewWidth / 2;
+    const centerY = minimumY + viewHeight / 2;
+    const outerWidth = viewWidth * 2.4;
+    const outerHeight = viewHeight * 2.4;
+    const outerMinimumX = minimumX;
+    const outerMinimumY =
+      minimumY - viewHeight * __TOP_MOTION_GUTTER_RATIO;
+    const body = this.root.children
+      .map((child) => this.serializeNode(child))
+      .join("");
+    const translateX = viewWidth * __PET_ANCHOR_OFFSET_X_RATIO;
+    const translateY = viewHeight * __PET_ANCHOR_OFFSET_Y_RATIO;
+    const viewportScale = this.poseScale * __PET_VIEWPORT_SCALE;
+    const transform =
+      `translate(${translateX.toFixed(3)} ${translateY.toFixed(3)}) ` +
+      `translate(${centerX.toFixed(3)} ${centerY.toFixed(3)}) ` +
+      `scale(${viewportScale.toFixed(6)}) ` +
+      `translate(${(-centerX).toFixed(3)} ${(-centerY).toFixed(3)})`;
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" ` +
+      `viewBox="${outerMinimumX.toFixed(3)} ${outerMinimumY.toFixed(3)} ${outerWidth.toFixed(3)} ${outerHeight.toFixed(3)}">` +
+      `<g transform="${transform}">${body}</g></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
+}

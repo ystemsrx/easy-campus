@@ -71,6 +71,10 @@ function waitFor(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function routeAfterAuthentication(): void {
+  wx.switchTab({ url: "/pages/home/index" });
+}
+
 Page({
   data: {
     appName: MINIPROGRAM_NAME,
@@ -93,7 +97,7 @@ Page({
   onLoad() {
     currentMascot = "";
     if (isAuthenticated()) {
-      wx.switchTab({ url: "/pages/home/index" });
+      routeAfterAuthentication();
       return;
     }
 
@@ -340,14 +344,14 @@ Page({
     try {
       const session = await login(account, password);
       preloadPrimaryTabs(session);
-      await getPreloadedCurrentUser().catch(() => undefined);
+      void getPreloadedCurrentUser().catch(() => undefined);
       void refreshExamsAfterSignIn(session);
       await wavingCompletion;
       if (!pageActive) {
         return;
       }
       haptic("medium");
-      wx.switchTab({ url: "/pages/home/index" });
+      routeAfterAuthentication();
     } catch (error) {
       haptic("heavy");
       this.showErrorToast(

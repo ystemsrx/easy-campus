@@ -17,7 +17,18 @@
         <view class="ambient-blob identity-blob identity-blob--one"></view>
         <view class="ambient-blob identity-blob identity-blob--two"></view>
         <view class="identity-main">
-          <view class="avatar"><text>{{avatarText}}</text></view>
+          <view wx:if="{{petVisible}}" class="identity-pet-frame">
+            <geometric-pet
+              shape="{{petShape}}"
+              color="{{petColor}}"
+              enhanced="{{petEnhanced}}"
+              state="happy"
+              reduced-motion="{{reducedMotion}}"
+              auto-cycle="{{true}}"
+              label="点击和校园伙伴互动"
+            ></geometric-pet>
+          </view>
+          <view wx:else class="avatar"><text>{{avatarText}}</text></view>
           <view class="identity-copy"><text class="identity-name display-title">{{userName}}</text><text class="identity-account tnum">{{account || '—'}}</text></view>
         </view>
         <text class="identity-school">{{organizationName}}</text>
@@ -29,6 +40,10 @@
 
       <view class="section-header"><view><text class="section-title">设置</text></view></view>
       <view class="settings-card card stagger-item">
+        <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openPetSetup" hover-class="setting-row--pressed" aria-role="button" aria-label="设置校园伙伴">
+          <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petSelected ? (petEnabled ? '已开启' : '已关闭') : '未选择'}}</text></view>
+          <view class="pet-setting-value"><view wx:if="{{petSelected}}" class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
         <view class="appearance-setting">
           <text class="setting-title">外观</text>
           <view class="appearance-control">

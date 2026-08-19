@@ -5,6 +5,7 @@
     "pages/inbox/index",
     "pages/profile/index",
     "pages/login/index",
+    "pages/pet-setup/index",
     "pages/grades/index",
     "pages/pass-rates/index",
     "pages/grade-detail/index",
@@ -20,7 +21,8 @@
     "navigation-bar": "/components/navigation-bar/navigation-bar",
     "bottom-sheet": "/components/bottom-sheet/bottom-sheet",
     "empty-state": "/components/empty-state/empty-state",
-    "loading-view": "/components/loading-view/loading-view"
+    "loading-view": "/components/loading-view/loading-view",
+    "geometric-pet": "/components/geometric-pet/geometric-pet"
   },
   "window": {
     "navigationBarTextStyle": "black",

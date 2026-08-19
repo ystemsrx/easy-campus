@@ -1,0 +1,78 @@
+<view
+  class="pet-picker-layer {{themeClass}} {{motionClass}} {{open ? 'pet-picker-layer--open' : ''}}"
+>
+  <view class="pet-picker-scrim" catchtap="noop" catchtouchmove="noop"></view>
+  <view class="pet-picker-card">
+    <view class="pet-picker-handle"></view>
+    <view class="pet-picker-header">
+      <text class="pet-picker-title">选择一个伙伴</text>
+      <view
+        class="pet-picker-action"
+        catchtap="finish"
+        hover-class="pet-picker-action--pressed"
+        aria-role="button"
+        aria-label="{{selected ? '完成校园伙伴选择' : '跳过校园伙伴选择'}}"
+      >
+        <text>{{selected ? '完成' : '跳过'}}</text>
+      </view>
+    </view>
+
+    <view class="pet-picker-color-section">
+      <text class="pet-picker-section-title">颜色</text>
+      <view class="pet-picker-color-strip" aria-label="选择颜色">
+        <view
+          wx:for="{{colorOptions}}"
+          wx:key="id"
+          class="pet-picker-color {{selectedColor === item.value ? 'pet-picker-color--selected' : ''}}"
+          data-color="{{item.value}}"
+          bindtap="selectColor"
+          hover-class="pet-picker-color--pressed"
+          aria-role="button"
+          aria-label="{{item.label}}"
+        >
+          <view class="pet-picker-swatch" style="background: {{item.value}};"></view>
+        </view>
+      </view>
+    </view>
+
+    <scroll-view
+      class="pet-picker-scroll"
+      type="list"
+      scroll-y
+      enhanced
+      show-scrollbar="{{false}}"
+      bounces
+    >
+      <view class="pet-picker-scroll-content">
+        <text class="pet-picker-section-title">形状</text>
+        <view class="pet-picker-shape-grid">
+          <view
+            wx:for="{{shapeOptions}}"
+            wx:key="id"
+            class="pet-picker-shape {{selectedShape === item.id ? 'pet-picker-shape--selected' : ''}}"
+            data-shape="{{item.id}}"
+            bindtap="selectShape"
+            hover-class="pet-picker-shape--pressed"
+            aria-role="button"
+            aria-label="{{item.accessibleLabel}}"
+          >
+            <view class="pet-picker-shape-frame">
+              <geometric-pet
+                shape="{{item.id}}"
+                color="{{selectedColor}}"
+                state="{{selectedShape === item.id ? 'happy' : 'idle'}}"
+                enhanced="{{enhanced}}"
+                reduced-motion="{{reducedMotion || selectedShape !== item.id}}"
+                auto-cycle="{{selectedShape === item.id}}"
+                preview-offset-x="{{0.1}}"
+                preview-offset-y="{{0.1}}"
+                label="{{item.accessibleLabel}}"
+              ></geometric-pet>
+            </view>
+          </view>
+        </view>
+        <view class="pet-picker-spacer"></view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

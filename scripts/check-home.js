@@ -86,6 +86,18 @@ assert(
   "首页进入和再次显示时都必须同步恢复用户姓名",
 );
 assert(
+  /onShow\(\)[\s\S]*?const petSetupPending = this\.openPendingPetSetup\(sessionAccount\);[\s\S]*?this\.hydrateIdentity\(\);[\s\S]*?void this\.loadDashboard\(false\)/.test(
+    homeScript,
+  ) &&
+    !homeScript.includes(
+      "if (this.openPendingPetSetup(sessionAccount)) return",
+    ) &&
+    homeTemplate.includes("<pet-picker-drawer") &&
+    homeTemplate.includes('<root-portal wx:if="{{petSetupDrawerMounted}}">') &&
+    homeTemplate.includes('bind:finish="finishPendingPetSetup"'),
+  "首次伙伴抽屉显示期间必须继续静默刷新首页与用户资料，且只能在首页完成或跳过",
+);
+assert(
   appScript.includes("foregroundEntryId: 0") &&
     /onShow\(\) \{[\s\S]*?this\.globalData\.foregroundEntryId \+= 1;/.test(
       appScript,
@@ -146,8 +158,6 @@ const publicationPopoverStyle =
   /\.publication-popover \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const publicationPopoverScrollStyle =
   /\.publication-popover-scroll \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
-const publicationPressedStyle =
-  /\.publication-row--pressed \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const publicationRowStyle =
   /\.publication-row \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const publicationBodyStyle =
@@ -201,21 +211,21 @@ assert(
   "首页消息弹窗必须始终保持四条消息高度，展开正文时不得改变外层高度",
 );
 assert(
-  /wx:for="\{\{publications\}\}"[^>]*catchtap="onPublicationTap"[^>]*hover-class="publication-row--pressed"[^>]*hover-start-time="0"[^>]*hover-stay-time="80"/.test(
+  /wx:for="\{\{publications\}\}"[^>]*class="publication-row"[^>]*catchtap="onPublicationTap"/.test(
     homeTemplate,
   ) &&
-    publicationRowStyle.includes(
-      "transition: transform 100ms ease, background-color 100ms ease;",
-    ) &&
-    publicationPressedStyle.includes("transform: scale(0.995);") &&
-    publicationPressedStyle.includes("background: rgba(184, 92, 56, 0.035);") &&
+    !homeTemplate.includes('hover-class="publication-row--pressed"') &&
+    !homeTemplate.includes("publication-row--unread") &&
+    !homeStyles.includes(".publication-row--pressed") &&
+    !homeStyles.includes(".publication-row--unread") &&
+    !publicationRowStyle.includes("background") &&
     (publicationTapHandler.match(/this\.setData\(/g) || []).length === 1 &&
     publicationTapHandler.includes('publication.kind === "announcement"') &&
     publicationTapHandler.includes("isRead: true") &&
     publicationTapHandler.includes("expanded:") &&
     !publicationTapHandler.includes("measurePublicationPanel") &&
     !publicationTapHandler.includes("markPublicationLocallyRead"),
-  "首页消息点击必须立即合并更新已读和展开状态，并使用轻量按压反馈",
+  "首页消息点击必须立即合并更新已读和展开状态，且不得因未读背景切换产生深色按压闪变",
 );
 const compactNotification = renderMarkdown("第一行\n第二行", {
   compact: true,

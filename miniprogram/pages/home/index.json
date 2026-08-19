@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "disableScroll": true
+  "disableScroll": true,
+  "usingComponents": {
+    "pet-picker-drawer": "/components/pet-picker-drawer/pet-picker-drawer"
+  }
 }

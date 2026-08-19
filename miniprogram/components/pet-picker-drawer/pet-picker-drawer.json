@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "geometric-pet": "/components/geometric-pet/geometric-pet"
+  }
+}

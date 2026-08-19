@@ -1,3 +1,5 @@
+import { getSession } from "../store/session";
+
 interface SkylineNavigateToOptions extends WechatMiniprogram.NavigateToOption {
   routeType?:
     | "wx://bottom-sheet"
@@ -32,19 +34,36 @@ export function navigateTo(
   });
 }
 
+let loginRouteOpening = false;
+let loginRouteResetTimer: ReturnType<typeof setTimeout> | undefined;
+
 export function goToLogin(): void {
   const pages = getCurrentPages();
   const currentRoute = pages[pages.length - 1]?.route;
   if (currentRoute === "pages/login/index") {
+    loginRouteOpening = false;
     return;
   }
-  wx.reLaunch({ url: "/pages/login/index" });
+  if (loginRouteOpening) return;
+  loginRouteOpening = true;
+  if (loginRouteResetTimer) clearTimeout(loginRouteResetTimer);
+  wx.reLaunch({
+    url: "/pages/login/index",
+    success: () => {
+      loginRouteResetTimer = setTimeout(() => {
+        loginRouteOpening = false;
+        loginRouteResetTimer = undefined;
+      }, 1000);
+    },
+    fail: () => {
+      loginRouteOpening = false;
+      loginRouteResetTimer = undefined;
+    },
+  });
 }
 
 export function ensureAuthenticated(): boolean {
-  if (getApp<IAppOption>().globalData.session?.token) {
-    return true;
-  }
+  if (getSession()?.token) return true;
   goToLogin();
   return false;
 }

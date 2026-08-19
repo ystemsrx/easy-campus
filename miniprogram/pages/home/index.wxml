@@ -2,7 +2,7 @@
   <scroll-view
     class="page-scroll"
     type="list"
-    scroll-y
+    scroll-y="{{!petSetupDrawerOpen}}"
     enhanced
     show-scrollbar="{{false}}"
   >
@@ -23,8 +23,22 @@
           aria-role="button"
           aria-label="公告与通知，{{publicationUnreadCount}} 条未读"
         >
-          <lucide-icon name="bell" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{40}}"></lucide-icon>
-          <view wx:if="{{publicationUnreadCount}}" class="publication-badge"><text>{{publicationUnreadLabel}}</text></view>
+          <view wx:if="{{petVisible}}" class="publication-pet-frame">
+            <geometric-pet
+              shape="{{petShape}}"
+              color="{{petColor}}"
+              enhanced="{{petEnhanced}}"
+              state="{{publicationUnreadCount ? 'notifying' : 'idle'}}"
+              badge-text="{{publicationUnreadLabel}}"
+              reduced-motion="{{petReducedMotion}}"
+              auto-cycle="{{!publicationUnreadCount}}"
+              label="公告与通知"
+            ></geometric-pet>
+          </view>
+          <block wx:else>
+            <lucide-icon name="bell" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{40}}"></lucide-icon>
+            <view wx:if="{{publicationUnreadCount}}" class="publication-badge"><text>{{publicationUnreadLabel}}</text></view>
+          </block>
         </view>
       </view>
 
@@ -149,7 +163,9 @@
               <view class="exam-time"><text class="exam-date tnum">{{item.dateLabel}}</text><text class="exam-clock tnum">{{item.timeLabel}}</text></view>
             </view>
           </view>
-          <view wx:else class="exam-empty"><text>{{examEmptyLabel}}</text></view>
+          <view wx:else class="exam-empty">
+            <text>{{examEmptyLabel}}</text>
+          </view>
           </view>
         </open-container>
         <view class="side-actions">
@@ -170,7 +186,9 @@
             <text class="plan-tag">日程</text>
           </view>
         </view>
-        <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing"><text>还没有待办，给今天留一点计划</text><lucide-icon name="sparkles" tone="rose" size="{{24}}"></lucide-icon></view>
+        <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing">
+          <text>还没有待办，给今天留一点计划</text>
+        </view>
       </view>
 
       <view class="section-header stagger-item stagger-4">
@@ -216,6 +234,22 @@
     </view>
   </scroll-view>
 
+  <root-portal wx:if="{{petSetupDrawerMounted}}">
+    <pet-picker-drawer
+      open="{{petSetupDrawerOpen}}"
+      theme-class="{{themeClass}}"
+      motion-class="{{motionClass}}"
+      selected="{{petSelected}}"
+      selected-shape="{{petShape}}"
+      selected-color="{{petColor}}"
+      enhanced="{{petEnhanced}}"
+      reduced-motion="{{petReducedMotion}}"
+      bind:shapechange="onPendingPetShapeChange"
+      bind:colorchange="onPendingPetColorChange"
+      bind:finish="finishPendingPetSetup"
+    ></pet-picker-drawer>
+  </root-portal>
+
   <view wx:if="{{publicationPanelMounted}}" class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}">
     <view class="publication-popover-dismiss" catchtap="closePublicationPanel"></view>
     <view class="publication-popover" style="top: {{publicationPanelTop}}px; transform-origin: {{publicationPanelTransformOrigin}};" catchtap="stopPropagation">
@@ -227,7 +261,7 @@
         <view class="publication-popover-content">
           <view wx:if="{{publications.length}}" class="publication-list">
             <view class="publication-list-card">
-              <view wx:for="{{publications}}" wx:key="id" class="publication-row pressable {{!item.isRead ? 'publication-row--unread' : ''}}" data-id="{{item.id}}" catchtap="onPublicationTap" hover-class="publication-row--pressed" hover-start-time="0" hover-stay-time="80">
+              <view wx:for="{{publications}}" wx:key="id" class="publication-row" data-id="{{item.id}}" catchtap="onPublicationTap">
                 <view class="publication-icon publication-icon--{{item.kind}}"><lucide-icon name="{{item.kind === 'announcement' ? 'megaphone' : 'bell'}}" tone="{{item.kind === 'announcement' ? 'amber' : 'coral'}}" size="{{31}}"></lucide-icon><view wx:if="{{!item.isRead}}" class="publication-dot"></view></view>
                 <view class="publication-copy"><view class="publication-title-line"><text class="publication-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="publication-time">{{item.timeLabel}}</text></view><text wx:if="{{item.kind === 'announcement'}}" class="publication-preview" overflow="ellipsis" max-lines="1">{{item.previewText}}</text><view wx:else class="publication-body {{item.expanded ? 'publication-body--expanded' : ''}}"><text class="publication-body-preview" overflow="ellipsis" max-lines="1">{{item.previewText}}</text><view class="publication-body-content"><rich-text nodes="{{item.contentHtml}}"></rich-text></view></view><text class="publication-type">{{item.kind === 'announcement' ? '公告 · 点击查看全文' : (item.isLong ? (item.expanded ? '收起' : '通知 · 点击展开') : '通知')}}</text></view>
               </view>

@@ -1,0 +1,153 @@
+<view class="page pet-setup-page {{themeClass}} {{motionClass}}">
+  <navigation-bar title="我的伙伴" transparent back theme="{{theme}}">
+    <view
+      wx:if="{{canSkip}}"
+      slot="right"
+      class="setup-nav-skip pressable"
+      bindtap="skipSetup"
+      hover-class="setup-nav-skip--pressed"
+      aria-role="button"
+      aria-label="跳过校园伙伴选择"
+    >
+      <text>跳过选择</text>
+    </view>
+  </navigation-bar>
+
+  <view class="pet-setup-main page-enter">
+    <view class="selected-stage-shell stagger-item stagger-1">
+      <view class="selected-stage">
+        <view class="stage-glow" style="background: {{selectedColor}};"></view>
+      </view>
+      <view class="selected-pet-layer">
+        <view class="selected-pet-frame">
+          <geometric-pet
+            shape="{{selectedShape}}"
+            color="{{selectedColor}}"
+            state="happy"
+            enhanced="{{draftEnhanced}}"
+            reduced-motion="{{reducedMotion}}"
+            auto-cycle="{{!drawerOpen}}"
+            preview-offset-x="{{0.1}}"
+            preview-offset-y="{{0.11}}"
+            preview-scale="{{0.92}}"
+            preview-top-gutter="{{0.22}}"
+            label="当前校园伙伴"
+          ></geometric-pet>
+        </view>
+      </view>
+    </view>
+
+    <view class="partner-summary card stagger-item stagger-2">
+      <view class="partner-summary-copy">
+        <view class="partner-status-dot {{petSelected && petEnabled ? 'partner-status-dot--active' : ''}}"></view>
+        <view>
+          <text class="partner-status-title">{{petSelected ? (petEnabled ? '正在陪伴' : '已关闭') : '尚未选择'}}</text>
+        </view>
+      </view>
+      <button class="partner-adjust" bindtap="openDrawer" hover-class="partner-adjust--pressed">{{petSelected ? '调整' : '选择'}}</button>
+    </view>
+
+    <view class="partner-toggle-list card stagger-item stagger-3">
+      <view class="partner-toggle-row">
+        <view class="partner-toggle-copy">
+          <text class="partner-toggle-title">显示校园伙伴</text>
+        </view>
+        <switch
+          class="partner-toggle"
+          checked="{{draftEnabled}}"
+          color="#7d8f6e"
+          bindchange="onPetEnabledChange"
+          aria-label="校园伙伴显示开关"
+        />
+      </view>
+      <view class="partner-toggle-row partner-toggle-row--last">
+        <view class="partner-toggle-copy">
+          <text class="partner-toggle-title">增强状态</text>
+        </view>
+        <switch
+          class="partner-toggle"
+          checked="{{draftEnhanced}}"
+          color="#7d8f6e"
+          bindchange="onPetEnhancedChange"
+          aria-label="增强校园伙伴状态"
+        />
+      </view>
+    </view>
+  </view>
+
+  <view class="pet-drawer-layer {{drawerOpen ? 'pet-drawer-layer--open' : 'pet-drawer-layer--closed'}}">
+    <view
+      class="pet-drawer-scrim {{drawerOpen ? 'pet-drawer-scrim--open' : ''}}"
+      bindtap="closeDrawer"
+      catchtouchmove="noop"
+    ></view>
+    <view class="pet-drawer-card {{drawerOpen ? 'pet-drawer-card--open' : ''}}">
+      <view class="pet-drawer-handle"></view>
+      <view class="pet-drawer-header">
+        <view class="pet-drawer-title-copy">
+          <text class="pet-drawer-title">{{petSelected ? '调整伙伴' : '选择伙伴'}}</text>
+        </view>
+        <view
+          class="pet-drawer-close pressable"
+          bindtap="closeDrawer"
+          hover-class="pet-drawer-close--pressed"
+          aria-role="button"
+          aria-label="收起选择抽屉"
+        >
+          <lucide-icon name="x" tone="muted" size="{{29}}" label="关闭"></lucide-icon>
+        </view>
+      </view>
+
+      <view class="color-section">
+        <text class="drawer-section-title">颜色</text>
+        <view class="color-strip" aria-label="选择颜色">
+          <view
+            wx:for="{{colorOptions}}"
+            wx:key="id"
+            class="color-choice {{selectedColor === item.value ? 'color-choice--selected' : ''}}"
+            data-color="{{item.value}}"
+            bindtap="selectColor"
+            hover-class="color-choice--pressed"
+            aria-role="button"
+            aria-label="{{item.label}}"
+          >
+            <view class="color-swatch" style="background: {{item.value}};"></view>
+          </view>
+        </view>
+      </view>
+
+      <scroll-view class="pet-drawer-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
+        <view class="pet-drawer-scroll-content">
+          <text class="drawer-section-title">形状</text>
+          <view class="shape-grid">
+            <view
+              wx:for="{{shapeOptions}}"
+              wx:key="id"
+              class="shape-choice {{selectedShape === item.id ? 'shape-choice--selected' : ''}}"
+              data-shape="{{item.id}}"
+              bindtap="selectShape"
+              hover-class="shape-choice--pressed"
+              aria-role="button"
+              aria-label="{{item.accessibleLabel}}"
+            >
+              <view class="shape-pet-frame">
+                <geometric-pet
+                  shape="{{item.id}}"
+                  color="{{selectedColor}}"
+                  state="{{selectedShape === item.id ? 'happy' : 'idle'}}"
+                  enhanced="{{draftEnhanced}}"
+                  reduced-motion="{{reducedMotion || selectedShape !== item.id}}"
+                  auto-cycle="{{selectedShape === item.id}}"
+                  preview-offset-x="{{0.1}}"
+                  preview-offset-y="{{0.1}}"
+                  label="{{item.accessibleLabel}}"
+                ></geometric-pet>
+              </view>
+            </view>
+          </view>
+          <view class="shape-list-spacer"></view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

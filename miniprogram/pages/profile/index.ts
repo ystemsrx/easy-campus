@@ -1,7 +1,9 @@
 import { logout as logoutSession } from "../../services/auth";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
-import { loadCurrentUser } from "../../store/session";
+import type { PetShapeId } from "../../components/geometric-pet/engine-data";
+import { loadPetPreferences, shouldShowPet } from "../../store/pet";
+import { getSession, loadCurrentUser } from "../../store/session";
 import { updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
@@ -46,6 +48,12 @@ Page({
     reducedMotion: false,
     haptics: false,
     themeSheetVisible: false,
+    petShape: "blob" as PetShapeId,
+    petColor: "#111214",
+    petEnhanced: false,
+    petSelected: false,
+    petEnabled: false,
+    petVisible: false,
     themeOptions: [
       { value: "system", label: "跟随系统", caption: "自动匹配设备外观" },
       { value: "light", label: "浅色", caption: "明亮、清晰的界面" },
@@ -57,6 +65,7 @@ Page({
     const cached = getApp<IAppOption>().globalData.user || loadCurrentUser();
     if (cached) {
       this.applyUser(cached);
+      this.loadPet(cached.account);
     }
   },
   onShow() {
@@ -64,6 +73,7 @@ Page({
       return;
     }
     this.applyAppearance();
+    this.loadPet(getSession()?.user.account || "");
     this.syncTabBarAppearance();
     void this.loadUser();
   },
@@ -95,6 +105,18 @@ Page({
       enrollmentDate: enrollmentDateLabel(user.profile.enrollmentDate),
     });
   },
+  loadPet(account: string) {
+    if (!account) return;
+    const preferences = loadPetPreferences(account);
+    this.setData({
+      petShape: preferences.shape,
+      petColor: preferences.color,
+      petEnhanced: preferences.enhanced,
+      petSelected: preferences.selected,
+      petEnabled: preferences.enabled,
+      petVisible: shouldShowPet(preferences),
+    });
+  },
   async loadUser(refresh = false) {
     if (this.data.loading) {
       return;
@@ -117,6 +139,10 @@ Page({
   retryLoadUser() {
     haptic("light");
     void this.loadUser(true);
+  },
+  openPetSetup() {
+    haptic("light");
+    wx.navigateTo({ url: "/pages/pet-setup/index?source=profile" });
   },
   openThemeSheet() {
     haptic("light");
