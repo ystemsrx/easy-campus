@@ -75,6 +75,7 @@ import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
+import { sortPublicationsNewestFirst } from "../../utils/publications";
 
 interface MessagePreview {
   id: string;
@@ -145,6 +146,7 @@ let publicationRequestInFlight = false;
 let homeVisible = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
+let automaticPopupEntryKey = "";
 let dashboardRequestInFlight = false;
 let dashboardRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
@@ -270,12 +272,15 @@ function gradePreviewPatch(
 function publicationPreview(
   publication: Publication,
   expanded = false,
+  theme: "light" | "dark" = "light",
 ): PublicationPreview {
   const plainText = stripMarkdown(publication.contentMarkdown);
   return {
     ...publication,
     contentHtml: renderMarkdown(publication.contentMarkdown, {
       accentColor: publication.accentColor,
+      compact: publication.kind === "notification",
+      theme,
     }),
     previewText: plainText,
     timeLabel: formatDateTime(publication.startsAt),
@@ -457,16 +462,17 @@ Page({
     plans: [] as PlanPreview[],
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
-    announcements: [] as PublicationPreview[],
-    platformNotifications: [] as PublicationPreview[],
+    publications: [] as PublicationPreview[],
     publicationUnreadCount: 0,
     publicationUnreadLabel: "",
     publicationPanelMounted: false,
     publicationPanelOpen: false,
     publicationPanelTop: 132,
     publicationPanelTransformOrigin: "318px -31px",
+    publicationPanelScrollHeight: 0,
     announcementModalMounted: false,
     announcementModalOpen: false,
+    announcementScrollHeight: 0,
     activeAnnouncement: null as PublicationPreview | null,
   },
   onLoad() {
@@ -485,7 +491,12 @@ Page({
       return;
     }
     homeVisible = true;
-    automaticPopupsThisEntry = new Set<string>();
+    const sessionAccount = getSession()?.user.account || "";
+    const currentAutomaticPopupEntryKey = `${getApp<IAppOption>().globalData.foregroundEntryId}:${sessionAccount}`;
+    if (currentAutomaticPopupEntryKey !== automaticPopupEntryKey) {
+      automaticPopupEntryKey = currentAutomaticPopupEntryKey;
+      automaticPopupsThisEntry = new Set<string>();
+    }
     this.applyAppearance();
     this.hydrateIdentity();
     this.hydrateCachedDashboard();
@@ -494,6 +505,7 @@ Page({
       selected: 0,
       themeClass: this.data.themeClass,
       motionClass: this.data.motionClass,
+      hidden: false,
     });
     this.updateTodayCourses();
     this.setData({
@@ -664,19 +676,19 @@ Page({
     try {
       const feed = await getPublicationFeed();
       const expandedIds = new Set(
-        this.data.platformNotifications
-          .filter((item) => item.expanded)
+        this.data.publications
+          .filter((item) => item.kind === "notification" && item.expanded)
           .map((item) => item.id),
       );
-      const announcements = feed.announcements.map((item) =>
-        publicationPreview(item),
-      );
-      const platformNotifications = feed.notifications.map((item) =>
-        publicationPreview(item, expandedIds.has(item.id)),
+      const publications = sortPublicationsNewestFirst(feed.items).map((item) =>
+        publicationPreview(
+          item,
+          item.kind === "notification" && expandedIds.has(item.id),
+          this.data.theme,
+        ),
       );
       this.setData({
-        announcements,
-        platformNotifications,
+        publications,
         publicationUnreadCount: feed.unreadCount,
         publicationUnreadLabel:
           feed.unreadCount > 99 ? "99+" : String(feed.unreadCount || ""),
@@ -728,15 +740,41 @@ Page({
             publicationPanelMounted: true,
             publicationPanelTop: panelTop,
             publicationPanelTransformOrigin: `${originX}px ${originY}px`,
+            publicationPanelScrollHeight: 1,
           },
           () => {
-            setTimeout(() => {
-              if (homeVisible) this.setData({ publicationPanelOpen: true });
-            }, 16);
+            this.measurePublicationPanel(true);
           },
         );
       })
       .exec();
+  },
+  measurePublicationPanel(openAfterMeasure: boolean) {
+    setTimeout(() => {
+      if (!this.data.publicationPanelMounted) return;
+      const windowInfo = wx.getWindowInfo();
+      const windowWidth = windowInfo.windowWidth || 375;
+      const windowHeight = windowInfo.windowHeight || 667;
+      const fixedPanelHeight = (680 * windowWidth) / 750;
+      const maxPanelHeight = windowHeight * 0.62;
+      const panelHeight = Math.min(fixedPanelHeight, maxPanelHeight);
+      this.createSelectorQuery()
+        .select(".publication-popover-header")
+        .boundingClientRect()
+        .exec((results) => {
+          if (!this.data.publicationPanelMounted) return;
+          const headerHeight =
+            Number(results?.[0]?.height) || (96 * windowWidth) / 750;
+          const publicationPanelScrollHeight = Math.ceil(
+            Math.max(1, panelHeight - headerHeight),
+          );
+          this.setData({ publicationPanelScrollHeight }, () => {
+            if (openAfterMeasure && homeVisible) {
+              this.setData({ publicationPanelOpen: true });
+            }
+          });
+        });
+    }, 16);
   },
   closePublicationPanel() {
     if (!this.data.publicationPanelMounted) return;
@@ -745,7 +783,10 @@ Page({
       clearTimeout(publicationPanelTimer);
     }
     publicationPanelTimer = setTimeout(() => {
-      this.setData({ publicationPanelMounted: false });
+      this.setData({
+        publicationPanelMounted: false,
+        publicationPanelScrollHeight: 0,
+      });
       publicationPanelTimer = undefined;
     }, 260) as unknown as number;
   },
@@ -759,41 +800,57 @@ Page({
       announcementModalTimer = undefined;
     }
     queuedAnnouncements = [];
+    this.setTabBarHidden(false);
     this.setData({
       publicationPanelMounted: false,
       publicationPanelOpen: false,
+      publicationPanelScrollHeight: 0,
       announcementModalMounted: false,
       announcementModalOpen: false,
+      announcementScrollHeight: 0,
       activeAnnouncement: null,
     });
   },
-  stopPropagation() {},
-  onAnnouncementTap(event: WechatMiniprogram.TouchEvent) {
-    const id = String(event.currentTarget.dataset.id || "");
-    const announcement = this.data.announcements.find((item) => item.id === id);
-    if (!announcement) return;
-    haptic("light");
-    queuedAnnouncements = [];
-    this.closePublicationPanel();
-    void this.presentAnnouncement(announcement, false);
+  setTabBarHidden(hidden: boolean) {
+    const tabBar = this.getTabBar();
+    if (tabBar) tabBar.setData({ hidden });
   },
-  onPlatformNotificationTap(event: WechatMiniprogram.TouchEvent) {
+  stopPropagation() {},
+  onPublicationTap(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const notification = this.data.platformNotifications.find(
-      (item) => item.id === id,
-    );
-    if (!notification) return;
-    haptic("light");
-    this.markPublicationLocallyRead(id);
-    if (!notification.isRead) {
-      void markPublicationRead(id).catch(() => undefined);
+    const publication = this.data.publications.find((item) => item.id === id);
+    if (!publication) return;
+    if (publication.kind === "announcement") {
+      haptic("light");
+      queuedAnnouncements = [];
+      this.closePublicationPanel();
+      void this.presentAnnouncement(publication, false);
+      return;
     }
-    if (notification.isLong) {
-      this.setData({
-        platformNotifications: this.data.platformNotifications.map((item) =>
-          item.id === id ? { ...item, expanded: !item.expanded } : item,
-        ),
-      });
+
+    const wasUnread = !publication.isRead;
+    const publicationUnreadCount = wasUnread
+      ? Math.max(0, this.data.publicationUnreadCount - 1)
+      : this.data.publicationUnreadCount;
+    this.setData({
+      publications: this.data.publications.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              isRead: true,
+              expanded: item.isLong ? !item.expanded : item.expanded,
+            }
+          : item,
+      ),
+      publicationUnreadCount,
+      publicationUnreadLabel:
+        publicationUnreadCount > 99
+          ? "99+"
+          : String(publicationUnreadCount || ""),
+    });
+    haptic("light");
+    if (wasUnread) {
+      void markPublicationRead(id).catch(() => undefined);
     }
   },
   showNextQueuedAnnouncement() {
@@ -811,17 +868,17 @@ Page({
     publication: Publication | PublicationPreview,
     automatic: boolean,
   ) {
-    const preview = publicationPreview(publication);
+    const preview = publicationPreview(publication, false, this.data.theme);
     this.closePublicationPanel();
-    this.setData({
-      activeAnnouncement: preview,
-      announcementModalMounted: true,
-    });
-    setTimeout(() => {
-      if (homeVisible && this.data.activeAnnouncement?.id === preview.id) {
-        this.setData({ announcementModalOpen: true });
-      }
-    }, 16);
+    this.setTabBarHidden(true);
+    this.setData(
+      {
+        activeAnnouncement: preview,
+        announcementModalMounted: true,
+        announcementScrollHeight: 1,
+      },
+      () => this.measureAnnouncementModal(preview.id, true),
+    );
     this.markPublicationLocallyRead(preview.id);
     if (automatic) {
       automaticPopupsThisEntry.add(preview.id);
@@ -842,31 +899,137 @@ Page({
       if (asset.path) mediaUrls[asset.id] = asset.path;
     }
     if (this.data.activeAnnouncement?.id !== preview.id) return;
-    this.setData({
-      activeAnnouncement: {
-        ...this.data.activeAnnouncement,
-        contentHtml: renderMarkdown(preview.contentMarkdown, {
-          accentColor: preview.accentColor,
-          mediaUrls,
-        }),
+    this.setData(
+      {
+        activeAnnouncement: {
+          ...this.data.activeAnnouncement,
+          contentHtml: renderMarkdown(preview.contentMarkdown, {
+            accentColor: preview.accentColor,
+            mediaUrls,
+            theme: this.data.theme,
+          }),
+        },
       },
-    });
+      () => {
+        this.measureAnnouncementModal(preview.id, false, true);
+        setTimeout(() => {
+          if (this.data.activeAnnouncement?.id === preview.id) {
+            this.measureAnnouncementModal(preview.id, false, true);
+          }
+        }, 240);
+      },
+    );
+  },
+  measureAnnouncementModal(
+    id: string,
+    openAfterMeasure: boolean,
+    contentProbeReady = false,
+    attempt = 0,
+  ) {
+    setTimeout(() => {
+      if (
+        !this.data.announcementModalMounted ||
+        this.data.activeAnnouncement?.id !== id
+      ) {
+        return;
+      }
+      const windowInfo = wx.getWindowInfo();
+      const windowWidth = windowInfo.windowWidth || 375;
+      const windowHeight = windowInfo.windowHeight || 667;
+      const safeAreaBottom = Number(windowInfo.safeArea?.bottom);
+      const safeAreaInset = Number.isFinite(safeAreaBottom)
+        ? Math.max(0, windowHeight - safeAreaBottom)
+        : 0;
+      const maxModalHeight = windowHeight * 0.86;
+      this.createSelectorQuery()
+        .select(".announcement-header")
+        .boundingClientRect()
+        .select(".announcement-footer")
+        .boundingClientRect()
+        .select(".announcement-article")
+        .boundingClientRect()
+        .select(".announcement-content-end")
+        .boundingClientRect()
+        .exec((results) => {
+          if (
+            !this.data.announcementModalMounted ||
+            this.data.activeAnnouncement?.id !== id
+          ) {
+            return;
+          }
+          const headerHeight =
+            Number(results?.[0]?.height) || (186 * windowWidth) / 750;
+          const footerHeight =
+            Number(results?.[1]?.height) || (140 * windowWidth) / 750;
+          const maxScrollHeight = Math.max(
+            1,
+            maxModalHeight - headerHeight - footerHeight - safeAreaInset,
+          );
+          const probeContentHeight = Math.min(
+            maxScrollHeight,
+            (180 * windowWidth) / 750,
+          );
+          if (!contentProbeReady) {
+            this.setData(
+              { announcementScrollHeight: Math.ceil(probeContentHeight) },
+              () => {
+                wx.nextTick(() =>
+                  wx.nextTick(() =>
+                    this.measureAnnouncementModal(id, openAfterMeasure, true),
+                  ),
+                );
+              },
+            );
+            return;
+          }
+          const measuredContentHeight =
+            (Number(results?.[2]?.height) || 0) +
+            (Number(results?.[3]?.height) || 0);
+          if (
+            (!Number.isFinite(measuredContentHeight) ||
+              measuredContentHeight <= 1) &&
+            attempt < 2
+          ) {
+            wx.nextTick(() =>
+              this.measureAnnouncementModal(
+                id,
+                openAfterMeasure,
+                true,
+                attempt + 1,
+              ),
+            );
+            return;
+          }
+          const contentHeight =
+            Number.isFinite(measuredContentHeight) && measuredContentHeight > 0
+              ? measuredContentHeight
+              : probeContentHeight;
+          const announcementScrollHeight = Math.ceil(
+            Math.min(maxScrollHeight, contentHeight),
+          );
+          this.setData({ announcementScrollHeight }, () => {
+            if (
+              openAfterMeasure &&
+              homeVisible &&
+              this.data.activeAnnouncement?.id === id
+            ) {
+              this.setData({ announcementModalOpen: true });
+            }
+          });
+        });
+    }, 16);
   },
   markPublicationLocallyRead(id: string) {
-    const wasUnread = [
-      ...this.data.announcements,
-      ...this.data.platformNotifications,
-    ].some((item) => item.id === id && !item.isRead);
+    const wasUnread = this.data.publications.some(
+      (item) => item.id === id && !item.isRead,
+    );
     if (!wasUnread) return;
     const publicationUnreadCount = Math.max(
       0,
       this.data.publicationUnreadCount - 1,
     );
     this.setData({
-      announcements: this.data.announcements.map((item) =>
-        item.id === id ? { ...item, isRead: true } : item,
-      ),
-      platformNotifications: this.data.platformNotifications.map((item) =>
+      publications: this.data.publications.map((item) =>
         item.id === id ? { ...item, isRead: true } : item,
       ),
       publicationUnreadCount,
@@ -886,10 +1049,17 @@ Page({
     announcementModalTimer = setTimeout(() => {
       this.setData({
         announcementModalMounted: false,
+        announcementScrollHeight: 0,
         activeAnnouncement: null,
       });
       announcementModalTimer = undefined;
-      setTimeout(() => this.showNextQueuedAnnouncement(), 90);
+      setTimeout(() => {
+        if (homeVisible && queuedAnnouncements.length) {
+          this.showNextQueuedAnnouncement();
+        } else {
+          this.setTabBarHidden(false);
+        }
+      }, 90);
     }, 280) as unknown as number;
   },
   async loadDashboard(refresh: boolean, includeStableData = true) {

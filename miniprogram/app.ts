@@ -12,6 +12,7 @@ App<IAppOption>({
     user: null,
     preferences: loadPreferences(),
     selectedGrade: null,
+    foregroundEntryId: 0,
   },
   onLaunch() {
     this.globalData.session = loadSession();
@@ -29,6 +30,7 @@ App<IAppOption>({
     void refreshExamsAfterSignIn(this.globalData.session);
   },
   onShow() {
+    this.globalData.foregroundEntryId += 1;
     beginAutomaticRefreshCycle();
   },
 });

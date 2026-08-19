@@ -6,5 +6,6 @@ interface IAppOption {
     user: import("../miniprogram/types/api").CurrentUserData | null;
     preferences: import("../miniprogram/types/app").AppPreferences;
     selectedGrade: import("../miniprogram/types/api").GradeCourse | null;
+    foregroundEntryId: number;
   };
 }

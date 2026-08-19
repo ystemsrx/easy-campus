@@ -27,6 +27,10 @@ function loadTypeScriptModule(relativePath) {
 }
 
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
+const { renderMarkdown } = loadTypeScriptModule("utils/markdown.ts");
+const { sortPublicationsNewestFirst } = loadTypeScriptModule(
+  "utils/publications.ts",
+);
 const session = {
   user: { id: "7", account: "22200000", name: "林一" },
 };
@@ -71,11 +75,25 @@ const homeStyles = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
+const appScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "app.ts"),
+  "utf8",
+);
 
 assert(
   /onLoad\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript) &&
     /onShow\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript),
   "首页进入和再次显示时都必须同步恢复用户姓名",
+);
+assert(
+  appScript.includes("foregroundEntryId: 0") &&
+    /onShow\(\) \{[\s\S]*?this\.globalData\.foregroundEntryId \+= 1;/.test(
+      appScript,
+    ) &&
+    /const currentAutomaticPopupEntryKey = `\$\{getApp<IAppOption>\(\)\.globalData\.foregroundEntryId\}:\$\{sessionAccount\}`;[\s\S]*?if \(currentAutomaticPopupEntryKey !== automaticPopupEntryKey\) \{[\s\S]*?automaticPopupsThisEntry = new Set<string>\(\);[\s\S]*?\}/.test(
+      homeScript,
+    ),
+  "每次弹出公告必须按小程序前台进入周期去重，不能在每次返回主页时重置",
 );
 assert(
   homeStyles.includes(
@@ -114,18 +132,197 @@ assert(
   "首页必须在服务器成绩快照返回时立即缓存并渲染，不能等待其他首页请求",
 );
 
+const publicationPopoverStyle =
+  /\.publication-popover \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationPopoverScrollStyle =
+  /\.publication-popover-scroll \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationPressedStyle =
+  /\.publication-row--pressed \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationRowStyle =
+  /\.publication-row \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationBodyStyle =
+  /\.publication-body \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationBodyExpandedStyle =
+  /\.publication-body--expanded \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationBodyPreviewStyle =
+  /\.publication-body-preview \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationBodyContentStyle =
+  /\.publication-body-content \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const expandedPublicationBodyPreviewStyle =
+  /\.publication-body--expanded \.publication-body-preview \{([^}]*)\}/.exec(
+    homeStyles,
+  )?.[1] || "";
+const expandedPublicationBodyContentStyle =
+  /\.publication-body--expanded \.publication-body-content \{([^}]*)\}/.exec(
+    homeStyles,
+  )?.[1] || "";
+const publicationTapHandler =
+  /onPublicationTap\(event: WechatMiniprogram\.TouchEvent\) \{([\s\S]*?)\n  \},\n  showNextQueuedAnnouncement/.exec(
+    homeScript,
+  )?.[1] || "";
+const publicationPanelMeasure =
+  /measurePublicationPanel\(openAfterMeasure: boolean\) \{([\s\S]*?)\n  \},\n  closePublicationPanel/.exec(
+    homeScript,
+  )?.[1] || "";
 assert(
-  homeTemplate.includes("publication-popover--empty") &&
-    /\.publication-popover \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*height: 62vh;[^}]*\}/.test(
-      homeStyles,
+  !homeTemplate.includes("publication-popover--empty") &&
+    publicationPopoverStyle.includes("display: flex;") &&
+    publicationPopoverStyle.includes("flex-direction: column;") &&
+    publicationPopoverStyle.includes("height: 680rpx;") &&
+    publicationPopoverStyle.includes("max-height: 62vh;") &&
+    publicationPopoverScrollStyle.includes("flex: none;") &&
+    publicationPopoverScrollStyle.includes("min-height: 0;") &&
+    !publicationPopoverScrollStyle.includes("transition: height") &&
+    !/(?:^|;)\s*height:/.test(publicationPopoverScrollStyle) &&
+    homeTemplate.includes('class="publication-popover-content"') &&
+    homeTemplate.includes(
+      'style="height: {{publicationPanelScrollHeight}}px;"',
     ) &&
-    /\.publication-popover--empty \{[^}]*height: 400rpx;[^}]*min-height: 400rpx;[^}]*\}/.test(
-      homeStyles,
+    /class="publication-popover-scroll"[^>]*type="custom"/.test(homeTemplate) &&
+    publicationPanelMeasure.includes(
+      "const fixedPanelHeight = (680 * windowWidth) / 750;",
     ) &&
-    /\.publication-popover-scroll \{[^}]*flex: 1;[^}]*height: 0;[^}]*min-height: 0;[^}]*\}/.test(
-      homeStyles,
+    publicationPanelMeasure.includes(
+      "const maxPanelHeight = windowHeight * 0.62;",
+    ) &&
+    publicationPanelMeasure.includes("publicationPanelScrollHeight") &&
+    !publicationPanelMeasure.includes('selectAll(".publication-row")') &&
+    !publicationPanelMeasure.includes('select(".publication-empty")'),
+  "首页消息弹窗必须始终保持四条消息高度，展开正文时不得改变外层高度",
+);
+assert(
+  /wx:for="\{\{publications\}\}"[^>]*catchtap="onPublicationTap"[^>]*hover-class="publication-row--pressed"[^>]*hover-start-time="0"[^>]*hover-stay-time="80"/.test(
+    homeTemplate,
+  ) &&
+    publicationRowStyle.includes(
+      "transition: transform 100ms ease, background-color 100ms ease;",
+    ) &&
+    publicationPressedStyle.includes("transform: scale(0.995);") &&
+    publicationPressedStyle.includes("background: rgba(184, 92, 56, 0.035);") &&
+    (publicationTapHandler.match(/this\.setData\(/g) || []).length === 1 &&
+    publicationTapHandler.includes('publication.kind === "announcement"') &&
+    publicationTapHandler.includes("isRead: true") &&
+    publicationTapHandler.includes("expanded:") &&
+    !publicationTapHandler.includes("measurePublicationPanel") &&
+    !publicationTapHandler.includes("markPublicationLocallyRead"),
+  "首页消息点击必须立即合并更新已读和展开状态，并使用轻量按压反馈",
+);
+const compactNotification = renderMarkdown("第一行\n第二行", {
+  compact: true,
+});
+assert(
+  compactNotification.includes("font-size:14px") &&
+    homeScript.includes('compact: publication.kind === "notification"') &&
+    homeTemplate.includes('class="publication-body-preview"') &&
+    homeTemplate.includes('class="publication-body-content"') &&
+    !homeTemplate.includes('<rich-text wx:if="{{item.expanded}}"') &&
+    publicationBodyStyle.includes("font-size: 20rpx;") &&
+    publicationBodyStyle.includes("max-height: 30rpx;") &&
+    publicationBodyStyle.includes(
+      "transition: max-height 280ms cubic-bezier(0.22, 1, 0.36, 1);",
+    ) &&
+    publicationBodyExpandedStyle.includes("max-height: 300rpx;") &&
+    publicationBodyExpandedStyle.includes("transition-duration: 460ms;") &&
+    publicationBodyExpandedStyle.includes(
+      "transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);",
+    ) &&
+    publicationBodyPreviewStyle.includes(
+      "transition: opacity 100ms ease 180ms;",
+    ) &&
+    publicationBodyContentStyle.includes(
+      "transition: opacity 100ms ease 180ms;",
+    ) &&
+    expandedPublicationBodyPreviewStyle.includes(
+      "transition: opacity 140ms ease;",
+    ) &&
+    expandedPublicationBodyContentStyle.includes(
+      "transition: opacity 220ms ease 90ms;",
     ),
-  "首页消息弹窗必须给列表明确高度，并在无内容时保留空状态区域",
+  "多行通知必须使用较小正文字号和稳定内容节点平滑展开、折叠",
+);
+const orderedPublications = sortPublicationsNewestFirst([
+  {
+    id: "oldest",
+    startsAt: "2026-08-17T08:00:00.000Z",
+    createdAt: "2026-08-17T08:00:00.000Z",
+  },
+  {
+    id: "newest",
+    startsAt: "2026-08-19T08:00:00.000Z",
+    createdAt: "2026-08-19T08:00:00.000Z",
+  },
+  {
+    id: "middle",
+    startsAt: "2026-08-18T08:00:00.000Z",
+    createdAt: "2026-08-18T08:00:00.000Z",
+  },
+]);
+assert(
+  orderedPublications.map((item) => item.id).join(",") ===
+    "newest,middle,oldest" &&
+    homeScript.includes("sortPublicationsNewestFirst(feed.items)") &&
+    homeTemplate.includes('class="publication-list"') &&
+    !homeTemplate.includes('class="publication-group-header"') &&
+    !homeTemplate.includes('wx:for="{{announcements}}"') &&
+    !homeTemplate.includes('wx:for="{{platformNotifications}}"'),
+  "首页公告与通知必须合并为一个列表，并按发布时间倒序排列",
+);
+
+const darkAnnouncement = renderMarkdown("# 公告\n\n正文", { theme: "dark" });
+const announcementModalStyle =
+  /\.announcement-modal \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+assert(
+  darkAnnouncement.includes("正文") &&
+    darkAnnouncement.includes("color:#ddd5c7") &&
+    darkAnnouncement.includes("color:#f7f3e9"),
+  "深色模式公告正文和标题必须使用可读的亮色",
+);
+const plainDelimitedText = renderMarkdown("*星号包裹* 与 _下划线包裹_");
+const plainDelimitedLatin = renderMarkdown("normal *plain words* normal");
+assert(
+  plainDelimitedText.includes("星号包裹 与 下划线包裹") &&
+    !plainDelimitedText.includes("<em") &&
+    !plainDelimitedText.includes("*星号包裹*") &&
+    !plainDelimitedText.includes("_下划线包裹_") &&
+    !homeStyles.includes(".publication-body em") &&
+    !homeStyles.includes(".announcement-article em"),
+  "公告 Markdown 的单星号和单下划线只应移除包裹符并输出普通正文",
+);
+assert(
+  plainDelimitedLatin.includes("normal plain words normal") &&
+    !plainDelimitedLatin.includes("<em"),
+  "公告 Markdown 的英文单星号内容必须保持普通行内排版",
+);
+assert(
+  /<root-portal[\s\S]*?announcement-modal-layer[\s\S]*?<\/root-portal>/.test(
+    homeTemplate,
+  ) &&
+    homeTemplate.includes('class="announcement-content-body"') &&
+    homeTemplate.includes('style="height: {{announcementScrollHeight}}px;"') &&
+    /class="announcement-content"[^>]*type="custom"/.test(homeTemplate) &&
+    homeTemplate.includes('class="announcement-content-end"') &&
+    /\.announcement-modal-layer \{[^}]*z-index: 1300;[^}]*\}/.test(
+      homeStyles,
+    ) &&
+    announcementModalStyle.includes("max-height: 86vh;") &&
+    announcementModalStyle.includes("overflow: hidden;") &&
+    !/(?:^|;)\s*height:\s*86vh;/.test(announcementModalStyle) &&
+    /\.announcement-content \{[^}]*flex: none;[^}]*min-height: 0;[^}]*\}/.test(
+      homeStyles,
+    ) &&
+    /measureAnnouncementModal\([\s\S]*?\.select\("\.announcement-header"\)[\s\S]*?\.select\("\.announcement-footer"\)[\s\S]*?\.select\("\.announcement-article"\)[\s\S]*?\.select\("\.announcement-content-end"\)[\s\S]*?maxModalHeight[\s\S]*?announcementScrollHeight/.test(
+      homeScript,
+    ) &&
+    /presentAnnouncement\([\s\S]*?this\.setTabBarHidden\(true\)/.test(
+      homeScript,
+    ) &&
+    /closeAnnouncementModal\([\s\S]*?this\.setTabBarHidden\(false\)/.test(
+      homeScript,
+    ) &&
+    /resetPublicationLayers\([\s\S]*?this\.setTabBarHidden\(false\)/.test(
+      homeScript,
+    ),
+  "公告抽屉必须按内容自适应，并在达到最大高度后滚动正文",
 );
 
 console.log("Home cache and identity checks passed.");

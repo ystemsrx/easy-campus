@@ -1,11 +1,12 @@
 interface MarkdownOptions {
   accentColor?: string;
+  compact?: boolean;
   mediaUrls?: Record<string, string>;
+  theme?: "light" | "dark";
 }
 
 const MEDIA_PATTERN =
   /^media:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -62,7 +63,8 @@ function inlineMarkdown(
     )
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
     .replace(/__([^_\n]+)__/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2")
+    .replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1$2");
   return value.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => {
     return tokens[Number(index)] || "";
   });
@@ -74,6 +76,13 @@ export function renderMarkdown(
 ): string {
   const accent = safeAccent(options.accentColor);
   const mediaUrls = options.mediaUrls || {};
+  const dark = options.theme === "dark";
+  const textColor = dark ? "#ddd5c7" : "#263247";
+  const headingColor = dark ? "#f7f3e9" : "#172033";
+  const mutedColor = dark ? "#b8ae9e" : "#657086";
+  const mutedBackground = dark ? "#39352e" : "#f4f6fa";
+  const codeBackground = dark ? "#35312b" : "#f0f3f7";
+  const bodyFontSize = options.compact ? 14 : 15;
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
   const blocks: string[] = [];
   let paragraph: string[] = [];
@@ -106,7 +115,7 @@ export function renderMarkdown(
       flushList();
       if (code) {
         blocks.push(
-          `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;overflow:auto;color:#263247;background:#f0f3f7;font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
+          `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;overflow:auto;color:${textColor};background:${codeBackground};font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
         );
         code = null;
       } else {
@@ -125,7 +134,7 @@ export function renderMarkdown(
       const level = heading[1].length;
       const size = [0, 24, 21, 18, 16][level];
       blocks.push(
-        `<h${level} style="margin:${level === 1 ? 0 : 8}px 0 12px;color:#172033;font-size:${size}px;line-height:1.35;">${inlineMarkdown(heading[2], accent, mediaUrls)}</h${level}>`,
+        `<h${level} style="margin:${level === 1 ? 0 : 8}px 0 12px;color:${headingColor};font-size:${size}px;line-height:1.35;">${inlineMarkdown(heading[2], accent, mediaUrls)}</h${level}>`,
       );
       continue;
     }
@@ -134,7 +143,7 @@ export function renderMarkdown(
       flushParagraph();
       flushList();
       blocks.push(
-        `<blockquote style="margin:0 0 14px;padding:10px 14px;border-left:3px solid ${accent};border-radius:0 10px 10px 0;color:#657086;background:#f4f6fa;line-height:1.65;">${inlineMarkdown(quote[1], accent, mediaUrls)}</blockquote>`,
+        `<blockquote style="margin:0 0 14px;padding:10px 14px;border-left:3px solid ${accent};border-radius:0 10px 10px 0;color:${mutedColor};background:${mutedBackground};line-height:1.65;">${inlineMarkdown(quote[1], accent, mediaUrls)}</blockquote>`,
       );
       continue;
     }
@@ -158,12 +167,12 @@ export function renderMarkdown(
   }
   if (code) {
     blocks.push(
-      `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;color:#263247;background:#f0f3f7;font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
+      `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;color:${textColor};background:${codeBackground};font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
     );
   }
   flushParagraph();
   flushList();
-  return `<div style="color:#263247;font-size:15px;line-height:1.72;overflow-wrap:anywhere;">${blocks.join("")}</div>`;
+  return `<div style="color:${textColor};font-size:${bodyFontSize}px;line-height:1.72;overflow-wrap:anywhere;">${blocks.join("")}</div>`;
 }
 
 export function stripMarkdown(markdown: string): string {
