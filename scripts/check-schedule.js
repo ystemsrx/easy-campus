@@ -110,6 +110,10 @@ const pageScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "schedule", "index.ts"),
   "utf8",
 );
+const renderScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "data", "schedule-render.ts"),
+  "utf8",
+);
 const timetableScript = fs.readFileSync(
   path.resolve(
     __dirname,
@@ -165,8 +169,9 @@ assert(
   "添加待办抽屉必须绕开 Skyline 插槽列表测量并按内容自适应高度",
 );
 assert(
-  pageScript.includes("layoutScheduleOverlaps([...courses, ...planEntries])") &&
-    !template.includes("重叠安排并排显示"),
+  renderScript.includes(
+    "layoutScheduleOverlaps([...courses, ...planEntries])",
+  ) && !template.includes("重叠安排并排显示"),
   "日程时间轴必须合并课程与待办后统一计算重叠分列",
 );
 assert(
@@ -247,8 +252,17 @@ assert(
       pageStyles,
     ) &&
     !/\.timeline-entry--done\s*\{[^}]*opacity:/.test(pageStyles) &&
-    pageScript.includes('? "日程" : `日程 · 延续至 ${plan.endDate}`'),
+    renderScript.includes('? "日程" : `日程 · 延续至 ${plan.endDate}`'),
   "用户日程必须使用圆角虚线，完成后划除标题与时间，并显示日程类型",
+);
+assert(
+  renderScript.includes("export function prewarmScheduleFirstScreen(") &&
+    renderScript.includes("buildScheduleWeekView(") &&
+    pageScript.includes("getPrewarmedScheduleFirstScreen(account)") &&
+    pageScript.includes("this.setData(prewarmed.view)") &&
+    pageScript.includes("getPreloadedTimetable()") &&
+    pageScript.includes("getPreloadedSchedule()"),
+  "日程页必须复用启动时预构建的首屏与静默请求",
 );
 assert(
   /\.timeline-legend > view\s*\{[^}]*flex:\s*none;[^}]*white-space:\s*nowrap;/s.test(

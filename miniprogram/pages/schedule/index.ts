@@ -1,34 +1,26 @@
+import { currentIsoWeekday } from "../../data/timetable";
+import { defaultPlanEnd, nextWholeHour } from "../../data/schedule";
 import {
-  coursesForDate,
-  currentIsoWeekday,
-  formatClock,
-  teachingWeekForDate,
-  timeToMinutes,
-  type TimetableCourse,
-} from "../../data/timetable";
+  buildScheduleDayView,
+  buildScheduleWeekView,
+  getPrewarmedScheduleFirstScreen,
+  scheduleDateFromKey,
+  SCHEDULE_TIMELINE_HEIGHT,
+  type ScheduleDayOption,
+  type ScheduleEntry,
+} from "../../data/schedule-render";
 import {
-  defaultPlanEnd,
-  layoutScheduleOverlaps,
-  nextWholeHour,
-  vacationLabelForDate,
-  type ScheduleColumnLayout,
-} from "../../data/schedule";
-import {
-  getLocalSchedule,
-  getTimetable,
-  putLocalSchedule,
-} from "../../services/teaching";
+  getPreloadedSchedule,
+  getPreloadedTimetable,
+} from "../../services/primary-tab-preload";
+import { getTimetable, putLocalSchedule } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
   isCacheStale,
   shouldUseServerSnapshot,
   WEEK_MS,
 } from "../../store/cache-policy";
-import {
-  loadScheduleData,
-  saveScheduleData,
-  storeScheduleData,
-} from "../../store/schedule";
+import { loadScheduleData, saveScheduleData } from "../../store/schedule";
 import { getSession } from "../../store/session";
 import {
   loadTimetableSnapshot,
@@ -36,130 +28,33 @@ import {
 } from "../../store/timetable";
 import type { LocalSchedulePlan, TimetableData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
-import { formatFriendlyDate, toDateString } from "../../utils/date";
+import { toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
-
-interface DayOption {
-  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  shortLabel: string;
-  dateLabel: string;
-  date: string;
-  isToday: boolean;
-  hasPlan: boolean;
-}
-
-interface ScheduleEntryBase {
-  id: string;
-  kind: "course" | "plan";
-  title: string;
-  subtitle: string;
-  startTime: string;
-  endTime: string;
-  timeLabel: string;
-  tone: TimetableCourse["tone"] | "plan";
-  done: boolean;
-  top: number;
-  height: number;
-}
-
-interface ScheduleEntry extends ScheduleEntryBase, ScheduleColumnLayout {
-  displayMeta: string;
-}
-
-const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
-const DAY_START = 8 * 60;
-const DAY_END = 22 * 60 + 30;
-const RPX_PER_MINUTE = 1.55;
-
-function mondayOf(date: Date): Date {
-  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const weekday = date.getDay() || 7;
-  monday.setDate(monday.getDate() - weekday + 1);
-  return monday;
-}
-
-function entryGeometry(startTime: string, endTime: string) {
-  const start = Math.max(DAY_START, timeToMinutes(startTime));
-  const end = Math.min(DAY_END, Math.max(start + 30, timeToMinutes(endTime)));
-  return {
-    top: Math.round((start - DAY_START) * RPX_PER_MINUTE),
-    height: Math.max(74, Math.round((end - start) * RPX_PER_MINUTE)),
-  };
-}
-
-function dateFromKey(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day, 12);
-}
-
-function buildEntries(
-  timetable: TimetableData | null,
-  date: string,
-  plans: LocalSchedulePlan[],
-): ScheduleEntry[] {
-  const selectedDate = dateFromKey(date);
-  const courses: ScheduleEntryBase[] = coursesForDate(
-    timetable,
-    date,
-    selectedDate,
-  ).map((course) => ({
-    id: course.id,
-    kind: "course" as const,
-    title: course.name,
-    subtitle: `${course.location} · ${course.teacher}`,
-    startTime: course.startTime,
-    endTime: course.endTime,
-    timeLabel: `${course.periodLabel} · ${course.startTime}–${course.endTime}`,
-    tone: course.tone,
-    done: false,
-    ...entryGeometry(course.startTime, course.endTime),
-  }));
-  const planEntries: ScheduleEntryBase[] = plans
-    .filter((plan) => plan.date === date)
-    .map((plan) => ({
-      id: plan.id,
-      kind: "plan" as const,
-      title: plan.title,
-      subtitle:
-        plan.endDate === plan.date ? "日程" : `日程 · 延续至 ${plan.endDate}`,
-      startTime: plan.startTime,
-      endTime: plan.endTime,
-      timeLabel: `${plan.startTime}–${plan.endDate === plan.date ? "" : "次日 "}${plan.endTime}`,
-      tone: "plan" as const,
-      done: plan.done,
-      ...entryGeometry(
-        plan.startTime,
-        plan.endDate === plan.date ? plan.endTime : "22:30",
-      ),
-    }));
-  return layoutScheduleOverlaps([...courses, ...planEntries]).map((entry) => ({
-    ...entry,
-    displayMeta: entry.compact
-      ? entry.timeLabel
-      : `${entry.timeLabel} · ${entry.subtitle}`,
-  }));
-}
 
 let activeTimetable: TimetableData | null = null;
 let activeAccount = "";
 let timetableRequestInFlight = false;
 let scheduleSyncInFlight = false;
+let skipNextScheduleRebuild = false;
+let activeSchedulePrewarmRevision = 0;
+let activeTimetableStoredAt = 0;
+let activeScheduleUpdatedAt: string | null = null;
 
 Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     motionClass: "motion-normal",
-    currentTime: formatClock(),
+    currentTime: "",
     monthLabel: "",
     teachingWeekLabel: "",
-    days: [] as DayOption[],
+    days: [] as ScheduleDayOption[],
     selectedWeekday: currentIsoWeekday(),
     selectedDate: toDateString(new Date()),
     selectedDateLabel: "",
     entries: [] as ScheduleEntry[],
-    timelineHeight: Math.round((DAY_END - DAY_START) * RPX_PER_MINUTE),
+    timelineHeight: SCHEDULE_TIMELINE_HEIGHT,
     creating: false,
     title: "",
     startDate: toDateString(new Date()),
@@ -171,8 +66,23 @@ Page({
   },
   onLoad() {
     this.setData(resolveAppearance());
-    this.hydrateTimetable();
-    this.rebuildWeek();
+    const account = getSession()?.user.account || "";
+    const prewarmed = getPrewarmedScheduleFirstScreen(account);
+    if (prewarmed) {
+      activeAccount = account;
+      activeTimetable = prewarmed.timetable;
+      activeSchedulePrewarmRevision = prewarmed.revision;
+      activeTimetableStoredAt = prewarmed.timetableStoredAt;
+      activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
+      this.setData(prewarmed.view);
+    } else {
+      activeSchedulePrewarmRevision = 0;
+      activeTimetableStoredAt = 0;
+      activeScheduleUpdatedAt = null;
+      this.hydrateTimetable();
+      this.rebuildWeek();
+    }
+    skipNextScheduleRebuild = true;
   },
   onShow() {
     if (!ensureAuthenticated()) return;
@@ -187,7 +97,11 @@ Page({
       });
     }
     this.hydrateTimetable();
-    this.rebuildWeek();
+    if (skipNextScheduleRebuild) {
+      skipNextScheduleRebuild = false;
+    } else {
+      this.rebuildWeek();
+    }
     void this.loadTimetable();
     void this.syncSchedule();
   },
@@ -201,25 +115,51 @@ Page({
   },
   hydrateTimetable() {
     const account = getSession()?.user.account || "";
-    if (!account || account === activeAccount) return;
-    activeAccount = account;
-    activeTimetable = loadTimetableSnapshot(account)?.data || null;
+    if (!account) return;
+    if (account !== activeAccount) {
+      activeAccount = account;
+      const snapshot = loadTimetableSnapshot(account);
+      activeTimetable = snapshot?.data || null;
+      activeTimetableStoredAt = snapshot?.localStoredAt || 0;
+    } else if (!activeTimetable) {
+      const snapshot = loadTimetableSnapshot(account);
+      activeTimetable = snapshot?.data || null;
+      activeTimetableStoredAt = snapshot?.localStoredAt || 0;
+    }
+  },
+  applyPrewarmedSchedule() {
+    const prewarmed = getPrewarmedScheduleFirstScreen(activeAccount);
+    if (!prewarmed || prewarmed.revision === activeSchedulePrewarmRevision) {
+      return false;
+    }
+    activeTimetable = prewarmed.timetable;
+    activeSchedulePrewarmRevision = prewarmed.revision;
+    activeTimetableStoredAt = prewarmed.timetableStoredAt;
+    activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
+    this.setData(prewarmed.view);
+    return true;
   },
   async loadTimetable() {
     if (timetableRequestInFlight) return;
     timetableRequestInFlight = true;
     let shouldRefreshAfterward = false;
     try {
-      const result = await getTimetable();
+      const result = await getPreloadedTimetable();
+      if (!result) return;
       const local = loadTimetableSnapshot(activeAccount);
       if (shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
-        activeTimetable = result.data;
         saveTimetableSnapshot(activeAccount, result.data, {
           serverFetchedAt: result.meta.fetchedAt,
         });
+      }
+      this.applyPrewarmedSchedule();
+      const current = loadTimetableSnapshot(activeAccount);
+      const storedAt = current?.localStoredAt || 0;
+      if (storedAt !== activeTimetableStoredAt) {
+        activeTimetable = current?.data || result.data;
+        activeTimetableStoredAt = storedAt;
         this.rebuildWeek();
       }
-      const current = loadTimetableSnapshot(activeAccount);
       shouldRefreshAfterward =
         isCacheStale(current, WEEK_MS) &&
         claimAutomaticRefresh("timetable", activeAccount);
@@ -238,9 +178,10 @@ Page({
     try {
       const result = await getTimetable({ refresh: true });
       activeTimetable = result.data;
-      saveTimetableSnapshot(activeAccount, result.data, {
+      const snapshot = saveTimetableSnapshot(activeAccount, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
       });
+      activeTimetableStoredAt = snapshot?.localStoredAt || Date.now();
       this.rebuildWeek();
     } catch {
       // 周期刷新失败时继续使用旧课表。
@@ -252,15 +193,12 @@ Page({
     if (scheduleSyncInFlight || !activeAccount) return;
     scheduleSyncInFlight = true;
     try {
-      const local = loadScheduleData(activeAccount);
-      const result = await getLocalSchedule();
-      if (local.clientUpdatedAt) {
-        if (JSON.stringify(local) !== JSON.stringify(result.data)) {
-          await putLocalSchedule(local);
+      await getPreloadedSchedule();
+      if (!this.applyPrewarmedSchedule()) {
+        const updatedAt = loadScheduleData(activeAccount).clientUpdatedAt;
+        if (updatedAt !== activeScheduleUpdatedAt) {
+          this.rebuildWeek();
         }
-      } else if (result.data.clientUpdatedAt || result.data.plans.length) {
-        storeScheduleData(activeAccount, result.data);
-        this.rebuildWeek();
       }
     } catch {
       // 日程以本地状态为准，服务端暂不可用时等待下次进入再同步。
@@ -270,65 +208,37 @@ Page({
   },
   persistPlans(plans: LocalSchedulePlan[]) {
     const data = saveScheduleData(activeAccount, plans);
+    activeScheduleUpdatedAt = data.clientUpdatedAt;
     void putLocalSchedule(data).catch(() => {
       // 本地写入已经完成，服务端将在下次进入页面时追平。
     });
   },
   rebuildWeek() {
-    const now = new Date();
-    const plans = loadScheduleData(activeAccount).plans;
-    const monday = mondayOf(now);
-    const todayKey = toDateString(now);
-    const days = DAY_LABELS.map((shortLabel, index) => {
-      const date = new Date(monday);
-      date.setDate(date.getDate() + index);
-      const weekday = (index + 1) as DayOption["weekday"];
-      const dateKey = toDateString(date);
-      return {
-        weekday,
-        shortLabel,
-        dateLabel: String(date.getDate()),
-        date: dateKey,
-        isToday: dateKey === todayKey,
-        hasPlan: plans.some((plan) => plan.date === dateKey),
-      };
-    });
-    const selected =
-      days.find((day) => day.weekday === this.data.selectedWeekday) || days[0];
-    this.setData({
-      currentTime: formatClock(now),
-      days,
-    });
-    this.applyDay(selected.weekday, days, plans);
+    const schedule = loadScheduleData(activeAccount);
+    activeScheduleUpdatedAt = schedule.clientUpdatedAt;
+    this.setData(
+      buildScheduleWeekView(
+        activeTimetable,
+        schedule.plans,
+        this.data.selectedWeekday,
+      ),
+    );
   },
   applyDay(
-    weekday: DayOption["weekday"],
-    dayOptions?: DayOption[],
+    weekday: ScheduleDayOption["weekday"],
+    dayOptions?: ScheduleDayOption[],
     planOptions?: LocalSchedulePlan[],
   ) {
-    const days: DayOption[] = dayOptions || this.data.days;
+    const days: ScheduleDayOption[] = dayOptions || this.data.days;
     const plans: LocalSchedulePlan[] =
       planOptions || loadScheduleData(activeAccount).plans;
-    const selected = days.find((day: DayOption) => day.weekday === weekday);
-    if (!selected) return;
-    const selectedDate = dateFromKey(selected.date);
-    const teachingWeek = teachingWeekForDate(activeTimetable, selectedDate);
-    this.setData({
-      selectedWeekday: weekday,
-      selectedDate: selected.date,
-      monthLabel: `${selectedDate.getMonth() + 1} 月`,
-      teachingWeekLabel:
-        teachingWeek === null
-          ? vacationLabelForDate(activeTimetable, selected.date) || ""
-          : `第 ${teachingWeek} 教学周`,
-      selectedDateLabel: `${formatFriendlyDate(selected.date)}${selected.isToday ? " · 今天" : ""}`,
-      entries: buildEntries(activeTimetable, selected.date, plans),
-    });
+    const view = buildScheduleDayView(activeTimetable, days, plans, weekday);
+    if (view) this.setData(view);
   },
   selectDay(event: WechatMiniprogram.TouchEvent) {
     const weekday = Number(
       event.currentTarget.dataset.weekday,
-    ) as DayOption["weekday"];
+    ) as ScheduleDayOption["weekday"];
     if (weekday === this.data.selectedWeekday) return;
     this.applyDay(weekday);
   },
@@ -456,7 +366,7 @@ Page({
       selectedDate: this.data.startDate,
     });
     this.setTabBarHidden(false);
-    const selectedDate = dateFromKey(this.data.startDate);
+    const selectedDate = scheduleDateFromKey(this.data.startDate);
     this.setData({ selectedWeekday: currentIsoWeekday(selectedDate) });
     this.rebuildWeek();
   },

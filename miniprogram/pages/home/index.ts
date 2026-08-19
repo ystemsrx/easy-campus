@@ -1,8 +1,11 @@
 import {
   getCredentialStatus,
-  getCurrentUser,
   logout as logoutSession,
 } from "../../services/auth";
+import {
+  getPreloadedCurrentUser,
+  getPreloadedTimetable,
+} from "../../services/primary-tab-preload";
 import {
   downloadPublicationMedia,
   getPublicationFeed,
@@ -1090,8 +1093,8 @@ Page({
     });
 
     const userRequest = includeStableData
-      ? getCurrentUser().then((user) => {
-          if (homeVisible) this.hydrateIdentity(user);
+      ? getPreloadedCurrentUser(refresh).then((user) => {
+          if (user && homeVisible) this.hydrateIdentity(user);
           return user;
         })
       : Promise.resolve(null);
@@ -1113,7 +1116,11 @@ Page({
       getMessages({ page: 1, pageSize: 15, refresh }),
       getNotices({ page: 1, pageSize: 15, refresh }),
       gradeRequest,
-      includeStableData ? getTimetable({ refresh }) : Promise.resolve(null),
+      includeStableData
+        ? refresh
+          ? getTimetable({ refresh: true })
+          : getPreloadedTimetable()
+        : Promise.resolve(null),
     ]);
 
     const serviceHealthy =
@@ -1161,15 +1168,17 @@ Page({
         saveTimetableSnapshot(account, timetableResult.value.data, {
           serverFetchedAt: timetableResult.value.meta.fetchedAt,
         });
-        const now = new Date();
-        const courses = todayCoursePreview(now);
-        patch.currentTime = formatClock(now);
-        patch.todayCourses = courses;
-        patch.remainingCourseCount = remainingCourses(
-          activeTimetable,
-          now,
-        ).length;
       }
+      activeTimetable =
+        loadTimetableSnapshot(account)?.data || timetableResult.value.data;
+      const now = new Date();
+      const courses = todayCoursePreview(now);
+      patch.currentTime = formatClock(now);
+      patch.todayCourses = courses;
+      patch.remainingCourseCount = remainingCourses(
+        activeTimetable,
+        now,
+      ).length;
     }
     if (
       messageResult.status === "rejected" &&

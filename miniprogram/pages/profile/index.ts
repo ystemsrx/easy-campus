@@ -1,4 +1,5 @@
-import { getCurrentUser, logout as logoutSession } from "../../services/auth";
+import { logout as logoutSession } from "../../services/auth";
+import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
 import { loadCurrentUser } from "../../store/session";
 import { updatePreferences } from "../../store/preferences";
@@ -53,7 +54,7 @@ Page({
   },
   onLoad() {
     this.applyAppearance();
-    const cached = loadCurrentUser();
+    const cached = getApp<IAppOption>().globalData.user || loadCurrentUser();
     if (cached) {
       this.applyUser(cached);
     }
@@ -94,7 +95,7 @@ Page({
       enrollmentDate: enrollmentDateLabel(user.profile.enrollmentDate),
     });
   },
-  async loadUser() {
+  async loadUser(refresh = false) {
     if (this.data.loading) {
       return;
     }
@@ -103,8 +104,8 @@ Page({
       errorMessage: "",
     });
     try {
-      const user = await getCurrentUser();
-      this.applyUser(user);
+      const user = await getPreloadedCurrentUser(refresh);
+      if (user) this.applyUser(user);
     } catch (error) {
       this.setData({
         errorMessage: getErrorMessage(error, "个人资料加载失败。"),
@@ -115,7 +116,7 @@ Page({
   },
   retryLoadUser() {
     haptic("light");
-    void this.loadUser();
+    void this.loadUser(true);
   },
   openThemeSheet() {
     haptic("light");

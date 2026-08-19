@@ -1,6 +1,10 @@
 import { MINIPROGRAM_NAME } from "../../config/env";
-import { getCurrentUser, login } from "../../services/auth";
+import { login } from "../../services/auth";
 import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
+import {
+  getPreloadedCurrentUser,
+  preloadPrimaryTabs,
+} from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
 import { isAuthenticated } from "../../store/session";
 import { resolveAppearance } from "../../utils/appearance";
@@ -335,7 +339,8 @@ Page({
     this.setData({ loading: true });
     try {
       const session = await login(account, password);
-      await getCurrentUser().catch(() => undefined);
+      preloadPrimaryTabs(session);
+      await getPreloadedCurrentUser().catch(() => undefined);
       void refreshExamsAfterSignIn(session);
       await wavingCompletion;
       if (!pageActive) {
@@ -346,10 +351,7 @@ Page({
     } catch (error) {
       haptic("heavy");
       this.showErrorToast(
-        getErrorMessage(
-          error,
-          "登录失败，请检查账号、密码和网络。",
-        ),
+        getErrorMessage(error, "登录失败，请检查账号、密码和网络。"),
       );
       this.resumeMascotAfterSubmit();
     } finally {

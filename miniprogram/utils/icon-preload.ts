@@ -61,9 +61,21 @@ const ICON_TONES = [
 
 const PRIORITY_PATHS = [
   "/assets/icons/arrow-left-white.svg",
+  "/assets/icons/calendar-days-ink.svg",
+  "/assets/icons/calendar-days-muted.svg",
+  "/assets/icons/calendar-days-white.svg",
+  "/assets/icons/check-white.svg",
   "/assets/icons/chevron-right-white.svg",
   "/assets/icons/home-white.svg",
   "/assets/icons/inbox-white.svg",
+  "/assets/icons/log-out-danger.svg",
+  "/assets/icons/plus-white.svg",
+  "/assets/icons/sparkles-rose.svg",
+  "/assets/icons/user-round-ink.svg",
+  "/assets/icons/user-round-muted.svg",
+  "/assets/icons/user-round-white.svg",
+  "/assets/images/schedule-dashed-corner-24.svg",
+  "/assets/images/schedule-dashed-corner-30.svg",
 ] as const;
 
 const PRELOAD_CONCURRENCY = 6;
@@ -90,7 +102,7 @@ function warmImage(path: string): Promise<void> {
   });
 }
 
-/** 应用启动后低并发读取全部 SVG，使后续 image 首次绘制命中资源缓存。 */
+/** 应用启动后低并发读取 SVG，使后续 image 首次绘制命中资源缓存。 */
 export function preloadAllSvgIcons(): void {
   if (preloadStarted) return;
   preloadStarted = true;
@@ -103,7 +115,5 @@ export function preloadAllSvgIcons(): void {
       await warmImage(path);
     }
   };
-  void Promise.all(
-    Array.from({ length: PRELOAD_CONCURRENCY }, () => worker()),
-  );
+  void Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, () => worker()));
 }

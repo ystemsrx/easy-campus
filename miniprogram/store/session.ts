@@ -66,8 +66,12 @@ export function updateSessionCredential(
 }
 
 export function getSession(): Session | null {
-  const app = getApp<IAppOption>();
-  return app.globalData.session || loadSession();
+  try {
+    const app = getApp<IAppOption>();
+    return app?.globalData.session || loadSession();
+  } catch {
+    return loadSession();
+  }
 }
 
 export function saveCurrentUser(user: CurrentUserData): void {
