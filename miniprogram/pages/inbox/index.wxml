@@ -1,5 +1,5 @@
 <view class="page inbox-page {{themeClass}} {{motionClass}}" bindtap="onPageTap">
-  <navigation-bar title="学校通知与教务安排" back transparent theme="{{theme}}"></navigation-bar>
+  <navigation-bar title="校园通知" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="inbox-toolbar page-enter">
     <view class="segmented-control" aria-role="tablist">

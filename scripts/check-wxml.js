@@ -211,6 +211,19 @@ const inboxStyles = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "inbox", "index.wxss"),
   "utf8",
 );
+const profileTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "profile", "index.wxml"),
+  "utf8",
+);
+if (
+  profileTemplate.includes("refresher-") ||
+  profileTemplate.includes("bindrefresherrefresh") ||
+  !profileTemplate.includes('bindtap="retryLoadUser"')
+) {
+  failures.push(
+    "pages/profile/index.wxml: 我的页面不得声明原生下拉刷新，加载失败时只保留明确的点击重试",
+  );
+}
 if (
   !inboxStyles.includes(
     ".inbox-toolbar { flex: none; padding: 28rpx 48rpx 10rpx;",

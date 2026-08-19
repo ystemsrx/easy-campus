@@ -86,9 +86,7 @@ function scheduleView(schedule: {
 }
 
 function teacherLabel(value: string): string {
-  const normalized = value.trim();
-  if (!normalized) return "";
-  return normalized.endsWith("老师") ? normalized : `${normalized}老师`;
+  return value.trim().replace(/老师/g, "").trim();
 }
 
 function toMessageView(message: TeachingMessage): MessageView {

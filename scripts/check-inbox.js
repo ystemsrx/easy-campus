@@ -137,6 +137,24 @@ assert(
 const template = fs.readFileSync(path.join(pageRoot, "index.wxml"), "utf8");
 const styles = fs.readFileSync(path.join(pageRoot, "index.wxss"), "utf8");
 assert(
+  template.includes('<navigation-bar title="校园通知"') &&
+    !template.includes('title="学校通知与教务安排"'),
+  "校园通知页顶部必须使用精简标题",
+);
+assert(
+  source.includes('return value.trim().replace(/老师/g, "").trim();') &&
+    !source.includes("`${normalized}老师`"),
+  "课程消息教师名称不得额外添加老师后缀",
+);
+assert(
+  /\.inbox-content\s*\{[^}]*padding:\s*22rpx 40rpx 0/s.test(styles) &&
+    /\.inbox-bottom-space\s*\{[^}]*height:\s*calc\(48rpx \+ env\(safe-area-inset-bottom\)\)/s.test(
+      styles,
+    ) &&
+    !styles.includes("height: calc(104rpx + env(safe-area-inset-bottom));"),
+  "校园通知列表底部只能保留一处紧凑的安全区占位",
+);
+assert(
   !template.includes("<root-portal") &&
     template.includes('bindtap="onPageTap"') &&
     template.includes('catchtap="openMessageFilter"') &&

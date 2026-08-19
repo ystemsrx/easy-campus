@@ -5,10 +5,6 @@
     scroll-y
     enhanced
     show-scrollbar="{{false}}"
-    refresher-enabled
-    refresher-default-style="none"
-    refresher-triggered="{{refreshing}}"
-    bindrefresherrefresh="onRefresh"
   >
     <navigation-bar transparent theme="{{theme}}"></navigation-bar>
     <view class="profile-content page-content page-content--tab page-enter">
@@ -59,7 +55,7 @@
         </view>
       </view>
 
-      <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="onRefresh" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
+      <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="retryLoadUser" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
       <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>退出登录</text></button>
     </view>
   </scroll-view>

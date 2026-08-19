@@ -33,7 +33,6 @@ Page({
     themeClass: "theme-light",
     motionClass: "motion-normal",
     loading: false,
-    refreshing: false,
     errorMessage: "",
     userName: "同学",
     avatarText: "易",
@@ -101,7 +100,6 @@ Page({
     }
     this.setData({
       loading: !this.data.account,
-      refreshing: false,
       errorMessage: "",
     });
     try {
@@ -112,10 +110,10 @@ Page({
         errorMessage: getErrorMessage(error, "个人资料加载失败。"),
       });
     } finally {
-      this.setData({ loading: false, refreshing: false });
+      this.setData({ loading: false });
     }
   },
-  onRefresh() {
+  retryLoadUser() {
     haptic("light");
     void this.loadUser();
   },
