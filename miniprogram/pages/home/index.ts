@@ -130,6 +130,7 @@ interface ExamPreview {
 }
 
 const HOME_PREVIEW_ITEM_LIMIT = 3;
+const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 
 interface ShortcutCachePatch {
   electricityBound: boolean;
@@ -143,6 +144,7 @@ let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
 let announcementModalTimer: number | undefined;
 let publicationRequestInFlight = false;
+let lastPublicationRequestAt = 0;
 let homeVisible = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
@@ -483,6 +485,7 @@ Page({
     electricityRouteOpening = false;
     inboxRouteOpening = false;
     credentialExitInFlight = false;
+    lastPublicationRequestAt = 0;
     this.applyAppearance();
     this.hydrateIdentity();
   },
@@ -671,7 +674,14 @@ Page({
       });
   },
   async loadPublicationFeed() {
-    if (publicationRequestInFlight) return;
+    const now = Date.now();
+    if (
+      publicationRequestInFlight ||
+      now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS
+    ) {
+      return;
+    }
+    lastPublicationRequestAt = now;
     publicationRequestInFlight = true;
     try {
       const feed = await getPublicationFeed();

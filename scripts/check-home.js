@@ -96,6 +96,16 @@ assert(
   "每次弹出公告必须按小程序前台进入周期去重，不能在每次返回主页时重置",
 );
 assert(
+  homeScript.includes("const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;") &&
+    /onShow\(\)[\s\S]*?void this\.loadPublicationFeed\(\)/.test(homeScript) &&
+    /async loadPublicationFeed\(\) \{[\s\S]*?now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS[\s\S]*?lastPublicationRequestAt = now;[\s\S]*?getPublicationFeed\(\)/.test(
+      homeScript,
+    ) &&
+    /onLoad\(\)[\s\S]*?lastPublicationRequestAt = 0;/.test(homeScript) &&
+    !homeScript.includes("setInterval(() => this.loadPublicationFeed"),
+  "主页重新显示时必须静默同步公告与通知，以八秒间隔限制重复请求且不得定时轮询",
+);
+assert(
   homeStyles.includes(
     ".welcome-name { display: block; flex: 1; min-width: 0;",
   ) && !homeStyles.includes("max-width: 240rpx"),
