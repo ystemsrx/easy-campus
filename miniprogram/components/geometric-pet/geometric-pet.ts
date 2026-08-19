@@ -357,10 +357,7 @@ Component({
 
     refreshPreviewTopGutter() {
       runtimeByComponent.get(this)?.engine?.update({
-        previewTopGutter: Math.max(
-          0,
-          Number(this.data.previewTopGutter) || 0,
-        ),
+        previewTopGutter: Math.max(0, Number(this.data.previewTopGutter) || 0),
       });
     },
 
@@ -427,12 +424,26 @@ Component({
       const runtime = runtimeByComponent.get(this);
       const touch = event.touches[0];
       if (!runtime?.engine || !touch) return;
-      const target: GazeTarget = { x: touch.clientX, y: touch.clientY };
+      this.setExternalGazeTarget(touch.clientX, touch.clientY);
+    },
+
+    setExternalGazeTarget(x: number, y: number) {
+      const runtime = runtimeByComponent.get(this);
+      if (!runtime?.engine || this.data.reducedMotion) return;
+      const target: GazeTarget = { x, y };
       runtime.engine.update({ gazeTarget: target });
     },
 
     clearGaze() {
+      this.clearExternalGaze();
+    },
+
+    clearExternalGaze() {
       runtimeByComponent.get(this)?.engine?.update({ gazeTarget: null });
+    },
+
+    playInteraction() {
+      this.handleTap();
     },
 
     handleTap() {

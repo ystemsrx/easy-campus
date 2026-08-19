@@ -1,18 +1,72 @@
-<view class="page timetable-page {{themeClass}} {{motionClass}}" style="background-color: {{backgroundColor}};">
+<view
+  class="page timetable-page timetable-theme--{{timetableThemeId}} {{themeClass}} {{motionClass}}"
+  style="background-color: {{backgroundColor}}; {{themeStyle}}"
+  bindtouchstart="updateCompanionGaze"
+  bindtouchmove="updateCompanionGaze"
+  bindtouchend="clearCompanionGaze"
+  bindtouchcancel="clearCompanionGaze"
+  bindtap="onTimetableInteraction"
+>
   <image
-    wx:if="{{useBackgroundImage}}"
+    wx:if="{{backgroundImage}}"
     class="timetable-background"
-    src="/assets/images/timetable-background.png"
-    mode="scaleToFill"
-    style="{{imageStyle}}"
+    src="{{backgroundImage}}"
+    mode="{{backgroundImageMode}}"
+    style="{{timetableThemeId === 'default' ? imageStyle : ''}}"
+    fade-in="{{false}}"
+    draggable="{{false}}"
     aria-hidden="true"
   ></image>
   <view class="background-shade"></view>
 
+  <view wx:if="{{timetableThemeId === 'clawd'}}" class="clawd-ambient-layer" aria-hidden="true">
+    <block wx:if="{{motionClass !== 'motion-reduced'}}">
+      <image
+        class="clawd-ambient clawd-ambient--walking"
+        src="/assets/images/timetable-theme-clawd-walking.gif"
+        mode="aspectFit"
+        fade-in="{{false}}"
+        draggable="{{false}}"
+      ></image>
+      <image
+        class="clawd-ambient clawd-ambient--lurking"
+        src="/assets/images/timetable-theme-clawd-lurking.gif"
+        mode="aspectFit"
+        fade-in="{{false}}"
+        draggable="{{false}}"
+      ></image>
+    </block>
+    <image
+      wx:else
+      class="clawd-ambient clawd-ambient--still"
+      src="/assets/images/timetable-theme-clawd-idle.svg"
+      mode="aspectFit"
+      fade-in="{{false}}"
+      draggable="{{false}}"
+    ></image>
+  </view>
+
+  <view wx:if="{{timetableThemeId === 'companion' && petVisible}}" class="timetable-companion-layer">
+    <view class="timetable-companion-frame">
+      <geometric-pet
+        id="timetable-companion"
+        shape="{{petShape}}"
+        color="{{petColor}}"
+        enhanced="{{petEnhanced}}"
+        state="idle"
+        reduced-motion="{{petReducedMotion}}"
+        auto-cycle="{{true}}"
+        cycle-offset="{{4}}"
+        preview-scale="{{0.92}}"
+        label="课表背景中的校园伙伴"
+      ></geometric-pet>
+    </view>
+  </view>
+
   <view class="timetable-header" style="height: {{headerHeight}}px; padding-top: {{headerTop}}px;">
     <view class="header-left">
       <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="goBack" hover-class="header-button--pressed" aria-role="button" aria-label="返回">
-        <lucide-icon name="arrow-left" tone="white" size="{{29}}"></lucide-icon>
+        <lucide-icon name="arrow-left" tone="{{headerIconTone}}" size="{{29}}"></lucide-icon>
       </view>
       <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单">
         <view class="menu-glyph {{menuOpen ? 'menu-glyph--open' : ''}}"><view></view><view></view><view></view></view>
@@ -29,7 +83,7 @@
       aria-expanded="{{weekMenuOpen}}"
     >
       <text class="tnum">{{weekLabel}}</text>
-      <view class="week-chevron"><lucide-icon name="chevron-right" tone="white" size="{{16}}"></lucide-icon></view>
+      <view class="week-chevron"><lucide-icon name="chevron-right" tone="{{headerIconTone}}" size="{{16}}"></lucide-icon></view>
     </view>
 
   </view>
@@ -182,12 +236,11 @@
           bindtap="selectTheme"
           hover-class="pressing"
           aria-role="button"
-          aria-label="{{item.label}}"
+          aria-label="{{item.label}}主题"
         >
-          <view class="theme-swatch" style="background-color: {{item.color}};">
-            <image wx:if="{{item.image}}" src="/assets/images/timetable-background.png" mode="aspectFill"></image>
-            <lucide-icon wx:if="{{timetableThemeId === item.id}}" name="check" tone="white" size="{{20}}"></lucide-icon>
+          <view class="theme-swatch theme-swatch--{{item.id}}">
           </view>
+          <text class="theme-option-label">{{item.label}}</text>
         </view>
       </view>
       <view class="menu-separator"></view>

@@ -123,6 +123,36 @@ function loadCourseStatistics() {
   return moduleRecord.exports;
 }
 
+function loadTimetableTheme() {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "timetable-theme.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", output)(moduleRecord, moduleRecord.exports);
+  return moduleRecord.exports;
+}
+
+function colorSaturation(color) {
+  const channels = [1, 3, 5].map(
+    (offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255,
+  );
+  const maximum = Math.max(...channels);
+  const minimum = Math.min(...channels);
+  const delta = maximum - minimum;
+  const lightness = (maximum + minimum) / 2;
+  return delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -132,6 +162,7 @@ const timetableRender = loadTimetableRender(timetable);
 const messageFormat = loadMessageFormat();
 const semesterFormat = loadSemesterFormat();
 const courseStatistics = loadCourseStatistics();
+const timetableTheme = loadTimetableTheme();
 
 for (const courseName of [
   "高等数学",
@@ -530,6 +561,28 @@ const timetablePageStyles = fs.readFileSync(
   path.join(timetablePageRoot, "index.wxss"),
   "utf8",
 );
+const timetableThemeSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "data", "timetable-theme.ts"),
+  "utf8",
+);
+const geometricPetSource = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "geometric-pet",
+    "geometric-pet.ts",
+  ),
+  "utf8",
+);
+const timetableImageRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "assets",
+  "images",
+);
 const timetableStoreSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "store", "timetable.ts"),
   "utf8",
@@ -592,6 +645,118 @@ const dayColumnRule = timetablePageStyles.match(
 const periodLineRule = timetablePageStyles.match(
   /\.period-grid-line\s*\{[^}]*\}/s,
 )?.[0];
+const timetableThemeAssets = [
+  "timetable-theme-default-background.webp",
+  "timetable-theme-clawd-background.webp",
+  "timetable-theme-clawd-walking.gif",
+  "timetable-theme-clawd-lurking.gif",
+  "timetable-theme-clawd-idle.svg",
+];
+const defaultThemePatch = timetableTheme.timetableThemePatch(
+  "default",
+  "#ff3e51",
+);
+const companionPalettes = ["#ff3e51", "#00b96b", "#2a92fe", "#9159fe"].map(
+  (color) => timetableTheme.companionCoursePalette(color),
+);
+const expectedThemePalettes = {
+  clawd: ["#8f432c", "#a45134", "#b85c38", "#c96d4c", "#d98261"],
+  snack: ["#dbf5ea", "#eadcf4", "#f2c5bd", "#f7f1e1", "#fde7d0"],
+  vivid: ["#55b7ad", "#9b76c5", "#db7187", "#78c99a", "#e4b66f"],
+};
+assert(
+  timetableTheme.TIMETABLE_THEME_OPTIONS.map(({ label }) => label).join(",") ===
+    "默认,精灵,小克,点心,饱和" &&
+    timetablePageTemplate.includes(
+      '<text class="theme-option-label">{{item.label}}</text>',
+    ),
+  "课表主题菜单必须显示五个主题名称",
+);
+assert(
+  timetableThemeAssets.every((asset) =>
+    fs.existsSync(path.join(timetableImageRoot, asset)),
+  ) &&
+    !fs.existsSync(path.join(timetableImageRoot, "timetable-background.png")) &&
+    timetablePageTemplate.includes(
+      "/assets/images/timetable-theme-clawd-walking.gif",
+    ) &&
+    timetablePageTemplate.includes(
+      "/assets/images/timetable-theme-clawd-lurking.gif",
+    ) &&
+    !timetablePageTemplate.includes("timetable-background.png"),
+  "课表壁纸与小克动效必须使用规范命名的本地素材",
+);
+assert(
+  timetableTheme.resolveTimetableThemeId("image") === "default" &&
+    timetableTheme.resolveTimetableThemeId("unknown") === "default" &&
+    defaultThemePatch.backgroundImage.endsWith(
+      "timetable-theme-default-background.webp",
+    ) &&
+    ["blue", "cyan", "purple", "green", "orange"].every((tone) =>
+      defaultThemePatch.themeStyle.includes(
+        `--timetable-course-${tone}:#0862ad`,
+      ),
+    ) &&
+    timetablePageTemplate.includes(
+      "timetableThemeId === 'default' ? imageStyle : ''",
+    ),
+  "默认主题必须迁移旧偏好并保留原壁纸与蓝色课程块",
+);
+assert(
+  companionPalettes.every(
+    (palette) =>
+      new Set(palette).size === 5 &&
+      palette.every((color) => colorSaturation(color) <= 0.425),
+  ) &&
+    timetableThemeSource.includes("sourceSaturation * 0.56") &&
+    timetablePageScript.includes("loadPetPreferences(account)") &&
+    timetablePageStyles.includes("--companion-color") &&
+    timetablePageStyles.includes(".theme-swatch--companion"),
+  "精灵主题必须从校园伙伴颜色生成受控饱和度色板",
+);
+assert(
+  Object.entries(expectedThemePalettes).every(([themeId, colors]) => {
+    const { themeStyle } = timetableTheme.timetableThemePatch(
+      themeId,
+      "#ff3e51",
+    );
+    return colors.every((color) => themeStyle.includes(color));
+  }),
+  "小克、点心与饱和主题必须保留各自的参考色板",
+);
+assert(
+  timetablePageTemplate.includes('id="timetable-companion"') &&
+    timetablePageTemplate.includes('auto-cycle="{{true}}"') &&
+    timetablePageTemplate.includes('bindtouchmove="updateCompanionGaze"') &&
+    timetablePageTemplate.includes('bindtap="onTimetableInteraction"') &&
+    geometricPetSource.includes(
+      "setExternalGazeTarget(x: number, y: number)",
+    ) &&
+    geometricPetSource.includes("playInteraction()") &&
+    /\.clawd-ambient-layer,\s*\.timetable-companion-layer\s*\{[^}]*z-index:\s*1[^}]*pointer-events:\s*none/s.test(
+      timetablePageStyles,
+    ),
+  "背景角色必须响应课表手势，同时保持在课程层下方且不吞掉操作",
+);
+assert(
+  timetablePageTemplate.includes("motionClass !== 'motion-reduced'") &&
+    timetablePageTemplate.includes("timetable-theme-clawd-idle.svg") &&
+    timetablePageScript.includes("petReducedMotion") &&
+    timetablePageStyles.includes("@keyframes clawd-walk-route"),
+  "背景角色动效必须尊重减少动态效果偏好",
+);
+assert(
+  timetablePageStyles.includes(".theme-swatch--default") &&
+    timetablePageStyles.includes(".theme-swatch--snack") &&
+    timetablePageStyles.includes(".theme-swatch--vivid") &&
+    !timetablePageTemplate.includes('class="theme-check"') &&
+    timetablePageStyles.includes("0 0 0 5rpx") &&
+    timetablePageStyles.includes("circle at 28% 22%") &&
+    timetablePageStyles.includes("circle at 72% 24%") &&
+    timetablePageStyles.includes("#f2c5bd") &&
+    timetablePageStyles.includes("#77c4c8"),
+  "主题色球必须使用外环选中态，并区分交融的低饱和与明亮高饱和配色",
+);
 assert(
   dayColumnRule && !dayColumnRule.includes("border"),
   "课表背景不应保留纵向浅色网格",

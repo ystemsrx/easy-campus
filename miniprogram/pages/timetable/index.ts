@@ -16,6 +16,14 @@ import {
   type TimetablePeriodRow,
   type TimetableWeekPage,
 } from "../../data/timetable-render";
+import {
+  DEFAULT_TIMETABLE_COMPANION_COLOR,
+  TIMETABLE_THEME_OPTIONS,
+  TIMETABLE_THEME_STORAGE_KEY,
+  resolveTimetableThemeId,
+  timetableThemePatch,
+  type TimetableThemeId,
+} from "../../data/timetable-theme";
 import { getErrorMessage } from "../../services/request";
 import { getPassRates, getTimetable } from "../../services/teaching";
 import {
@@ -24,6 +32,12 @@ import {
   shouldUseServerSnapshot,
   WEEK_MS,
 } from "../../store/cache-policy";
+import {
+  DEFAULT_PET_PREFERENCES,
+  loadPetPreferences,
+  shouldShowPet,
+  type PetPreferences,
+} from "../../store/pet";
 import { getSession } from "../../store/session";
 import {
   loadTimetableSnapshot,
@@ -45,13 +59,6 @@ import {
   shortAcademicSemesterLabel,
   timetableSemesterMenuLabel,
 } from "../../utils/semester";
-
-interface TimetableThemeOption {
-  id: string;
-  label: string;
-  color: string;
-  image: boolean;
-}
 
 interface TimetableSemesterOption extends AcademicSemesterOption {
   displayLabel: string;
@@ -77,18 +84,21 @@ interface PassRateSheetHeightInput {
   message: string;
 }
 
-const THEME_STORAGE_KEY = "easy-swu:timetable-theme";
+interface TimetableCompanionInstance {
+  setExternalGazeTarget(x: number, y: number): void;
+  clearExternalGaze(): void;
+  playInteraction(): void;
+}
+
+interface TimetableGazeTarget {
+  x: number;
+  y: number;
+}
+
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
-const MAIN_MENU_HEIGHT = 478;
-const THEMES: TimetableThemeOption[] = [
-  { id: "image", label: "默认壁纸", color: "#0862ad", image: true },
-  { id: "ocean", label: "深海", color: "#17588f", image: false },
-  { id: "azure", label: "晴空", color: "#3478ae", image: false },
-  { id: "forest", label: "松林", color: "#416f68", image: false },
-  { id: "plum", label: "暮紫", color: "#655b82", image: false },
-];
+const MAIN_MENU_HEIGHT = 516;
 
 interface InFlightTimetableRequest {
   refresh: boolean;
@@ -107,6 +117,8 @@ let refreshToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
+let companionGazeTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingCompanionGaze: TimetableGazeTarget | null = null;
 let weekBuildSequence = 0;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
@@ -346,25 +358,37 @@ function backgroundMetrics(compactHeader = false): {
   }
 }
 
-function loadThemeId(): string {
+function loadThemeId(): TimetableThemeId {
   try {
-    const saved = String(wx.getStorageSync(THEME_STORAGE_KEY) || "");
-    return THEMES.some((theme) => theme.id === saved) ? saved : "image";
+    return resolveTimetableThemeId(
+      wx.getStorageSync(TIMETABLE_THEME_STORAGE_KEY),
+    );
   } catch {
-    return "image";
+    return "default";
   }
 }
 
-function themePatch(id: string): {
-  timetableThemeId: string;
-  useBackgroundImage: boolean;
-  backgroundColor: string;
-} {
-  const selected = THEMES.find((theme) => theme.id === id) || THEMES[0];
+function timetableVisualPreferencesPatch(
+  themeId: TimetableThemeId = loadThemeId(),
+) {
+  const appearance = resolveAppearance();
+  const account = getSession()?.user.account || "";
+  const pet: PetPreferences = account
+    ? loadPetPreferences(account)
+    : { ...DEFAULT_PET_PREFERENCES };
+  const companionColor = pet.selected
+    ? pet.color
+    : DEFAULT_TIMETABLE_COMPANION_COLOR;
   return {
-    timetableThemeId: selected.id,
-    useBackgroundImage: selected.image,
-    backgroundColor: selected.color,
+    ...appearance,
+    ...timetableThemePatch(themeId, companionColor),
+    companionColor,
+    petShape: pet.shape,
+    petColor: pet.color,
+    petEnhanced: pet.enhanced,
+    petSelected: pet.selected,
+    petVisible: Boolean(account) && shouldShowPet(pet),
+    petReducedMotion: appearance.motionClass === "motion-reduced",
   };
 }
 
@@ -391,6 +415,14 @@ function cancelPendingWeekBuilds(): void {
   }
 }
 
+function cancelCompanionGazeUpdate(): void {
+  pendingCompanionGaze = null;
+  if (companionGazeTimer !== undefined) {
+    clearTimeout(companionGazeTimer);
+    companionGazeTimer = undefined;
+  }
+}
+
 Page({
   data: {
     theme: "light" as "light" | "dark",
@@ -398,8 +430,15 @@ Page({
     motionClass: "motion-normal",
     compactHeader: false,
     ...backgroundMetrics(),
-    ...themePatch("image"),
-    timetableThemes: THEMES,
+    ...timetableThemePatch("default", DEFAULT_TIMETABLE_COMPANION_COLOR),
+    timetableThemes: TIMETABLE_THEME_OPTIONS,
+    companionColor: DEFAULT_TIMETABLE_COMPANION_COLOR,
+    petShape: DEFAULT_PET_PREFERENCES.shape,
+    petColor: DEFAULT_PET_PREFERENCES.color,
+    petEnhanced: false,
+    petSelected: false,
+    petVisible: false,
+    petReducedMotion: false,
     menuOpen: false,
     semesterOpen: false,
     weekMenuMounted: false,
@@ -450,6 +489,7 @@ Page({
     }
     clearRefreshToastTimers();
     cancelPendingWeekBuilds();
+    cancelCompanionGazeUpdate();
     activeAccount = "";
     activeTimetable = null;
     activeSnapshot = null;
@@ -459,10 +499,9 @@ Page({
     pendingVisibleRequestId = null;
     const compactHeader = options.source === "schedule";
     this.setData({
-      ...resolveAppearance(),
+      ...timetableVisualPreferencesPatch(),
       compactHeader,
       ...backgroundMetrics(compactHeader),
-      ...themePatch(loadThemeId()),
     });
     this.hydrate();
     this.syncTimetableIfNeeded();
@@ -470,7 +509,7 @@ Page({
   onShow() {
     if (!ensureAuthenticated()) return;
     this.setData({
-      ...resolveAppearance(),
+      ...timetableVisualPreferencesPatch(),
       ...backgroundMetrics(this.data.compactHeader),
     });
     this.hydrate();
@@ -488,6 +527,7 @@ Page({
     }
     clearRefreshToastTimers();
     cancelPendingWeekBuilds();
+    cancelCompanionGazeUpdate();
     passRateRequestSequence += 1;
   },
   queueRemainingWeekPages(
@@ -913,12 +953,52 @@ Page({
     });
   },
   stopPropagation() {},
+  companionComponent(): TimetableCompanionInstance | null {
+    return this.selectComponent(
+      "#timetable-companion",
+    ) as unknown as TimetableCompanionInstance | null;
+  },
+  updateCompanionGaze(event: WechatMiniprogram.TouchEvent) {
+    if (
+      this.data.timetableThemeId !== "companion" ||
+      !this.data.petVisible ||
+      this.data.petReducedMotion
+    ) {
+      return;
+    }
+    const touch = event.touches[0];
+    if (!touch) return;
+    pendingCompanionGaze = { x: touch.clientX, y: touch.clientY };
+    if (companionGazeTimer !== undefined) return;
+    companionGazeTimer = setTimeout(() => {
+      companionGazeTimer = undefined;
+      const target = pendingCompanionGaze;
+      pendingCompanionGaze = null;
+      if (!pageAlive || !target) return;
+      this.companionComponent()?.setExternalGazeTarget(target.x, target.y);
+    }, 16);
+  },
+  clearCompanionGaze() {
+    cancelCompanionGazeUpdate();
+    this.companionComponent()?.clearExternalGaze();
+  },
+  onTimetableInteraction() {
+    if (
+      this.data.timetableThemeId !== "companion" ||
+      !this.data.petVisible ||
+      this.data.petReducedMotion
+    ) {
+      return;
+    }
+    this.companionComponent()?.playInteraction();
+  },
   selectTheme(event: WechatMiniprogram.TouchEvent) {
-    const id = String(event.currentTarget.dataset.theme || "image");
-    const patch = themePatch(id);
+    const id = String(event.currentTarget.dataset.theme || "default");
+    const patch = timetableThemePatch(id, this.data.companionColor);
+    if (patch.timetableThemeId !== "companion") this.clearCompanionGaze();
     this.setData(patch);
     try {
-      wx.setStorageSync(THEME_STORAGE_KEY, patch.timetableThemeId);
+      wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, patch.timetableThemeId);
     } catch {
       // 外观偏好保存失败不影响当前显示。
     }
