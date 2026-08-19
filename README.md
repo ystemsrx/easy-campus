@@ -76,7 +76,9 @@ wx.removeStorageSync("easy-swu:development-api-origin");
 
 发布前必须修改 [`miniprogram/config/index.ts`](miniprogram/config/index.ts) 中 `trial` 和 `release` 的 `https://api.example.com`。生产后端必须使用 HTTPS，并在微信公众平台配置相同的 `request` 与 `downloadFile` 合法域名。
 
-前端不会读取仓库根目录或后端的 `.env`，也不应打包任何账号、密码、Token、MinIO 密钥或数据库配置。
+小程序名称从 `frontend/.env` 的 `MINIPROGRAM_NAME` 读取。首次启动可复制 `.env.example`，修改后运行 `npm run env:generate`；`npm run typecheck` 和 `npm run check` 也会在检查前自动生成运行时配置。
+
+前端不会读取仓库根目录或后端的 `.env`，也不应打包任何账号、密码、Token、MinIO 密钥或数据库配置。小程序环境变量会编译进客户端，只能存放可公开配置。
 
 ## 数据更新语义
 

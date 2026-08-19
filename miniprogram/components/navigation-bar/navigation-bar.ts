@@ -13,6 +13,7 @@ Component({
     extraLeft: { type: Boolean, value: false },
     insetBack: { type: Boolean, value: false },
     transparent: { type: Boolean, value: false },
+    cover: { type: Boolean, value: true },
     theme: { type: String, value: "light" },
   },
   data: {

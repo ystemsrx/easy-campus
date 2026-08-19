@@ -1,22 +1,29 @@
 <view class="page login-page {{themeClass}} {{motionClass}}">
+  <view wx:if="{{errorMessage}}" class="login-toast login-toast--{{errorToastPhase}}" aria-role="alert">
+    <lucide-icon name="circle-alert" tone="danger" size="{{26}}"></lucide-icon>
+    <text class="login-toast-copy">{{errorMessage}}</text>
+  </view>
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="login-stage">
       <view class="ambient-blob login-blob login-blob--one"></view>
       <view class="ambient-blob login-blob login-blob--two"></view>
       <view class="ambient-blob login-blob login-blob--three"></view>
-      <navigation-bar transparent theme="{{theme}}"></navigation-bar>
+      <navigation-bar cover="{{false}}" transparent theme="{{theme}}"></navigation-bar>
 
-      <view class="brand-block page-enter">
-        <view class="brand-mark">
-          <view class="ambient-blob brand-blob"></view>
-          <lucide-icon name="calendar-days" tone="white" size="{{80}}"></lucide-icon>
+      <view class="login-hero">
+        <view class="login-heading">
+          <text class="login-title display-title">Hello!</text>
+          <text class="login-subtitle">欢迎来到{{appName}}</text>
         </view>
-        <text class="brand-name display-title">校园通</text>
-        <text class="brand-tagline">课表 · 成绩 · 日程 · 空教室，一应俱全</text>
       </view>
 
       <view class="login-panel">
-        <form class="login-card" bindsubmit="onSubmit">
+        <view class="login-panel-extension" aria-hidden="true"></view>
+        <view class="mascot-stage {{mascotPositionClass}} {{mascotMotionClass}}" aria-hidden="true">
+          <image wx:if="{{mascotSrc}}" class="mascot-image" src="{{mascotSrc}}" mode="aspectFit"></image>
+        </view>
+
+        <form class="login-form" bindsubmit="onSubmit">
           <view class="field {{accountFocused ? 'field--focus' : ''}}">
             <view class="field-icon"><lucide-icon name="user-round" tone="muted" size="{{36}}"></lucide-icon></view>
             <input
@@ -55,18 +62,18 @@
             </view>
           </view>
 
-          <view wx:if="{{errorMessage}}" class="inline-error" aria-role="alert"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
+          <view class="agreement-row" bindtap="toggleAgreement" hover-class="agreement-row--pressed" aria-role="checkbox" aria-checked="{{agreementAccepted}}">
+            <view class="agreement-checkbox {{agreementAccepted ? 'agreement-checkbox--checked' : ''}}">
+              <lucide-icon wx:if="{{agreementAccepted}}" name="check" tone="white" size="{{24}}"></lucide-icon>
+            </view>
+            <text class="agreement-copy">登录即代表同意<text class="agreement-link">《用户协议》</text><text class="agreement-link">《隐私政策》</text></text>
+          </view>
 
           <button class="login-button {{loading ? 'login-button--loading' : ''}}" form-type="submit" disabled="{{loading}}" hover-class="login-button--pressed">
             <view wx:if="{{loading}}" class="login-spinner"></view>
             <text>{{loading ? '正在进入…' : '登录'}}</text>
           </button>
-
-          <view class="privacy-note"><view class="privacy-glyph"><lucide-icon name="shield-check" tone="muted" size="{{25}}"></lucide-icon></view><text>{{privacyNotice}}</text></view>
         </form>
-
-        <text class="session-note">登录会话 90 天滑动有效 · 每次使用自动续期</text>
-        <text class="agreement-note">登录即代表你已了解账号凭据的保存与使用方式</text>
       </view>
     </view>
   </scroll-view>

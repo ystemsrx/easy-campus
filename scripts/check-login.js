@@ -1,0 +1,180 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
+const projectRoot = path.resolve(__dirname, "..");
+const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
+const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
+const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
+const styles = fs.readFileSync(path.join(loginRoot, "index.wxss"), "utf8");
+const envExample = fs.readFileSync(
+  path.join(projectRoot, ".env.example"),
+  "utf8",
+);
+const failures = [];
+
+const removedCopy = [
+  "账号与密码会按约定",
+  "登录会话 90 天滑动有效",
+  "登录即代表你已了解",
+];
+for (const copy of removedCopy) {
+  if (template.includes(copy) || script.includes(copy)) {
+    failures.push("登录页仍包含已删除文案：" + copy);
+  }
+}
+
+if (
+  !envExample.includes("MINIPROGRAM_NAME=") ||
+  !script.includes('import { MINIPROGRAM_NAME } from "../../config/env";') ||
+  !script.includes("appName: MINIPROGRAM_NAME") ||
+  !template.includes("欢迎来到{{appName}}")
+) {
+  failures.push("小程序名称必须从 frontend/.env 生成并注入登录页");
+}
+
+const passwordIndex = template.indexOf('placeholder="密码"');
+const agreementIndex = template.indexOf('class="agreement-row"');
+const buttonIndex = template.indexOf('class="login-button');
+const headingIndex = template.indexOf('class="login-heading"');
+const panelIndex = template.indexOf('class="login-panel"');
+if (
+  passwordIndex < 0 ||
+  agreementIndex <= passwordIndex ||
+  buttonIndex <= agreementIndex ||
+  !template.includes('class="agreement-link">《用户协议》') ||
+  !template.includes('class="agreement-link">《隐私政策》') ||
+  !script.includes("if (!this.data.agreementAccepted)")
+) {
+  failures.push("协议勾选必须位于密码框与登录按钮之间并参与提交校验");
+}
+
+const buttonStyles = styles.match(/\.login-button\s*\{([\s\S]*?)\}/)?.[1] || "";
+const fieldStyles = styles.match(/\.field\s*\{([\s\S]*?)\}/)?.[1] || "";
+const agreementStyles =
+  styles.match(/\.agreement-row\s*\{([\s\S]*?)\}/)?.[1] || "";
+const fieldFocusStyles =
+  styles.match(/\.field--focus\s*\{([\s\S]*?)\}/)?.[1] || "";
+const playMascotStart = script.indexOf("  playMascot(mascot:");
+const playMascotEnd = script.indexOf(
+  "  scheduleMascotTransition(",
+  playMascotStart,
+);
+const playMascotBody = script.slice(playMascotStart, playMascotEnd);
+const directSwitchIndex = playMascotBody.indexOf("if (!shouldRestart)");
+const blankRestartIndex = playMascotBody.indexOf('mascotSrc: ""');
+if (
+  headingIndex < 0 ||
+  headingIndex >= panelIndex ||
+  !styles.includes("min-height: calc(100vh + 80rpx);") ||
+  !styles.includes("border-radius: 72rpx 72rpx 0 0;") ||
+  !styles.includes("min-height: 550rpx;") ||
+  !styles.includes(
+    "padding: 78rpx 48rpx calc(64rpx + env(safe-area-inset-bottom));",
+  ) ||
+  !styles.includes("background: #fff;") ||
+  !template.includes('class="login-panel-extension"') ||
+  !styles.includes(".login-page .page-scroll {") ||
+  !styles.includes("height: 100vh;") ||
+  !fieldFocusStyles.includes("background: #f5e7df;") ||
+  !template.includes('class="login-title display-title">Hello!</text>') ||
+  !buttonStyles.includes("background: #d97757;") ||
+  buttonStyles.includes("linear-gradient")
+) {
+  failures.push("登录面板必须左右贴边、仅上方圆角，且登录按钮必须使用纯色");
+}
+
+if (
+  !template.includes(
+    'class="login-toast login-toast--{{errorToastPhase}}"',
+  ) ||
+  template.includes('class="inline-error"') ||
+  !template.includes(
+    '<navigation-bar cover="{{false}}" transparent theme="{{theme}}">',
+  ) ||
+  !script.includes("const ERROR_TOAST_HOLD_MS = 3000;") ||
+  !script.includes("const ERROR_TOAST_EXIT_MS = 320;") ||
+  !script.includes('return "账号或密码错误";') ||
+  (script.match(/this\.showErrorToast\(/g) || []).length < 3 ||
+  !styles.includes("position: fixed;") ||
+  !styles.includes("right: 32rpx;") ||
+  !styles.includes("@keyframes login-toast-in") ||
+  !styles.includes("@keyframes login-toast-out")
+) {
+  failures.push("登录页所有错误必须以右上角 Toast 显示，停留 3 秒后渐出");
+}
+
+if (
+  !script.includes('Math.random() < 0.5 ? "laptop" : "lurking"') ||
+  !script.includes("elapsed % LAPTOP_DURATION_MS") ||
+  !script.includes('"mascot-motion--walk-leg"') ||
+  !script.includes('this.playMascot("magnifier"') ||
+  !script.includes('this.playMascot("waving"') ||
+  !script.includes('this.playMascot("dancing"') ||
+  !script.includes("const LURKING_DURATION_MS = 5580;") ||
+  !script.includes("elapsed % LURKING_DURATION_MS") ||
+  !script.includes("LURKING_DURATION_MS - lurkingCycleTime") ||
+  !script.includes("this.startCrabwalkingMascot();") ||
+  !script.includes('this.playMascot("waving", "mascot-position--middle")') ||
+  !script.includes("const shouldRestart = currentMascot === mascot;") ||
+  directSwitchIndex < 0 ||
+  blankRestartIndex < 0 ||
+  directSwitchIndex >= blankRestartIndex ||
+  !script.includes("const CRABWALKING_LEG_MS = 1660;") ||
+  !styles.includes("bottom: calc(100% - 2rpx);") ||
+  !styles.includes("width: 380rpx;") ||
+  !styles.includes("left: -28rpx;") ||
+  !styles.includes(".mascot-position--middle {") ||
+  !styles.includes("animation-duration: 1660ms;") ||
+  !styles.includes("animation-timing-function: linear;") ||
+  !styles.includes("bottom: 164rpx;") ||
+  !fieldStyles.includes("margin-top: 30rpx;") ||
+  !agreementStyles.includes("margin-top: 36rpx;") ||
+  !buttonStyles.includes("margin-top: 46rpx;") ||
+  !styles.includes("font-size: 30rpx;") ||
+  !styles.includes("19.9% {")
+) {
+  failures.push("登录页必须保留两组随机动画及其输入、提交衔接状态");
+}
+
+const animationRoot = path.join(projectRoot, "miniprogram", "assets", "login");
+let animationBytes = 0;
+for (const name of [
+  "laptop",
+  "magnifier",
+  "lurking",
+  "crabwalking",
+  "waving",
+  "dancing",
+]) {
+  const filePath = path.join(animationRoot, name + ".gif");
+  if (!fs.existsSync(filePath)) {
+    failures.push("缺少登录动画：" + name + ".gif");
+    continue;
+  }
+  const source = fs.readFileSync(filePath);
+  animationBytes += source.length;
+  if (
+    source.length < 10 ||
+    source.readUInt16LE(6) !== 275 ||
+    source.readUInt16LE(8) !== 185
+  ) {
+    failures.push(name + ".gif 必须是优化后的 275×185 动画");
+  }
+  if (
+    name === "lurking" &&
+    !source.includes(Buffer.from("NETSCAPE2.0", "ascii"))
+  ) {
+    failures.push("lurking.gif 必须在用户尚未输入时持续循环");
+  }
+}
+
+if (animationBytes > 250 * 1024) {
+  failures.push("登录动画总大小必须控制在 250 KiB 内，避免挤占小程序主包");
+}
+
+if (failures.length > 0) {
+  console.error(failures.join("\n"));
+  process.exitCode = 1;
+} else {
+  console.log("Login page checks passed.");
+}

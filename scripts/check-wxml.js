@@ -145,7 +145,7 @@ const pageNavigationSources = (appConfig.pages || [])
   .join("\n");
 if (
   !navigationTemplate.startsWith(
-    '<view class="nav-cover nav-cover--{{theme}}" style="height: {{coverHeight}}px;"></view>\n<view class="nav-spacer" style="height: {{totalHeight}}px;"></view>\n<view\n  class="nav-shell',
+    '<view wx:if="{{cover}}" class="nav-cover nav-cover--{{theme}}" style="height: {{coverHeight}}px;"></view>\n<view class="nav-spacer" style="height: {{totalHeight}}px;"></view>\n<view\n  class="nav-shell',
   ) ||
   !navigationTemplate.includes(
     'class="nav-content" style="top: {{controlTop}}px; height: {{contentHeight}}px;"',
@@ -159,6 +159,7 @@ if (
   navigationScript.includes("backOffset") ||
   navigationScript.includes("insetTitle") ||
   !navigationScript.includes("insetBack: { type: Boolean, value: false }") ||
+  !navigationScript.includes("cover: { type: Boolean, value: true }") ||
   !navigationScript.includes("const NAVIGATION_INSET_RPX = 28") ||
   !navigationScript.includes("const STANDARD_BACK_BOTTOM_GAP_PX = 4") ||
   !navigationScript.includes(

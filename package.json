@@ -4,6 +4,8 @@
   "private": true,
   "description": "Easy SWU 微信小程序前端（TypeScript + Skyline）",
   "scripts": {
+    "env:generate": "node scripts/generate-env.js",
+    "pretypecheck": "npm run env:generate",
     "typecheck": "tsc --noEmit",
     "check:wxss": "skyline wxss check --json --miniprogram-root miniprogram --files app.wxss custom-tab-bar/index.wxss components/lucide-icon/lucide-icon.wxss components/navigation-bar/navigation-bar.wxss components/bottom-sheet/bottom-sheet.wxss components/pass-rate-card/pass-rate-card.wxss components/empty-state/empty-state.wxss components/loading-view/loading-view.wxss components/grade-sort-filter/grade-sort-filter.wxss pages/login/index.wxss pages/home/index.wxss pages/inbox/index.wxss pages/profile/index.wxss pages/schedule/index.wxss pages/grades/index.wxss pages/pass-rates/index.wxss pages/grade-detail/index.wxss pages/rooms/index.wxss pages/exams/index.wxss pages/calendar/index.wxss pages/electricity/index.wxss pages/timetable/index.wxss pages/browser/index.wxss",
     "check:json": "node scripts/check-json.js",
@@ -20,8 +22,9 @@
     "check:calendar": "node scripts/check-calendar-cache.js",
     "check:home": "node scripts/check-home.js",
     "check:rooms": "node scripts/check-rooms.js",
+    "check:login": "node scripts/check-login.js",
     "check:lf": "node scripts/check-lf.js",
-    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:rooms && npm run check:lf && npm run check:wxss",
+    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:rooms && npm run check:login && npm run check:lf && npm run check:wxss",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
