@@ -35,6 +35,7 @@ import {
   shouldShowPet,
   skipPetSetup,
 } from "../../store/pet";
+import { uploadLocalCompanionPreferences } from "../../services/companion";
 import { loadPreferences } from "../../store/preferences";
 import { loadScheduleData } from "../../store/schedule";
 import { getSession, loadCurrentUser } from "../../store/session";
@@ -680,6 +681,7 @@ Page({
       enabled: true,
       enhanced: this.data.petEnhanced,
     });
+    uploadLocalCompanionPreferences(account);
     this.setData({
       petShape: preferences.shape,
       petColor: preferences.color,
@@ -694,6 +696,7 @@ Page({
     if (!account) return;
     if (!this.data.petSelected) {
       skipPetSetup(account);
+      uploadLocalCompanionPreferences(account);
     }
     haptic("light");
     this.hydratePet(account);
@@ -1239,13 +1242,24 @@ Page({
       dateLabel: formatFriendlyDate(today()),
     });
 
+    const account = getSession()?.user.account || "";
     const userRequest = includeStableData
       ? getPreloadedCurrentUser(refreshTeaching).then((user) => {
-          if (user && homeVisible) this.hydrateIdentity(user);
+          if (user && homeVisible) {
+            this.hydrateIdentity(user);
+            this.hydratePet(account);
+            const preferences = loadPetPreferences(account);
+            if (preferences.completed && this.data.petSetupDrawerMounted) {
+              this.setData({
+                petSetupDrawerOpen: false,
+                petSetupDrawerMounted: false,
+              });
+              this.setTabBarHidden(false);
+            }
+          }
           return user;
         })
       : Promise.resolve(null);
-    const account = getSession()?.user.account || "";
     const gradeRequest = includeStableData
       ? getGrades({ page: 1, pageSize: 200, refresh: refreshStable }).then(
           (result) => {

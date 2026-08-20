@@ -57,6 +57,38 @@ function loadPetStore(engineData) {
   return { store: moduleRecord.exports, storage };
 }
 
+function loadCompanionService(petStore) {
+  const source = read("services/companion.ts");
+  const output = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const writes = [];
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    (request) => {
+      if (request.endsWith("store/pet")) return petStore;
+      if (request === "./request") {
+        return {
+          async apiRequest(path, options) {
+            writes.push({ path, data: options.data });
+            return {
+              ...options.data,
+              updatedAt: "2026-08-20T03:00:00.000Z",
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected companion service dependency: ${request}`);
+    },
+  );
+  return { service: moduleRecord.exports, writes };
+}
+
 const data = loadGeneratedData();
 const petStoreRuntime = loadPetStore(data);
 assert(data.PET_SHAPE_IDS.length === 18, "校园伙伴必须保留参考中的 18 种形状");
@@ -109,6 +141,7 @@ const defaultPreferences = petStoreRuntime.store.loadPetPreferences("new");
 assert(
   !defaultPreferences.completed &&
     !defaultPreferences.selected &&
+    !defaultPreferences.skipped &&
     !defaultPreferences.enabled &&
     !defaultPreferences.enhanced &&
     !petStoreRuntime.store.shouldShowPet(defaultPreferences),
@@ -117,6 +150,7 @@ assert(
 const skippedPreferences = petStoreRuntime.store.skipPetSetup("skipped");
 assert(
   skippedPreferences.completed &&
+    skippedPreferences.skipped &&
     !skippedPreferences.selected &&
     !skippedPreferences.enabled &&
     !petStoreRuntime.store.shouldShowPet(skippedPreferences),
@@ -129,6 +163,7 @@ const selectedPreferences = petStoreRuntime.store.savePetSelection("selected", {
 });
 assert(
   selectedPreferences.selected &&
+    !selectedPreferences.skipped &&
     selectedPreferences.enabled &&
     selectedPreferences.enhanced &&
     petStoreRuntime.store.shouldShowPet(selectedPreferences),
@@ -170,6 +205,33 @@ assert(
     !petStoreRuntime.store.shouldShowPet(selectedButHidden),
   "选择页中的显示开关必须和形状、颜色一起保存",
 );
+assert(
+  !petStoreRuntime.store.hasStoredPetPreferences("server-only"),
+  "从未保存过伙伴的账号必须能与本地默认值区分",
+);
+const serverPreferences = petStoreRuntime.store.storeServerPetPreferences(
+  "server-only",
+  {
+    selected: true,
+    skipped: false,
+    enabled: false,
+    enhanced: true,
+    shape: "cloud",
+    color: "#f0449d",
+    updatedAt: "2026-08-20T02:00:00.000Z",
+  },
+);
+assert(
+  petStoreRuntime.store.hasStoredPetPreferences("server-only") &&
+    serverPreferences.completed &&
+    serverPreferences.selected &&
+    !serverPreferences.skipped &&
+    !serverPreferences.enabled &&
+    serverPreferences.enhanced &&
+    serverPreferences.shape === "cloud" &&
+    serverPreferences.color === "#f0449d",
+  "本地没有记录时必须完整接收服务端伙伴状态和样式",
+);
 
 const component = read("components/geometric-pet/geometric-pet.ts");
 const componentTemplate = read("components/geometric-pet/geometric-pet.wxml");
@@ -179,8 +241,12 @@ const setupScript = read("pages/pet-setup/index.ts");
 const setupTemplate = read("pages/pet-setup/index.wxml");
 const setupStyles = read("pages/pet-setup/index.wxss");
 const pickerScript = read("components/pet-picker-drawer/pet-picker-drawer.ts");
-const pickerTemplate = read("components/pet-picker-drawer/pet-picker-drawer.wxml");
-const pickerStyles = read("components/pet-picker-drawer/pet-picker-drawer.wxss");
+const pickerTemplate = read(
+  "components/pet-picker-drawer/pet-picker-drawer.wxml",
+);
+const pickerStyles = read(
+  "components/pet-picker-drawer/pet-picker-drawer.wxss",
+);
 const homeScript = read("pages/home/index.ts");
 const homeTemplate = read("pages/home/index.wxml");
 const homeStyles = read("pages/home/index.wxss");
@@ -188,6 +254,9 @@ const profileScript = read("pages/profile/index.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
 const petStore = read("store/pet.ts");
+const companionService = read("services/companion.ts");
+const authService = read("services/auth.ts");
+const apiTypes = read("types/api.ts");
 const loginScript = read("pages/login/index.ts");
 const navigationScript = read("utils/navigation.ts");
 const appConfig = JSON.parse(read("app.json"));
@@ -228,9 +297,7 @@ assert(
     component.includes("previewTopGutter:") &&
     component.includes("refreshPreviewTopGutter()") &&
     componentTemplate.includes('id="pet-engine-image"') &&
-    componentTemplate.includes(
-      'style="{{rendererStyle}}"',
-    ) &&
+    componentTemplate.includes('style="{{rendererStyle}}"') &&
     componentTemplate.includes("<image") &&
     componentTemplate.includes('src="{{petSource}}"') &&
     componentTemplate.includes('mode="aspectFit"') &&
@@ -290,7 +357,7 @@ assert(
       "export const ORIGINAL_PET_OVERSCAN_FACTOR = 2.4",
     ) &&
     originalEngine.includes("let __nextEngineId = 0") &&
-    originalEngine.includes('value: `gb${++__nextEngineId}`') &&
+    originalEngine.includes("value: `gb${++__nextEngineId}`") &&
     !originalEngine.includes('preserveAspectRatio="none"') &&
     !originalEngine.includes('width="${outerWidth.toFixed(3)}"') &&
     !originalEngine.includes('height="${outerHeight.toFixed(3)}"') &&
@@ -336,7 +403,9 @@ assert(
     setupScript.includes("persistSelection(patch: SelectionPatch)") &&
     setupScript.includes("savePetSelection(account") &&
     setupScript.includes("skipPetSetup(account)") &&
-    !setupScript.includes("wx.nextTick(() => this.setData({ drawerOpen: true }))") &&
+    !setupScript.includes(
+      "wx.nextTick(() => this.setData({ drawerOpen: true }))",
+    ) &&
     setupTemplate.includes('wx:for="{{shapeOptions}}"') &&
     setupTemplate.includes('class="shape-pet-frame"') &&
     setupTemplate.includes('class="pet-drawer-card') &&
@@ -395,12 +464,24 @@ assert(
   petStore.includes('PET_PREFERENCES_KEY_PREFIX = "easy-swu:pet:v1:"') &&
     petStore.includes("completed: true") &&
     petStore.includes("selected: false") &&
+    petStore.includes("skipped: true") &&
     petStore.includes("enabled: false") &&
     petStore.includes("enhanced: false") &&
     petStore.includes("stored.enhanced === true") &&
     petStore.includes("export function skipPetSetup") &&
     petStore.includes("export function setPetEnabled") &&
+    petStore.includes("export function hasStoredPetPreferences") &&
+    petStore.includes("export function storeServerPetPreferences") &&
     petStore.includes("preferences.selected && preferences.enabled") &&
+    companionService.includes("if (!hasStoredPetPreferences(account))") &&
+    companionService.includes("if (server) storeServerPetPreferences") &&
+    companionService.includes("if (samePreferences(local, server))") &&
+    companionService.includes(
+      'apiRequest<CompanionPreferencesData>("/auth/companion"',
+    ) &&
+    companionService.includes("uploadQueues") &&
+    authService.includes("synchronizeCompanionPreferences") &&
+    apiTypes.includes("companion: CompanionPreferencesData | null") &&
     loginScript.includes(
       "function routeAfterAuthentication(onFailure?: () => void): void",
     ) &&
@@ -412,11 +493,15 @@ assert(
     homeScript.includes(
       "const petSetupPending = this.openPendingPetSetup(sessionAccount);",
     ) &&
-    !homeScript.includes("if (this.openPendingPetSetup(sessionAccount)) return") &&
+    !homeScript.includes(
+      "if (this.openPendingPetSetup(sessionAccount)) return",
+    ) &&
     !homeScript.includes("/pages/pet-setup/index?source=home") &&
     homeScript.includes("petSetupDrawerMounted: true") &&
     homeScript.includes("savePetSelection(account") &&
     homeScript.includes("skipPetSetup(account)") &&
+    homeScript.includes("uploadLocalCompanionPreferences(account)") &&
+    setupScript.includes("uploadLocalCompanionPreferences(account)") &&
     homeTemplate.includes("<pet-picker-drawer") &&
     homeTemplate.includes('<root-portal wx:if="{{petSetupDrawerMounted}}">') &&
     !homeTemplate.includes('class="home-pet-setup-action') &&
@@ -660,19 +745,16 @@ function runOriginalEngineSmokeTest() {
       .split(/\s+/)
       .map(Number);
     const svgTransform =
-      /<g transform="translate\(([-\d.]+) ([-\d.]+)\) translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+)\)/.exec(
+      /<g transform="matrix\(([-\d.]+) 0 0 ([-\d.]+) ([-\d.]+) ([-\d.]+)\)"/.exec(
         svgMarkup,
       );
     const sourceViewHeight = Number(svgViewBox?.[3]) / 2.4;
+    const sourceCenter = 114.5;
     const geometricAnchorXRatio =
-      (Number(svgTransform?.[3]) +
-        Number(svgTransform?.[1]) -
-        Number(svgViewBox?.[0])) /
+      (sourceCenter * Number(svgTransform?.[1]) + Number(svgTransform?.[3])) /
       sourceViewHeight;
     const geometricAnchorYRatio =
-      (Number(svgTransform?.[4]) +
-        Number(svgTransform?.[2]) -
-        Number(svgViewBox?.[1])) /
+      (sourceCenter * Number(svgTransform?.[2]) + Number(svgTransform?.[4])) /
       sourceViewHeight;
     assert(
       svgSource.startsWith("data:image/svg+xml;charset=utf-8,") &&
@@ -685,9 +767,12 @@ function runOriginalEngineSmokeTest() {
     assert(
       svgViewBox?.length === 4 &&
         svgViewBox.every(Number.isFinite) &&
-        svgViewBox[0] - svgViewBox[1] >= svgViewBox[2] * 0.09 &&
-        Number(svgTransform?.[1]) < 0 &&
-        Number(svgTransform?.[2]) < 0 &&
+        svgViewBox[0] === 0 &&
+        svgViewBox[1] === 0 &&
+        Number(svgTransform?.[1]) > 0 &&
+        Number(svgTransform?.[2]) > 0 &&
+        Number.isFinite(Number(svgTransform?.[3])) &&
+        Number.isFinite(Number(svgTransform?.[4])) &&
         Math.abs(geometricAnchorXRatio - 0.4) <= 0.005 &&
         Math.abs(geometricAnchorYRatio - 0.5) <= 0.005 &&
         0.33 > (48 / 229) * 0.96 + 0.1,
@@ -733,6 +818,63 @@ function runOriginalEngineSmokeTest() {
   }
 }
 
-runOriginalEngineSmokeTest();
+async function runCompanionSyncSmokeTest() {
+  const runtime = loadCompanionService(petStoreRuntime.store);
+  petStoreRuntime.store.savePetSelection("local-priority", {
+    shape: "leaf",
+    color: "#2a92fe",
+    enabled: false,
+    enhanced: true,
+  });
+  await runtime.service.synchronizeCompanionPreferences("local-priority", {
+    selected: true,
+    skipped: false,
+    enabled: true,
+    enhanced: false,
+    shape: "cloud",
+    color: "#f0449d",
+    updatedAt: "2026-08-19T03:00:00.000Z",
+  });
+  assert(
+    runtime.writes.length === 1 &&
+      runtime.writes[0].path === "/auth/companion" &&
+      runtime.writes[0].data.shape === "leaf" &&
+      runtime.writes[0].data.color === "#2a92fe" &&
+      runtime.writes[0].data.enabled === false,
+    "本机与服务端不同时必须用本机完整设置覆盖服务器",
+  );
 
-console.log("Pet system checks passed.");
+  const serverOnly = {
+    selected: true,
+    skipped: false,
+    enabled: true,
+    enhanced: true,
+    shape: "cloud",
+    color: "#f0449d",
+    updatedAt: "2026-08-20T03:00:00.000Z",
+  };
+  await runtime.service.synchronizeCompanionPreferences(
+    "fresh-device",
+    serverOnly,
+  );
+  const hydrated = petStoreRuntime.store.loadPetPreferences("fresh-device");
+  assert(
+    runtime.writes.length === 1 &&
+      hydrated.shape === "cloud" &&
+      hydrated.color === "#f0449d" &&
+      hydrated.enabled &&
+      hydrated.enhanced,
+    "本机没有伙伴记录时必须直接采用服务器副本且不得反向写入",
+  );
+}
+
+async function main() {
+  runOriginalEngineSmokeTest();
+  await runCompanionSyncSmokeTest();
+  console.log("Pet system checks passed.");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

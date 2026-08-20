@@ -1,3 +1,5 @@
+import type { PetShapeId } from "../components/geometric-pet/engine-data";
+
 export interface ApiSuccess<T> {
   success: true;
   data: T;
@@ -45,6 +47,7 @@ export interface Session {
     id: string;
     account: string;
     name: string;
+    companion: CompanionPreferencesData | null;
   };
   signedInAt: number;
 }
@@ -73,6 +76,7 @@ export interface CurrentUserData {
   account: string;
   name: string;
   credential: CredentialState;
+  companion: CompanionPreferencesData | null;
   profile: {
     name?: string;
     accountId?: string;
@@ -86,6 +90,16 @@ export interface CurrentUserData {
     studentStatus?: string;
     enrollmentDate?: string;
   };
+}
+
+export interface CompanionPreferencesData {
+  selected: boolean;
+  skipped: boolean;
+  enabled: boolean;
+  enhanced: boolean;
+  shape: PetShapeId;
+  color: string;
+  updatedAt: string | null;
 }
 
 export interface CalendarAcademicYearOption {

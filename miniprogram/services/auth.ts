@@ -11,6 +11,7 @@ import type {
   LoginData,
   Session,
 } from "../types/api";
+import { synchronizeCompanionPreferences } from "./companion";
 
 export async function login(
   account: string,
@@ -23,11 +24,20 @@ export async function login(
     retry: false,
     timeout: 70000,
   });
+  saveSession(data);
+  data.user.companion = await synchronizeCompanionPreferences(
+    data.user.account,
+    data.user.companion,
+  );
   return saveSession(data);
 }
 
 export async function getCurrentUser(): Promise<CurrentUserData> {
   const data = await apiRequest<CurrentUserData>("/auth/me");
+  data.companion = await synchronizeCompanionPreferences(
+    data.account,
+    data.companion,
+  );
   saveCurrentUser(data);
   updateSessionCredential(data.credential);
   return data;

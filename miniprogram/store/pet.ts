@@ -2,6 +2,7 @@ import {
   PET_SHAPE_IDS,
   type PetShapeId,
 } from "../components/geometric-pet/engine-data";
+import type { CompanionPreferencesData } from "../types/api";
 
 export interface PetColorOption {
   id: string;
@@ -12,6 +13,7 @@ export interface PetColorOption {
 export interface PetPreferences {
   completed: boolean;
   selected: boolean;
+  skipped: boolean;
   enabled: boolean;
   enhanced: boolean;
   shape: PetShapeId;
@@ -34,6 +36,7 @@ export const PET_COLORS: readonly PetColorOption[] = [
 export const DEFAULT_PET_PREFERENCES: PetPreferences = {
   completed: false,
   selected: false,
+  skipped: false,
   enabled: false,
   enhanced: false,
   shape: "blob",
@@ -83,9 +86,12 @@ export function loadPetPreferences(account: string): PetPreferences {
     (shape !== DEFAULT_PET_PREFERENCES.shape ||
       color !== DEFAULT_PET_PREFERENCES.color);
   const selected = stored.selected === true || migratedSelection;
+  const skipped =
+    !selected && (stored.skipped === true || stored.completed === true);
   return {
-    completed: stored.completed === true,
+    completed: selected || skipped,
     selected,
+    skipped,
     enabled: selected && stored.enabled !== false,
     enhanced: stored.enhanced === true,
     shape,
@@ -106,6 +112,7 @@ export function savePetSelection(
   const next: PetPreferences = {
     completed: true,
     selected: true,
+    skipped: false,
     enabled:
       typeof selection.enabled === "boolean"
         ? selection.enabled
@@ -134,6 +141,7 @@ export function skipPetSetup(account: string): PetPreferences {
     ...current,
     completed: true,
     selected: false,
+    skipped: true,
     enabled: false,
     updatedAt: Date.now(),
   };
@@ -161,4 +169,34 @@ export function hasCompletedPetSetup(account: string): boolean {
 
 export function shouldShowPet(preferences: PetPreferences): boolean {
   return preferences.selected && preferences.enabled;
+}
+
+export function hasStoredPetPreferences(account: string): boolean {
+  const stored = wx.getStorageSync(petStorageKey(account)) as unknown;
+  return Boolean(stored && typeof stored === "object");
+}
+
+export function storeServerPetPreferences(
+  account: string,
+  preferences: CompanionPreferencesData,
+): PetPreferences {
+  const selected = preferences.selected === true;
+  const skipped = !selected && preferences.skipped === true;
+  const updatedAt = Date.parse(preferences.updatedAt || "");
+  const next: PetPreferences = {
+    completed: selected || skipped,
+    selected,
+    skipped,
+    enabled: selected && preferences.enabled === true,
+    enhanced: preferences.enhanced === true,
+    shape: isPetShape(preferences.shape)
+      ? preferences.shape
+      : DEFAULT_PET_PREFERENCES.shape,
+    color: isPetColor(preferences.color)
+      ? preferences.color.toLowerCase()
+      : DEFAULT_PET_PREFERENCES.color,
+    updatedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now(),
+  };
+  wx.setStorageSync(petStorageKey(account), next);
+  return next;
 }

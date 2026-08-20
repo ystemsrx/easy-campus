@@ -8,6 +8,7 @@ import {
   savePetSelection,
   skipPetSetup,
 } from "../../store/pet";
+import { uploadLocalCompanionPreferences } from "../../services/companion";
 import { getSession } from "../../store/session";
 import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
@@ -124,6 +125,7 @@ Page({
       enabled,
       enhanced,
     });
+    uploadLocalCompanionPreferences(account);
     this.setData({
       selectedShape: preferences.shape,
       selectedColor: preferences.color,
@@ -139,6 +141,7 @@ Page({
     const account = getSession()?.user.account || "";
     if (!account) return;
     skipPetSetup(account);
+    uploadLocalCompanionPreferences(account);
     haptic("light");
     this.finishSetup();
   },
