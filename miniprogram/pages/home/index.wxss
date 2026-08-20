@@ -1,5 +1,115 @@
 .home-content { padding-top: 20rpx; }
 
+.home-framework--guarded {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.home-auth-guard {
+  position: absolute;
+  z-index: 100;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--color-bg);
+  pointer-events: auto;
+}
+
+.home-auth-login-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  animation-name: home-auth-login-backdrop-in;
+  animation-duration: 240ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.home-auth-login-blob--one {
+  top: -120rpx;
+  left: -135rpx;
+  width: 470rpx;
+  height: 430rpx;
+  background: #f9eae2;
+}
+
+.home-auth-login-blob--two {
+  top: 37%;
+  right: -170rpx;
+  width: 410rpx;
+  height: 380rpx;
+  background: #f8eedd;
+  animation-delay: -3s;
+}
+
+.home-auth-login-blob--three {
+  bottom: -170rpx;
+  left: -90rpx;
+  width: 430rpx;
+  height: 390rpx;
+  background: #edf1e6;
+  animation-delay: -5s;
+}
+
+.home-auth-login-hero {
+  position: relative;
+  height: calc(100vh - 720rpx);
+  min-height: 390rpx;
+}
+
+.home-auth-login-heading {
+  position: absolute;
+  right: 48rpx;
+  bottom: 164rpx;
+  left: 48rpx;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.home-auth-login-title {
+  display: block;
+  color: #16161a;
+  font-size: 78rpx;
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.home-auth-login-subtitle {
+  display: block;
+  max-width: 100%;
+  margin-top: 12rpx;
+  overflow: hidden;
+  color: #8c867a;
+  font-size: 30rpx;
+  font-weight: 550;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-dark .home-auth-login-title {
+  color: #f7f3e9;
+}
+
+.theme-dark .home-auth-login-subtitle {
+  color: #c6bdad;
+}
+
+.motion-reduced .home-auth-login-stage {
+  animation-duration: 1ms;
+}
+
+@keyframes home-auth-login-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .home-page .page-enter {
   animation-name: home-page-settle;
   animation-duration: 240ms;

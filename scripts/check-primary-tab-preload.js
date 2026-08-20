@@ -118,7 +118,7 @@ const profileItemSettle =
   "";
 assert(
   homePage.includes("function preloadNextPrimaryTabFramework(): void") &&
-    /onReady\(\)\s*\{\s*preloadNextPrimaryTabFramework\(\);\s*\}/.test(
+    /activateHomeAfterFirstFrame\(\)[\s\S]*?preloadNextPrimaryTabFramework\(\);/.test(
       homePage,
     ) &&
     profilePage.includes(

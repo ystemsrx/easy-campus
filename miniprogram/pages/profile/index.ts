@@ -1,3 +1,4 @@
+import { MINIPROGRAM_NAME } from "../../config/env";
 import { logout as logoutSession } from "../../services/auth";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
@@ -12,7 +13,7 @@ import {
   syncWindowBackground,
 } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
+import { ensureAuthenticated, goToLogin } from "../../utils/navigation";
 
 function classLabel(user: CurrentUserData): string {
   const grade = (user.profile.grade || "").trim().replace(/级$/, "");
@@ -37,11 +38,23 @@ const INITIAL_PROFILE_PREFERENCES = loadPreferences();
 const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
   INITIAL_PROFILE_PREFERENCES,
 );
+const PROFILE_AUTH_EXIT_MS = 180;
+
+let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
+
+function clearAuthenticationExitTimer(): void {
+  if (authenticationExitTimer === undefined) return;
+  clearTimeout(authenticationExitTimer);
+  authenticationExitTimer = undefined;
+}
 
 Page({
   data: {
     ...INITIAL_PROFILE_APPEARANCE,
+    appName: MINIPROGRAM_NAME,
     loading: false,
+    loggingOut: false,
+    authenticationExitClass: "",
     errorMessage: "",
     userName: "同学",
     avatarText: "易",
@@ -78,10 +91,15 @@ Page({
     if (!ensureAuthenticated()) {
       return;
     }
+    clearAuthenticationExitTimer();
+    this.setData({ loggingOut: false, authenticationExitClass: "" });
     this.applyAppearance();
     this.loadPet(getSession()?.user.account || "");
     this.syncTabBarAppearance();
     void this.loadUser();
+  },
+  onUnload() {
+    clearAuthenticationExitTimer();
   },
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
@@ -184,10 +202,27 @@ Page({
     this.applyAppearance();
     this.syncTabBarAppearance();
   },
+  prepareForAuthenticationRequired(onReady?: () => void) {
+    clearAuthenticationExitTimer();
+    const tabBar = this.getTabBar();
+    if (tabBar) tabBar.setData({ hidden: true });
+    this.setData({ authenticationExitClass: "profile-page--leaving" }, () => {
+      if (this.data.motionClass === "motion-reduced") {
+        onReady?.();
+        return;
+      }
+      authenticationExitTimer = setTimeout(() => {
+        authenticationExitTimer = undefined;
+        onReady?.();
+      }, PROFILE_AUTH_EXIT_MS);
+    });
+  },
   logout() {
+    if (this.data.loggingOut) return;
     haptic("heavy");
+    this.setData({ loggingOut: true });
     void logoutSession()
       .catch(() => undefined)
-      .finally(() => wx.reLaunch({ url: "/pages/login/index" }));
+      .finally(() => goToLogin());
   },
 });

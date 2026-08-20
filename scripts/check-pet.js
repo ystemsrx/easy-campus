@@ -503,7 +503,9 @@ assert(
     homeScript.includes("uploadLocalCompanionPreferences(account)") &&
     setupScript.includes("uploadLocalCompanionPreferences(account)") &&
     homeTemplate.includes("<pet-picker-drawer") &&
-    homeTemplate.includes('<root-portal wx:if="{{petSetupDrawerMounted}}">') &&
+    homeTemplate.includes(
+      '<root-portal wx:if="{{authenticated && petSetupDrawerMounted}}">',
+    ) &&
     !homeTemplate.includes('class="home-pet-setup-action') &&
     homeTemplate.includes('scroll-y="{{!petSetupDrawerOpen}}"') &&
     pickerScript.includes("shapeOptions: SHAPE_OPTIONS") &&
@@ -521,7 +523,8 @@ assert(
     pickerStyles.includes("font-size: 40rpx") &&
     pickerStyles.includes("transform: translateY(104%)") &&
     navigationScript.includes("let loginRouteOpening = false") &&
-    navigationScript.includes("if (loginRouteOpening) return") &&
+    navigationScript.includes("if (loginRouteOpening) {") &&
+    navigationScript.includes("page.prepareForAuthenticationRequired();") &&
     navigationScript.includes("if (getSession()?.token) return true") &&
     !homeScript.includes("wx.reLaunch({") &&
     !homeScript.includes("wx.showModal({") &&

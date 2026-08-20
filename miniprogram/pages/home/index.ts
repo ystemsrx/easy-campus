@@ -1,3 +1,4 @@
+import { MINIPROGRAM_NAME } from "../../config/env";
 import { getCredentialStatus } from "../../services/auth";
 import {
   getPreloadedCurrentUser,
@@ -87,7 +88,12 @@ import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
-import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import {
+  ensureAuthenticated,
+  navigateTo,
+  registerHomeAuthenticationHost,
+  unregisterHomeAuthenticationHost,
+} from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
 import { sortPublicationsNewestFirst } from "../../utils/publications";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
@@ -145,9 +151,12 @@ interface ExamPreview {
 }
 
 const HOME_PREVIEW_ITEM_LIMIT = 3;
+const HOME_FIRST_FRAME_SETTLE_MS = 32;
+const HOME_LOGIN_REVEAL_SETTLE_MS = 360;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
 const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());
+const INITIAL_HOME_AUTHENTICATED = Boolean(getSession()?.token);
 
 interface ShortcutCachePatch {
   electricityBound: boolean;
@@ -163,6 +172,10 @@ let announcementModalTimer: number | undefined;
 let publicationRequestInFlight = false;
 let lastPublicationRequestAt = 0;
 let homeVisible = false;
+let homeReady = false;
+let homeActivationTimer: ReturnType<typeof setTimeout> | undefined;
+let authenticationRevealPrepared = false;
+let nextPrimaryTabFrameworkPreloadStarted = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
 let automaticPopupEntryKey = "";
@@ -450,6 +463,8 @@ function mergeNoticePreviews(
 }
 
 function preloadNextPrimaryTabFramework(): void {
+  if (nextPrimaryTabFrameworkPreloadStarted) return;
+  nextPrimaryTabFrameworkPreloadStarted = true;
   if (typeof wx.preloadSkylineView !== "function") return;
   try {
     wx.preloadSkylineView();
@@ -464,9 +479,17 @@ function clearDashboardTeachingFollowupTimer(): void {
   dashboardTeachingFollowupTimer = undefined;
 }
 
+function clearHomeActivationTimer(): void {
+  if (homeActivationTimer === undefined) return;
+  clearTimeout(homeActivationTimer);
+  homeActivationTimer = undefined;
+}
+
 Page({
   data: {
     ...INITIAL_HOME_APPEARANCE,
+    appName: MINIPROGRAM_NAME,
+    authenticated: INITIAL_HOME_AUTHENTICATED,
     loading: false,
     loaded: false,
     errorMessage: "",
@@ -518,6 +541,11 @@ Page({
     activeAnnouncement: null as PublicationPreview | null,
   },
   onLoad() {
+    registerHomeAuthenticationHost(this);
+    homeVisible = false;
+    homeReady = false;
+    authenticationRevealPrepared = false;
+    clearHomeActivationTimer();
     hydratedAccount = "";
     activeTimetable = null;
     timetableRouteOpening = false;
@@ -534,26 +562,181 @@ Page({
     dashboardStableRefreshQueued = false;
     clearDashboardTeachingFollowupTimer();
     this.applyAppearance();
-    this.hydrateIdentity();
+    if (getSession()?.token) {
+      if (!this.data.authenticated) this.setData({ authenticated: true });
+      this.hydrateIdentity();
+    } else {
+      this.prepareForAuthenticationRequired();
+    }
   },
   onReady() {
-    preloadNextPrimaryTabFramework();
+    homeReady = true;
+    const delay = authenticationRevealPrepared
+      ? HOME_LOGIN_REVEAL_SETTLE_MS
+      : HOME_FIRST_FRAME_SETTLE_MS;
+    authenticationRevealPrepared = false;
+    this.scheduleHomeActivation(delay);
   },
   onShow() {
     if (!ensureAuthenticated()) {
+      homeVisible = false;
+      clearHomeActivationTimer();
       return;
     }
+    homeVisible = true;
+    if (this.data.authenticated) {
+      this.applyAppearance();
+      this.hydrateIdentity();
+    } else {
+      this.prepareForAuthenticatedReveal();
+    }
+    this.getTabBar().setData({
+      selected: 0,
+      themeClass: this.data.themeClass,
+      motionClass: this.data.motionClass,
+      hidden: this.data.petSetupDrawerMounted,
+    });
+    if (homeReady) {
+      const delay = authenticationRevealPrepared
+        ? HOME_LOGIN_REVEAL_SETTLE_MS
+        : 0;
+      authenticationRevealPrepared = false;
+      this.scheduleHomeActivation(delay);
+    }
+  },
+  prepareForAuthenticationRequired(onReady?: () => void) {
+    homeVisible = false;
+    authenticationRevealPrepared = false;
+    clearHomeActivationTimer();
+    clearDashboardTeachingFollowupTimer();
+    this.stopCourseClock();
+    this.stopCredentialPoll();
+    this.setTabBarHidden(true);
+    hydratedAccount = "";
+    activeTimetable = null;
+    queuedAnnouncements = [];
+    automaticPopupsThisEntry = new Set<string>();
+    automaticPopupEntryKey = "";
+    if (petSetupDrawerTimer !== undefined) {
+      clearTimeout(petSetupDrawerTimer);
+      petSetupDrawerTimer = undefined;
+    }
+    if (publicationPanelTimer !== undefined) {
+      clearTimeout(publicationPanelTimer);
+      publicationPanelTimer = undefined;
+    }
+    if (announcementModalTimer !== undefined) {
+      clearTimeout(announcementModalTimer);
+      announcementModalTimer = undefined;
+    }
+    if (!this.data.authenticated) {
+      wx.nextTick(() => onReady?.());
+      return;
+    }
+    this.setData(
+      {
+        authenticated: false,
+        loading: false,
+        loaded: false,
+        errorMessage: "",
+        serviceHealthy: false,
+        serviceLabel: "正在连接服务",
+        userName: "",
+        organizationName: "",
+        todayCourses: [],
+        remainingCourseCount: 0,
+        gradeRingSource: progressRingSource(null),
+        gradeAverageLabel: "—",
+        gradePointAverageLabel: "—",
+        gradeCourseCount: 0,
+        electricityBound: false,
+        electricityBalanceLabel: "—",
+        electricityUsageLabel: "绑定寝室后查看",
+        examPreviews: [],
+        examEmptyLabel: "暂时没有考试安排",
+        plans: [],
+        messages: [],
+        notices: [],
+        publications: [],
+        publicationUnreadCount: 0,
+        publicationUnreadLabel: "",
+        petShape: "blob",
+        petColor: "#111214",
+        petEnhanced: false,
+        petSelected: false,
+        petVisible: false,
+        petSetupDrawerMounted: false,
+        petSetupDrawerOpen: false,
+        publicationPanelMounted: false,
+        publicationPanelOpen: false,
+        publicationPanelScrollHeight: 0,
+        announcementModalMounted: false,
+        announcementModalOpen: false,
+        announcementScrollHeight: 0,
+        activeAnnouncement: null,
+      },
+      () => wx.nextTick(() => onReady?.()),
+    );
+  },
+  prepareForAuthenticatedReveal(onReady?: () => void) {
+    const session = getSession();
+    if (!session?.token) {
+      this.prepareForAuthenticationRequired(onReady);
+      return;
+    }
+    const appearance = resolveAppearance();
+    const identity = resolveHomeIdentity(session, loadCurrentUser());
+    syncWindowBackground(appearance.theme);
+    authenticationRevealPrepared = true;
+    this.setData(
+      {
+        authenticated: true,
+        ...appearance,
+        ...identity,
+        petReducedMotion: appearance.motionClass === "motion-reduced",
+      },
+      () => {
+        const account = session.user.account;
+        this.hydratePet(account);
+        this.hydrateCachedDashboard();
+        this.hydrateShortcutCaches();
+        this.setData({ plans: loadPlanPreviews(account) }, () => {
+          const tabBar = this.getTabBar();
+          const finish = () => wx.nextTick(() => onReady?.());
+          if (!tabBar) {
+            finish();
+            return;
+          }
+          tabBar.setData(
+            {
+              selected: 0,
+              themeClass: appearance.themeClass,
+              motionClass: appearance.motionClass,
+              hidden: false,
+            },
+            finish,
+          );
+        });
+      },
+    );
+  },
+  scheduleHomeActivation(delay: number) {
+    clearHomeActivationTimer();
+    homeActivationTimer = setTimeout(() => {
+      homeActivationTimer = undefined;
+      if (homeVisible) this.activateHomeAfterFirstFrame();
+    }, delay);
+  },
+  activateHomeAfterFirstFrame() {
     const sessionAccount = getSession()?.user.account || "";
-    this.applyAppearance();
+    if (!sessionAccount || !homeVisible) return;
     this.hydratePet(sessionAccount);
     const petSetupPending = this.openPendingPetSetup(sessionAccount);
-    homeVisible = true;
     const currentAutomaticPopupEntryKey = `${getApp<IAppOption>().globalData.foregroundEntryId}:${sessionAccount}`;
     if (currentAutomaticPopupEntryKey !== automaticPopupEntryKey) {
       automaticPopupEntryKey = currentAutomaticPopupEntryKey;
       automaticPopupsThisEntry = new Set<string>();
     }
-    this.hydrateIdentity();
     this.hydrateCachedDashboard();
     this.hydrateShortcutCaches();
     this.getTabBar().setData({
@@ -576,16 +759,22 @@ Page({
     void refreshExamsAfterSignIn().then(() => {
       if (homeVisible) this.hydrateShortcutCaches();
     });
+    preloadNextPrimaryTabFramework();
   },
   onHide() {
     homeVisible = false;
+    clearHomeActivationTimer();
     clearDashboardTeachingFollowupTimer();
     this.stopCourseClock();
     this.stopCredentialPoll();
     this.resetPublicationLayers();
+    if (!getSession()?.token) this.setTabBarHidden(true);
   },
   onUnload() {
+    unregisterHomeAuthenticationHost(this);
     homeVisible = false;
+    homeReady = false;
+    clearHomeActivationTimer();
     clearDashboardTeachingFollowupTimer();
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);

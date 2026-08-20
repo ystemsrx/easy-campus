@@ -42,10 +42,15 @@ const MASCOT_SOURCES: Record<MascotName, string> = {
 
 const ERROR_TOAST_HOLD_MS = 3000;
 const ERROR_TOAST_EXIT_MS = 320;
+const HOME_RENDER_COMMIT_TIMEOUT_MS = 1000;
+const LOGIN_EXIT_ROUTE_LEAD_MS = 360;
+const LOGIN_REDUCED_EXIT_ROUTE_LEAD_MS = 16;
+const LOGIN_EXIT_COMMIT_TIMEOUT_MS = 800;
 
 let mascotScheme: MascotScheme = "laptop";
 let currentMascot: MascotName | "" = "";
 let mascotSequenceTimer: ReturnType<typeof setTimeout> | undefined;
+let loginExitRouteTimer: ReturnType<typeof setTimeout> | undefined;
 let errorToastTimer: ReturnType<typeof setTimeout> | undefined;
 let errorToastCleanupTimer: ReturnType<typeof setTimeout> | undefined;
 let laptopCycleStartedAt = 0;
@@ -76,6 +81,12 @@ function clearErrorToastTimers() {
   }
 }
 
+function clearLoginExitRouteTimer() {
+  if (loginExitRouteTimer === undefined) return;
+  clearTimeout(loginExitRouteTimer);
+  loginExitRouteTimer = undefined;
+}
+
 function normalizeLoginErrorMessage(message: string): string {
   if (message.includes("西南大学账号或密码错误")) {
     return "账号或密码错误";
@@ -98,11 +109,82 @@ function preloadHomeFramework(): void {
   }
 }
 
-function routeAfterAuthentication(onFailure?: () => void): void {
+function dismissLoginKeyboard(): void {
+  try {
+    void wx.hideKeyboard({ fail: () => undefined });
+  } catch {
+    // 旧基础库会在页面切换时自行收起键盘。
+  }
+}
+
+interface PreparedHomePage {
+  route?: string;
+  prepareForAuthenticatedReveal?: (onReady?: () => void) => void;
+  playAuthenticatedExit?: (onReady: () => void) => void;
+}
+
+function homePageBelowLogin(): PreparedHomePage | null {
+  const pages = getCurrentPages() as PreparedHomePage[];
+  const current = pages[pages.length - 1];
+  const previous = pages[pages.length - 2];
+  return current?.route === "pages/login/index" &&
+    previous?.route === "pages/home/index"
+    ? previous
+    : null;
+}
+
+function switchToHome(onFailure?: () => void): void {
   wx.switchTab({
     url: "/pages/home/index",
     fail: () => onFailure?.(),
   });
+}
+
+function routeAfterAuthentication(onFailure?: () => void): void {
+  const preparedHome = homePageBelowLogin();
+  const pages = getCurrentPages() as PreparedHomePage[];
+  const loginPage = pages[pages.length - 1];
+  let exitStarted = false;
+  let routeStarted = false;
+  let renderFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+  const navigateHome = () => {
+    if (routeStarted) return;
+    routeStarted = true;
+    switchToHome(onFailure);
+  };
+  const startExit = () => {
+    if (exitStarted) return;
+    exitStarted = true;
+    if (renderFallbackTimer !== undefined) {
+      clearTimeout(renderFallbackTimer);
+      renderFallbackTimer = undefined;
+    }
+    if (typeof loginPage?.playAuthenticatedExit === "function") {
+      try {
+        loginPage.playAuthenticatedExit(navigateHome);
+        return;
+      } catch {
+        // 页面卸载竞态下直接执行原生返回。
+      }
+    }
+    navigateHome();
+  };
+
+  if (!preparedHome) {
+    startExit();
+    return;
+  }
+
+  if (typeof preparedHome.prepareForAuthenticatedReveal === "function") {
+    renderFallbackTimer = setTimeout(startExit, HOME_RENDER_COMMIT_TIMEOUT_MS);
+    try {
+      preparedHome.prepareForAuthenticatedReveal(startExit);
+      return;
+    } catch {
+      // 首页已经卸载时由标准 Tab 路由兜底。
+    }
+  }
+  startExit();
 }
 
 Page({
@@ -121,10 +203,11 @@ Page({
     mascotPositionClass: "mascot-position--right",
     mascotPositionStyle: "",
     mascotMotionClass: "",
+    loginScrollAnchor: "",
+    loginHandoffClass: "",
     ...INITIAL_LOGIN_APPEARANCE,
   },
-  onLoad() {
-    const sessionInvalid = consumeSessionInvalidNotice();
+  onLoad(query?: Record<string, string | undefined>) {
     currentMascot = "";
     routingToHome = false;
     pageActive = true;
@@ -132,6 +215,7 @@ Page({
     mascotRevision = 0;
     clearMascotSequenceTimer();
     clearErrorToastTimers();
+    clearLoginExitRouteTimer();
     this.applyAppearance();
     if (isAuthenticated()) {
       preloadHomeFramework();
@@ -145,10 +229,19 @@ Page({
       return;
     }
 
-    this.startInitialMascot();
-    if (sessionInvalid) {
-      this.showErrorToast("会话已失效");
+    if (query?.standalone !== "1" && !homePageBelowLogin()) {
+      routingToHome = true;
+      wx.reLaunch({
+        url: "/pages/home/index",
+        fail: () => {
+          routingToHome = false;
+          if (pageActive) this.startUnauthenticatedLogin();
+        },
+      });
+      return;
     }
+
+    this.startUnauthenticatedLogin();
   },
   onShow() {
     this.applyAppearance();
@@ -163,11 +256,40 @@ Page({
     mascotRevision += 1;
     clearMascotSequenceTimer();
     clearErrorToastTimers();
+    clearLoginExitRouteTimer();
   },
   applyAppearance() {
     const appearance = resolveAppearance();
     syncWindowBackground(appearance.theme);
     this.setData(appearance);
+  },
+  startUnauthenticatedLogin() {
+    this.startInitialMascot();
+    if (consumeSessionInvalidNotice()) {
+      this.showErrorToast("会话已失效");
+    }
+  },
+  playAuthenticatedExit(onReady: () => void) {
+    clearLoginExitRouteTimer();
+    const routeLead =
+      this.data.motionClass === "motion-reduced"
+        ? LOGIN_REDUCED_EXIT_ROUTE_LEAD_MS
+        : LOGIN_EXIT_ROUTE_LEAD_MS;
+    let completed = false;
+    const complete = () => {
+      if (completed) return;
+      completed = true;
+      clearLoginExitRouteTimer();
+      onReady();
+    };
+    loginExitRouteTimer = setTimeout(complete, LOGIN_EXIT_COMMIT_TIMEOUT_MS);
+    this.setData({ loginHandoffClass: "login-page--leaving" }, () => {
+      wx.nextTick(() => {
+        if (!pageActive) return;
+        clearLoginExitRouteTimer();
+        loginExitRouteTimer = setTimeout(complete, routeLead);
+      });
+    });
   },
   startInitialMascot() {
     mascotScheme = Math.random() < 0.5 ? "laptop" : "lurking";
@@ -441,7 +563,13 @@ Page({
     }
 
     this.dismissErrorToast();
-    this.setData({ loading: true });
+    dismissLoginKeyboard();
+    this.setData({
+      loading: true,
+      accountFocused: false,
+      passwordFocused: false,
+      loginScrollAnchor: "login-stage",
+    });
     try {
       const session = await login(account, password);
       preloadPrimaryTabs(session);
@@ -457,11 +585,16 @@ Page({
         if (!pageActive) {
           return;
         }
-        this.setData({ loading: false });
+        this.setData({
+          loading: false,
+          loginScrollAnchor: "",
+          loginHandoffClass: "",
+        });
         this.showErrorToast("暂时无法进入首页，请重试。");
       });
     } catch (error) {
       haptic("heavy");
+      this.setData({ loginScrollAnchor: "" });
       this.showErrorToast(
         getErrorMessage(error, "登录失败，请检查账号、密码和网络。"),
       );

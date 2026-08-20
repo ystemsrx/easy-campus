@@ -1,10 +1,11 @@
 <view class="page home-page {{themeClass}} {{motionClass}}">
   <scroll-view
-    class="page-scroll"
+    class="page-scroll home-framework {{authenticated ? '' : 'home-framework--guarded'}}"
     type="list"
     scroll-y="{{!petSetupDrawerOpen}}"
     enhanced
     show-scrollbar="{{false}}"
+    aria-hidden="{{!authenticated}}"
   >
     <navigation-bar transparent theme="{{theme}}"></navigation-bar>
     <view class="home-content page-content page-content--tab page-enter">
@@ -234,7 +235,7 @@
     </view>
   </scroll-view>
 
-  <root-portal wx:if="{{petSetupDrawerMounted}}">
+  <root-portal wx:if="{{authenticated && petSetupDrawerMounted}}">
     <pet-picker-drawer
       open="{{petSetupDrawerOpen}}"
       theme-class="{{themeClass}}"
@@ -250,7 +251,7 @@
     ></pet-picker-drawer>
   </root-portal>
 
-  <view wx:if="{{publicationPanelMounted}}" class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}">
+  <view wx:if="{{authenticated && publicationPanelMounted}}" class="publication-popover-layer {{publicationPanelOpen ? 'publication-popover-layer--open' : ''}}">
     <view class="publication-popover-dismiss" catchtap="closePublicationPanel"></view>
     <view class="publication-popover" style="top: {{publicationPanelTop}}px; transform-origin: {{publicationPanelTransformOrigin}};" catchtap="stopPropagation">
       <view class="publication-popover-header">
@@ -273,7 +274,7 @@
     </view>
   </view>
 
-  <root-portal wx:if="{{announcementModalMounted && activeAnnouncement}}">
+  <root-portal wx:if="{{authenticated && announcementModalMounted && activeAnnouncement}}">
     <view class="announcement-modal-layer announcement-modal-layer--{{theme}} {{announcementModalOpen ? 'announcement-modal-layer--open' : ''}}">
       <view class="announcement-modal-backdrop" catchtap="closeAnnouncementModal"></view>
       <view class="announcement-modal" catchtap="stopPropagation">
@@ -289,4 +290,19 @@
       </view>
     </view>
   </root-portal>
+
+  <view wx:if="{{!authenticated}}" class="home-auth-guard" aria-hidden="true">
+    <view class="home-auth-login-stage">
+      <view class="ambient-blob home-auth-login-blob home-auth-login-blob--one"></view>
+      <view class="ambient-blob home-auth-login-blob home-auth-login-blob--two"></view>
+      <view class="ambient-blob home-auth-login-blob home-auth-login-blob--three"></view>
+      <navigation-bar cover="{{false}}" transparent theme="{{theme}}"></navigation-bar>
+      <view class="home-auth-login-hero">
+        <view class="home-auth-login-heading">
+          <text class="home-auth-login-title display-title">Hello!</text>
+          <text class="home-auth-login-subtitle">欢迎来到{{appName}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

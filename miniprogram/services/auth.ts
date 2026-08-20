@@ -24,12 +24,12 @@ export async function login(
     retry: false,
     timeout: 70000,
   });
-  saveSession(data);
-  data.user.companion = await synchronizeCompanionPreferences(
+  const session = saveSession(data);
+  void synchronizeCompanionPreferences(
     data.user.account,
     data.user.companion,
-  );
-  return saveSession(data);
+  ).catch(() => undefined);
+  return session;
 }
 
 export async function getCurrentUser(): Promise<CurrentUserData> {

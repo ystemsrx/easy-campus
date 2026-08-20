@@ -1,4 +1,4 @@
-<view class="page profile-page {{themeClass}} {{motionClass}}">
+<view class="page profile-page {{themeClass}} {{motionClass}} {{authenticationExitClass}}">
   <scroll-view
     class="page-scroll"
     type="list"
@@ -71,7 +71,22 @@
       </view>
 
       <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="retryLoadUser" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
-      <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>退出登录</text></button>
+      <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout" disabled="{{loggingOut}}" aria-busy="{{loggingOut}}"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>{{loggingOut ? '退出中' : '退出登录'}}</text></button>
     </view>
   </scroll-view>
+
+  <view wx:if="{{authenticationExitClass}}" class="profile-auth-login-backdrop" aria-hidden="true">
+    <view class="profile-auth-login-stage">
+      <view class="ambient-blob profile-auth-login-blob profile-auth-login-blob--one"></view>
+      <view class="ambient-blob profile-auth-login-blob profile-auth-login-blob--two"></view>
+      <view class="ambient-blob profile-auth-login-blob profile-auth-login-blob--three"></view>
+      <navigation-bar cover="{{false}}" transparent theme="{{theme}}"></navigation-bar>
+      <view class="profile-auth-login-hero">
+        <view class="profile-auth-login-heading">
+          <text class="profile-auth-login-title display-title">Hello!</text>
+          <text class="profile-auth-login-subtitle">欢迎来到{{appName}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

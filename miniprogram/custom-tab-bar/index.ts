@@ -1,4 +1,5 @@
 import { loadPreferences } from "../store/preferences";
+import { getSession } from "../store/session";
 import { resolveAppearance } from "../utils/appearance";
 import { haptic } from "../utils/haptics";
 
@@ -9,11 +10,12 @@ interface TabItem {
 }
 
 const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());
+const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token);
 
 Component({
   data: {
     selected: 0,
-    hidden: false,
+    hidden: INITIAL_TAB_HIDDEN,
     themeClass: INITIAL_TAB_APPEARANCE.themeClass,
     motionClass: INITIAL_TAB_APPEARANCE.motionClass,
     items: [
@@ -30,6 +32,7 @@ Component({
     attached() {
       const appearance = resolveAppearance();
       this.setData({
+        hidden: !Boolean(getSession()?.token),
         themeClass: appearance.themeClass,
         motionClass: appearance.motionClass,
       });

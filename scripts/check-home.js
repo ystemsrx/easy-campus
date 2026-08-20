@@ -104,6 +104,10 @@ assert(
     tabBarScript.includes(
       "const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());",
     ) &&
+    tabBarScript.includes(
+      "const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token);",
+    ) &&
+    tabBarScript.includes("hidden: INITIAL_TAB_HIDDEN") &&
     tabBarScript.includes("themeClass: INITIAL_TAB_APPEARANCE.themeClass") &&
     homeStyles.includes(".home-page .page-enter {") &&
     homeStyles.includes("animation-name: home-page-settle;") &&
@@ -117,21 +121,44 @@ assert(
 );
 
 assert(
-  /onLoad\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript) &&
-    /onShow\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript),
+  /onLoad\(\)[\s\S]*?registerHomeAuthenticationHost\(this\);[\s\S]*?if \(getSession\(\)\?\.token\) \{[\s\S]*?this\.hydrateIdentity\(\)/.test(
+    homeScript,
+  ) && /onShow\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript),
   "首页进入和再次显示时都必须同步恢复用户姓名",
 );
 assert(
-  /onShow\(\)[\s\S]*?const petSetupPending = this\.openPendingPetSetup\(sessionAccount\);[\s\S]*?this\.hydrateIdentity\(\);[\s\S]*?void this\.loadDashboard\(false\)/.test(
-    homeScript,
-  ) &&
+  homeScript.includes("const HOME_FIRST_FRAME_SETTLE_MS = 32;") &&
+    homeScript.includes("const HOME_LOGIN_REVEAL_SETTLE_MS = 360;") &&
+    /onReady\(\)[\s\S]*?homeReady = true;[\s\S]*?HOME_LOGIN_REVEAL_SETTLE_MS[\s\S]*?this\.scheduleHomeActivation\(delay\)/.test(
+      homeScript,
+    ) &&
+    /onShow\(\)[\s\S]*?homeVisible = true;[\s\S]*?this\.prepareForAuthenticatedReveal\(\);[\s\S]*?if \(homeReady\)/.test(
+      homeScript,
+    ) &&
+    /prepareForAuthenticatedReveal\(onReady\?: \(\) => void\)[\s\S]*?authenticated: true[\s\S]*?this\.hydrateCachedDashboard\(\);[\s\S]*?wx\.nextTick\(\(\) => onReady\?\.\(\)\)/.test(
+      homeScript,
+    ) &&
+    /activateHomeAfterFirstFrame\(\)[\s\S]*?const petSetupPending = this\.openPendingPetSetup\(sessionAccount\);[\s\S]*?void this\.loadDashboard\(false\)/.test(
+      homeScript,
+    ) &&
     !homeScript.includes(
       "if (this.openPendingPetSetup(sessionAccount)) return",
     ) &&
     homeTemplate.includes("<pet-picker-drawer") &&
-    homeTemplate.includes('<root-portal wx:if="{{petSetupDrawerMounted}}">') &&
+    homeTemplate.includes(
+      '<root-portal wx:if="{{authenticated && petSetupDrawerMounted}}">',
+    ) &&
+    homeTemplate.includes("home-framework--guarded") &&
+    homeTemplate.includes(
+      'wx:if="{{!authenticated}}" class="home-auth-guard"',
+    ) &&
+    homeTemplate.includes('class="home-auth-login-stage"') &&
+    homeTemplate.includes("欢迎来到{{appName}}") &&
+    homeStyles.includes(".home-framework--guarded {") &&
+    homeStyles.includes("visibility: hidden;") &&
+    homeStyles.includes("animation-name: home-auth-login-backdrop-in;") &&
     homeTemplate.includes('bind:finish="finishPendingPetSetup"'),
-  "首次伙伴抽屉显示期间必须继续静默刷新首页与用户资料，且只能在首页完成或跳过",
+  "首页必须在登录页下预挂载匿名框架，提交可见首帧后再返回并静默刷新数据",
 );
 assert(
   appScript.includes("foregroundEntryId: 0") &&
@@ -145,7 +172,9 @@ assert(
 );
 assert(
   homeScript.includes("const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;") &&
-    /onShow\(\)[\s\S]*?void this\.loadPublicationFeed\(\)/.test(homeScript) &&
+    /activateHomeAfterFirstFrame\(\)[\s\S]*?void this\.loadPublicationFeed\(\)/.test(
+      homeScript,
+    ) &&
     /async loadPublicationFeed\(\) \{[\s\S]*?now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS[\s\S]*?lastPublicationRequestAt = now;[\s\S]*?getPublicationFeed\(\)/.test(
       homeScript,
     ) &&

@@ -1,5 +1,34 @@
+page {
+  background-color: transparent;
+}
+
+.page.login-page {
+  background-color: transparent;
+}
+
 .login-page .page-scroll {
-  background: #fff;
+  background-color: transparent;
+}
+
+.login-page--leaving .page-scroll {
+  pointer-events: none;
+}
+
+.login-page--leaving .login-background,
+.login-page--leaving .login-navigation,
+.login-page--leaving .login-hero {
+  animation-name: login-background-leave;
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.login-page--leaving .login-panel {
+  animation-name: login-panel-leave;
+  animation-duration: 320ms;
+  animation-delay: 20ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
 }
 
 .login-stage {
@@ -8,7 +37,22 @@
   flex-direction: column;
   min-height: calc(100vh + 80rpx);
   overflow: hidden;
+  background-color: transparent;
+}
+
+.login-background {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background-color: var(--color-bg);
+}
+
+.login-navigation {
+  position: relative;
+  z-index: 1;
 }
 
 .login-blob--one {
@@ -39,6 +83,7 @@
 
 .login-hero {
   position: relative;
+  z-index: 1;
   flex: 1;
   min-height: 390rpx;
 }
@@ -54,7 +99,8 @@
   background: #fff;
   box-shadow: 0 -18rpx 70rpx rgba(52, 43, 34, 0.08);
   animation-name: login-panel-rise;
-  animation-duration: 520ms;
+  animation-duration: 500ms;
+  animation-delay: 30ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   animation-fill-mode: both;
 }
@@ -253,6 +299,23 @@
   color: #d97757;
 }
 
+.login-clawd-mark-row {
+  position: relative;
+  min-height: 134rpx;
+  margin-top: 64rpx;
+}
+
+.login-clawd-mark {
+  position: absolute;
+  top: 0;
+  right: -48rpx;
+  display: block;
+  width: 136rpx;
+  height: 134rpx;
+  transform: translateX(25%);
+  pointer-events: none;
+}
+
 .login-toast {
   position: fixed;
   top: 50%;
@@ -345,10 +408,18 @@
 }
 
 .motion-reduced .login-panel,
+.motion-reduced.login-page--leaving .login-background,
+.motion-reduced.login-page--leaving .login-navigation,
+.motion-reduced.login-page--leaving .login-hero,
+.motion-reduced.login-page--leaving .login-panel,
 .motion-reduced .mascot-motion--walk-leg,
 .motion-reduced .login-toast--visible,
 .motion-reduced .login-toast--leaving {
   animation-duration: 1ms;
+}
+
+.motion-reduced.login-page--leaving .login-panel {
+  animation-delay: 0ms;
 }
 
 .theme-dark .login-title {
@@ -361,12 +432,32 @@
 
 @keyframes login-panel-rise {
   from {
-    transform: translateY(70rpx);
+    transform: translateY(150rpx);
     opacity: 0;
   }
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes login-background-leave {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes login-panel-leave {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(150rpx);
+    opacity: 0;
   }
 }
 

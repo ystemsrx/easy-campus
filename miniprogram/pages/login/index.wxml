@@ -1,13 +1,17 @@
-<view class="page login-page {{themeClass}} {{motionClass}}">
+<view class="page login-page {{themeClass}} {{motionClass}} {{loginHandoffClass}}">
   <view wx:if="{{errorMessage}}" class="login-toast login-toast--{{errorToastPhase}}" aria-role="alert">
     <text class="login-toast-copy">{{errorMessage}}</text>
   </view>
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-    <view class="login-stage">
-      <view class="ambient-blob login-blob login-blob--one"></view>
-      <view class="ambient-blob login-blob login-blob--two"></view>
-      <view class="ambient-blob login-blob login-blob--three"></view>
-      <navigation-bar cover="{{false}}" transparent theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{loginScrollAnchor}}" scroll-with-animation="{{false}}">
+    <view id="login-stage" class="login-stage">
+      <view class="login-background" aria-hidden="true">
+        <view class="ambient-blob login-blob login-blob--one"></view>
+        <view class="ambient-blob login-blob login-blob--two"></view>
+        <view class="ambient-blob login-blob login-blob--three"></view>
+      </view>
+      <view class="login-navigation">
+        <navigation-bar cover="{{false}}" transparent theme="{{theme}}"></navigation-bar>
+      </view>
 
       <view class="login-hero">
         <view class="login-heading">
@@ -30,7 +34,7 @@
               value="{{account}}"
               type="text"
               maxlength="64"
-              placeholder="学号 / 用户名"
+              placeholder="学号"
               placeholder-class="field-placeholder"
               bindinput="onAccountInput"
               bindfocus="onAccountFocus"
@@ -47,14 +51,14 @@
               value="{{password}}"
               password="{{!passwordVisible}}"
               maxlength="255"
-              placeholder="密码"
+              placeholder="办事大厅密码"
               placeholder-class="field-placeholder"
               bindinput="onPasswordInput"
               bindfocus="onPasswordFocus"
               bindblur="onPasswordBlur"
               bindconfirm="onSubmit"
               confirm-type="done"
-              aria-label="统一身份认证密码"
+              aria-label="办事大厅密码"
             />
             <view class="password-toggle pressable" bindtap="togglePassword" hover-class="pressing" aria-role="button" aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}">
               <lucide-icon name="{{passwordVisible ? 'eye-off' : 'eye'}}" tone="muted" size="{{32}}"></lucide-icon>
@@ -72,6 +76,10 @@
             <view wx:if="{{loading}}" class="login-spinner"></view>
             <text>{{loading ? '正在进入…' : '登录'}}</text>
           </button>
+
+          <view class="login-clawd-mark-row" aria-hidden="true">
+            <image class="login-clawd-mark" src="/assets/login/clawd-mark.svg" mode="aspectFit" draggable="{{false}}"></image>
+          </view>
         </form>
       </view>
     </view>

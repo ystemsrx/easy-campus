@@ -10,6 +10,7 @@ import {
   preloadPrimaryTabAssets,
   preloadTimetableThemeAssets,
 } from "./utils/icon-preload";
+import { registerAuthenticationRoute } from "./utils/navigation";
 
 App<IAppOption>({
   globalData: {
@@ -20,6 +21,7 @@ App<IAppOption>({
     foregroundEntryId: 0,
   },
   onLaunch() {
+    registerAuthenticationRoute();
     this.globalData.session = loadSession();
     this.globalData.user = loadCurrentUser();
     preloadPrimaryTabAssets();
