@@ -176,7 +176,7 @@
 
   <view wx:if="{{weekMenuMounted}}" class="week-popover-layer {{weekMenuOpen ? 'week-popover-layer--open' : ''}}">
     <view class="week-popover-dismiss" catchtap="closeWeekMenu"></view>
-    <view class="week-popover" style="top: {{weekMenuTop}}px;" catchtap="stopPropagation">
+    <view class="week-popover" style="top: {{weekMenuTop}}px; transform-origin: center {{weekMenuOriginY}}px;" catchtap="stopPropagation">
       <view class="week-popover-header">
         <text>选择周次</text>
         <text>{{semesterShortLabel}}</text>
@@ -223,7 +223,7 @@
   <view
     wx:if="{{menuMounted}}"
     class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen ? 'timetable-menu--submenu' : ''}}"
-    style="top: {{menuTop}}px; height: {{menuHeight}}rpx;"
+    style="top: {{menuTop}}px; height: {{menuHeight}}rpx; transform-origin: {{menuOriginX}}px {{menuOriginY}}px;"
     catchtap="stopPropagation"
   >
     <view class="menu-panel menu-panel--main">

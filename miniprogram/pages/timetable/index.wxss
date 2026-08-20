@@ -764,13 +764,10 @@
   bottom: 0;
   left: 0;
   z-index: 90;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 220ms ease;
 }
 
 .week-popover-layer--open {
-  opacity: 1;
   pointer-events: auto;
 }
 
@@ -794,12 +791,13 @@
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 34rpx 90rpx -16rpx rgba(0, 31, 78, 0.34);
   opacity: 0;
-  transform: translateX(-50%) translateY(-12rpx) scale(0.9);
+  transform: translateX(-50%) translateY(-10rpx) scale(0.92);
   transform-origin: top center;
   backdrop-filter: blur(24px) saturate(1.4);
   transition:
-    opacity 220ms ease,
-    transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 160ms ease-out,
+    transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
 }
 
 .week-popover-layer--open .week-popover {
@@ -934,11 +932,13 @@
   box-shadow: 0 18rpx 46rpx -12rpx rgba(0, 30, 72, 0.24);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-8rpx);
+  transform: translateY(-8rpx) scale(0.92);
+  transform-origin: 44rpx -48rpx;
   transition:
     height 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 140ms ease-out,
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 160ms ease-out,
+    transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
 }
 
 .timetable-menu {
@@ -950,7 +950,7 @@
 .timetable-menu--open {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .menu-label {

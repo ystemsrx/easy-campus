@@ -212,8 +212,11 @@ interface TimetableClawdJourneyPlanner {
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
+const HEADER_BUTTON_GAP_RPX = 12;
+const TIMETABLE_MENU_LEFT_RPX = 88;
 const MAIN_MENU_HEIGHT = 516;
-const MENU_TRANSITION_MS = 220;
+const MENU_TRANSITION_MS = 260;
+const WEEK_MENU_TRANSITION_MS = 260;
 const CLAWD_BASELINE_HANDOFF_MS = 80;
 const CLAWD_WALKING_SOURCE_DURATION_MS = 1860;
 const CLAWD_LURKING_SOURCE_DURATION_MS = 5580;
@@ -1442,13 +1445,30 @@ function hasSelectedSemesterCalendar(timetable: TimetableData): boolean {
   );
 }
 
+function timetableMenuOriginX(
+  windowWidth: number,
+  headerControlSize: number,
+): number {
+  const pixelsPerRpx = windowWidth / 750;
+  return (
+    headerControlSize * 1.5 +
+    (MODAL_HEADER_EDGE_INSET_RPX +
+      HEADER_BUTTON_GAP_RPX -
+      TIMETABLE_MENU_LEFT_RPX) *
+      pixelsPerRpx
+  );
+}
+
 function backgroundMetrics(compactHeader = false): {
   headerTop: number;
   headerHeight: number;
   headerControlSize: number;
   headerControlCenter: number;
   menuTop: number;
+  menuOriginX: number;
+  menuOriginY: number;
   weekMenuTop: number;
+  weekMenuOriginY: number;
   imageStyle: string;
 } {
   try {
@@ -1475,23 +1495,41 @@ function backgroundMetrics(compactHeader = false): {
         (MODAL_HEADER_EDGE_INSET_RPX * windowInfo.windowWidth) / 750;
       const compactHeaderHeight = headerControlSize + edgeInset * 2;
       const compactControlBottom = edgeInset + headerControlSize;
+      const headerControlCenter = edgeInset + headerControlSize / 2;
+      const menuTop = compactHeaderHeight + 4;
+      const weekMenuTop = compactControlBottom + 8;
       return {
         headerTop: 0,
         headerHeight: compactHeaderHeight,
         headerControlSize,
-        headerControlCenter: edgeInset + headerControlSize / 2,
-        menuTop: compactHeaderHeight + 4,
-        weekMenuTop: compactControlBottom + 8,
+        headerControlCenter,
+        menuTop,
+        menuOriginX: timetableMenuOriginX(
+          windowInfo.windowWidth,
+          headerControlSize,
+        ),
+        menuOriginY: headerControlCenter - menuTop,
+        weekMenuTop,
+        weekMenuOriginY: headerControlCenter - weekMenuTop,
         imageStyle,
       };
     }
+    const headerControlCenter = headerControlTop + headerControlSize / 2;
+    const menuTop = Math.max(headerHeight, headerControlBottom) + 4;
+    const weekMenuTop = headerControlBottom + 8;
     return {
       headerTop: statusBarHeight,
       headerHeight,
       headerControlSize,
-      headerControlCenter: headerControlTop + headerControlSize / 2,
-      menuTop: Math.max(headerHeight, headerControlBottom) + 4,
-      weekMenuTop: headerControlBottom + 8,
+      headerControlCenter,
+      menuTop,
+      menuOriginX: timetableMenuOriginX(
+        windowInfo.windowWidth,
+        headerControlSize,
+      ),
+      menuOriginY: headerControlCenter - menuTop,
+      weekMenuTop,
+      weekMenuOriginY: headerControlCenter - weekMenuTop,
       imageStyle,
     };
   } catch {
@@ -1502,7 +1540,10 @@ function backgroundMetrics(compactHeader = false): {
         headerControlSize: 32,
         headerControlCenter: 28,
         menuTop: 60,
+        menuOriginX: 22,
+        menuOriginY: -32,
         weekMenuTop: 52,
+        weekMenuOriginY: -24,
         imageStyle: "width:100%;height:100%;left:0;top:0;",
       };
     }
@@ -1512,7 +1553,10 @@ function backgroundMetrics(compactHeader = false): {
       headerControlSize: 32,
       headerControlCenter: 44,
       menuTop: 68,
+      menuOriginX: 22,
+      menuOriginY: -24,
       weekMenuTop: 68,
+      weekMenuOriginY: -24,
       imageStyle: "width:100%;height:100%;left:0;top:0;",
     };
   }
@@ -2201,7 +2245,7 @@ Page({
       if (!this.data.weekMenuOpen) {
         this.setData({ weekMenuMounted: false });
       }
-    }, 320);
+    }, WEEK_MENU_TRANSITION_MS);
   },
   toggleMenu() {
     haptic("light");

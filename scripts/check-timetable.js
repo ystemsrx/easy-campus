@@ -3082,18 +3082,29 @@ assert(
   "主题色球必须使用外环选中态，并区分交融的低饱和与明亮高饱和配色",
 );
 assert(
-  timetablePageScript.includes("MENU_TRANSITION_MS = 220") &&
+  timetablePageScript.includes("MENU_TRANSITION_MS = 260") &&
+    timetablePageScript.includes("WEEK_MENU_TRANSITION_MS = 260") &&
+    timetablePageScript.includes("function timetableMenuOriginX(") &&
     timetablePageScript.includes("menuMounted: false") &&
     timetablePageScript.includes("openTimetableMenu()") &&
     timetablePageScript.includes("closeTimetableMenu()") &&
     timetablePageTemplate.includes('wx:if="{{menuMounted}}"') &&
     timetablePageTemplate.includes("timetable-menu--open") &&
+    timetablePageTemplate.includes(
+      "transform-origin: {{menuOriginX}}px {{menuOriginY}}px;",
+    ) &&
+    timetablePageTemplate.includes(
+      "transform-origin: center {{weekMenuOriginY}}px;",
+    ) &&
     timetablePageStyles.includes(".timetable-menu--open") &&
-    /\.timetable-menu\s*\{[^}]*background:\s*#fff;[^}]*opacity:\s*0;[^}]*transform:\s*translateY\(-8rpx\);[^}]*transition:/s.test(
+    /\.timetable-menu\s*\{[^}]*background:\s*#fff;[^}]*opacity:\s*0;[^}]*transform:\s*translateY\(-8rpx\) scale\(0\.92\);[^}]*transition:/s.test(
       timetablePageStyles,
     ) &&
+    timetablePageStyles.includes(
+      "transform 240ms cubic-bezier(0.23, 1, 0.32, 1)",
+    ) &&
     !/\.timetable-menu\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles),
-  "课表菜单必须使用不透明实体表面，并以轻量过渡平滑完成进入与收回",
+  "课表菜单必须使用不透明实体表面，并从各自触发按钮平滑弹出和收回",
 );
 assert(
   dayColumnRule && !dayColumnRule.includes("border"),
