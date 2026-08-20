@@ -27,6 +27,14 @@ const requestScript = fs.readFileSync(
   path.join(miniprogramRoot, "services", "request.ts"),
   "utf8",
 );
+const sessionStore = fs.readFileSync(
+  path.join(miniprogramRoot, "store", "session.ts"),
+  "utf8",
+);
+const loginScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "login", "index.ts"),
+  "utf8",
+);
 const failures = [];
 
 if (!/const VISIBLE_DURATION_MS = 3000;/.test(componentScript)) {
@@ -34,6 +42,20 @@ if (!/const VISIBLE_DURATION_MS = 3000;/.test(componentScript)) {
 }
 if (!/访问速度太快了/.test(componentTemplate)) {
   failures.push("429 胶囊文案必须为“访问速度太快了”");
+}
+
+if (
+  !requestScript.includes(
+    'export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";',
+  ) ||
+  !requestScript.includes("return ACCOUNT_DEACTIVATED_MESSAGE;") ||
+  !requestScript.includes("redirectAfterAccountDeactivation()") ||
+  !sessionStore.includes("queueAccountDeactivatedNotice") ||
+  !sessionStore.includes("consumeAccountDeactivatedNotice") ||
+  !loginScript.includes("consumeAccountDeactivatedNotice()") ||
+  !loginScript.includes("this.showErrorToast(ACCOUNT_DEACTIVATED_MESSAGE)")
+) {
+  failures.push("账户停用必须退出登录，并复用登录页的统一错误胶囊");
 }
 if (
   !/top:\s*50%/.test(componentStyles) ||

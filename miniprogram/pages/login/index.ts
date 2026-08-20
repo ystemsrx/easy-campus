@@ -5,9 +5,13 @@ import {
   getPreloadedCurrentUser,
   preloadPrimaryTabs,
 } from "../../services/primary-tab-preload";
-import { getErrorMessage } from "../../services/request";
+import {
+  ACCOUNT_DEACTIVATED_MESSAGE,
+  getErrorMessage,
+} from "../../services/request";
 import { loadPreferences } from "../../store/preferences";
 import {
+  consumeAccountDeactivatedNotice,
   consumeSessionInvalidNotice,
   isAuthenticated,
 } from "../../store/session";
@@ -265,6 +269,10 @@ Page({
   },
   startUnauthenticatedLogin() {
     this.startInitialMascot();
+    if (consumeAccountDeactivatedNotice()) {
+      this.showErrorToast(ACCOUNT_DEACTIVATED_MESSAGE);
+      return;
+    }
     if (consumeSessionInvalidNotice()) {
       this.showErrorToast("会话已失效");
     }
@@ -595,9 +603,11 @@ Page({
     } catch (error) {
       haptic("heavy");
       this.setData({ loginScrollAnchor: "" });
-      this.showErrorToast(
-        getErrorMessage(error, "登录失败，请检查账号、密码和网络。"),
+      const message = getErrorMessage(
+        error,
+        "登录失败，请检查账号、密码和网络。",
       );
+      if (message) this.showErrorToast(message);
       this.resumeMascotAfterSubmit();
     } finally {
       if (pageActive && !routingToHome) {

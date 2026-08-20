@@ -2,6 +2,7 @@ import { getApiUrl } from "../config/index";
 import {
   clearSession,
   getSession,
+  queueAccountDeactivatedNotice,
   queueSessionInvalidNotice,
 } from "../store/session";
 import type {
@@ -38,6 +39,8 @@ const CREDENTIAL_INVALIDATION_CODES = new Set([
 ]);
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
 const RETRYABLE_STATUS_CODES = new Set([503]);
+const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
+export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";
 let redirectingToLogin = false;
 
 export class ApiClientError extends Error {
@@ -111,6 +114,17 @@ function redirectAfterAuthFailure(credentialInvalid = false): void {
   );
 }
 
+function redirectAfterAccountDeactivation(): void {
+  clearSession();
+  queueAccountDeactivatedNotice();
+  if (redirectingToLogin) return;
+  redirectingToLogin = true;
+  setTimeout(() => {
+    goToLogin();
+    redirectingToLogin = false;
+  }, 0);
+}
+
 function isSuccessEnvelope<T>(value: unknown): value is SuccessEnvelope<T> {
   return Boolean(
     value &&
@@ -182,6 +196,9 @@ function requestOnce<T>(
         }
 
         const error = toApiError(response.data, response.statusCode);
+        if (authenticated && error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
+          redirectAfterAccountDeactivation();
+        }
         if (
           authenticated &&
           (AUTH_ERROR_CODES.has(error.code) ||
@@ -225,6 +242,10 @@ async function requestEnvelope<T>(
 }
 
 export function handleAuthenticationFailure(error: ApiClientError): void {
+  if (error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
+    redirectAfterAccountDeactivation();
+    return;
+  }
   if (error.statusCode === 401 || AUTH_ERROR_CODES.has(error.code)) {
     redirectAfterAuthFailure(CREDENTIAL_INVALIDATION_CODES.has(error.code));
   }
@@ -260,6 +281,12 @@ export function getErrorMessage(
   error: unknown,
   fallback = "加载失败，请稍后重试。",
 ): string {
+  if (
+    error instanceof ApiClientError &&
+    error.code === ACCOUNT_DEACTIVATED_ERROR_CODE
+  ) {
+    return ACCOUNT_DEACTIVATED_MESSAGE;
+  }
   if (isRateLimitError(error)) return "";
   if (error instanceof ApiClientError && error.message) {
     return error.message;
