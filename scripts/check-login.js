@@ -8,6 +8,14 @@ const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
 const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
 const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
 const styles = fs.readFileSync(path.join(loginRoot, "index.wxss"), "utf8");
+const requestScript = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "services", "request.ts"),
+  "utf8",
+);
+const sessionStore = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "store", "session.ts"),
+  "utf8",
+);
 const envExample = fs.readFileSync(
   path.join(projectRoot, ".env.example"),
   "utf8",
@@ -109,9 +117,7 @@ if (
 }
 
 if (
-  !template.includes(
-    'class="login-toast login-toast--{{errorToastPhase}}"',
-  ) ||
+  !template.includes('class="login-toast login-toast--{{errorToastPhase}}"') ||
   template.includes('class="inline-error"') ||
   !template.includes(
     '<navigation-bar cover="{{false}}" transparent theme="{{theme}}">',
@@ -119,6 +125,11 @@ if (
   !script.includes("const ERROR_TOAST_HOLD_MS = 3000;") ||
   !script.includes("const ERROR_TOAST_EXIT_MS = 320;") ||
   !script.includes('return "账号或密码错误";') ||
+  !script.includes("consumeSessionInvalidNotice") ||
+  !script.includes('this.showErrorToast("会话已失效")') ||
+  !requestScript.includes("CREDENTIAL_INVALIDATION_CODES") ||
+  !requestScript.includes("queueSessionInvalidNotice()") ||
+  !sessionStore.includes("SESSION_INVALID_NOTICE_TTL_MS = 15_000") ||
   (script.match(/this\.showErrorToast\(/g) || []).length < 3 ||
   !styles.includes("position: fixed;") ||
   !styles.includes("top: 50%;") ||
@@ -129,7 +140,9 @@ if (
   !styles.includes("@keyframes login-toast-in") ||
   !styles.includes("@keyframes login-toast-out")
 ) {
-  failures.push("登录页所有错误必须以屏幕中央的半透明黑色胶囊提示，停留 3 秒后渐出");
+  failures.push(
+    "登录页所有错误必须以屏幕中央的半透明黑色胶囊提示，停留 3 秒后渐出",
+  );
 }
 
 if (
@@ -165,16 +178,14 @@ if (
   failures.push("登录页必须保留两组随机动画及其输入、提交衔接状态");
 }
 
-const midpointElapsed =
-  CRABWALKING_LEG_MS * (0.199 + (1 - 0.199) * 0.5);
+const midpointElapsed = CRABWALKING_LEG_MS * (0.199 + (1 - 0.199) * 0.5);
 const fastHandoffDelay = resolveLoginHandoffDelay(0, 100, false);
 const slowHandoffDelay = resolveLoginHandoffDelay(0, 2000, false);
 const reducedHandoffDelay = resolveLoginHandoffDelay(0, 100, true);
 if (
   Math.abs(resolveWalkingPositionRpx(-380, 0) + 380) > 0.001 ||
-  Math.abs(
-    resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS * 0.199) + 380,
-  ) > 0.001 ||
+  Math.abs(resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS * 0.199) + 380) >
+    0.001 ||
   Math.abs(resolveWalkingPositionRpx(-380, midpointElapsed) + 190) > 0.001 ||
   Math.abs(resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS)) > 0.001 ||
   Math.abs(resolveWalkingPositionRpx(0, CRABWALKING_LEG_MS) - 380) > 0.001 ||
@@ -206,7 +217,9 @@ if (
   styles.includes("login-transition-surface") ||
   script.includes("leaving: false")
 ) {
-  failures.push("登录成功后必须保持提交态，并在目标动画结束前直接切换到同色首页");
+  failures.push(
+    "登录成功后必须保持提交态，并在目标动画结束前直接切换到同色首页",
+  );
 }
 
 if (

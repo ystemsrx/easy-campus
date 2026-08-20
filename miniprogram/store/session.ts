@@ -2,6 +2,8 @@ import type { CurrentUserData, LoginData, Session } from "../types/api";
 
 const SESSION_KEY = "easy-swu:session";
 const USER_KEY = "easy-swu:user";
+const SESSION_INVALID_NOTICE_KEY = "easy-swu:session-invalid-notice";
+const SESSION_INVALID_NOTICE_TTL_MS = 15_000;
 
 function isSession(value: unknown): value is Session {
   if (!value || typeof value !== "object") {
@@ -91,6 +93,28 @@ export function clearSession(): void {
   app.globalData.session = null;
   app.globalData.user = null;
   app.globalData.selectedGrade = null;
+}
+
+export function queueSessionInvalidNotice(): void {
+  try {
+    wx.setStorageSync(SESSION_INVALID_NOTICE_KEY, Date.now());
+  } catch {
+    // 提示写入失败不应阻止清理会话和返回登录页。
+  }
+}
+
+export function consumeSessionInvalidNotice(): boolean {
+  try {
+    const createdAt = Number(wx.getStorageSync(SESSION_INVALID_NOTICE_KEY));
+    wx.removeStorageSync(SESSION_INVALID_NOTICE_KEY);
+    return (
+      Number.isFinite(createdAt) &&
+      createdAt > 0 &&
+      Date.now() - createdAt <= SESSION_INVALID_NOTICE_TTL_MS
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function isAuthenticated(): boolean {

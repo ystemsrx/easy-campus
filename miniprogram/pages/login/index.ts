@@ -7,7 +7,10 @@ import {
 } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
 import { loadPreferences } from "../../store/preferences";
-import { isAuthenticated } from "../../store/session";
+import {
+  consumeSessionInvalidNotice,
+  isAuthenticated,
+} from "../../store/session";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -121,6 +124,7 @@ Page({
     ...INITIAL_LOGIN_APPEARANCE,
   },
   onLoad() {
+    const sessionInvalid = consumeSessionInvalidNotice();
     currentMascot = "";
     routingToHome = false;
     pageActive = true;
@@ -142,6 +146,9 @@ Page({
     }
 
     this.startInitialMascot();
+    if (sessionInvalid) {
+      this.showErrorToast("会话已失效");
+    }
   },
   onShow() {
     this.applyAppearance();
@@ -185,10 +192,7 @@ Page({
     if (mascot === "lurking") {
       lurkingCycleStartedAt = mascotAnimationStartedAt;
     }
-    if (
-      mascot === "crabwalking" &&
-      motionClass === "mascot-motion--walk-leg"
-    ) {
+    if (mascot === "crabwalking" && motionClass === "mascot-motion--walk-leg") {
       walkingLegStartedAt = mascotAnimationStartedAt;
     }
     const shouldRestart = currentMascot === mascot;
@@ -325,9 +329,7 @@ Page({
       const resumePositionStyle = this.data.mascotPositionStyle;
       this.playMascot(
         inputAnimationStarted ? "dancing" : "lurking",
-        inputAnimationStarted
-          ? resumePositionClass
-          : "mascot-position--left",
+        inputAnimationStarted ? resumePositionClass : "mascot-position--left",
         "",
         inputAnimationStarted ? resumePositionStyle : "",
       );

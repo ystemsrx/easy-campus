@@ -1,5 +1,9 @@
 import { getApiUrl } from "../config/index";
-import { clearSession, getSession } from "../store/session";
+import {
+  clearSession,
+  getSession,
+  queueSessionInvalidNotice,
+} from "../store/session";
 import type {
   ApiErrorPayload,
   ApiSuccess,
@@ -25,6 +29,10 @@ interface SuccessEnvelope<T> extends ApiSuccess<T> {
 const AUTH_ERROR_CODES = new Set([
   "INVALID_TOKEN",
   "USER_NOT_FOUND",
+  "SWU_AUTH_FAILED",
+  "SWU_CREDENTIAL_INVALID",
+]);
+const CREDENTIAL_INVALIDATION_CODES = new Set([
   "SWU_AUTH_FAILED",
   "SWU_CREDENTIAL_INVALID",
 ]);
@@ -58,21 +66,32 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function redirectAfterAuthFailure(): void {
+function redirectAfterAuthFailure(credentialInvalid = false): void {
   if (redirectingToLogin) {
+    if (credentialInvalid) {
+      wx.hideToast();
+      queueSessionInvalidNotice();
+    }
     return;
   }
   redirectingToLogin = true;
   clearSession();
-  wx.showToast({
-    title: "登录已失效，请重新登录",
-    icon: "none",
-    duration: 2200,
-  });
-  setTimeout(() => {
-    goToLogin();
-    redirectingToLogin = false;
-  }, 320);
+  if (credentialInvalid) {
+    queueSessionInvalidNotice();
+  } else {
+    wx.showToast({
+      title: "登录已失效，请重新登录",
+      icon: "none",
+      duration: 2200,
+    });
+  }
+  setTimeout(
+    () => {
+      goToLogin();
+      redirectingToLogin = false;
+    },
+    credentialInvalid ? 0 : 320,
+  );
 }
 
 function isSuccessEnvelope<T>(value: unknown): value is SuccessEnvelope<T> {
@@ -151,7 +170,9 @@ function requestOnce<T>(
           (AUTH_ERROR_CODES.has(error.code) ||
             (error.code === "SWU_SESSION_EXPIRED" && options.retry === false))
         ) {
-          redirectAfterAuthFailure();
+          redirectAfterAuthFailure(
+            CREDENTIAL_INVALIDATION_CODES.has(error.code),
+          );
         }
         reject(error);
       },
@@ -184,8 +205,12 @@ async function requestEnvelope<T>(
 
 export function handleAuthenticationFailure(error: ApiClientError): void {
   if (error.statusCode === 401 || AUTH_ERROR_CODES.has(error.code)) {
-    redirectAfterAuthFailure();
+    redirectAfterAuthFailure(CREDENTIAL_INVALIDATION_CODES.has(error.code));
   }
+}
+
+export function handleCredentialInvalidation(): void {
+  redirectAfterAuthFailure(true);
 }
 
 export async function apiRequest<T>(

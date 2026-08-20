@@ -1,7 +1,4 @@
-import {
-  getCredentialStatus,
-  logout as logoutSession,
-} from "../../services/auth";
+import { getCredentialStatus } from "../../services/auth";
 import {
   getPreloadedCurrentUser,
   getPreloadedTimetable,
@@ -19,7 +16,10 @@ import {
   getTimetable,
 } from "../../services/teaching";
 import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
-import { getErrorMessage } from "../../services/request";
+import {
+  getErrorMessage,
+  handleCredentialInvalidation,
+} from "../../services/request";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
@@ -86,11 +86,7 @@ import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
-import {
-  ensureAuthenticated,
-  goToLogin,
-  navigateTo,
-} from "../../utils/navigation";
+import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
 import { sortPublicationsNewestFirst } from "../../utils/publications";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
@@ -675,10 +671,7 @@ Page({
     haptic("light");
     this.persistPendingPetSelection({ color: event.detail.color });
   },
-  persistPendingPetSelection(patch: {
-    shape?: PetShapeId;
-    color?: string;
-  }) {
+  persistPendingPetSelection(patch: { shape?: PetShapeId; color?: string }) {
     const account = getSession()?.user.account || "";
     if (!account || !this.data.petSetupDrawerMounted) return;
     const preferences = savePetSelection(account, {
@@ -820,16 +813,7 @@ Page({
     if (credentialExitInFlight) return;
     credentialExitInFlight = true;
     this.stopCredentialPoll();
-    void logoutSession()
-      .catch(() => undefined)
-      .finally(() => {
-        wx.showToast({
-          title: "校园密码已变更，请重新登录",
-          icon: "none",
-          duration: 1800,
-        });
-        setTimeout(() => goToLogin(), 360);
-      });
+    handleCredentialInvalidation();
   },
   async loadPublicationFeed() {
     const now = Date.now();
