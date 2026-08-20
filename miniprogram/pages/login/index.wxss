@@ -255,20 +255,23 @@
 
 .login-toast {
   position: fixed;
-  top: calc(env(safe-area-inset-top) + 92rpx);
-  right: 32rpx;
+  top: 50%;
+  left: 50%;
   z-index: 920;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 12rpx;
-  max-width: calc(100vw - 64rpx);
-  padding: 18rpx 24rpx;
-  border: 1rpx solid rgba(192, 69, 45, 0.14);
-  border-radius: 26rpx;
-  color: #c0452d;
-  background: rgba(255, 250, 248, 0.98);
-  box-shadow: 0 18rpx 56rpx rgba(74, 43, 32, 0.16);
+  justify-content: center;
+  box-sizing: border-box;
+  max-width: calc(100vw - 96rpx);
+  min-height: 68rpx;
+  padding: 16rpx 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 999rpx;
+  color: #fff;
+  background: rgba(10, 12, 16, 0.62);
+  box-shadow: 0 16rpx 46rpx rgba(0, 16, 42, 0.18);
+  transform: translate(-50%, -50%) scale(0.94);
+  backdrop-filter: blur(16px) saturate(1.12);
   opacity: 0;
   pointer-events: none;
 }
@@ -293,6 +296,7 @@
   font-size: 23rpx;
   font-weight: 600;
   line-height: 1.45;
+  text-align: center;
 }
 
 .login-button {
@@ -355,12 +359,6 @@
   color: #c6bdad;
 }
 
-.theme-dark .login-toast {
-  border-color: rgba(231, 134, 112, 0.2);
-  color: #e78670;
-  background: rgba(58, 38, 32, 0.98);
-}
-
 @keyframes login-panel-rise {
   from {
     transform: translateY(70rpx);
@@ -386,22 +384,22 @@
 @keyframes login-toast-in {
   from {
     opacity: 0;
-    transform: translateY(-18rpx);
+    transform: translate(-50%, -50%) scale(0.94);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
 @keyframes login-toast-out {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(-12rpx);
+    transform: translate(-50%, -50%) scale(0.97);
   }
 }
 

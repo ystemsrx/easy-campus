@@ -1,6 +1,5 @@
 <view class="page login-page {{themeClass}} {{motionClass}}">
   <view wx:if="{{errorMessage}}" class="login-toast login-toast--{{errorToastPhase}}" aria-role="alert">
-    <lucide-icon name="circle-alert" tone="danger" size="{{26}}"></lucide-icon>
     <text class="login-toast-copy">{{errorMessage}}</text>
   </view>
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">

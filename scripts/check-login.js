@@ -96,11 +96,15 @@ if (
   !script.includes('return "账号或密码错误";') ||
   (script.match(/this\.showErrorToast\(/g) || []).length < 3 ||
   !styles.includes("position: fixed;") ||
-  !styles.includes("right: 32rpx;") ||
+  !styles.includes("top: 50%;") ||
+  !styles.includes("left: 50%;") ||
+  !styles.includes("border-radius: 999rpx;") ||
+  !styles.includes("background: rgba(10, 12, 16, 0.62);") ||
+  !styles.includes("transform: translate(-50%, -50%) scale(0.94);") ||
   !styles.includes("@keyframes login-toast-in") ||
   !styles.includes("@keyframes login-toast-out")
 ) {
-  failures.push("登录页所有错误必须以右上角 Toast 显示，停留 3 秒后渐出");
+  failures.push("登录页所有错误必须以屏幕中央的半透明黑色胶囊提示，停留 3 秒后渐出");
 }
 
 if (
