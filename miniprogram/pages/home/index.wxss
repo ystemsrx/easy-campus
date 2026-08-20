@@ -223,7 +223,7 @@
 .exam-time { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 130rpx; }
 .exam-date { color: var(--color-text); font-size: 20rpx; font-weight: 750; white-space: nowrap; }
 .exam-clock { max-width: 142rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.exam-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 226rpx; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
+.exam-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 212rpx; color: var(--color-text-tertiary); font-size: 25rpx; font-weight: 600; text-align: center; }
 .side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
 .side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
@@ -265,7 +265,8 @@
 .message-kind--blue { color: #a66f1f; background: #f8eedd; }
 .message-kind--green { color: #5f7350; background: #edf1e6; }
 .message-kind--orange { color: #c0452d; background: #f9e7e0; }
-.campus-empty-copy { position: relative; display: block; color: var(--color-text-tertiary); font-size: 23rpx; }
+.campus-empty-copy { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; min-height: 138rpx; color: var(--color-text-tertiary); font-size: 25rpx; font-weight: 600; text-align: center; }
+.campus-empty-copy > text { display: block; flex: none; }
 .dashboard-error { display: flex; flex-direction: row; justify-content: space-between; gap: 20rpx; margin-top: 26rpx; padding: 20rpx 24rpx; border-radius: 28rpx; color: #c0452d; background: #f9e7e0; font-size: 22rpx; }
 
 .publication-popover-layer { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1000; opacity: 0; transition: opacity 260ms ease; pointer-events: none; }

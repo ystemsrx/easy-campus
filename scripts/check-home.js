@@ -237,7 +237,14 @@ assert(
     homeScript.includes("isCurrentSemesterId(examData?.semester?.id") &&
     /\.campus-card\s*\{[^}]*min-height:\s*198rpx/s.test(homeStyles) &&
     /\.exam-card\s*\{[^}]*min-height:\s*294rpx/s.test(homeStyles) &&
-    /\.exam-empty\s*\{[^}]*min-height:\s*226rpx/s.test(homeStyles),
+    /\.exam-empty\s*\{[^}]*min-height:\s*212rpx[^}]*font-size:\s*25rpx/s.test(
+      homeStyles,
+    ) &&
+    /\.campus-empty-copy\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*justify-content:\s*center[^}]*min-height:\s*138rpx[^}]*font-size:\s*25rpx/s.test(
+      homeStyles,
+    ) &&
+    (homeTemplate.match(/<view wx:else class="campus-empty-copy">/g) || [])
+      .length === 2,
   "主页必须过滤旧学期预览，同时保持考试和校园消息卡片的既有高度",
 );
 
