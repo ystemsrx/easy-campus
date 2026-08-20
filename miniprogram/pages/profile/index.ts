@@ -4,10 +4,13 @@ import { getErrorMessage } from "../../services/request";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 import { loadPetPreferences, shouldShowPet } from "../../store/pet";
 import { getSession, loadCurrentUser } from "../../store/session";
-import { updatePreferences } from "../../store/preferences";
+import { loadPreferences, updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
+import {
+  resolveAppearance,
+  syncWindowBackground,
+} from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
 
@@ -30,11 +33,14 @@ function themeLabel(theme: ThemePreference): string {
   return "跟随系统";
 }
 
+const INITIAL_PROFILE_PREFERENCES = loadPreferences();
+const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
+  INITIAL_PROFILE_PREFERENCES,
+);
+
 Page({
   data: {
-    theme: "light" as "light" | "dark",
-    themeClass: "theme-light",
-    motionClass: "motion-normal",
+    ...INITIAL_PROFILE_APPEARANCE,
     loading: false,
     errorMessage: "",
     userName: "同学",
@@ -43,10 +49,10 @@ Page({
     organizationName: "西南大学",
     classLabel: "",
     enrollmentDate: "",
-    themePreference: "system" as ThemePreference,
-    themePreferenceLabel: "跟随系统",
-    reducedMotion: false,
-    haptics: false,
+    themePreference: INITIAL_PROFILE_PREFERENCES.theme,
+    themePreferenceLabel: themeLabel(INITIAL_PROFILE_PREFERENCES.theme),
+    reducedMotion: INITIAL_PROFILE_PREFERENCES.reducedMotion,
+    haptics: INITIAL_PROFILE_PREFERENCES.haptics,
     themeSheetVisible: false,
     petShape: "blob" as PetShapeId,
     petColor: "#111214",
@@ -79,8 +85,10 @@ Page({
   },
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
+    const appearance = resolveAppearance(preferences);
+    syncWindowBackground(appearance.theme);
     this.setData({
-      ...resolveAppearance(preferences),
+      ...appearance,
       themePreference: preferences.theme,
       themePreferenceLabel: themeLabel(preferences.theme),
       reducedMotion: preferences.reducedMotion,

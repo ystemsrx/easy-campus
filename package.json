@@ -22,11 +22,12 @@
     "check:calendar": "node scripts/check-calendar-cache.js",
     "check:home": "node scripts/check-home.js",
     "check:tab-preload": "node scripts/check-primary-tab-preload.js",
+    "check:refresh-policy": "node scripts/check-refresh-policy.js",
     "check:rooms": "node scripts/check-rooms.js",
     "check:login": "node scripts/check-login.js",
     "check:pet": "node scripts/check-pet.js",
     "check:lf": "node scripts/check-lf.js",
-    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:tab-preload && npm run check:rooms && npm run check:login && npm run check:pet && npm run check:lf && npm run check:wxss",
+    "check": "npm run typecheck && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:tab-preload && npm run check:refresh-policy && npm run check:rooms && npm run check:login && npm run check:pet && npm run check:lf && npm run check:wxss",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },

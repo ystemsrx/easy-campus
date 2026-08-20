@@ -22,9 +22,9 @@ import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
 import { getErrorMessage } from "../../services/request";
 import {
   claimAutomaticRefresh,
+  FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-  WEEK_MS,
 } from "../../store/cache-policy";
 import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
 import { loadElectricitySnapshot } from "../../store/electricity";
@@ -149,6 +149,7 @@ interface ExamPreview {
 
 const HOME_PREVIEW_ITEM_LIMIT = 3;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
+const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
 const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());
 
 interface ShortcutCachePatch {
@@ -169,8 +170,9 @@ let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
 let automaticPopupEntryKey = "";
 let dashboardRequestInFlight = false;
-let dashboardRefreshQueued = false;
+let dashboardTeachingRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
+let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 let credentialPollTimer: number | undefined;
 let credentialExitInFlight = false;
 let hydratedAccount = "";
@@ -450,6 +452,21 @@ function mergeNoticePreviews(
     .slice(0, HOME_PREVIEW_ITEM_LIMIT);
 }
 
+function preloadNextPrimaryTabFramework(): void {
+  if (typeof wx.preloadSkylineView !== "function") return;
+  try {
+    wx.preloadSkylineView();
+  } catch {
+    // 预加载失败时仍使用标准 Tab 切换。
+  }
+}
+
+function clearDashboardTeachingFollowupTimer(): void {
+  if (dashboardTeachingFollowupTimer === undefined) return;
+  clearTimeout(dashboardTeachingFollowupTimer);
+  dashboardTeachingFollowupTimer = undefined;
+}
+
 Page({
   data: {
     ...INITIAL_HOME_APPEARANCE,
@@ -516,8 +533,14 @@ Page({
     }
     credentialExitInFlight = false;
     lastPublicationRequestAt = 0;
+    dashboardTeachingRefreshQueued = false;
+    dashboardStableRefreshQueued = false;
+    clearDashboardTeachingFollowupTimer();
     this.applyAppearance();
     this.hydrateIdentity();
+  },
+  onReady() {
+    preloadNextPrimaryTabFramework();
   },
   onShow() {
     if (!ensureAuthenticated()) {
@@ -559,12 +582,14 @@ Page({
   },
   onHide() {
     homeVisible = false;
+    clearDashboardTeachingFollowupTimer();
     this.stopCourseClock();
     this.stopCredentialPoll();
     this.resetPublicationLayers();
   },
   onUnload() {
     homeVisible = false;
+    clearDashboardTeachingFollowupTimer();
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
@@ -1208,11 +1233,16 @@ Page({
       }, 90);
     }, 280) as unknown as number;
   },
-  async loadDashboard(refresh: boolean, includeStableData = true) {
+  async loadDashboard(
+    refreshTeaching: boolean,
+    includeStableData = true,
+    refreshStable = refreshTeaching,
+    allowTeachingFollowup = true,
+  ) {
     if (dashboardRequestInFlight) {
-      if (refresh) {
-        dashboardRefreshQueued = true;
-        if (includeStableData) dashboardStableRefreshQueued = true;
+      if (refreshTeaching) dashboardTeachingRefreshQueued = true;
+      if (includeStableData && refreshStable) {
+        dashboardStableRefreshQueued = true;
       }
       return;
     }
@@ -1226,17 +1256,19 @@ Page({
     });
 
     const userRequest = includeStableData
-      ? getPreloadedCurrentUser(refresh).then((user) => {
+      ? getPreloadedCurrentUser(refreshTeaching).then((user) => {
           if (user && homeVisible) this.hydrateIdentity(user);
           return user;
         })
       : Promise.resolve(null);
     const account = getSession()?.user.account || "";
     const gradeRequest = includeStableData
-      ? getGrades({ page: 1, pageSize: 200, refresh }).then((result) => {
-          this.hydrateServerGrade(account, result, refresh);
-          return result;
-        })
+      ? getGrades({ page: 1, pageSize: 200, refresh: refreshStable }).then(
+          (result) => {
+            this.hydrateServerGrade(account, result, refreshStable);
+            return result;
+          },
+        )
       : Promise.resolve(null);
     const [
       userResult,
@@ -1246,11 +1278,11 @@ Page({
       timetableResult,
     ] = await Promise.allSettled([
       userRequest,
-      getMessages({ page: 1, pageSize: 15, refresh }),
-      getNotices({ page: 1, pageSize: 15, refresh }),
+      getMessages({ page: 1, pageSize: 15, refresh: refreshTeaching }),
+      getNotices({ page: 1, pageSize: 15, refresh: refreshTeaching }),
       gradeRequest,
       includeStableData
-        ? refresh
+        ? refreshStable
           ? getTimetable({ refresh: true })
           : getPreloadedTimetable()
         : Promise.resolve(null),
@@ -1294,7 +1326,7 @@ Page({
       const account = getSession()?.user.account || "";
       const local = loadTimetableSnapshot(account);
       if (
-        refresh ||
+        refreshStable ||
         shouldUseServerSnapshot(local, timetableResult.value.meta.fetchedAt)
       ) {
         activeTimetable = timetableResult.value.data;
@@ -1324,29 +1356,49 @@ Page({
     }
     this.setData(patch);
     const needsFreshResult =
-      !refresh &&
+      !refreshTeaching &&
       ((messageResult.status === "fulfilled" &&
         messageResult.value.meta.refreshing) ||
         (noticeResult.status === "fulfilled" &&
           noticeResult.value.meta.refreshing));
-    if (!refresh && includeStableData) {
+    if (!refreshStable && includeStableData) {
       const account = getSession()?.user.account || "";
       const stableDataStale =
-        (isCacheStale(loadGradesSnapshot(account), WEEK_MS) &&
+        (isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
           claimAutomaticRefresh("grades", account)) ||
-        (isCacheStale(loadTimetableSnapshot(account), WEEK_MS) &&
+        (isCacheStale(loadTimetableSnapshot(account), FIFTEEN_DAYS_MS) &&
           claimAutomaticRefresh("timetable", account));
       if (stableDataStale) {
-        dashboardRefreshQueued = true;
         dashboardStableRefreshQueued = true;
       }
     }
     dashboardRequestInFlight = false;
-    if (needsFreshResult || dashboardRefreshQueued) {
-      const includeStableRefresh = dashboardStableRefreshQueued;
-      dashboardRefreshQueued = false;
-      dashboardStableRefreshQueued = false;
-      setTimeout(() => void this.loadDashboard(true, includeStableRefresh), 0);
+    const queuedTeachingRefresh = dashboardTeachingRefreshQueued;
+    const queuedStableRefresh = dashboardStableRefreshQueued;
+    dashboardTeachingRefreshQueued = false;
+    dashboardStableRefreshQueued = false;
+    if (queuedTeachingRefresh || queuedStableRefresh) {
+      setTimeout(
+        () =>
+          void this.loadDashboard(
+            queuedTeachingRefresh,
+            true,
+            queuedStableRefresh,
+          ),
+        0,
+      );
+    }
+    if (
+      needsFreshResult &&
+      allowTeachingFollowup &&
+      dashboardTeachingFollowupTimer === undefined
+    ) {
+      dashboardTeachingFollowupTimer = setTimeout(() => {
+        dashboardTeachingFollowupTimer = undefined;
+        if (homeVisible) {
+          void this.loadDashboard(false, false, false, false);
+        }
+      }, TEACHING_BACKGROUND_FOLLOWUP_MS);
     }
   },
   retryDashboard() {

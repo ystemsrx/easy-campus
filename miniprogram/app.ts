@@ -5,7 +5,11 @@ import { preloadPrimaryTabs } from "./services/primary-tab-preload";
 import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
 import { prewarmTimetableFirstScreen } from "./data/timetable-render";
-import { preloadAllSvgIcons } from "./utils/icon-preload";
+import { loadTimetableThemeId } from "./data/timetable-theme";
+import {
+  preloadPrimaryTabAssets,
+  preloadTimetableThemeAssets,
+} from "./utils/icon-preload";
 
 App<IAppOption>({
   globalData: {
@@ -18,12 +22,14 @@ App<IAppOption>({
   onLaunch() {
     this.globalData.session = loadSession();
     this.globalData.user = loadCurrentUser();
-    preloadAllSvgIcons();
+    preloadPrimaryTabAssets();
+    const timetableThemeId = loadTimetableThemeId();
+    preloadTimetableThemeAssets(timetableThemeId);
     const account = this.globalData.session?.user.account || "";
     const timetable = account ? loadTimetableSnapshot(account) : null;
     if (timetable) {
       try {
-        prewarmTimetableFirstScreen(account, timetable);
+        prewarmTimetableFirstScreen(account, timetable, timetableThemeId);
       } catch {
         // 首屏预渲染失败时由课表页使用同一份本地快照即时构建。
       }

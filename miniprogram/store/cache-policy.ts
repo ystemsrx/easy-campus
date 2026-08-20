@@ -1,6 +1,6 @@
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const THREE_DAYS_MS = 3 * DAY_MS;
-export const WEEK_MS = 7 * DAY_MS;
+export const FIFTEEN_DAYS_MS = 15 * DAY_MS;
 
 const automaticRefreshClaims = new Set<string>();
 

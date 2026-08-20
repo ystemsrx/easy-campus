@@ -42,6 +42,7 @@ interface MessageTypeOption {
 }
 
 const PAGE_SIZE = 15;
+const BACKGROUND_REFRESH_FOLLOWUP_MS = 1_500;
 const MESSAGE_TYPE_OPTIONS: ReadonlyArray<
   Pick<MessageTypeOption, "value" | "label">
 > = [
@@ -55,6 +56,8 @@ let messageRequestSequence = 0;
 let noticeRequestSequence = 0;
 let hydratedInboxAccount = "";
 let filterTransitionTimer: ReturnType<typeof setTimeout> | undefined;
+let messageFollowupTimer: ReturnType<typeof setTimeout> | undefined;
+let noticeFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 
 function messageTypeOptions(selected: MessageType[]): MessageTypeOption[] {
   return MESSAGE_TYPE_OPTIONS.map((option) => ({
@@ -67,6 +70,17 @@ function clearFilterTransitionTimer() {
   if (filterTransitionTimer !== undefined) {
     clearTimeout(filterTransitionTimer);
     filterTransitionTimer = undefined;
+  }
+}
+
+function clearBackgroundFollowupTimers() {
+  if (messageFollowupTimer !== undefined) {
+    clearTimeout(messageFollowupTimer);
+    messageFollowupTimer = undefined;
+  }
+  if (noticeFollowupTimer !== undefined) {
+    clearTimeout(noticeFollowupTimer);
+    noticeFollowupTimer = undefined;
   }
 }
 
@@ -213,6 +227,7 @@ Page({
   onLoad() {
     hydratedInboxAccount = "";
     clearFilterTransitionTimer();
+    clearBackgroundFollowupTimers();
     this.applyAppearance();
   },
   onShow() {
@@ -238,6 +253,7 @@ Page({
   },
   onUnload() {
     clearFilterTransitionTimer();
+    clearBackgroundFollowupTimers();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -289,6 +305,7 @@ Page({
     refresh: boolean,
     mergeFresh = false,
     showRefresher = false,
+    allowBackgroundFollowup = true,
   ) {
     if (this.data.messageLoading && !refresh) return;
     if (showRefresher && this.data.messageRefreshing) return;
@@ -322,8 +339,16 @@ Page({
           : incoming.slice(0, PAGE_SIZE),
         messageLoaded: true,
       });
-      if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadMessages(true, true, false), 0);
+      if (
+        !refresh &&
+        result.meta.refreshing &&
+        allowBackgroundFollowup &&
+        messageFollowupTimer === undefined
+      ) {
+        messageFollowupTimer = setTimeout(() => {
+          messageFollowupTimer = undefined;
+          void this.loadMessages(false, true, false, false);
+        }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
     } catch (error) {
       if (sequence === messageRequestSequence) {
@@ -342,6 +367,7 @@ Page({
     refresh: boolean,
     mergeFresh = false,
     showRefresher = false,
+    allowBackgroundFollowup = true,
   ) {
     if (this.data.noticeLoading && !refresh) return;
     if (showRefresher && this.data.noticeRefreshing) return;
@@ -376,8 +402,16 @@ Page({
           : incoming.slice(0, PAGE_SIZE),
         noticeLoaded: true,
       });
-      if (!refresh && result.meta.refreshing) {
-        setTimeout(() => void this.loadNotices(true, true, false), 0);
+      if (
+        !refresh &&
+        result.meta.refreshing &&
+        allowBackgroundFollowup &&
+        noticeFollowupTimer === undefined
+      ) {
+        noticeFollowupTimer = setTimeout(() => {
+          noticeFollowupTimer = undefined;
+          void this.loadNotices(false, true, false, false);
+        }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
     } catch (error) {
       if (sequence === noticeRequestSequence) {

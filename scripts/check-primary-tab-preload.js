@@ -35,6 +35,7 @@ const preload = source("services", "primary-tab-preload.ts");
 const scheduleRender = source("data", "schedule-render.ts");
 const schedulePage = source("pages", "schedule", "index.ts");
 const profilePage = source("pages", "profile", "index.ts");
+const profileStyles = source("pages", "profile", "index.wxss");
 const homePage = source("pages", "home", "index.ts");
 const loginPage = source("pages", "login", "index.ts");
 const iconPreload = source("utils", "icon-preload.ts");
@@ -98,7 +99,7 @@ assert(
 );
 assert(
   profilePage.includes("getPreloadedCurrentUser(refresh)") &&
-    homePage.includes("getPreloadedCurrentUser(refresh)") &&
+    homePage.includes("getPreloadedCurrentUser(refreshTeaching)") &&
     !profilePage.includes("getCurrentUser()") &&
     !homePage.includes("getCurrentUser()"),
   "首页与我的页面必须复用同一份个人资料请求",
@@ -109,15 +110,44 @@ assert(
     loginPage.includes("getPreloadedCurrentUser()"),
   "首页和登录完成后的流程必须接入同一预加载周期",
 );
+const profilePageSettle =
+  profileStyles.match(/@keyframes profile-page-settle\s*\{[\s\S]*?\n\}/)?.[0] ||
+  "";
+const profileItemSettle =
+  profileStyles.match(/@keyframes profile-item-settle\s*\{[\s\S]*?\n\}/)?.[0] ||
+  "";
 assert(
-  app.includes("preloadAllSvgIcons();") &&
+  homePage.includes("function preloadNextPrimaryTabFramework(): void") &&
+    /onReady\(\)\s*\{\s*preloadNextPrimaryTabFramework\(\);\s*\}/.test(
+      homePage,
+    ) &&
+    profilePage.includes(
+      "const INITIAL_PROFILE_PREFERENCES = loadPreferences();",
+    ) &&
+    profilePage.includes("...INITIAL_PROFILE_APPEARANCE") &&
+    profilePage.includes("syncWindowBackground(appearance.theme);") &&
+    profileStyles.includes("animation-name: profile-page-settle;") &&
+    profileStyles.includes("animation-name: profile-item-settle;") &&
+    profilePageSettle.length > 0 &&
+    profileItemSettle.length > 0 &&
+    !profilePageSettle.includes("opacity") &&
+    !profileItemSettle.includes("opacity"),
+  "首页必须预热下一张 Skyline 页面，个人页首帧必须直接显示正确主题且不得透明入场",
+);
+assert(
+  app.includes("preloadPrimaryTabAssets();") &&
+    iconPreload.includes("export function preloadPrimaryTabAssets()") &&
     iconPreload.includes("schedule-dashed-corner-24.svg") &&
     iconPreload.includes("schedule-dashed-corner-30.svg") &&
     iconPreload.includes("log-out-danger.svg") &&
+    iconPreload.includes("chevron-right-muted.svg") &&
     iconPreload.includes("user-round-muted.svg") &&
+    iconPreload.includes("const PRELOAD_CONCURRENCY = 4;") &&
+    !iconPreload.includes("ICON_NAMES") &&
+    !iconPreload.includes("allIconPaths") &&
     !iconPreload.includes("wx.preloadSkylineView") &&
     !iconPreload.includes("wx.preloadAssets"),
-  "包内首绘资源必须使用本地图片缓存预热，不得请求调试服务器路径",
+  "主 Tab 首绘资源必须定向预热，不得在启动阶段遍历全部 SVG 或请求调试服务器路径",
 );
 
 console.log("Primary tab preload checks passed.");

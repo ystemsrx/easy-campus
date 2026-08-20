@@ -181,7 +181,7 @@ assert(
 );
 
 assert(
-  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?this\.hydrateServerGrade\(account, result, refresh\)/.test(
+  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?refresh: refreshStable[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\(account, result, refreshStable\)/.test(
     homeScript,
   ) &&
     /hydrateServerGrade\([\s\S]*?saveGradesSnapshot\([\s\S]*?this\.setData\([\s\S]*?gradePreviewPatch\(/.test(

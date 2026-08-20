@@ -814,9 +814,8 @@ const sameCourseData = {
   ],
 };
 assert(
-  new Set(
-    timetable.coursesForWeek(sameCourseData, 1).map((item) => item.tone),
-  ).size === 1,
+  new Set(timetable.coursesForWeek(sameCourseData, 1).map((item) => item.tone))
+    .size === 1,
   "同一课程代码的所有课表块必须稳定使用同一种颜色",
 );
 
@@ -1133,6 +1132,10 @@ const timetableRenderSource = fs.readFileSync(
 );
 const appSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
+  "utf8",
+);
+const assetPreloadSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "utils", "icon-preload.ts"),
   "utf8",
 );
 const passRatePageTemplate = fs.readFileSync(
@@ -3078,9 +3081,7 @@ assert(
     /\.timetable-menu\s*\{[^}]*background:\s*#fff;[^}]*opacity:\s*0;[^}]*transform:\s*translateY\(-8rpx\);[^}]*transition:/s.test(
       timetablePageStyles,
     ) &&
-    !/\.timetable-menu\s*\{[^}]*backdrop-filter:/s.test(
-      timetablePageStyles,
-    ),
+    !/\.timetable-menu\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles),
   "课表菜单必须使用不透明实体表面，并以轻量过渡平滑完成进入与收回",
 );
 assert(
@@ -3155,16 +3156,28 @@ assert(
   "静默刷新必须允许其他学期请求、识别旧服务端快照并保留当前周",
 );
 assert(
-  appSource.includes("prewarmTimetableFirstScreen(account, timetable)") &&
+  appSource.includes(
+    "prewarmTimetableFirstScreen(account, timetable, timetableThemeId)",
+  ) &&
+    appSource.includes("preloadTimetableThemeAssets(timetableThemeId)") &&
     timetableStoreSource.includes(
-      "prewarmTimetableFirstScreen(account, snapshot)",
+      "prewarmTimetableFirstScreen(account, snapshot, loadTimetableThemeId())",
     ) &&
     timetablePageScript.includes("getPrewarmedTimetableFirstScreen") &&
+    timetablePageScript.includes(
+      "const INITIAL_TIMETABLE_VISUAL_PREFERENCES =",
+    ) &&
+    timetablePageScript.includes(
+      "prewarmTimetableFirstScreen(\n          activeAccount,",
+    ) &&
+    timetableRenderSource.includes("cached.themeId === themeId") &&
+    assetPreloadSource.includes("TIMETABLE_THEME_FIRST_SCREEN_ASSETS") &&
+    assetPreloadSource.includes("preloadTimetableThemeAssets") &&
     timetablePageScript.includes("queueRemainingWeekPages") &&
     timetablePageTemplate.includes('wx:if="{{weekPage.ready}}"') &&
     !timetablePageTemplate.includes('class="week-page page-enter"') &&
     timetableRenderSource.includes("buildTimetableWeekPlaceholder"),
-  "应用启动时必须只预渲染首屏周次，进入课表后再静默补齐其他周",
+  "应用启动时必须按已选主题预渲染首屏周次和资源，进入课表后再静默补齐其他周",
 );
 assert(
   timetableStoreSource.includes(

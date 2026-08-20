@@ -1,4 +1,21 @@
 .profile-content { padding-top: 20rpx; }
+
+.profile-page .page-enter {
+  animation-name: profile-page-settle;
+  animation-duration: 220ms;
+}
+
+.profile-page .stagger-item {
+  animation-name: profile-item-settle;
+  animation-duration: 260ms;
+}
+
+.profile-page.motion-reduced .page-enter,
+.profile-page.motion-reduced .stagger-item {
+  animation-duration: 1ms;
+  animation-delay: 0ms;
+}
+
 .profile-header { padding: 0 8rpx; }
 .profile-eyebrow { display: block; color: var(--color-text-tertiary); font-size: 25rpx; font-weight: 550; }
 .profile-title { display: block; margin-top: 2rpx; color: var(--color-text); font-size: 68rpx; font-weight: 700; line-height: 1.15; }
@@ -60,6 +77,16 @@
 .terminal-token--repository { color: #9fe3c1; }
 .profile-error { display: flex; flex-direction: row; justify-content: space-between; gap: 20rpx; margin-top: 28rpx; padding: 20rpx 24rpx; border-radius: 28rpx; color: #c0452d; background: #f9e7e0; font-size: 22rpx; }
 .logout-button { gap: 12rpx; margin-top: 48rpx; }
+
+@keyframes profile-page-settle {
+  from { transform: translateY(10rpx); }
+  to { transform: translateY(0); }
+}
+
+@keyframes profile-item-settle {
+  from { transform: translateY(8rpx); }
+  to { transform: translateY(0); }
+}
 
 .theme-dark .appearance-control { background: rgba(255, 255, 255, 0.06); }
 .theme-dark .appearance-indicator { background: #3a3730; }

@@ -10,6 +10,7 @@ import {
   buildTimetableWeekPage,
   buildTimetableWeekPlaceholder,
   getPrewarmedTimetableFirstScreen,
+  prewarmTimetableFirstScreen,
   timetableGridLayoutMetrics,
   timetableMaxPeriod,
   type TimetableGridLayoutMetrics,
@@ -18,9 +19,9 @@ import {
 } from "../../data/timetable-render";
 import {
   DEFAULT_TIMETABLE_COMPANION_COLOR,
+  loadTimetableThemeId,
   TIMETABLE_THEME_OPTIONS,
   TIMETABLE_THEME_STORAGE_KEY,
-  resolveTimetableThemeId,
   timetableThemePatch,
   type TimetableThemeId,
 } from "../../data/timetable-theme";
@@ -28,9 +29,9 @@ import { getErrorMessage } from "../../services/request";
 import { getPassRates, getTimetable } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
+  FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-  WEEK_MS,
 } from "../../store/cache-policy";
 import {
   DEFAULT_PET_PREFERENCES,
@@ -54,6 +55,7 @@ import { resolveAppearance } from "../../utils/appearance";
 import { courseStatisticsKey } from "../../utils/course-statistics";
 import { formatScore } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
+import { preloadTimetableThemeAssets } from "../../utils/icon-preload";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import {
   shortAcademicSemesterLabel,
@@ -1518,18 +1520,8 @@ function backgroundMetrics(compactHeader = false): {
   }
 }
 
-function loadThemeId(): TimetableThemeId {
-  try {
-    return resolveTimetableThemeId(
-      wx.getStorageSync(TIMETABLE_THEME_STORAGE_KEY),
-    );
-  } catch {
-    return "default";
-  }
-}
-
 function timetableVisualPreferencesPatch(
-  themeId: TimetableThemeId = loadThemeId(),
+  themeId: TimetableThemeId = loadTimetableThemeId(),
 ) {
   const appearance = resolveAppearance();
   const account = getSession()?.user.account || "";
@@ -1554,6 +1546,8 @@ function timetableVisualPreferencesPatch(
     petReducedMotion: appearance.motionClass === "motion-reduced",
   };
 }
+
+const INITIAL_TIMETABLE_VISUAL_PREFERENCES = timetableVisualPreferencesPatch();
 
 function clearRefreshToastTimers(): void {
   if (refreshToastShowTimer !== undefined) {
@@ -1606,20 +1600,10 @@ function cancelCompanionGazeUpdate(): void {
 
 Page({
   data: {
-    theme: "light" as "light" | "dark",
-    themeClass: "theme-light",
-    motionClass: "motion-normal",
+    ...INITIAL_TIMETABLE_VISUAL_PREFERENCES,
     compactHeader: false,
     ...backgroundMetrics(),
-    ...timetableThemePatch("default", DEFAULT_TIMETABLE_COMPANION_COLOR),
     timetableThemes: TIMETABLE_THEME_OPTIONS,
-    companionColor: DEFAULT_TIMETABLE_COMPANION_COLOR,
-    petShape: DEFAULT_PET_PREFERENCES.shape,
-    petColor: DEFAULT_PET_PREFERENCES.color,
-    petEnhanced: false,
-    petSelected: false,
-    petVisible: true,
-    petReducedMotion: false,
     clawdSceneSrc: "",
     clawdScenePositionStyle: CLAWD_DEFAULT_POSITION_STYLE,
     clawdSceneMotionClass: "",
@@ -1927,7 +1911,7 @@ Page({
       return;
     }
     const needsRefresh =
-      isCacheStale(snapshot, WEEK_MS) ||
+      isCacheStale(snapshot, FIFTEEN_DAYS_MS) ||
       !hasSelectedSemesterCalendar(snapshot.data);
     if (
       needsRefresh &&
@@ -2001,7 +1985,7 @@ Page({
         current !== null &&
         (result.meta.stale === true ||
           result.meta.refreshing === true ||
-          isCacheStale(current, WEEK_MS) ||
+          isCacheStale(current, FIFTEEN_DAYS_MS) ||
           !hasSelectedSemesterCalendar(current.data)) &&
         claimAutomaticRefresh(
           `timetable:${semester || "default"}`,
@@ -2049,6 +2033,7 @@ Page({
           activeAccount,
           activeSnapshot,
           layoutMetrics,
+          this.data.timetableThemeId,
         )
       : null;
     const detectedWeek =
@@ -2346,6 +2331,18 @@ Page({
     const patch = timetableThemePatch(id, this.data.companionColor);
     if (patch.timetableThemeId !== "companion") this.clearCompanionGaze();
     this.setData(patch, () => this.syncClawdSceneSequence());
+    preloadTimetableThemeAssets(patch.timetableThemeId);
+    if (activeAccount && activeSnapshot) {
+      try {
+        prewarmTimetableFirstScreen(
+          activeAccount,
+          activeSnapshot,
+          patch.timetableThemeId,
+        );
+      } catch {
+        // 当前页面已经完成切换，首屏预热失败不影响本次显示。
+      }
+    }
     try {
       wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, patch.timetableThemeId);
     } catch {

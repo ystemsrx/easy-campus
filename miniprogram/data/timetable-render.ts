@@ -9,6 +9,7 @@ import {
   type TimetableWeekDateCache,
 } from "./timetable";
 import type { TimetableData, TimetablePeriod } from "../types/api";
+import type { TimetableThemeId } from "./timetable-theme";
 
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -73,6 +74,7 @@ export interface TimetableRenderSnapshot {
 
 export interface TimetableFirstScreen {
   account: string;
+  themeId: TimetableThemeId;
   semesterId: string;
   localStoredAt: number;
   viewportKey: string;
@@ -327,6 +329,7 @@ export function buildTimetableFirstScreen(
   snapshot: TimetableRenderSnapshot,
   headerHeight = timetableHeaderHeight(),
   now = new Date(),
+  themeId: TimetableThemeId = "default",
 ): TimetableFirstScreen {
   const timetable = snapshot.data;
   const maxWeek = timetableWeekCount(timetable);
@@ -340,6 +343,7 @@ export function buildTimetableFirstScreen(
   const courses = coursesForWeek(timetable, weekNumber);
   return {
     account,
+    themeId,
     semesterId: timetable.semester.id,
     localStoredAt: snapshot.localStoredAt,
     viewportKey: metrics.viewportKey,
@@ -363,8 +367,15 @@ export function buildTimetableFirstScreen(
 export function prewarmTimetableFirstScreen(
   account: string,
   snapshot: TimetableRenderSnapshot,
+  themeId: TimetableThemeId = "default",
 ): TimetableFirstScreen {
-  prewarmedFirstScreen = buildTimetableFirstScreen(account, snapshot);
+  prewarmedFirstScreen = buildTimetableFirstScreen(
+    account,
+    snapshot,
+    timetableHeaderHeight(),
+    new Date(),
+    themeId,
+  );
   return prewarmedFirstScreen;
 }
 
@@ -372,10 +383,12 @@ export function getPrewarmedTimetableFirstScreen(
   account: string,
   snapshot: TimetableRenderSnapshot,
   metrics: TimetableGridLayoutMetrics,
+  themeId: TimetableThemeId = "default",
 ): TimetableFirstScreen | null {
   const cached = prewarmedFirstScreen;
   return cached &&
     cached.account === account &&
+    cached.themeId === themeId &&
     cached.semesterId === snapshot.data.semester.id &&
     cached.localStoredAt === snapshot.localStoredAt &&
     cached.viewportKey === metrics.viewportKey

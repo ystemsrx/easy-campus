@@ -74,28 +74,26 @@ if (!fs.existsSync(iconPreloaderPath)) {
   failures.push("utils/icon-preload.ts: 缺少启动时 SVG 预加载器");
 } else {
   const preloadSource = fs.readFileSync(iconPreloaderPath, "utf8");
-  const preloadedNames = declaredStringArray(preloadSource, "ICON_NAMES");
-  const preloadedTones = declaredStringArray(preloadSource, "ICON_TONES");
-  for (const fileName of fs
-    .readdirSync(iconRoot)
-    .filter((fileName) => fileName.endsWith(".svg"))) {
-    const match = fileName.match(
-      /^(.*)-(ink|muted|white|coral|amber|sage|rose|danger)\.svg$/,
-    );
-    if (
-      !match ||
-      !preloadedNames.has(match[1]) ||
-      !preloadedTones.has(match[2])
-    ) {
-      failures.push(`assets/icons/${fileName}: 未纳入启动预加载清单`);
+  const preloadedPaths = declaredStringArray(
+    preloadSource,
+    "PRIMARY_TAB_ASSET_PATHS",
+  );
+  for (const assetPath of preloadedPaths) {
+    const fullPath = path.join(miniprogramRoot, assetPath.replace(/^\//, ""));
+    if (!fs.existsSync(fullPath)) {
+      failures.push(`${assetPath}: 主 Tab 预加载资源缺失`);
     }
   }
   const appSource = fs.readFileSync(
     path.join(miniprogramRoot, "app.ts"),
     "utf8",
   );
-  if (!appSource.includes("preloadAllSvgIcons();")) {
-    failures.push("app.ts: 必须在小程序启动时开始预加载 SVG 图标");
+  if (
+    !preloadedPaths.has("/assets/icons/log-out-danger.svg") ||
+    !preloadedPaths.has("/assets/icons/user-round-muted.svg") ||
+    !appSource.includes("preloadPrimaryTabAssets();")
+  ) {
+    failures.push("app.ts: 必须在启动时定向预加载主 Tab 首绘资源");
   }
 }
 

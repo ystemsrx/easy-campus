@@ -1,71 +1,15 @@
-const ICON_NAMES = [
-  "arrow-left",
-  "bell",
-  "book-open",
-  "building-2",
-  "calendar-check",
-  "calendar-clock",
-  "calendar-days",
-  "calendar-range",
-  "chart-no-axes-column-increasing",
-  "check",
-  "chevron-right",
-  "circle-alert",
-  "circle-check-big",
-  "circle-help",
-  "clipboard-check",
-  "clock-3",
-  "copy",
-  "database",
-  "door-open",
-  "download",
-  "external-link",
-  "eye",
-  "eye-off",
-  "graduation-cap",
-  "home",
-  "inbox",
-  "info",
-  "list-filter",
-  "lock-keyhole",
-  "log-out",
-  "map-pin",
-  "megaphone",
-  "message-circle-more",
-  "notebook-tabs",
-  "panel-top-open",
-  "plus",
-  "refresh-cw",
-  "rotate-ccw",
-  "school",
-  "search",
-  "server",
-  "shield-check",
-  "sparkles",
-  "user-round",
-  "x",
-  "zap",
-  "zoom-in",
-] as const;
+import type { TimetableThemeId } from "../data/timetable-theme";
 
-const ICON_TONES = [
-  "ink",
-  "muted",
-  "white",
-  "coral",
-  "amber",
-  "sage",
-  "rose",
-  "danger",
-] as const;
-
-const PRIORITY_PATHS = [
+const PRIMARY_TAB_ASSET_PATHS = [
   "/assets/icons/arrow-left-white.svg",
   "/assets/icons/calendar-days-ink.svg",
   "/assets/icons/calendar-days-muted.svg",
   "/assets/icons/calendar-days-white.svg",
   "/assets/icons/check-white.svg",
+  "/assets/icons/chevron-right-muted.svg",
   "/assets/icons/chevron-right-white.svg",
+  "/assets/icons/home-ink.svg",
+  "/assets/icons/home-muted.svg",
   "/assets/icons/home-white.svg",
   "/assets/icons/inbox-white.svg",
   "/assets/icons/log-out-danger.svg",
@@ -78,16 +22,18 @@ const PRIORITY_PATHS = [
   "/assets/images/schedule-dashed-corner-30.svg",
 ] as const;
 
-const PRELOAD_CONCURRENCY = 6;
+const PRELOAD_CONCURRENCY = 4;
 let preloadStarted = false;
-
-function allIconPaths(): string[] {
-  const paths = ICON_NAMES.flatMap((name) =>
-    ICON_TONES.map((tone) => `/assets/icons/${name}-${tone}.svg`),
-  );
-  const priority = new Set<string>(PRIORITY_PATHS);
-  return [...PRIORITY_PATHS, ...paths.filter((path) => !priority.has(path))];
-}
+const preloadedTimetableThemes = new Set<TimetableThemeId>();
+const TIMETABLE_THEME_FIRST_SCREEN_ASSETS: Partial<
+  Record<TimetableThemeId, readonly string[]>
+> = {
+  default: ["/assets/images/timetable-theme-default-background.jpg"],
+  clawd: [
+    "/assets/images/timetable-theme-clawd-background.jpg",
+    "/assets/images/timetable-theme-clawd-idle.svg",
+  ],
+};
 
 function warmImage(path: string): Promise<void> {
   return new Promise((resolve) => {
@@ -102,11 +48,11 @@ function warmImage(path: string): Promise<void> {
   });
 }
 
-/** 应用启动后低并发读取 SVG，使后续 image 首次绘制命中资源缓存。 */
-export function preloadAllSvgIcons(): void {
+/** 只预热主 Tab 首屏资源，避免启动阶段遍历数百个未显示的 SVG。 */
+export function preloadPrimaryTabAssets(): void {
   if (preloadStarted) return;
   preloadStarted = true;
-  const paths = allIconPaths();
+  const paths = [...PRIMARY_TAB_ASSET_PATHS];
   let cursor = 0;
   const worker = async () => {
     while (cursor < paths.length) {
@@ -116,4 +62,12 @@ export function preloadAllSvgIcons(): void {
     }
   };
   void Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, () => worker()));
+}
+
+/** 只解码当前课表主题首帧会实际使用的图片。 */
+export function preloadTimetableThemeAssets(themeId: TimetableThemeId): void {
+  if (preloadedTimetableThemes.has(themeId)) return;
+  preloadedTimetableThemes.add(themeId);
+  const paths = TIMETABLE_THEME_FIRST_SCREEN_ASSETS[themeId] || [];
+  void Promise.all(paths.map((path) => warmImage(path)));
 }

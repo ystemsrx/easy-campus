@@ -2,9 +2,9 @@ import { getGrades } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import {
   claimAutomaticRefresh,
+  FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-  WEEK_MS,
 } from "../../store/cache-policy";
 import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
 import { getSession } from "../../store/session";
@@ -361,7 +361,7 @@ Page({
 
       shouldRefreshAfterward =
         !refresh &&
-        isCacheStale(loadGradesSnapshot(account), WEEK_MS) &&
+        isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
         claimAutomaticRefresh("grades", account);
     } catch (error) {
       if (sequence === requestSequence) {

@@ -223,11 +223,7 @@ export function companionCoursePalette(color: string): TimetableCoursePalette {
         rgbFromHsl([
           sourceHue,
           saturation,
-          clamp(
-            sourceLightness + (1 - sourceLightness) * factor,
-            0.3,
-            0.86,
-          ),
+          clamp(sourceLightness + (1 - sourceLightness) * factor, 0.3, 0.86),
         ]),
       ),
     ),
@@ -324,6 +320,16 @@ export function resolveTimetableThemeId(value: unknown): TimetableThemeId {
   if (value === "image") return "default";
   const selected = TIMETABLE_THEME_OPTIONS.find((theme) => theme.id === value);
   return selected?.id || "default";
+}
+
+export function loadTimetableThemeId(): TimetableThemeId {
+  try {
+    return resolveTimetableThemeId(
+      wx.getStorageSync(TIMETABLE_THEME_STORAGE_KEY),
+    );
+  } catch {
+    return "default";
+  }
 }
 
 export function timetableThemePatch(

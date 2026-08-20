@@ -16,9 +16,9 @@ import {
 import { getTimetable, putLocalSchedule } from "../../services/teaching";
 import {
   claimAutomaticRefresh,
+  FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-  WEEK_MS,
 } from "../../store/cache-policy";
 import { loadScheduleData, saveScheduleData } from "../../store/schedule";
 import { getSession } from "../../store/session";
@@ -161,7 +161,7 @@ Page({
         this.rebuildWeek();
       }
       shouldRefreshAfterward =
-        isCacheStale(current, WEEK_MS) &&
+        isCacheStale(current, FIFTEEN_DAYS_MS) &&
         claimAutomaticRefresh("timetable", activeAccount);
     } catch {
       // 保留本地课表与用户日程，不用加载态打断当前页面。
