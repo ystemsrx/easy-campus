@@ -30,7 +30,9 @@
           </view>
 
           <view wx:if="{{messageItems.length}}" class="message-list">
-            <view wx:for="{{messageItems}}" wx:key="id" class="message-card card stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;">
+            <view wx:for="{{messageItems}}" wx:key="id" class="message-list-item">
+              <view wx:if="{{item.showHistoryDivider}}" class="history-divider" aria-label="以下为历史消息"><view class="history-divider-line"></view><text>以下为历史消息</text><view class="history-divider-line"></view></view>
+              <view class="message-card card stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;">
               <view class="message-meta-row">
                 <text class="message-badge message-badge--{{item.tone}}">{{item.label}}</text>
                 <text class="message-time">{{item.createdAt}}</text>
@@ -63,6 +65,7 @@
                 </view>
               </view>
               <text wx:else class="message-content">{{item.content}}</text>
+              </view>
             </view>
           </view>
           <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息"></loading-view>
@@ -83,10 +86,13 @@
           </view>
 
           <view wx:if="{{noticeItems.length}}" class="notice-list">
-            <view wx:for="{{noticeItems}}" wx:key="link" class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
+            <view wx:for="{{noticeItems}}" wx:key="link" class="notice-list-item">
+              <view wx:if="{{item.showHistoryDivider}}" class="history-divider" aria-label="以下为历史消息"><view class="history-divider-line"></view><text>以下为历史消息</text><view class="history-divider-line"></view></view>
+              <view class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
               <view class="notice-icon"><lucide-icon name="megaphone" tone="coral" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
                 <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">教务通知</text></view></view>
+              </view>
               </view>
             </view>
           </view>

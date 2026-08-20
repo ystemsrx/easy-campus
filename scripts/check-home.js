@@ -31,6 +31,11 @@ const { renderMarkdown } = loadTypeScriptModule("utils/markdown.ts");
 const { sortPublicationsNewestFirst } = loadTypeScriptModule(
   "utils/publications.ts",
 );
+const {
+  isCurrentSemesterId,
+  isCurrentSemesterTimestamp,
+  startedCurrentSemester,
+} = loadTypeScriptModule("utils/semester.ts");
 const session = {
   user: { id: "7", account: "22200000", name: "林一" },
 };
@@ -198,6 +203,42 @@ assert(
       homeScript,
     ),
   "首页从本地教学缓存恢复时，消息和通知预览都必须限制为 3 条",
+);
+
+const semesterContext = {
+  semester: { id: "2026-1" },
+  currentSemester: {
+    id: "2026-1",
+    startDate: "2026-08-31",
+    endDate: "2027-01-17",
+  },
+  semesterCalendar: null,
+};
+assert(
+  startedCurrentSemester(semesterContext, "2026-08-30") === null,
+  "新学期预览不得在正式开学日前提前清空",
+);
+const startedSemester = startedCurrentSemester(
+  semesterContext,
+  "2026-08-31",
+);
+assert(
+  startedSemester?.semesterId === "2026-1" &&
+    isCurrentSemesterTimestamp("2026-08-31 00:00:00", startedSemester) &&
+    !isCurrentSemesterTimestamp("2026-08-30 23:59:59", startedSemester) &&
+    isCurrentSemesterId("2026-1", startedSemester) &&
+    !isCurrentSemesterId("2025-2", startedSemester),
+  "开学当天起必须按当前学期过滤主页考试、教务消息和学校通知预览",
+);
+assert(
+  homeScript.includes("startedCurrentSemester(activeTimetable)") &&
+    homeScript.includes("isCurrentSemesterTimestamp(message.createdAt") &&
+    homeScript.includes("isCurrentSemesterTimestamp(notice.publishedAt") &&
+    homeScript.includes("isCurrentSemesterId(examData?.semester?.id") &&
+    /\.campus-card\s*\{[^}]*min-height:\s*198rpx/s.test(homeStyles) &&
+    /\.exam-card\s*\{[^}]*min-height:\s*294rpx/s.test(homeStyles) &&
+    /\.exam-empty\s*\{[^}]*min-height:\s*226rpx/s.test(homeStyles),
+  "主页必须过滤旧学期预览，同时保持考试和校园消息卡片的既有高度",
 );
 
 assert(

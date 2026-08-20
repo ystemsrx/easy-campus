@@ -20,6 +20,11 @@
 .filter-count { position: absolute; top: -10rpx; right: -8rpx; display: flex; align-items: center; justify-content: center; min-width: 31rpx; height: 31rpx; padding: 0 7rpx; border: 3rpx solid var(--color-bg); border-radius: 999rpx; color: #fff; background: #e94d3d; font-size: 17rpx; font-weight: 850; line-height: 1; }
 .message-list,
 .notice-list { display: flex; flex-direction: column; gap: 18rpx; }
+.message-list-item,
+.notice-list-item { display: flex; flex-direction: column; gap: 14rpx; }
+.history-divider { display: flex; flex-direction: row; align-items: center; gap: 18rpx; padding: 12rpx 10rpx 0; }
+.history-divider-line { flex: 1; height: 1rpx; background-color: var(--color-separator); }
+.history-divider > text { flex: none; color: var(--color-text-tertiary); font-size: 20rpx; font-weight: 600; white-space: nowrap; }
 .message-card { padding: 28rpx; }
 .message-meta-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 18rpx; }
 .message-badge { flex: none; padding: 6rpx 16rpx; border-radius: 999rpx; color: #8b8b94; background: #f1f1f3; font-size: 20rpx; font-weight: 800; }

@@ -1,4 +1,62 @@
-import type { AcademicSemesterOption } from "../types/api";
+import type { AcademicSemesterOption, TimetableData } from "../types/api";
+
+export interface StartedSemesterBoundary {
+  semesterId: string;
+  startDate: string;
+}
+
+type TimetableSemesterContext = Pick<
+  TimetableData,
+  "semester" | "currentSemester" | "semesterCalendar"
+>;
+
+function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateKey(value: string): string {
+  return /^(\d{4}-\d{2}-\d{2})/.exec(String(value || "").trim())?.[1] || "";
+}
+
+export function startedCurrentSemester(
+  timetable: TimetableSemesterContext | null | undefined,
+  referenceDate = localDateKey(),
+): StartedSemesterBoundary | null {
+  if (!timetable) return null;
+  const current = timetable.currentSemester;
+  const calendar = timetable.semesterCalendar;
+  if (current) {
+    const startDate = dateKey(current.startDate);
+    return startDate && referenceDate >= startDate
+      ? { semesterId: current.id, startDate }
+      : null;
+  }
+  const startDate = dateKey(calendar?.startDate || "");
+  return calendar?.semesterId === timetable.semester.id &&
+    startDate &&
+    referenceDate >= startDate
+    ? { semesterId: timetable.semester.id, startDate }
+    : null;
+}
+
+export function isCurrentSemesterTimestamp(
+  value: string,
+  boundary: StartedSemesterBoundary | null,
+): boolean {
+  if (!boundary) return true;
+  const valueDate = dateKey(value);
+  return !valueDate || valueDate >= boundary.startDate;
+}
+
+export function isCurrentSemesterId(
+  semesterId: string | null | undefined,
+  boundary: StartedSemesterBoundary | null,
+): boolean {
+  return !boundary || semesterId === boundary.semesterId;
+}
 
 export function semesterSeasonLabel(term: number): string {
   if (term === 1) return "秋";

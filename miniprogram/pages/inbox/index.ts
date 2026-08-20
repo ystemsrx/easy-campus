@@ -1,6 +1,7 @@
 import { getMessages, getNotices } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
 import { getSession } from "../../store/session";
+import { loadTimetableSnapshot } from "../../store/timetable";
 import {
   cleanupTeachingPreview,
   loadTeachingPreview,
@@ -12,6 +13,11 @@ import { formatDateTime } from "../../utils/date";
 import { formatSchedule } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import {
+  isCurrentSemesterTimestamp,
+  startedCurrentSemester,
+  type StartedSemesterBoundary,
+} from "../../utils/semester";
 
 interface ScheduleView {
   primary: string;
@@ -26,6 +32,8 @@ interface MessageView {
   title: string;
   teacher: string;
   createdAt: string;
+  sourceCreatedAt: string;
+  showHistoryDivider: boolean;
   original?: ScheduleView;
   current?: ScheduleView;
   content?: string;
@@ -33,6 +41,7 @@ interface MessageView {
 
 interface NoticeView extends Notice {
   displayTime: string;
+  showHistoryDivider: boolean;
 }
 
 interface MessageTypeOption {
@@ -121,6 +130,8 @@ function toMessageView(message: TeachingMessage): MessageView {
             ? `${originalTeacher} → ${currentTeacher}`
             : currentTeacher || originalTeacher,
         createdAt: formatDateTime(message.createdAt),
+        sourceCreatedAt: message.createdAt,
+        showHistoryDivider: false,
         original: scheduleView(message.originalSchedule),
         current: scheduleView(message.newSchedule),
       };
@@ -134,6 +145,8 @@ function toMessageView(message: TeachingMessage): MessageView {
         title: message.courseName,
         teacher: teacherLabel(message.teacherName),
         createdAt: formatDateTime(message.createdAt),
+        sourceCreatedAt: message.createdAt,
+        showHistoryDivider: false,
         current: scheduleView(message.schedule),
       };
     case "course_cancelled":
@@ -145,6 +158,8 @@ function toMessageView(message: TeachingMessage): MessageView {
         title: message.courseName,
         teacher: teacherLabel(message.teacherName),
         createdAt: formatDateTime(message.createdAt),
+        sourceCreatedAt: message.createdAt,
+        showHistoryDivider: false,
         original: scheduleView(message.schedule),
       };
     case "other":
@@ -156,9 +171,46 @@ function toMessageView(message: TeachingMessage): MessageView {
         title: message.title,
         teacher: "",
         createdAt: formatDateTime(message.createdAt),
+        sourceCreatedAt: message.createdAt,
+        showHistoryDivider: false,
         content: message.content,
       };
   }
+}
+
+function toNoticeView(notice: Notice): NoticeView {
+  return {
+    ...notice,
+    displayTime: formatDateTime(notice.publishedAt),
+    showHistoryDivider: false,
+  };
+}
+
+function semesterBoundary(): StartedSemesterBoundary | null {
+  const account = getSession()?.user.account || "";
+  return startedCurrentSemester(loadTimetableSnapshot(account)?.data);
+}
+
+function withHistoryDivider<T>(
+  items: T[],
+  timestamp: (item: T) => string,
+  boundary = semesterBoundary(),
+): T[] {
+  let historyStarted = false;
+  return items.map((item) => {
+    const historical = !isCurrentSemesterTimestamp(timestamp(item), boundary);
+    const showHistoryDivider = historical && !historyStarted;
+    if (historical) historyStarted = true;
+    return { ...item, showHistoryDivider };
+  });
+}
+
+function decorateMessages(items: MessageView[]): MessageView[] {
+  return withHistoryDivider(items, (item) => item.sourceCreatedAt);
+}
+
+function decorateNotices(items: NoticeView[]): NoticeView[] {
+  return withHistoryDivider(items, (item) => item.publishedAt);
 }
 
 function mergeMessages(
@@ -260,15 +312,23 @@ Page({
   },
   hydrateCachedPreview() {
     const account = getSession()?.user.account || "";
-    if (!account || hydratedInboxAccount === account) return;
+    if (!account) return;
+    if (hydratedInboxAccount === account) {
+      this.setData({
+        messageItems: decorateMessages(this.data.messageItems),
+        noticeItems: decorateNotices(this.data.noticeItems),
+      });
+      return;
+    }
     hydratedInboxAccount = account;
     const cached =
       cleanupTeachingPreview(account) || loadTeachingPreview(account);
-    const messageItems = (cached?.messages || []).map(toMessageView);
-    const noticeItems = (cached?.notices || []).map((notice) => ({
-      ...notice,
-      displayTime: formatDateTime(notice.publishedAt),
-    }));
+    const messageItems = decorateMessages(
+      (cached?.messages || []).map(toMessageView),
+    );
+    const noticeItems = decorateNotices(
+      (cached?.notices || []).map(toNoticeView),
+    );
     this.setData({
       messageItems,
       noticeItems,
@@ -333,10 +393,11 @@ Page({
           messages: result.data.items,
         });
       }
+      const messageItems = mergeFresh
+        ? mergeMessages(incoming, this.data.messageItems)
+        : incoming.slice(0, PAGE_SIZE);
       this.setData({
-        messageItems: mergeFresh
-          ? mergeMessages(incoming, this.data.messageItems)
-          : incoming.slice(0, PAGE_SIZE),
+        messageItems: decorateMessages(messageItems),
         messageLoaded: true,
       });
       if (
@@ -387,19 +448,17 @@ Page({
       if (sequence !== noticeRequestSequence) {
         return;
       }
-      const incoming = result.data.items.map((notice) => ({
-        ...notice,
-        displayTime: formatDateTime(notice.publishedAt),
-      }));
+      const incoming = result.data.items.map(toNoticeView);
       if (!this.data.noticeQuery.trim()) {
         saveTeachingPreview(getSession()?.user.account || "", {
           notices: result.data.items,
         });
       }
+      const noticeItems = mergeFresh
+        ? mergeNotices(incoming, this.data.noticeItems)
+        : incoming.slice(0, PAGE_SIZE);
       this.setData({
-        noticeItems: mergeFresh
-          ? mergeNotices(incoming, this.data.noticeItems)
-          : incoming.slice(0, PAGE_SIZE),
+        noticeItems: decorateNotices(noticeItems),
         noticeLoaded: true,
       });
       if (

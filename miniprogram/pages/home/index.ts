@@ -96,12 +96,19 @@ import {
 } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
 import { sortPublicationsNewestFirst } from "../../utils/publications";
+import {
+  isCurrentSemesterId,
+  isCurrentSemesterTimestamp,
+  startedCurrentSemester,
+  type StartedSemesterBoundary,
+} from "../../utils/semester";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 
 interface MessagePreview {
   id: string;
   title: string;
   subtitle: string;
+  sourceCreatedAt: string;
   dateLabel: string;
   label: string;
   tone: string;
@@ -223,10 +230,17 @@ function toExamPreview(exam: Exam): ExamPreview {
   };
 }
 
-function shortcutCachePatch(account: string): ShortcutCachePatch {
+function shortcutCachePatch(
+  account: string,
+  timetable = loadTimetableSnapshot(account)?.data || null,
+): ShortcutCachePatch {
   const electricity = loadElectricitySnapshot(account)?.data;
   const electricityAccount = electricity?.account;
-  const exams = loadExamsSnapshot(account)?.data.items || [];
+  const examData = loadExamsSnapshot(account)?.data;
+  const semesterBoundary = startedCurrentSemester(timetable);
+  const exams = isCurrentSemesterId(examData?.semester?.id, semesterBoundary)
+    ? examData?.items || []
+    : [];
   const now = Date.now();
   const ordered = [...exams].sort((left, right) => {
     const leftTime = examTimestamp(left);
@@ -351,6 +365,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: `调整至 ${formatSchedule(message.newSchedule)}`,
+        sourceCreatedAt: message.createdAt,
         dateLabel: formatScheduleDate(message.newSchedule),
         label: "调课",
         tone: "blue",
@@ -360,6 +375,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: formatSchedule(message.schedule),
+        sourceCreatedAt: message.createdAt,
         dateLabel: formatScheduleDate(message.schedule),
         label: "补课",
         tone: "green",
@@ -369,6 +385,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.courseName,
         subtitle: formatSchedule(message.schedule),
+        sourceCreatedAt: message.createdAt,
         dateLabel: formatScheduleDate(message.schedule),
         label: "停课",
         tone: "orange",
@@ -378,6 +395,7 @@ function toMessagePreview(message: TeachingMessage): MessagePreview {
         id: message.id,
         title: message.title,
         subtitle: message.content,
+        sourceCreatedAt: message.createdAt,
         dateLabel: formatDateTime(message.createdAt),
         label: "消息",
         tone: "gray",
@@ -436,9 +454,13 @@ function loadPlanPreviews(account: string): PlanPreview[] {
 function mergeMessagePreviews(
   incoming: MessagePreview[],
   existing: MessagePreview[],
+  semesterBoundary: StartedSemesterBoundary | null,
 ): MessagePreview[] {
   const seen = new Set<string>();
   return [...incoming, ...existing]
+    .filter((item) =>
+      isCurrentSemesterTimestamp(item.sourceCreatedAt, semesterBoundary),
+    )
     .filter((item) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
@@ -450,9 +472,13 @@ function mergeMessagePreviews(
 function mergeNoticePreviews(
   incoming: NoticePreview[],
   existing: NoticePreview[],
+  semesterBoundary: StartedSemesterBoundary | null,
 ): NoticePreview[] {
   const seen = new Set<string>();
   return [...incoming, ...existing]
+    .filter((item) =>
+      isCurrentSemesterTimestamp(item.publishedAt, semesterBoundary),
+    )
     .filter((item) => {
       const identity = item.id || item.link;
       if (seen.has(identity)) return false;
@@ -925,10 +951,17 @@ Page({
     const cachedTimetable = loadTimetableSnapshot(account);
     const cachedGrades = loadGradesSnapshot(account);
     activeTimetable = cachedTimetable?.data || null;
+    const semesterBoundary = startedCurrentSemester(activeTimetable);
     const messages = (cached?.messages || [])
+      .filter((message) =>
+        isCurrentSemesterTimestamp(message.createdAt, semesterBoundary),
+      )
       .slice(0, HOME_PREVIEW_ITEM_LIMIT)
       .map(toMessagePreview);
     const notices = (cached?.notices || [])
+      .filter((notice) =>
+        isCurrentSemesterTimestamp(notice.publishedAt, semesterBoundary),
+      )
       .slice(0, HOME_PREVIEW_ITEM_LIMIT)
       .map(toNoticePreview);
     this.setData({
@@ -1491,24 +1524,6 @@ Page({
       Object.assign(patch, resolveHomeIdentity(getSession(), userResult.value));
       this.handleCredentialState(userResult.value.credential);
     }
-    if (messageResult.status === "fulfilled") {
-      saveTeachingPreview(getSession()?.user.account || "", {
-        messages: messageResult.value.data.items,
-      });
-      patch.messages = mergeMessagePreviews(
-        messageResult.value.data.items.map(toMessagePreview),
-        this.data.messages,
-      );
-    }
-    if (noticeResult.status === "fulfilled") {
-      saveTeachingPreview(getSession()?.user.account || "", {
-        notices: noticeResult.value.data.items,
-      });
-      patch.notices = mergeNoticePreviews(
-        noticeResult.value.data.items.map(toNoticePreview),
-        this.data.notices,
-      );
-    }
     if (timetableResult.status === "fulfilled" && timetableResult.value) {
       const account = getSession()?.user.account || "";
       const local = loadTimetableSnapshot(account);
@@ -1531,6 +1546,34 @@ Page({
         activeTimetable,
         now,
       ).length;
+      Object.assign(patch, shortcutCachePatch(account, activeTimetable));
+    }
+    const semesterBoundary = startedCurrentSemester(activeTimetable);
+    patch.messages = this.data.messages.filter((item) =>
+      isCurrentSemesterTimestamp(item.sourceCreatedAt, semesterBoundary),
+    );
+    patch.notices = this.data.notices.filter((item) =>
+      isCurrentSemesterTimestamp(item.publishedAt, semesterBoundary),
+    );
+    if (messageResult.status === "fulfilled") {
+      saveTeachingPreview(getSession()?.user.account || "", {
+        messages: messageResult.value.data.items,
+      });
+      patch.messages = mergeMessagePreviews(
+        messageResult.value.data.items.map(toMessagePreview),
+        this.data.messages,
+        semesterBoundary,
+      );
+    }
+    if (noticeResult.status === "fulfilled") {
+      saveTeachingPreview(getSession()?.user.account || "", {
+        notices: noticeResult.value.data.items,
+      });
+      patch.notices = mergeNoticePreviews(
+        noticeResult.value.data.items.map(toNoticePreview),
+        this.data.notices,
+        semesterBoundary,
+      );
     }
     if (
       messageResult.status === "rejected" &&

@@ -23,6 +23,22 @@ const homeRoot = path.resolve(
 );
 const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
 const homeTemplate = fs.readFileSync(path.join(homeRoot, "index.wxml"), "utf8");
+const semesterSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "utils", "semester.ts"),
+  "utf8",
+);
+const semesterOutput = ts.transpileModule(semesterSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const semesterModule = { exports: {} };
+new Function("module", "exports", "require", semesterOutput)(
+  semesterModule,
+  semesterModule.exports,
+  require,
+);
 const output = ts.transpileModule(source, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -30,6 +46,8 @@ const output = ts.transpileModule(source, {
   },
 }).outputText;
 
+let cachedPreview = null;
+let cachedTimetable = null;
 const stubs = {
   "../../services/teaching": {
     getMessages: async () => ({ data: { items: [] }, meta: {} }),
@@ -41,8 +59,11 @@ const stubs = {
   },
   "../../store/teaching-preview": {
     cleanupTeachingPreview: () => null,
-    loadTeachingPreview: () => null,
+    loadTeachingPreview: () => cachedPreview,
     saveTeachingPreview: () => undefined,
+  },
+  "../../store/timetable": {
+    loadTimetableSnapshot: () => cachedTimetable,
   },
   "../../utils/appearance": { resolveAppearance: () => ({}) },
   "../../utils/date": { formatDateTime: (value) => value },
@@ -51,6 +72,11 @@ const stubs = {
   "../../utils/navigation": {
     ensureAuthenticated: () => true,
     navigateTo: async () => undefined,
+  },
+  "../../utils/semester": {
+    ...semesterModule.exports,
+    startedCurrentSemester: (timetable) =>
+      semesterModule.exports.startedCurrentSemester(timetable, "2026-08-31"),
   },
 };
 
@@ -114,6 +140,60 @@ assert(
   "点击全部必须清除其他筛选并恢复全部勾选",
 );
 assert(loadCount === 4, "每次筛选变化都必须重新读取对应消息");
+
+cachedTimetable = {
+  data: {
+    semester: { id: "2026-1" },
+    currentSemester: {
+      id: "2026-1",
+      startDate: "2026-08-31",
+      endDate: "2027-01-17",
+    },
+    semesterCalendar: null,
+  },
+};
+cachedPreview = {
+  messages: [
+    {
+      id: "historical-message-newer",
+      type: "other",
+      title: "较新的历史消息",
+      content: "历史内容",
+      createdAt: "2026-08-30 08:00:00",
+    },
+    {
+      id: "historical-message-older",
+      type: "other",
+      title: "较早的历史消息",
+      content: "历史内容",
+      createdAt: "2026-08-29 08:00:00",
+    },
+  ],
+  notices: [
+    {
+      id: "historical-notice-newer",
+      title: "较新的历史通知",
+      link: "https://example.test/history-newer",
+      publishedAt: "2026-08-30 09:00:00",
+    },
+    {
+      id: "historical-notice-older",
+      title: "较早的历史通知",
+      link: "https://example.test/history-older",
+      publishedAt: "2026-08-29 09:00:00",
+    },
+  ],
+};
+page.hydrateCachedPreview();
+assert(
+  page.data.messageItems.length === 2 &&
+    page.data.messageItems[0].showHistoryDivider === true &&
+    page.data.messageItems[1].showHistoryDivider === false &&
+    page.data.noticeItems.length === 2 &&
+    page.data.noticeItems[0].showHistoryDivider === true &&
+    page.data.noticeItems[1].showHistoryDivider === false,
+  "没有本学期数据时，校园消息页必须保留两类旧数据并只在首条前标记历史分界",
+);
 
 assert(
   /case "other":[\s\S]*?dateLabel: formatDateTime\(message\.createdAt\),[\s\S]*?label: "消息"/.test(
@@ -185,6 +265,17 @@ assert(
     ) &&
     !styles.includes(".filter-button--active"),
   "筛选按钮必须保留充足内边距，并且筛选生效时只能显示角标",
+);
+assert(
+  (template.match(/以下为历史消息/g) || []).length === 4 &&
+    template.includes("item.showHistoryDivider") &&
+    /\.history-divider\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center/s.test(
+      styles,
+    ) &&
+    /\.history-divider-line\s*\{[^}]*height:\s*1rpx[^}]*background-color:\s*var\(--color-separator\)/s.test(
+      styles,
+    ),
+  "教务消息和学校通知的历史分界必须使用居中文字与两侧灰线",
 );
 
 console.log("Inbox interaction checks passed.");

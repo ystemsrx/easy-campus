@@ -223,7 +223,7 @@
 .exam-time { display: flex; flex: none; flex-direction: column; align-items: flex-end; max-width: 130rpx; }
 .exam-date { color: var(--color-text); font-size: 20rpx; font-weight: 750; white-space: nowrap; }
 .exam-clock { max-width: 142rpx; margin-top: 4rpx; color: var(--color-text-tertiary); font-size: 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.exam-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 206rpx; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
+.exam-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 226rpx; color: var(--color-text-tertiary); font-size: 19rpx; text-align: center; }
 .side-actions { display: flex; flex: none; flex-direction: column; gap: 18rpx; width: 156rpx; }
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
 .side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
@@ -245,7 +245,7 @@
 .campus-stack { display: flex; flex-direction: column; gap: 30rpx; }
 .campus-group { display: flex; flex-direction: column; gap: 16rpx; }
 .campus-open-container { display: block; border-radius: 44rpx; }
-.campus-card { position: relative; padding: 30rpx; }
+.campus-card { position: relative; min-height: 198rpx; padding: 30rpx; }
 .campus-blob { width: 190rpx; height: 170rpx; opacity: 0.72; }
 .campus-blob--notice { top: -70rpx; right: -54rpx; background: #f9eae2; }
 .campus-blob--message { bottom: -76rpx; left: -58rpx; background: #f8eedd; }
