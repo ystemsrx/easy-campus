@@ -213,30 +213,40 @@ assert(
     component.includes("runtime.engine.burst()") &&
     component.includes("enhanced:") &&
     component.includes("emphasis: Boolean(this.data.enhanced)") &&
-    component.includes("OVERSCAN_FACTOR = 2.4") &&
+    component.includes(
+      "const OVERSCAN_FACTOR = ORIGINAL_PET_OVERSCAN_FACTOR",
+    ) &&
     component.includes("NATIVE_IMAGE_TOP_GUTTER_RATIO = 0.33") &&
     component.includes("previewOffsetX:") &&
     component.includes("previewOffsetY:") &&
     component.includes("previewScale:") &&
+    component.includes("value: 0.1") &&
+    component.includes("value: 0.11") &&
+    component.includes("value: 0.92") &&
+    component.includes("value: 0.22") &&
     component.includes("refreshPreviewScale()") &&
     component.includes("previewTopGutter:") &&
     component.includes("refreshPreviewTopGutter()") &&
     componentTemplate.includes('id="pet-engine-image"') &&
-    componentTemplate.includes('style="{{rendererStyle}}"') &&
+    componentTemplate.includes(
+      'style="{{rendererStyle}}"',
+    ) &&
+    componentTemplate.includes("<image") &&
     componentTemplate.includes('src="{{petSource}}"') &&
+    componentTemplate.includes('mode="aspectFit"') &&
     componentTemplate.includes('fade-in="{{false}}"') &&
     !componentTemplate.includes("<canvas") &&
     componentTemplate.includes('bindtouchmove="updateGaze"') &&
     component.includes("const outerWidth = width * OVERSCAN_FACTOR") &&
     component.includes("const outerHeight = height * OVERSCAN_FACTOR") &&
-    component.includes("const nativeImageTop =") &&
-    component.includes(
-      "-height * NATIVE_IMAGE_TOP_GUTTER_RATIO + previewOffsetY",
-    ) &&
-    component.includes("left - offsetX") &&
-    component.includes("top - offsetY") &&
-    component.includes("`left: ${previewOffsetX.toFixed(3)}px; `") &&
-    component.includes("`top: ${nativeImageTop.toFixed(3)}px; `") &&
+    component.includes("const imageLeft = previewOffsetX") &&
+    component.includes("-height * NATIVE_IMAGE_TOP_GUTTER_RATIO") &&
+    component.includes("const metricsLeft = left - offsetX + previewOffsetX") &&
+    component.includes("const metricsTop = top - offsetY + previewOffsetY") &&
+    component.includes("lastMetricsKey") &&
+    component.includes("lastRendererStyle") &&
+    component.includes("`left: ${imageLeft.toFixed(3)}px; `") &&
+    component.includes("`top: ${imageTop.toFixed(3)}px; `") &&
     componentStyles.includes(".pet-engine-viewport") &&
     componentStyles.includes(".pet-engine-image") &&
     componentStyles.includes(
@@ -272,10 +282,18 @@ assert(
     originalEngine.includes("serializeNode(node)") &&
     originalEngine.includes("function __hslToHex(value)") &&
     originalEngine.includes("return __hslToHex(value)") &&
-    originalEngine.includes("const __TOP_MOTION_GUTTER_RATIO = 0.22") &&
     originalEngine.includes("const __PET_ANCHOR_OFFSET_X_RATIO = -0.1") &&
     originalEngine.includes("const __PET_ANCHOR_OFFSET_Y_RATIO = -0.22") &&
     originalEngine.includes("const __PET_VIEWPORT_SCALE = 0.85") &&
+    originalEngine.includes("const __TOP_MOTION_GUTTER_RATIO = 0.22") &&
+    originalEngine.includes(
+      "export const ORIGINAL_PET_OVERSCAN_FACTOR = 2.4",
+    ) &&
+    originalEngine.includes("let __nextEngineId = 0") &&
+    originalEngine.includes('value: `gb${++__nextEngineId}`') &&
+    !originalEngine.includes('preserveAspectRatio="none"') &&
+    !originalEngine.includes('width="${outerWidth.toFixed(3)}"') &&
+    !originalEngine.includes('height="${outerHeight.toFixed(3)}"') &&
     originalEngine.includes("Number(this.options.previewScale) || 1") &&
     originalEngine.includes("this.previewTopGutter") &&
     originalEngine.includes("L.current &&") &&
@@ -286,7 +304,22 @@ assert(
     originalEngine.includes("this.environment.paint()") &&
     originalEngine.includes("const outerMinimumX = minimumX") &&
     originalEngine.includes(
+      "const translateX = viewWidth * __PET_ANCHOR_OFFSET_X_RATIO",
+    ) &&
+    originalEngine.includes(
       "__TOP_MOTION_GUTTER_RATIO + this.previewTopGutter",
+    ) &&
+    originalEngine.includes(
+      "translateX + centerX * (1 - viewportScale) - outerMinimumX",
+    ) &&
+    originalEngine.includes(
+      "translateY + centerY * (1 - viewportScale) - outerMinimumY",
+    ) &&
+    originalEngine.includes(
+      "`matrix(${viewportScale.toFixed(6)} 0 0 ${viewportScale.toFixed(6)} `",
+    ) &&
+    originalEngine.includes(
+      '`viewBox="0 0 ${outerWidth.toFixed(3)} ${outerHeight.toFixed(3)}">`',
     ) &&
     originalEngine.includes("firstRender") &&
     originalEngine.includes("declaredAttributes") &&

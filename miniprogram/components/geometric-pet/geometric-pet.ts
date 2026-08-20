@@ -4,7 +4,10 @@ import {
   type PetShapeId,
   type PetStateId,
 } from "./engine-data";
-import { createOriginalPetSvgEngine } from "./original-engine";
+import {
+  ORIGINAL_PET_OVERSCAN_FACTOR,
+  createOriginalPetSvgEngine,
+} from "./original-engine";
 
 interface GazeTarget {
   x: number;
@@ -42,6 +45,8 @@ interface PetRuntime {
   visible: boolean;
   initializationAttempts: number;
   lastSource: string;
+  lastMetricsKey: string;
+  lastRendererStyle: string;
   interactionTimer?: ReturnType<typeof setTimeout>;
   measureTimer?: ReturnType<typeof setTimeout>;
   tourTimer?: ReturnType<typeof setTimeout>;
@@ -52,11 +57,7 @@ interface InteractionPreset {
   actions: readonly ("bounce" | "burst" | "spin")[];
 }
 
-const OVERSCAN_FACTOR = 2.4;
-// Skyline clips decoded SVG pixels at the native image's own top edge even
-// when every WXML wrapper has overflow: visible. Keep the original SVG body
-// lower in its oversized bitmap, then lift that bitmap to preserve the same
-// resting optical center while leaving real room for the 48-unit bounce.
+const OVERSCAN_FACTOR = ORIGINAL_PET_OVERSCAN_FACTOR;
 const NATIVE_IMAGE_TOP_GUTTER_RATIO = 0.33;
 const AUTO_TOUR_INTERVAL_MS = 3800;
 const INTERACTION_HOLD_MS = 1700;
@@ -109,6 +110,8 @@ function createRuntime(): PetRuntime {
     visible: true,
     initializationAttempts: 0,
     lastSource: "",
+    lastMetricsKey: "",
+    lastRendererStyle: "",
   };
 }
 
@@ -180,22 +183,22 @@ Component({
     },
     previewOffsetX: {
       type: Number,
-      value: 0,
+      value: 0.1,
       observer: "measureRenderer",
     },
     previewOffsetY: {
       type: Number,
-      value: 0,
+      value: 0.11,
       observer: "measureRenderer",
     },
     previewScale: {
       type: Number,
-      value: 1,
+      value: 0.92,
       observer: "refreshPreviewScale",
     },
     previewTopGutter: {
       type: Number,
-      value: 0,
+      value: 0.22,
       observer: "refreshPreviewTopGutter",
     },
     label: { type: String, value: "校园伙伴" },
@@ -307,28 +310,50 @@ Component({
           const outerHeight = height * OVERSCAN_FACTOR;
           const previewOffsetX = width * Number(this.data.previewOffsetX || 0);
           const previewOffsetY = height * Number(this.data.previewOffsetY || 0);
-          const nativeImageTop =
-            -height * NATIVE_IMAGE_TOP_GUTTER_RATIO + previewOffsetY;
           const offsetX = (outerWidth - width) / 2;
           const offsetY = (outerHeight - height) / 2;
+          const imageLeft = previewOffsetX;
+          const imageTop =
+            -height * NATIVE_IMAGE_TOP_GUTTER_RATIO + previewOffsetY;
           const left = Number(result?.left) || 0;
           const top = Number(result?.top) || 0;
-          currentRuntime.engine.setMetrics(
+          const metricsLeft = left - offsetX + previewOffsetX;
+          const metricsTop = top - offsetY + previewOffsetY;
+          const metricsKey = [
             outerWidth,
             outerHeight,
-            1,
-            OVERSCAN_FACTOR,
-            left - offsetX + previewOffsetX,
-            top - offsetY + previewOffsetY,
-          );
-          this.setData({
-            rendererReady: true,
-            rendererStyle:
-              `left: ${previewOffsetX.toFixed(3)}px; ` +
-              `top: ${nativeImageTop.toFixed(3)}px; ` +
-              `width: ${outerWidth.toFixed(3)}px; ` +
-              `height: ${outerHeight.toFixed(3)}px;`,
-          });
+            metricsLeft,
+            metricsTop,
+          ]
+            .map((value) => value.toFixed(3))
+            .join(":");
+          const rendererStyle =
+            `left: ${imageLeft.toFixed(3)}px; ` +
+            `top: ${imageTop.toFixed(3)}px; ` +
+            `width: ${outerWidth.toFixed(3)}px; ` +
+            `height: ${outerHeight.toFixed(3)}px;`;
+
+          if (metricsKey !== currentRuntime.lastMetricsKey) {
+            currentRuntime.lastMetricsKey = metricsKey;
+            currentRuntime.engine.setMetrics(
+              outerWidth,
+              outerHeight,
+              1,
+              OVERSCAN_FACTOR,
+              metricsLeft,
+              metricsTop,
+            );
+          }
+          if (
+            rendererStyle !== currentRuntime.lastRendererStyle ||
+            !this.data.rendererReady
+          ) {
+            currentRuntime.lastRendererStyle = rendererStyle;
+            this.setData({
+              rendererReady: true,
+              rendererStyle,
+            });
+          }
         });
     },
 

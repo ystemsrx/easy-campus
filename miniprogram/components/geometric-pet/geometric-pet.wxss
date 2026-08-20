@@ -5,9 +5,12 @@
   overflow: visible;
 }
 
-view,
-image,
-text {
+.geometric-pet,
+.pet-engine-viewport,
+.pet-engine-image,
+.pet-halo,
+.pet-shadow,
+.pet-badge {
   box-sizing: border-box;
 }
 

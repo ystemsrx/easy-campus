@@ -5,10 +5,8 @@
 // without changing the original animator.
 
 const __TWO_PI = Math.PI * 2;
+export const ORIGINAL_PET_OVERSCAN_FACTOR = 2.4;
 const __TOP_MOTION_GUTTER_RATIO = 0.22;
-// X is calibrated against the visible paint bounds in WeChat's native image
-// layer. Y retains the engine's top motion gutter; the component moves the
-// complete native bitmap upward without sacrificing that drawable space.
 const __PET_ANCHOR_OFFSET_X_RATIO = -0.1;
 const __PET_ANCHOR_OFFSET_Y_RATIO = -0.22;
 const __PET_VIEWPORT_SCALE = 0.85;
@@ -723,8 +721,8 @@ class __EngineEnvironment {
     const [minimumX, minimumY, viewWidth, viewHeight] = viewBox;
     const centerX = minimumX + viewWidth / 2;
     const centerY = minimumY + viewHeight / 2;
-    const outerWidth = viewWidth * 2.4;
-    const outerHeight = viewHeight * 2.4;
+    const outerWidth = viewWidth * ORIGINAL_PET_OVERSCAN_FACTOR;
+    const outerHeight = viewHeight * ORIGINAL_PET_OVERSCAN_FACTOR;
     const outerMinimumX = minimumX;
     const outerMinimumY =
       minimumY -
@@ -735,15 +733,21 @@ class __EngineEnvironment {
     const translateX = viewWidth * __PET_ANCHOR_OFFSET_X_RATIO;
     const translateY = viewHeight * __PET_ANCHOR_OFFSET_Y_RATIO;
     const viewportScale = this.poseScale * __PET_VIEWPORT_SCALE;
-    const transform =
-      `translate(${translateX.toFixed(3)} ${translateY.toFixed(3)}) ` +
-      `translate(${centerX.toFixed(3)} ${centerY.toFixed(3)}) ` +
-      `scale(${viewportScale.toFixed(6)}) ` +
-      `translate(${(-centerX).toFixed(3)} ${(-centerY).toFixed(3)})`;
+    // Keep Skyline's native SVG viewport at a stable zero origin. Precompose
+    // the former viewBox offset and the complete body transform into one
+    // matrix so native SVG decoding cannot reorder nested transforms.
+    const matrixTranslateX =
+      translateX + centerX * (1 - viewportScale) - outerMinimumX;
+    const matrixTranslateY =
+      translateY + centerY * (1 - viewportScale) - outerMinimumY;
+    const bodyTransform =
+      `matrix(${viewportScale.toFixed(6)} 0 0 ${viewportScale.toFixed(6)} ` +
+      `${matrixTranslateX.toFixed(3)} ${matrixTranslateY.toFixed(3)})`;
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" ` +
-      `viewBox="${outerMinimumX.toFixed(3)} ${outerMinimumY.toFixed(3)} ${outerWidth.toFixed(3)} ${outerHeight.toFixed(3)}">` +
-      `<g transform="${transform}">${body}</g></svg>`;
+      `viewBox="0 0 ${outerWidth.toFixed(3)} ${outerHeight.toFixed(3)}">` +
+      `<g transform="${bodyTransform}">${body}</g>` +
+      `</svg>`;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
 }

@@ -13,7 +13,7 @@
         aria-role="button"
         aria-label="{{selected ? '完成校园伙伴选择' : '跳过校园伙伴选择'}}"
       >
-        <text>{{selected ? '完成' : '跳过'}}</text>
+        <text class="pet-picker-action-label">{{selected ? '完成' : '跳过'}}</text>
       </view>
     </view>
 
