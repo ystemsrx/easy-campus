@@ -37,7 +37,7 @@ const CREDENTIAL_INVALIDATION_CODES = new Set([
   "SWU_CREDENTIAL_INVALID",
 ]);
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
-const RETRYABLE_STATUS_CODES = new Set([429, 503]);
+const RETRYABLE_STATUS_CODES = new Set([503]);
 let redirectingToLogin = false;
 
 export class ApiClientError extends Error {
@@ -64,6 +64,23 @@ export class ApiClientError extends Error {
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+interface RateLimitToastController {
+  show(): void;
+}
+
+function showRateLimitToast(): void {
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1];
+  const toast = currentPage?.selectComponent?.(
+    "#rate-limit-toast",
+  ) as unknown as RateLimitToastController | undefined;
+  if (toast && typeof toast.show === "function") {
+    toast.show();
+    return;
+  }
+  wx.showToast({ title: "访问速度太快了", icon: "none", duration: 3000 });
 }
 
 function redirectAfterAuthFailure(credentialInvalid = false): void {
@@ -189,6 +206,10 @@ async function requestEnvelope<T>(
     return await requestOnce<T>(path, options);
   } catch (error) {
     const apiError = error as ApiClientError;
+    if (isRateLimitError(apiError)) {
+      showRateLimitToast();
+      throw error;
+    }
     const retryable =
       options.retry !== false &&
       (apiError.code === "NETWORK_ERROR" ||
@@ -198,7 +219,7 @@ async function requestEnvelope<T>(
       throw error;
     }
 
-    await wait(apiError.statusCode === 429 ? 800 : 360);
+    await wait(360);
     return requestOnce<T>(path, { ...options, retry: false });
   }
 }
@@ -239,6 +260,7 @@ export function getErrorMessage(
   error: unknown,
   fallback = "加载失败，请稍后重试。",
 ): string {
+  if (isRateLimitError(error)) return "";
   if (error instanceof ApiClientError && error.message) {
     return error.message;
   }
@@ -246,4 +268,8 @@ export function getErrorMessage(
     return error.message;
   }
   return fallback;
+}
+
+export function isRateLimitError(error: unknown): boolean {
+  return error instanceof ApiClientError && error.statusCode === 429;
 }

@@ -1,3 +1,4 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
 <view class="page pet-setup-page {{themeClass}} {{motionClass}}">
   <navigation-bar title="我的伙伴" transparent back theme="{{theme}}">
     <view

@@ -1,0 +1,37 @@
+.rate-limit-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 3000;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 68rpx;
+  padding: 0 34rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 999rpx;
+  color: #fff;
+  background: rgba(8, 10, 14, 0.58);
+  box-shadow: 0 16rpx 46rpx rgba(8, 10, 14, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.94);
+  backdrop-filter: blur(14px) saturate(1.1);
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rate-limit-toast text {
+  flex: none;
+  font-size: 25rpx;
+  font-weight: 680;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rate-limit-toast--visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}

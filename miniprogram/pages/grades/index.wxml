@@ -1,3 +1,4 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
 <view class="page grades-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onGradeScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="成绩" back extra-left transparent theme="{{theme}}">

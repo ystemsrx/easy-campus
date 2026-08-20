@@ -537,7 +537,7 @@ Page({
     } catch (error) {
       if (sequence === roomsSequence) {
         const errorMessage = getErrorMessage(error, "空教室查询失败。");
-        if (reset) {
+        if (reset && errorMessage) {
           this.setData(
             {
               errorMessage,
@@ -552,7 +552,7 @@ Page({
             },
             () => this.openResultDrawer(),
           );
-        } else {
+        } else if (errorMessage) {
           wx.showToast({ title: errorMessage, icon: "none" });
         }
       }

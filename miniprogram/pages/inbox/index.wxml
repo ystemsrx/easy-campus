@@ -1,3 +1,4 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
 <view class="page inbox-page {{themeClass}} {{motionClass}}" bindtap="onPageTap">
   <navigation-bar title="校园通知" back transparent theme="{{theme}}"></navigation-bar>
 

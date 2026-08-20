@@ -1,3 +1,4 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
 <view class="page profile-page {{themeClass}} {{motionClass}} {{authenticationExitClass}}">
   <scroll-view
     class="page-scroll"

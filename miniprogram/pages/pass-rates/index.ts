@@ -211,9 +211,9 @@ Page({
     } catch (error) {
       if (sequence !== requestSequence) return;
       const message = getErrorMessage(error, "通过率加载失败，请稍后重试。");
-      if (hasCourse) {
+      if (message && hasCourse) {
         wx.showToast({ title: message, icon: "none" });
-      } else {
+      } else if (message) {
         this.setData({ errorMessage: message });
       }
     } finally {

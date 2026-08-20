@@ -274,9 +274,9 @@ Page({
     } catch (error) {
       if (sequence === examsSequence) {
         const message = getErrorMessage(error, "考试信息加载失败。");
-        if (this.data.examItems.length) {
+        if (message && this.data.examItems.length) {
           wx.showToast({ title: message, icon: "none" });
-        } else {
+        } else if (message) {
           this.setData({ errorMessage: message });
         }
       }
