@@ -7,8 +7,12 @@ const SCHEMA_VERSION = 3;
 export interface ExamsSnapshot extends CacheMetadata {
   schemaVersion: typeof SCHEMA_VERSION;
   data: ExamsData;
-  refreshedForSignInAt: number;
+  lastAutomaticRefreshAt: number;
 }
+
+type StoredExamsSnapshot = Partial<ExamsSnapshot> & {
+  refreshedForSignInAt?: number;
+};
 
 function storageKey(account: string, semesterId = "default"): string {
   return `${PREFIX}${encodeURIComponent(account.trim())}:${encodeURIComponent(semesterId || "default")}`;
@@ -31,7 +35,7 @@ export function loadExamsSnapshot(
 ): ExamsSnapshot | null {
   if (!account.trim()) return null;
   const value = wx.getStorageSync(storageKey(account, semesterId)) as
-    Partial<ExamsSnapshot> | undefined;
+    StoredExamsSnapshot | undefined;
   if (
     !value ||
     value.schemaVersion !== SCHEMA_VERSION ||
@@ -44,7 +48,8 @@ export function loadExamsSnapshot(
     data: value.data,
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || 0,
-    refreshedForSignInAt: Number(value.refreshedForSignInAt) || 0,
+    lastAutomaticRefreshAt:
+      Number(value.lastAutomaticRefreshAt || value.refreshedForSignInAt) || 0,
   };
 }
 
@@ -54,7 +59,7 @@ export function saveExamsSnapshot(
   options: {
     semesterId?: string;
     serverFetchedAt?: string;
-    refreshedForSignInAt?: number;
+    lastAutomaticRefreshAt?: number;
   } = {},
 ): ExamsSnapshot | null {
   if (!account.trim()) return null;
@@ -63,7 +68,7 @@ export function saveExamsSnapshot(
     data,
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),
-    refreshedForSignInAt: options.refreshedForSignInAt || 0,
+    lastAutomaticRefreshAt: options.lastAutomaticRefreshAt || 0,
   };
   try {
     const semesterId = options.semesterId || "default";

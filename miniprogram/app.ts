@@ -1,6 +1,6 @@
 import { loadPreferences } from "./store/preferences";
 import { loadCurrentUser, loadSession } from "./store/session";
-import { refreshExamsAfterSignIn } from "./services/cache-refresh";
+import { refreshExamsOnForeground } from "./services/cache-refresh";
 import { preloadPrimaryTabs } from "./services/primary-tab-preload";
 import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
@@ -36,12 +36,12 @@ App<IAppOption>({
         // 首屏预渲染失败时由课表页使用同一份本地快照即时构建。
       }
     }
-    void refreshExamsAfterSignIn(this.globalData.session);
   },
   onShow() {
     this.globalData.foregroundEntryId += 1;
     beginAutomaticRefreshCycle();
     const session = this.globalData.session;
+    void refreshExamsOnForeground(session);
     setTimeout(() => preloadPrimaryTabs(session), 0);
   },
 });

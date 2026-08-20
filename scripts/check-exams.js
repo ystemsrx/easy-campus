@@ -44,7 +44,28 @@ const examUtilities = loadTypeScriptModule("utils/exams.ts", {
   "./date": dateUtilities,
 });
 const semesterUtilities = loadTypeScriptModule("utils/semester.ts");
+const examRefreshPolicy = loadTypeScriptModule("services/cache-refresh.ts", {
+  "../store/exams": {},
+  "../store/session": {},
+  "./teaching": {},
+});
 const referenceDate = "2026-08-18";
+
+const automaticRefreshAt = Date.parse("2026-08-18T01:00:00.000Z");
+const refreshInterval = examRefreshPolicy.EXAMS_AUTO_REFRESH_INTERVAL_MS;
+assert(
+  refreshInterval === 24 * 60 * 60 * 1000 &&
+    examRefreshPolicy.isExamAutomaticRefreshDue(0, automaticRefreshAt) &&
+    !examRefreshPolicy.isExamAutomaticRefreshDue(
+      automaticRefreshAt,
+      automaticRefreshAt + refreshInterval,
+    ) &&
+    examRefreshPolicy.isExamAutomaticRefreshDue(
+      automaticRefreshAt,
+      automaticRefreshAt + refreshInterval + 1,
+    ),
+  "考试自动刷新必须仅在距上次成功自动刷新超过 24 小时后触发",
+);
 
 const countdownCases = [
   ["2026-08-17", "past", "过"],
@@ -124,6 +145,14 @@ const examsStore = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "store", "exams.ts"),
   "utf8",
 );
+const cacheRefreshScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "services", "cache-refresh.ts"),
+  "utf8",
+);
+const appScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "app.ts"),
+  "utf8",
+);
 const gradesPage = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxml"),
   "utf8",
@@ -193,6 +222,18 @@ assert(
     !apiTypes.includes("seatNumber") &&
     examsStore.includes("const SCHEMA_VERSION = 3;"),
   "考试条目不得显示考试类型、方式或座位标签",
+);
+assert(
+  /onShow\(\)\s*\{[\s\S]*?refreshExamsOnForeground\(session\)/.test(
+    appScript,
+  ) &&
+    !appScript
+      .slice(appScript.indexOf("onLaunch()"), appScript.indexOf("onShow()"))
+      .includes("refreshExamsOnForeground") &&
+    cacheRefreshScript.includes("lastAutomaticRefreshAt: Date.now()") &&
+    examsScript.includes("lastAutomaticRefreshAt,") &&
+    !examsScript.includes("lastAutomaticRefreshAt: Date.now()"),
+  "考试应在每次进入前台检查自动刷新，且手动刷新不得被 24 小时间隔拦截或重置自动刷新时间",
 );
 assert(
   examsScript.includes('{ label: "考试批次", value: exam.batchLabel }') &&

@@ -1,6 +1,9 @@
 import { getExams } from "../../services/teaching";
 import { getErrorMessage } from "../../services/request";
-import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
+import {
+  isExamAutomaticRefreshDue,
+  refreshExamsOnForeground,
+} from "../../services/cache-refresh";
 import { shouldUseServerSnapshot } from "../../store/cache-policy";
 import { loadExamsSnapshot, saveExamsSnapshot } from "../../store/exams";
 import { getSession } from "../../store/session";
@@ -236,14 +239,12 @@ Page({
         refresh ||
         shouldUseServerSnapshot(local, result.meta.fetchedAt)
       ) {
-        const existingRefreshSession = local?.refreshedForSignInAt || 0;
+        const lastAutomaticRefreshAt = local?.lastAutomaticRefreshAt || 0;
         if (reset) {
           saveExamsSnapshot(account, result.data, {
             semesterId: storageSemester,
             serverFetchedAt: result.meta.fetchedAt,
-            refreshedForSignInAt: refresh
-              ? session?.signedInAt
-              : existingRefreshSession,
+            lastAutomaticRefreshAt,
           });
           this.applyExamsData(result.data);
         } else {
@@ -267,7 +268,7 @@ Page({
       shouldRefreshAfterward =
         !refresh &&
         Boolean(session?.signedInAt) &&
-        current?.refreshedForSignInAt !== session?.signedInAt;
+        isExamAutomaticRefreshDue(current?.lastAutomaticRefreshAt || 0);
     } catch (error) {
       if (sequence === examsSequence) {
         const message = getErrorMessage(error, "考试信息加载失败。");
@@ -281,7 +282,7 @@ Page({
       if (sequence === examsSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
         if (shouldRefreshAfterward) {
-          void refreshExamsAfterSignIn().then((snapshot) => {
+          void refreshExamsOnForeground().then((snapshot) => {
             if (!snapshot || sequence !== examsSequence) return;
             const currentSemester = this.data.semesterId;
             const refreshedSemester = snapshot.data.semester?.id || "";
@@ -364,10 +365,7 @@ Page({
           1,
           Math.floor(windowHeight * 0.86 - sheetChromeHeight),
         );
-        const selectedExamDetailHeight = Math.min(
-          contentHeight,
-          maximumHeight,
-        );
+        const selectedExamDetailHeight = Math.min(contentHeight, maximumHeight);
         if (
           this.data.selectedExamVisible &&
           selectedExamDetailHeight !== this.data.selectedExamDetailHeight

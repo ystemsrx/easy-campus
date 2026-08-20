@@ -16,7 +16,7 @@ import {
   getNotices,
   getTimetable,
 } from "../../services/teaching";
-import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
+import { refreshExamsOnForeground } from "../../services/cache-refresh";
 import {
   getErrorMessage,
   handleCredentialInvalidation,
@@ -782,7 +782,7 @@ Page({
     ) as unknown as number;
     void this.loadDashboard(false);
     void this.loadPublicationFeed();
-    void refreshExamsAfterSignIn().then(() => {
+    void refreshExamsOnForeground().then(() => {
       if (homeVisible) this.hydrateShortcutCaches();
     });
     preloadNextPrimaryTabFramework();

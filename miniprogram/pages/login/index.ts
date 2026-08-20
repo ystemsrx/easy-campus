@@ -1,6 +1,6 @@
 import { MINIPROGRAM_NAME } from "../../config/env";
 import { login } from "../../services/auth";
-import { refreshExamsAfterSignIn } from "../../services/cache-refresh";
+import { refreshExamsOnForeground } from "../../services/cache-refresh";
 import {
   getPreloadedCurrentUser,
   preloadPrimaryTabs,
@@ -574,7 +574,7 @@ Page({
       const session = await login(account, password);
       preloadPrimaryTabs(session);
       void getPreloadedCurrentUser().catch(() => undefined);
-      void refreshExamsAfterSignIn(session);
+      void refreshExamsOnForeground(session);
       routingToHome = true;
       if (!(await this.beginHomeTransition())) {
         return;
