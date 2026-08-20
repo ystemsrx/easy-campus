@@ -79,6 +79,42 @@ const appScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
 );
+const appearanceScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "utils", "appearance.ts"),
+  "utf8",
+);
+const tabBarScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "custom-tab-bar", "index.ts"),
+  "utf8",
+);
+
+const homePageSettle =
+  homeStyles.match(/@keyframes home-page-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
+const homeItemSettle =
+  homeStyles.match(/@keyframes home-item-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
+assert(
+  homeScript.includes(
+    "const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());",
+  ) &&
+    homeScript.includes("...INITIAL_HOME_APPEARANCE") &&
+    homeScript.includes("syncWindowBackground(appearance.theme);") &&
+    appearanceScript.includes("export function syncWindowBackground(") &&
+    appearanceScript.includes("wx.setBackgroundColor({") &&
+    appearanceScript.includes('theme === "dark" ? "#171613" : "#f7f5ef"') &&
+    tabBarScript.includes(
+      "const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());",
+    ) &&
+    tabBarScript.includes("themeClass: INITIAL_TAB_APPEARANCE.themeClass") &&
+    homeStyles.includes(".home-page .page-enter {") &&
+    homeStyles.includes("animation-name: home-page-settle;") &&
+    homeStyles.includes(".home-page .stagger-item {") &&
+    homeStyles.includes("animation-name: home-item-settle;") &&
+    homePageSettle.length > 0 &&
+    homeItemSettle.length > 0 &&
+    !homePageSettle.includes("opacity") &&
+    !homeItemSettle.includes("opacity"),
+  "首页、窗口和底栏必须从首帧使用同一主题，首页入场不得从全透明状态开始",
+);
 
 assert(
   /onLoad\(\)[\s\S]*?this\.hydrateIdentity\(\)/.test(homeScript) &&

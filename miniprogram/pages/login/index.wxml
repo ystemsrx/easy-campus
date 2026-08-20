@@ -18,7 +18,7 @@
 
       <view class="login-panel">
         <view class="login-panel-extension" aria-hidden="true"></view>
-        <view class="mascot-stage {{mascotPositionClass}} {{mascotMotionClass}}" aria-hidden="true">
+        <view class="mascot-stage {{mascotPositionClass}} {{mascotMotionClass}}" style="{{mascotPositionStyle}}" aria-hidden="true">
           <image wx:if="{{mascotSrc}}" class="mascot-image" src="{{mascotSrc}}" mode="aspectFit"></image>
         </view>
 

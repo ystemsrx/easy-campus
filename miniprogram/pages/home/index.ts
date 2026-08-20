@@ -35,6 +35,7 @@ import {
   shouldShowPet,
   skipPetSetup,
 } from "../../store/pet";
+import { loadPreferences } from "../../store/preferences";
 import { loadScheduleData } from "../../store/schedule";
 import { getSession, loadCurrentUser } from "../../store/session";
 import {
@@ -62,7 +63,10 @@ import type {
   TeachingMessage,
   TimetableData,
 } from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
+import {
+  resolveAppearance,
+  syncWindowBackground,
+} from "../../utils/appearance";
 import {
   currentLocalHour,
   formatDateTime,
@@ -145,6 +149,7 @@ interface ExamPreview {
 
 const HOME_PREVIEW_ITEM_LIMIT = 3;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
+const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());
 
 interface ShortcutCachePatch {
   electricityBound: boolean;
@@ -447,9 +452,7 @@ function mergeNoticePreviews(
 
 Page({
   data: {
-    theme: "light" as "light" | "dark",
-    themeClass: "theme-light",
-    motionClass: "motion-normal",
+    ...INITIAL_HOME_APPEARANCE,
     loading: false,
     loaded: false,
     errorMessage: "",
@@ -487,7 +490,7 @@ Page({
     petEnhanced: false,
     petSelected: false,
     petVisible: false,
-    petReducedMotion: false,
+    petReducedMotion: INITIAL_HOME_APPEARANCE.motionClass === "motion-reduced",
     petSetupDrawerMounted: false,
     petSetupDrawerOpen: false,
     publicationPanelMounted: false,
@@ -589,6 +592,7 @@ Page({
   },
   applyAppearance() {
     const appearance = resolveAppearance();
+    syncWindowBackground(appearance.theme);
     this.setData({
       ...appearance,
       petReducedMotion: appearance.motionClass === "motion-reduced",

@@ -401,8 +401,10 @@ assert(
     petStore.includes("export function skipPetSetup") &&
     petStore.includes("export function setPetEnabled") &&
     petStore.includes("preferences.selected && preferences.enabled") &&
-    loginScript.includes("function routeAfterAuthentication(): void") &&
-    loginScript.includes('wx.switchTab({ url: "/pages/home/index" })') &&
+    loginScript.includes(
+      "function routeAfterAuthentication(onFailure?: () => void): void",
+    ) &&
+    loginScript.includes('url: "/pages/home/index"') &&
     loginScript.includes("void getPreloadedCurrentUser().catch") &&
     !loginScript.includes("/pages/pet-setup/index?source=login") &&
     !loginScript.includes("wx.redirectTo") &&

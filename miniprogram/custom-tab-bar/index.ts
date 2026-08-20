@@ -1,3 +1,4 @@
+import { loadPreferences } from "../store/preferences";
 import { resolveAppearance } from "../utils/appearance";
 import { haptic } from "../utils/haptics";
 
@@ -7,12 +8,14 @@ interface TabItem {
   icon: "home" | "calendar-days" | "user-round";
 }
 
+const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());
+
 Component({
   data: {
     selected: 0,
     hidden: false,
-    themeClass: "theme-light",
-    motionClass: "motion-normal",
+    themeClass: INITIAL_TAB_APPEARANCE.themeClass,
+    motionClass: INITIAL_TAB_APPEARANCE.motionClass,
     items: [
       { pagePath: "/pages/home/index", text: "概览", icon: "home" },
       {

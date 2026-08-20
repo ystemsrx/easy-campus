@@ -1,9 +1,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
 const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
+const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
 const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
 const styles = fs.readFileSync(path.join(loginRoot, "index.wxss"), "utf8");
 const envExample = fs.readFileSync(
@@ -11,6 +13,23 @@ const envExample = fs.readFileSync(
   "utf8",
 );
 const failures = [];
+
+const motionOutput = ts.transpileModule(motionScript, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const motionModule = { exports: {} };
+new Function("module", "exports", motionOutput)(
+  motionModule,
+  motionModule.exports,
+);
+const {
+  CRABWALKING_LEG_MS,
+  resolveLoginHandoffDelay,
+  resolveWalkingPositionRpx,
+} = motionModule.exports;
 
 const removedCopy = [
   "账号与密码会按约定",
@@ -54,7 +73,7 @@ const agreementStyles =
   styles.match(/\.agreement-row\s*\{([\s\S]*?)\}/)?.[1] || "";
 const fieldFocusStyles =
   styles.match(/\.field--focus\s*\{([\s\S]*?)\}/)?.[1] || "";
-const playMascotStart = script.indexOf("  playMascot(mascot:");
+const playMascotStart = script.indexOf("  playMascot(");
 const playMascotEnd = script.indexOf(
   "  scheduleMascotTransition(",
   playMascotStart,
@@ -62,6 +81,12 @@ const playMascotEnd = script.indexOf(
 const playMascotBody = script.slice(playMascotStart, playMascotEnd);
 const directSwitchIndex = playMascotBody.indexOf("if (!shouldRestart)");
 const blankRestartIndex = playMascotBody.indexOf('mascotSrc: ""');
+const startSubmitStart = script.indexOf("  startSubmitMascot() {");
+const startSubmitEnd = script.indexOf(
+  "  resumeMascotAfterSubmit()",
+  startSubmitStart,
+);
+const startSubmitBody = script.slice(startSubmitStart, startSubmitEnd);
 if (
   headingIndex < 0 ||
   headingIndex >= panelIndex ||
@@ -114,7 +139,7 @@ if (
   !script.includes('this.playMascot("magnifier"') ||
   !script.includes('this.playMascot("waving"') ||
   !script.includes('this.playMascot("dancing"') ||
-  !script.includes("const LURKING_DURATION_MS = 5580;") ||
+  !motionScript.includes("export const LURKING_DURATION_MS = 5580;") ||
   !script.includes("elapsed % LURKING_DURATION_MS") ||
   !script.includes("LURKING_DURATION_MS - lurkingCycleTime") ||
   !script.includes("this.startCrabwalkingMascot();") ||
@@ -123,7 +148,7 @@ if (
   directSwitchIndex < 0 ||
   blankRestartIndex < 0 ||
   directSwitchIndex >= blankRestartIndex ||
-  !script.includes("const CRABWALKING_LEG_MS = 1660;") ||
+  !motionScript.includes("export const CRABWALKING_LEG_MS = 1660;") ||
   !styles.includes("bottom: calc(100% - 2rpx);") ||
   !styles.includes("width: 380rpx;") ||
   !styles.includes("left: -28rpx;") ||
@@ -138,6 +163,62 @@ if (
   !styles.includes("19.9% {")
 ) {
   failures.push("登录页必须保留两组随机动画及其输入、提交衔接状态");
+}
+
+const midpointElapsed =
+  CRABWALKING_LEG_MS * (0.199 + (1 - 0.199) * 0.5);
+const fastHandoffDelay = resolveLoginHandoffDelay(0, 100, false);
+const slowHandoffDelay = resolveLoginHandoffDelay(0, 2000, false);
+const reducedHandoffDelay = resolveLoginHandoffDelay(0, 100, true);
+if (
+  Math.abs(resolveWalkingPositionRpx(-380, 0) + 380) > 0.001 ||
+  Math.abs(
+    resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS * 0.199) + 380,
+  ) > 0.001 ||
+  Math.abs(resolveWalkingPositionRpx(-380, midpointElapsed) + 190) > 0.001 ||
+  Math.abs(resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS)) > 0.001 ||
+  Math.abs(resolveWalkingPositionRpx(0, CRABWALKING_LEG_MS) - 380) > 0.001 ||
+  fastHandoffDelay !== 1210 ||
+  slowHandoffDelay !== 0 ||
+  reducedHandoffDelay !== 0 ||
+  !startSubmitBody.includes('currentMascot === "crabwalking"') ||
+  !startSubmitBody.includes("resolveWalkingPositionRpx(") ||
+  !startSubmitBody.includes('currentMascot === "waving"') ||
+  startSubmitBody.includes(
+    'this.playMascot("waving", "mascot-position--right")',
+  ) ||
+  !template.includes('style="{{mascotPositionStyle}}"')
+) {
+  failures.push("提交动画必须冻结点击瞬间的位置，再原地切换到挥手动画");
+}
+
+if (
+  !motionScript.includes("export const LOGIN_ROUTE_LEAD_MS = 100;") ||
+  !script.includes("async beginHomeTransition(): Promise<boolean>") ||
+  !script.includes("routingToHome = true;") ||
+  !script.includes("if (pageActive && !routingToHome)") ||
+  !script.includes("await this.beginHomeTransition()") ||
+  !script.includes(
+    "const INITIAL_LOGIN_APPEARANCE = resolveAppearance(loadPreferences());",
+  ) ||
+  !script.includes("syncWindowBackground(appearance.theme);") ||
+  template.includes("login-transition-surface") ||
+  styles.includes("login-transition-surface") ||
+  script.includes("leaving: false")
+) {
+  failures.push("登录成功后必须保持提交态，并在目标动画结束前直接切换到同色首页");
+}
+
+if (
+  !script.includes("function preloadHomeFramework(): void") ||
+  !script.includes('typeof wx.preloadSkylineView !== "function"') ||
+  !script.includes("wx.preloadSkylineView();") ||
+  !/onLoad\(\)[\s\S]*?this\.applyAppearance\(\);[\s\S]*?if \(isAuthenticated\(\)\) \{\s*preloadHomeFramework\(\);/.test(
+    script,
+  ) ||
+  !/onReady\(\)\s*\{\s*preloadHomeFramework\(\);\s*\}/.test(script)
+) {
+  failures.push("登录页和已有会话直达路径都必须预加载首页 Skyline 运行环境");
 }
 
 const animationRoot = path.join(projectRoot, "miniprogram", "assets", "login");

@@ -6,13 +6,27 @@ import {
   preloadPrimaryTabs,
 } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
+import { loadPreferences } from "../../store/preferences";
 import { isAuthenticated } from "../../store/session";
-import { resolveAppearance } from "../../utils/appearance";
+import {
+  resolveAppearance,
+  syncWindowBackground,
+} from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
+import {
+  CRABWALKING_LEG_MS,
+  LAPTOP_DURATION_MS,
+  LURKING_DURATION_MS,
+  resolveLoginHandoffDelay,
+  resolveWalkingPositionRpx,
+  WAVING_DURATION_MS,
+} from "./motion";
 
 type MascotName =
   "laptop" | "magnifier" | "lurking" | "crabwalking" | "waving" | "dancing";
 type MascotScheme = "laptop" | "lurking";
+
+const INITIAL_LOGIN_APPEARANCE = resolveAppearance(loadPreferences());
 
 const MASCOT_SOURCES: Record<MascotName, string> = {
   laptop: "/assets/login/laptop.gif",
@@ -23,10 +37,6 @@ const MASCOT_SOURCES: Record<MascotName, string> = {
   dancing: "/assets/login/dancing.gif",
 };
 
-const LAPTOP_DURATION_MS = 3580;
-const LURKING_DURATION_MS = 5580;
-const CRABWALKING_LEG_MS = 1660;
-const WAVING_DURATION_MS = 1410;
 const ERROR_TOAST_HOLD_MS = 3000;
 const ERROR_TOAST_EXIT_MS = 320;
 
@@ -37,10 +47,13 @@ let errorToastTimer: ReturnType<typeof setTimeout> | undefined;
 let errorToastCleanupTimer: ReturnType<typeof setTimeout> | undefined;
 let laptopCycleStartedAt = 0;
 let lurkingCycleStartedAt = 0;
+let mascotAnimationStartedAt = 0;
+let walkingLegStartedAt = 0;
 let submitAnimationStartedAt = 0;
 let inputAnimationStarted = false;
 let mascotRevision = 0;
 let pageActive = false;
+let routingToHome = false;
 
 function clearMascotSequenceTimer() {
   if (mascotSequenceTimer) {
@@ -71,8 +84,22 @@ function waitFor(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function routeAfterAuthentication(): void {
-  wx.switchTab({ url: "/pages/home/index" });
+function preloadHomeFramework(): void {
+  if (typeof wx.preloadSkylineView !== "function") {
+    return;
+  }
+  try {
+    wx.preloadSkylineView();
+  } catch {
+    // 预加载失败不影响标准页面切换。
+  }
+}
+
+function routeAfterAuthentication(onFailure?: () => void): void {
+  wx.switchTab({
+    url: "/pages/home/index",
+    fail: () => onFailure?.(),
+  });
 }
 
 Page({
@@ -89,38 +116,51 @@ Page({
     errorToastPhase: "",
     mascotSrc: "",
     mascotPositionClass: "mascot-position--right",
+    mascotPositionStyle: "",
     mascotMotionClass: "",
-    theme: "light" as "light" | "dark",
-    themeClass: "theme-light",
-    motionClass: "motion-normal",
+    ...INITIAL_LOGIN_APPEARANCE,
   },
   onLoad() {
     currentMascot = "";
-    if (isAuthenticated()) {
-      routeAfterAuthentication();
-      return;
-    }
-
+    routingToHome = false;
     pageActive = true;
     inputAnimationStarted = false;
     mascotRevision = 0;
     clearMascotSequenceTimer();
     clearErrorToastTimers();
     this.applyAppearance();
+    if (isAuthenticated()) {
+      preloadHomeFramework();
+      routingToHome = true;
+      routeAfterAuthentication(() => {
+        routingToHome = false;
+        if (pageActive) {
+          this.startInitialMascot();
+        }
+      });
+      return;
+    }
+
     this.startInitialMascot();
   },
   onShow() {
     this.applyAppearance();
   },
+  onReady() {
+    preloadHomeFramework();
+  },
   onUnload() {
     pageActive = false;
+    routingToHome = false;
     currentMascot = "";
     mascotRevision += 1;
     clearMascotSequenceTimer();
     clearErrorToastTimers();
   },
   applyAppearance() {
-    this.setData(resolveAppearance());
+    const appearance = resolveAppearance();
+    syncWindowBackground(appearance.theme);
+    this.setData(appearance);
   },
   startInitialMascot() {
     mascotScheme = Math.random() < 0.5 ? "laptop" : "lurking";
@@ -132,12 +172,24 @@ Page({
 
     this.playMascot("lurking", "mascot-position--left");
   },
-  playMascot(mascot: MascotName, positionClass: string, motionClass = "") {
+  playMascot(
+    mascot: MascotName,
+    positionClass: string,
+    motionClass = "",
+    positionStyle = "",
+  ) {
     clearMascotSequenceTimer();
     mascotRevision += 1;
     const revision = mascotRevision;
+    mascotAnimationStartedAt = Date.now();
     if (mascot === "lurking") {
-      lurkingCycleStartedAt = Date.now();
+      lurkingCycleStartedAt = mascotAnimationStartedAt;
+    }
+    if (
+      mascot === "crabwalking" &&
+      motionClass === "mascot-motion--walk-leg"
+    ) {
+      walkingLegStartedAt = mascotAnimationStartedAt;
     }
     const shouldRestart = currentMascot === mascot;
     currentMascot = mascot;
@@ -145,6 +197,7 @@ Page({
       this.setData({
         mascotSrc: MASCOT_SOURCES[mascot],
         mascotPositionClass: positionClass,
+        mascotPositionStyle: positionStyle,
         mascotMotionClass: motionClass,
       });
       return;
@@ -153,6 +206,7 @@ Page({
       {
         mascotSrc: "",
         mascotPositionClass: positionClass,
+        mascotPositionStyle: positionStyle,
         mascotMotionClass: motionClass,
       },
       () => {
@@ -219,8 +273,39 @@ Page({
     });
   },
   startSubmitMascot() {
-    submitAnimationStartedAt = Date.now();
-    this.playMascot("waving", "mascot-position--right");
+    clearMascotSequenceTimer();
+    mascotRevision += 1;
+    const now = Date.now();
+    const positionClass = this.data.mascotPositionClass;
+    let positionStyle = this.data.mascotPositionStyle;
+
+    if (
+      currentMascot === "crabwalking" &&
+      this.data.mascotMotionClass === "mascot-motion--walk-leg"
+    ) {
+      const startLeftRpx =
+        positionClass === "mascot-position--traverse" ? -380 : 0;
+      const currentLeftRpx = resolveWalkingPositionRpx(
+        startLeftRpx,
+        this.data.motionClass === "motion-reduced"
+          ? CRABWALKING_LEG_MS
+          : now - walkingLegStartedAt,
+      );
+      positionStyle = `left: ${currentLeftRpx.toFixed(2)}rpx; right: auto; transform: none;`;
+    }
+
+    if (currentMascot === "waving") {
+      submitAnimationStartedAt = mascotAnimationStartedAt || now;
+      this.setData({
+        mascotPositionClass: positionClass,
+        mascotPositionStyle: positionStyle,
+        mascotMotionClass: "",
+      });
+      return;
+    }
+
+    this.playMascot("waving", positionClass, "", positionStyle);
+    submitAnimationStartedAt = mascotAnimationStartedAt;
   },
   resumeMascotAfterSubmit() {
     const elapsed = Math.max(0, Date.now() - submitAnimationStartedAt);
@@ -236,13 +321,28 @@ Page({
         return;
       }
 
+      const resumePositionClass = this.data.mascotPositionClass;
+      const resumePositionStyle = this.data.mascotPositionStyle;
       this.playMascot(
         inputAnimationStarted ? "dancing" : "lurking",
         inputAnimationStarted
-          ? "mascot-position--right"
+          ? resumePositionClass
           : "mascot-position--left",
+        "",
+        inputAnimationStarted ? resumePositionStyle : "",
       );
     });
+  },
+  async beginHomeTransition(): Promise<boolean> {
+    const handoffDelay = resolveLoginHandoffDelay(
+      submitAnimationStartedAt,
+      Date.now(),
+      this.data.motionClass === "motion-reduced",
+    );
+    if (handoffDelay > 0) {
+      await waitFor(handoffDelay);
+    }
+    return pageActive;
   },
   showErrorToast(message: string) {
     clearErrorToastTimers();
@@ -338,7 +438,6 @@ Page({
       return;
     }
 
-    const wavingCompletion = waitFor(WAVING_DURATION_MS);
     this.dismissErrorToast();
     this.setData({ loading: true });
     try {
@@ -346,12 +445,19 @@ Page({
       preloadPrimaryTabs(session);
       void getPreloadedCurrentUser().catch(() => undefined);
       void refreshExamsAfterSignIn(session);
-      await wavingCompletion;
-      if (!pageActive) {
+      routingToHome = true;
+      if (!(await this.beginHomeTransition())) {
         return;
       }
       haptic("medium");
-      routeAfterAuthentication();
+      routeAfterAuthentication(() => {
+        routingToHome = false;
+        if (!pageActive) {
+          return;
+        }
+        this.setData({ loading: false });
+        this.showErrorToast("暂时无法进入首页，请重试。");
+      });
     } catch (error) {
       haptic("heavy");
       this.showErrorToast(
@@ -359,7 +465,7 @@ Page({
       );
       this.resumeMascotAfterSubmit();
     } finally {
-      if (pageActive) {
+      if (pageActive && !routingToHome) {
         this.setData({ loading: false });
       }
     }
