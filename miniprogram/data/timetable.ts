@@ -4,7 +4,15 @@ import type {
   TimetableData,
 } from "../types/api";
 
-export type TimetableTone = "blue" | "cyan" | "purple" | "green" | "orange";
+export type TimetableTone =
+  | "blue"
+  | "cyan"
+  | "purple"
+  | "green"
+  | "orange"
+  | "rose"
+  | "yellow"
+  | "mint";
 
 export interface TimetableCourse {
   id: string;
@@ -83,7 +91,16 @@ export interface TimetableWeekDateCache {
 
 const SOURCE_OFFSET = "+08:00";
 const ONE_DAY = 24 * 60 * 60 * 1000;
-const TONES: TimetableTone[] = ["blue", "cyan", "purple", "green", "orange"];
+const TONES: TimetableTone[] = [
+  "blue",
+  "cyan",
+  "purple",
+  "green",
+  "orange",
+  "rose",
+  "yellow",
+  "mint",
+];
 const NAME_CHARACTERS_PER_LINE = 3;
 const LOCATION_CHARACTERS_PER_LINE = 4;
 const TEACHER_CHARACTERS_PER_LINE = 3;
@@ -94,6 +111,16 @@ const MAX_TEACHER_LINES = 2;
 const NAME_LINE_HEIGHT = 1.12;
 const META_LINE_HEIGHT = 1.08;
 const META_MARGIN_RPX = 3;
+
+interface TimetableToneNode {
+  key: string;
+  arrangements: TimetableArrangement[];
+}
+
+const timetableToneMapCache = new WeakMap<
+  TimetableData,
+  ReadonlyMap<string, TimetableTone>
+>();
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -117,6 +144,115 @@ function hash(value: string): number {
     result = (result * 31 + value.charCodeAt(index)) >>> 0;
   }
   return result;
+}
+
+function timetableCourseColorKey(course: TimetableCourseData): string {
+  const code = course.courseCode.trim().toLowerCase();
+  if (code) return `code:${code}`;
+  const name = course.courseName.trim().replace(/\s+/g, " ").toLowerCase();
+  return name ? `name:${name}` : `id:${course.id}`;
+}
+
+function arrangementsShareWeek(
+  left: TimetableArrangement,
+  right: TimetableArrangement,
+): boolean {
+  if (!left.weeks.length || !right.weeks.length) return true;
+  const shorter = left.weeks.length <= right.weeks.length ? left : right;
+  const longer = shorter === left ? right : left;
+  return shorter.weeks.some((week) => longer.weeks.includes(week));
+}
+
+function arrangementVisualDistance(
+  left: TimetableArrangement,
+  right: TimetableArrangement,
+): number {
+  if (!arrangementsShareWeek(left, right)) return Number.POSITIVE_INFINITY;
+  const dayDistance = Math.abs(left.weekday - right.weekday) * 2.25;
+  const leftMiddle = (left.periodStart + left.periodEnd) / 2;
+  const rightMiddle = (right.periodStart + right.periodEnd) / 2;
+  const periodDistance = Math.abs(leftMiddle - rightMiddle);
+  return Math.sqrt(dayDistance ** 2 + periodDistance ** 2);
+}
+
+function courseVisualDistance(
+  left: TimetableToneNode,
+  right: TimetableToneNode,
+): number {
+  let minimum = Number.POSITIVE_INFINITY;
+  left.arrangements.forEach((leftArrangement) => {
+    right.arrangements.forEach((rightArrangement) => {
+      minimum = Math.min(
+        minimum,
+        arrangementVisualDistance(leftArrangement, rightArrangement),
+      );
+    });
+  });
+  return minimum;
+}
+
+function firstArrangementSlot(node: TimetableToneNode): number {
+  return node.arrangements.reduce(
+    (minimum, arrangement) =>
+      Math.min(
+        minimum,
+        arrangement.weekday * 100 + arrangement.periodStart,
+      ),
+    Number.POSITIVE_INFINITY,
+  );
+}
+
+function timetableCourseToneMap(
+  data: TimetableData,
+): ReadonlyMap<string, TimetableTone> {
+  const cached = timetableToneMapCache.get(data);
+  if (cached) return cached;
+
+  const nodesByKey = new Map<string, TimetableToneNode>();
+  data.courses.forEach((course) => {
+    const key = timetableCourseColorKey(course);
+    const existing = nodesByKey.get(key);
+    if (existing) {
+      existing.arrangements.push(...course.arrangements);
+      return;
+    }
+    nodesByKey.set(key, { key, arrangements: [...course.arrangements] });
+  });
+  const nodes = [...nodesByKey.values()].sort(
+    (left, right) =>
+      firstArrangementSlot(left) - firstArrangementSlot(right) ||
+      left.key.localeCompare(right.key),
+  );
+  const assignedNodes = new Map<TimetableTone, TimetableToneNode[]>(
+    TONES.map((tone) => [tone, []]),
+  );
+  const toneMap = new Map<string, TimetableTone>();
+
+  nodes.forEach((node) => {
+    const preferredIndex = hash(node.key) % TONES.length;
+    let selectedTone = TONES[preferredIndex];
+    let selectedDistance = -1;
+    let selectedUsage = Number.POSITIVE_INFINITY;
+    for (let offset = 0; offset < TONES.length; offset += 1) {
+      const tone = TONES[(preferredIndex + offset) % TONES.length];
+      const owners = assignedNodes.get(tone) || [];
+      const distance = owners.length
+        ? Math.min(...owners.map((owner) => courseVisualDistance(node, owner)))
+        : Number.POSITIVE_INFINITY;
+      if (
+        distance > selectedDistance ||
+        (distance === selectedDistance && owners.length < selectedUsage)
+      ) {
+        selectedTone = tone;
+        selectedDistance = distance;
+        selectedUsage = owners.length;
+      }
+    }
+    toneMap.set(node.key, selectedTone);
+    assignedNodes.get(selectedTone)?.push(node);
+  });
+  timetableToneMapCache.set(data, toneMap);
+  return toneMap;
 }
 
 function truncateGridText(value: string, maxCharacters: number): string {
@@ -344,6 +480,7 @@ function toCourse(
   course: TimetableCourseData,
   arrangement: TimetableArrangement,
   week: number,
+  tone: TimetableTone,
 ): TimetableCourse {
   const sourceDate = occurrenceDate(data, week, arrangement.weekday);
   const start =
@@ -392,7 +529,7 @@ function toCourse(
     teacherNames,
     location: arrangement.location.display || "地点待定",
     campus: arrangement.location.campus,
-    tone: TONES[hash(course.id) % TONES.length],
+    tone,
     credits: course.credits,
     teachingClass: course.teachingClass,
     activityTypeLabel: arrangement.activityTypeLabel,
@@ -506,11 +643,20 @@ export function coursesForWeek(
   week: number,
 ): TimetableCourse[] {
   if (!data || week < 1) return [];
+  const toneMap = timetableCourseToneMap(data);
   return data.courses
     .flatMap((course) =>
       course.arrangements
         .filter((arrangement) => occursInWeek(arrangement, week))
-        .map((arrangement) => toCourse(data, course, arrangement, week)),
+        .map((arrangement) =>
+          toCourse(
+            data,
+            course,
+            arrangement,
+            week,
+            toneMap.get(timetableCourseColorKey(course)) || TONES[0],
+          ),
+        ),
     )
     .sort(
       (left, right) =>

@@ -1,9 +1,10 @@
 export type TimetableThemeId =
   "default" | "companion" | "clawd" | "snack" | "vivid";
 
-export type TimetableBackgroundMode = "scaleToFill" | "aspectFill";
-
 export type TimetableCoursePalette = readonly [
+  string,
+  string,
+  string,
   string,
   string,
   string,
@@ -15,16 +16,13 @@ export interface TimetableThemeOption {
   id: TimetableThemeId;
   label: string;
   backgroundColor: string;
-  backgroundImage: string;
-  backgroundMode: TimetableBackgroundMode;
   palette: TimetableCoursePalette | null;
 }
 
 export interface TimetableThemePatch {
   timetableThemeId: TimetableThemeId;
-  backgroundImage: string;
-  backgroundImageMode: TimetableBackgroundMode;
   backgroundColor: string;
+  companionBackgroundClass: "" | "timetable-companion-background--plain";
   themeStyle: string;
   headerIconTone: "white" | "ink";
 }
@@ -33,14 +31,23 @@ type RgbColor = readonly [number, number, number];
 type HslColor = readonly [number, number, number];
 
 export const TIMETABLE_THEME_STORAGE_KEY = "easy-swu:timetable-theme";
-export const DEFAULT_TIMETABLE_COMPANION_COLOR = "#d97757";
+export const DEFAULT_TIMETABLE_COMPANION_COLOR = "#111214";
+const COMPANION_WARM_BACKGROUND = "#f7f5ef";
 
-const COURSE_TONE_IDS = ["blue", "cyan", "purple", "green", "orange"] as const;
-const DEFAULT_BACKGROUND_IMAGE =
-  "/assets/images/timetable-theme-default-background.webp";
-const CLAWD_BACKGROUND_IMAGE =
-  "/assets/images/timetable-theme-clawd-background.webp";
+const COURSE_TONE_IDS = [
+  "blue",
+  "cyan",
+  "purple",
+  "green",
+  "orange",
+  "rose",
+  "yellow",
+  "mint",
+] as const;
 const DEFAULT_COURSE_PALETTE: TimetableCoursePalette = [
+  "#0862ad",
+  "#0862ad",
+  "#0862ad",
   "#0862ad",
   "#0862ad",
   "#0862ad",
@@ -48,25 +55,34 @@ const DEFAULT_COURSE_PALETTE: TimetableCoursePalette = [
   "#0862ad",
 ];
 const CLAWD_COURSE_PALETTE: TimetableCoursePalette = [
-  "#8f432c",
-  "#a45134",
-  "#b85c38",
-  "#c96d4c",
-  "#d98261",
+  "#743722",
+  "#88412a",
+  "#9d4b30",
+  "#b35738",
+  "#d27a5c",
+  "#dc8b6e",
+  "#e6a088",
+  "#efb7a3",
 ];
 const SNACK_COURSE_PALETTE: TimetableCoursePalette = [
   "#dbf5ea",
-  "#eadcf4",
-  "#f2c5bd",
-  "#f7f1e1",
+  "#d1f0df",
   "#fde7d0",
+  "#f8d0ba",
+  "#f9f2d8",
+  "#f2e4b9",
+  "#f9c6c3",
+  "#efbaa8",
 ];
 const VIVID_COURSE_PALETTE: TimetableCoursePalette = [
-  "#55b7ad",
-  "#9b76c5",
-  "#db7187",
-  "#78c99a",
-  "#e4b66f",
+  "#58aaa3",
+  "#bd95e3",
+  "#79c99c",
+  "#75508f",
+  "#b44c69",
+  "#d2a04f",
+  "#3e9fd0",
+  "#e1846b",
 ];
 
 export const TIMETABLE_THEME_OPTIONS: readonly TimetableThemeOption[] = [
@@ -74,40 +90,30 @@ export const TIMETABLE_THEME_OPTIONS: readonly TimetableThemeOption[] = [
     id: "default",
     label: "默认",
     backgroundColor: "#0862ad",
-    backgroundImage: DEFAULT_BACKGROUND_IMAGE,
-    backgroundMode: "scaleToFill",
     palette: DEFAULT_COURSE_PALETTE,
   },
   {
     id: "companion",
     label: "精灵",
-    backgroundColor: "#f7f5ef",
-    backgroundImage: "",
-    backgroundMode: "aspectFill",
+    backgroundColor: COMPANION_WARM_BACKGROUND,
     palette: null,
   },
   {
     id: "clawd",
     label: "小克",
     backgroundColor: "#f8f7f2",
-    backgroundImage: CLAWD_BACKGROUND_IMAGE,
-    backgroundMode: "aspectFill",
     palette: CLAWD_COURSE_PALETTE,
   },
   {
     id: "snack",
     label: "点心",
     backgroundColor: "#fffdfa",
-    backgroundImage: "",
-    backgroundMode: "aspectFill",
     palette: SNACK_COURSE_PALETTE,
   },
   {
     id: "vivid",
     label: "饱和",
     backgroundColor: "#f3f2f6",
-    backgroundImage: "",
-    backgroundMode: "aspectFill",
     palette: VIVID_COURSE_PALETTE,
   },
 ];
@@ -175,26 +181,85 @@ function rgbFromHsl([hue, saturation, lightness]: HslColor): RgbColor {
   ) as unknown as RgbColor;
 }
 
-/**
- * Preserve the selected partner hue, cap saturation at 42%, then distribute
- * five fixed lightness steps so every course remains distinct but calm.
- */
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+/** Keep the selected partner color in the palette and build seven clear shades. */
 export function companionCoursePalette(color: string): TimetableCoursePalette {
-  const [sourceHue, sourceSaturation] = hslFromRgb(rgbFromHex(color));
-  const saturation = Math.min(
-    0.42,
-    Math.max(sourceSaturation < 0.08 ? 0.06 : 0.18, sourceSaturation * 0.56),
+  const normalized = safeHexColor(color);
+  const [sourceHue, sourceSaturation, sourceLightness] = hslFromRgb(
+    rgbFromHex(normalized),
   );
-  const hue = sourceSaturation < 0.08 ? 30 : sourceHue;
-  const lightnesses = [0.36, 0.4, 0.44, 0.48, 0.52] as const;
-  return lightnesses.map((lightness) =>
-    rgbHex(rgbFromHsl([hue, saturation, lightness])),
-  ) as unknown as TimetableCoursePalette;
+  if (sourceSaturation < 0.12) {
+    return [
+      normalized,
+      "#2e3033",
+      "#44464a",
+      "#5b5d61",
+      "#74767a",
+      "#8e9094",
+      "#a9aaae",
+      "#c4c5c8",
+    ];
+  }
+
+  const saturation = clamp(sourceSaturation * 0.9, 0.62, 0.9);
+  const shadeFactors = [0.42, 0.56, 0.7, 0.84] as const;
+  const tintFactors = [0.14, 0.28, 0.42] as const;
+  return [
+    ...shadeFactors.map((factor) =>
+      rgbHex(
+        rgbFromHsl([
+          sourceHue,
+          saturation,
+          clamp(sourceLightness * factor, 0.12, 0.68),
+        ]),
+      ),
+    ),
+    normalized,
+    ...tintFactors.map((factor) =>
+      rgbHex(
+        rgbFromHsl([
+          sourceHue,
+          saturation,
+          clamp(
+            sourceLightness + (1 - sourceLightness) * factor,
+            0.3,
+            0.86,
+          ),
+        ]),
+      ),
+    ),
+  ] as unknown as TimetableCoursePalette;
 }
 
 function colorWithAlpha(color: string, alpha: number): string {
   const [red, green, blue] = rgbFromHex(color);
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function companionBackgroundColor(color: string): string {
+  const [sourceHue, sourceSaturation] = hslFromRgb(
+    rgbFromHex(safeHexColor(color)),
+  );
+  if (sourceSaturation < 0.12) return COMPANION_WARM_BACKGROUND;
+  return rgbHex(
+    rgbFromHsl([sourceHue, clamp(sourceSaturation * 0.48, 0.34, 0.5), 0.96]),
+  );
+}
+
+function isNeutralCompanionColor(color: string): boolean {
+  const [, sourceSaturation] = hslFromRgb(rgbFromHex(safeHexColor(color)));
+  return sourceSaturation < 0.12;
+}
+
+function companionAmbientWash(color: string): string {
+  const normalized = safeHexColor(color);
+  const [, sourceSaturation] = hslFromRgb(rgbFromHex(normalized));
+  return sourceSaturation < 0.12
+    ? "transparent"
+    : colorWithAlpha(normalized, 0.1);
 }
 
 function luminanceChannel(channel: number): number {
@@ -220,27 +285,36 @@ function contrastRatio(left: string, right: string): number {
 }
 
 function readableCourseText(background: string): string {
-  const lightText = "#ffffff";
-  const darkText = "#28231f";
-  return contrastRatio(background, lightText) >=
-    contrastRatio(background, darkText)
-    ? lightText
-    : darkText;
+  const blackText = "#000000";
+  const whiteText = "#ffffff";
+  return contrastRatio(background, whiteText) >=
+    contrastRatio(background, blackText)
+    ? whiteText
+    : blackText;
 }
 
 function timetableThemeStyle(
+  themeId: TimetableThemeId,
   palette: TimetableCoursePalette,
   companionColor: string,
+  backgroundColor: string,
 ): string {
   const mutedCompanion = companionCoursePalette(companionColor);
   const declarations = [
     `--companion-color:${safeHexColor(companionColor)}`,
-    `--companion-wash:${colorWithAlpha(mutedCompanion[4], 0.16)}`,
+    `--companion-wash:${companionAmbientWash(mutedCompanion[4])}`,
   ];
   COURSE_TONE_IDS.forEach((tone, index) => {
-    declarations.push(`--timetable-course-${tone}:${palette[index]}`);
+    const courseFill =
+      themeId === "companion" ? backgroundColor : palette[index];
+    const courseBorder =
+      themeId === "companion"
+        ? palette[index]
+        : "var(--timetable-course-border)";
+    declarations.push(`--timetable-course-${tone}:${courseFill}`);
+    declarations.push(`--timetable-course-${tone}-border:${courseBorder}`);
     declarations.push(
-      `--timetable-course-${tone}-text:${readableCourseText(palette[index])}`,
+      `--timetable-course-${tone}-text:${readableCourseText(courseFill)}`,
     );
   });
   return `${declarations.join(";")};`;
@@ -264,12 +338,23 @@ export function timetableThemePatch(
     selected.id === "companion"
       ? companionCoursePalette(companionColor)
       : selected.palette || DEFAULT_COURSE_PALETTE;
+  const backgroundColor =
+    selected.id === "companion"
+      ? companionBackgroundColor(companionColor)
+      : selected.backgroundColor;
   return {
     timetableThemeId: selected.id,
-    backgroundImage: selected.backgroundImage,
-    backgroundImageMode: selected.backgroundMode,
-    backgroundColor: selected.backgroundColor,
-    themeStyle: timetableThemeStyle(palette, companionColor),
+    backgroundColor,
+    companionBackgroundClass:
+      selected.id === "companion" && isNeutralCompanionColor(companionColor)
+        ? "timetable-companion-background--plain"
+        : "",
+    themeStyle: timetableThemeStyle(
+      selected.id,
+      palette,
+      companionColor,
+      backgroundColor,
+    ),
     headerIconTone: selected.id === "default" ? "white" : "ink",
   };
 }

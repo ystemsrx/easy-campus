@@ -181,6 +181,11 @@ Component({
       value: 0,
       observer: "refreshState",
     },
+    cycleInterval: {
+      type: Number,
+      value: AUTO_TOUR_INTERVAL_MS,
+      observer: "refreshState",
+    },
     previewOffsetX: {
       type: Number,
       value: 0.1,
@@ -429,6 +434,10 @@ Component({
       const runtime = runtimeByComponent.get(this);
       if (!runtime) return;
       this.clearTourTimer();
+      const requestedInterval = Number(this.data.cycleInterval);
+      const interval = Number.isFinite(requestedInterval)
+        ? Math.min(8000, Math.max(1800, requestedInterval))
+        : AUTO_TOUR_INTERVAL_MS;
       runtime.tourTimer = setTimeout(() => {
         const activeRuntime = runtimeByComponent.get(this);
         if (
@@ -442,7 +451,7 @@ Component({
           (activeRuntime.tourIndex + 1) % AMBIENT_STATES.length;
         this.activateState(AMBIENT_STATES[activeRuntime.tourIndex]);
         this.scheduleNextTourState();
-      }, AUTO_TOUR_INTERVAL_MS);
+      }, interval);
     },
 
     updateGaze(event: WechatMiniprogram.TouchEvent) {

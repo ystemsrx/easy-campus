@@ -1,5 +1,5 @@
 <view
-  class="page timetable-page timetable-theme--{{timetableThemeId}} {{themeClass}} {{motionClass}}"
+  class="page timetable-page timetable-theme--{{timetableThemeId}} {{companionBackgroundClass}} {{themeClass}} {{motionClass}}"
   style="background-color: {{backgroundColor}}; {{themeStyle}}"
   bindtouchstart="updateCompanionGaze"
   bindtouchmove="updateCompanionGaze"
@@ -8,11 +8,20 @@
   bindtap="onTimetableInteraction"
 >
   <image
-    wx:if="{{backgroundImage}}"
+    wx:if="{{timetableThemeId === 'default'}}"
     class="timetable-background"
-    src="{{backgroundImage}}"
-    mode="{{backgroundImageMode}}"
-    style="{{timetableThemeId === 'default' ? imageStyle : ''}}"
+    src="/assets/images/timetable-theme-default-background.jpg"
+    mode="scaleToFill"
+    style="{{imageStyle}}"
+    fade-in="{{false}}"
+    draggable="{{false}}"
+    aria-hidden="true"
+  ></image>
+  <image
+    wx:elif="{{timetableThemeId === 'clawd'}}"
+    class="timetable-background"
+    src="/assets/images/timetable-theme-clawd-background.jpg"
+    mode="aspectFill"
     fade-in="{{false}}"
     draggable="{{false}}"
     aria-hidden="true"
@@ -21,24 +30,23 @@
 
   <view wx:if="{{timetableThemeId === 'clawd'}}" class="clawd-ambient-layer" aria-hidden="true">
     <block wx:if="{{motionClass !== 'motion-reduced'}}">
-      <image
-        class="clawd-ambient clawd-ambient--walking"
-        src="/assets/images/timetable-theme-clawd-walking.gif"
-        mode="aspectFit"
-        fade-in="{{false}}"
-        draggable="{{false}}"
-      ></image>
-      <image
-        class="clawd-ambient clawd-ambient--lurking"
-        src="/assets/images/timetable-theme-clawd-lurking.gif"
-        mode="aspectFit"
-        fade-in="{{false}}"
-        draggable="{{false}}"
-      ></image>
+      <view
+        wx:if="{{clawdSceneSrc}}"
+        class="clawd-scene-stage {{clawdSceneMotionClass}}"
+        style="{{clawdScenePositionStyle}}"
+      >
+        <image
+          class="clawd-scene-media {{clawdSceneMediaClass}}"
+          src="{{clawdSceneSrc}}"
+          mode="aspectFit"
+          fade-in="{{false}}"
+          draggable="{{false}}"
+        ></image>
+      </view>
     </block>
     <image
       wx:else
-      class="clawd-ambient clawd-ambient--still"
+      class="clawd-scene clawd-scene--still"
       src="/assets/images/timetable-theme-clawd-idle.svg"
       mode="aspectFit"
       fade-in="{{false}}"
@@ -57,6 +65,7 @@
         reduced-motion="{{petReducedMotion}}"
         auto-cycle="{{true}}"
         cycle-offset="{{4}}"
+        cycle-interval="{{2900}}"
         preview-scale="{{0.92}}"
         label="课表背景中的校园伙伴"
       ></geometric-pet>
@@ -68,7 +77,7 @@
       <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="goBack" hover-class="header-button--pressed" aria-role="button" aria-label="返回">
         <lucide-icon name="arrow-left" tone="{{headerIconTone}}" size="{{29}}"></lucide-icon>
       </view>
-      <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单">
+      <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单" aria-expanded="{{menuOpen}}">
         <view class="menu-glyph {{menuOpen ? 'menu-glyph--open' : ''}}"><view></view><view></view><view></view></view>
       </view>
     </view>
@@ -217,11 +226,11 @@
     <text>已刷新</text>
   </view>
 
-  <view wx:if="{{menuOpen}}" class="popover-dismiss" catchtap="closeMenus"></view>
+  <view wx:if="{{menuMounted}}" class="popover-dismiss {{menuOpen ? 'popover-dismiss--open' : ''}}" catchtap="closeMenus"></view>
 
   <view
-    wx:if="{{menuOpen}}"
-    class="timetable-menu popover-enter {{semesterOpen ? 'timetable-menu--submenu' : ''}}"
+    wx:if="{{menuMounted}}"
+    class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen ? 'timetable-menu--submenu' : ''}}"
     style="top: {{menuTop}}px; height: {{menuHeight}}rpx;"
     catchtap="stopPropagation"
   >
@@ -239,6 +248,23 @@
           aria-label="{{item.label}}主题"
         >
           <view class="theme-swatch theme-swatch--{{item.id}}">
+            <block wx:if="{{item.id === 'companion'}}">
+              <view class="theme-swatch-half" style="background-color: {{companionColor}};"></view>
+              <view class="theme-swatch-half theme-swatch-half--warm"></view>
+            </block>
+            <block wx:elif="{{item.id === 'snack'}}">
+              <view class="theme-swatch-mix theme-swatch-mix--snack-mint"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--snack-rose"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--snack-cream"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--snack-lilac"></view>
+            </block>
+            <block wx:elif="{{item.id === 'vivid'}}">
+              <view class="theme-swatch-mix theme-swatch-mix--vivid-purple"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--vivid-amber"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--vivid-mint"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--vivid-rose"></view>
+              <view class="theme-swatch-mix theme-swatch-mix--vivid-sky"></view>
+            </block>
           </view>
           <text class="theme-option-label">{{item.label}}</text>
         </view>

@@ -156,6 +156,9 @@
 .timeline-entry--purple { background: linear-gradient(150deg, #eee9f4, #e0d7ec); }
 .timeline-entry--green { background: linear-gradient(150deg, #edf1e6, #dee7d2); }
 .timeline-entry--orange { background: linear-gradient(150deg, #f8eedd, #f0dfc0); }
+.timeline-entry--rose { background: linear-gradient(150deg, #f7e7eb, #efd3dc); }
+.timeline-entry--yellow { background: linear-gradient(150deg, #f7f0d8, #eadfac); }
+.timeline-entry--mint { background: linear-gradient(150deg, #e4f3ea, #d0e8da); }
 .timeline-entry--plan { background: #f7e9e8; }
 .timeline-entry--done .entry-copy { opacity: 0.55; }
 

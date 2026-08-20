@@ -95,10 +95,1157 @@ interface TimetableGazeTarget {
   y: number;
 }
 
+type TimetableClawdSceneName =
+  | "walking"
+  | "lurking"
+  | "waving"
+  | "jumping"
+  | "dancing"
+  | "laptop"
+  | "magnifier"
+  | "racing"
+  | "rowing-intro"
+  | "rowing-outro"
+  | "rowing";
+
+type TimetableClawdActionName =
+  "waving" | "jumping" | "dancing" | "laptop" | "magnifier";
+type TimetableClawdEdge = "left" | "right";
+type TimetableClawdTravelMode = "walking" | "racing";
+type TimetableClawdArrivalMode =
+  "lurking" | TimetableClawdTravelMode | "rowing";
+type TimetableClawdDepartureMode = TimetableClawdTravelMode | "rowing";
+type TimetableClawdJourneyStepKind =
+  | "lurking"
+  | "arrival"
+  | "action"
+  | "bridge-exit"
+  | "bridge-enter"
+  | "farewell"
+  | "rowing-intro"
+  | "rowing-outro"
+  | "exit";
+
+interface TimetableClawdJourneyStep {
+  kind: TimetableClawdJourneyStepKind;
+  scene: TimetableClawdSceneName;
+  positionStyle: string;
+  motionClass: string;
+  mediaClass: string;
+  durationMs: number;
+  exitOffscreen: boolean;
+  restartOffscreen: boolean;
+}
+
+interface TimetableClawdJourney {
+  arrivalMode: TimetableClawdArrivalMode;
+  entryEdge: TimetableClawdEdge;
+  stopPoint: TimetableClawdStopPoint;
+  bridgeCount: number;
+  bridgeModes: readonly TimetableClawdTravelMode[];
+  actionBlocks: readonly (readonly TimetableClawdActionName[])[];
+  exitEdge: TimetableClawdEdge;
+  departureMode: TimetableClawdDepartureMode;
+  actionNames: readonly TimetableClawdActionName[];
+  steps: readonly TimetableClawdJourneyStep[];
+}
+
+interface TimetableClawdRectangle {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+interface TimetableClawdStopLayoutInput {
+  courses: readonly TimetableCourse[];
+  maxPeriod: number;
+  headerHeightPx: number;
+  metrics: TimetableGridLayoutMetrics;
+}
+
+interface TimetableClawdStopLayoutGeometry {
+  gridTopRpx: number;
+  gridBottomRpx: number;
+  rowHeightRpx: number;
+  minimumBaselineRpx: number;
+  maximumBaselineRpx: number;
+  verticalPhaseLimitRpx: number;
+}
+
+interface TimetableClawdStopPoint {
+  cellKey: string;
+  columnIndex: number;
+  rowIndex: number;
+  centerXRpx: number;
+  baselineYRpx: number;
+  stageLeftRpx: number;
+  stageTopRpx: number;
+  obstructionScore: number;
+  positionStyle: string;
+}
+
+interface TimetableClawdJourneyPlanner {
+  actionBag: TimetableClawdActionName[];
+  actionCountBag: number[];
+  arrivalBag: TimetableClawdArrivalMode[];
+  bridgeCountBag: number[];
+  bridgeModeBag: TimetableClawdTravelMode[];
+  departureBag: TimetableClawdDepartureMode[];
+  lastAction: TimetableClawdActionName | "";
+  lastArrivalMode: TimetableClawdArrivalMode | "";
+  arrivalModeRunLength: number;
+  lastBridgeMode: TimetableClawdTravelMode | "";
+  bridgeModeRunLength: number;
+  lastEntryEdge: TimetableClawdEdge | "";
+  entryEdgeRunLength: number;
+  lastStopCellKey: string;
+  lastExitEdge: TimetableClawdEdge | "";
+  exitEdgeRunLength: number;
+  lastDepartureMode: TimetableClawdDepartureMode | "";
+  departureModeRunLength: number;
+}
+
 const BACKGROUND_WIDTH = 854;
 const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
 const MAIN_MENU_HEIGHT = 516;
+const MENU_TRANSITION_MS = 220;
+const CLAWD_BASELINE_HANDOFF_MS = 80;
+const CLAWD_WALKING_SOURCE_DURATION_MS = 1860;
+const CLAWD_LURKING_SOURCE_DURATION_MS = 5580;
+const CLAWD_WAVING_SOURCE_DURATION_MS = 1410;
+const CLAWD_JUMPING_SOURCE_DURATION_MS = 1760;
+const CLAWD_DANCING_SOURCE_DURATION_MS = 3330;
+const CLAWD_LAPTOP_SOURCE_DURATION_MS = 3580;
+const CLAWD_MAGNIFIER_SOURCE_DURATION_MS = 9410;
+const CLAWD_RACING_SOURCE_DURATION_MS = 4010;
+const CLAWD_ROWING_INTRO_SOURCE_DURATION_MS = 2170;
+const CLAWD_ROWING_OUTRO_SOURCE_DURATION_MS = 2170;
+const CLAWD_ROWING_SOURCE_DURATION_MS = 1760;
+const CLAWD_WALKING_DURATION_MS =
+  CLAWD_WALKING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_LURKING_DURATION_MS = CLAWD_LURKING_SOURCE_DURATION_MS;
+const CLAWD_WAVING_DURATION_MS =
+  CLAWD_WAVING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_JUMPING_DURATION_MS =
+  CLAWD_JUMPING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_DANCING_DURATION_MS =
+  CLAWD_DANCING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_LAPTOP_DURATION_MS =
+  CLAWD_LAPTOP_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_MAGNIFIER_DURATION_MS =
+  CLAWD_MAGNIFIER_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_RACING_DURATION_MS =
+  CLAWD_RACING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_ROWING_INTRO_DURATION_MS = CLAWD_ROWING_INTRO_SOURCE_DURATION_MS;
+const CLAWD_ROWING_OUTRO_DURATION_MS = CLAWD_ROWING_OUTRO_SOURCE_DURATION_MS;
+const CLAWD_ROWING_DURATION_MS =
+  CLAWD_ROWING_SOURCE_DURATION_MS + CLAWD_BASELINE_HANDOFF_MS;
+const CLAWD_QUIET_RANGE_MS = [900, 2800] as const;
+const CLAWD_FAREWELL_CHANCE = 0.32;
+const CLAWD_MIRRORED_MEDIA_CLASS = "clawd-scene-media--mirrored";
+const CLAWD_STAGE_WIDTH_RPX = 360;
+const CLAWD_STAGE_HEIGHT_RPX = 242;
+const CLAWD_GRID_LEFT_RPX = 74;
+const CLAWD_GRID_WIDTH_RPX = 666;
+const CLAWD_GRID_HEAD_RPX = 84;
+const CLAWD_STOP_COLUMN_COUNT = 7;
+const CLAWD_STOP_ROW_COUNT = 7;
+const CLAWD_STOP_POOL_SIZE = 6;
+const CLAWD_STOP_X_RANGE_RPX = [170, 580] as const;
+const CLAWD_STOP_X_PHASE_RPX = 22;
+const CLAWD_STOP_CORE_BOUNDS = [71, 46, 319, 242] as const;
+const CLAWD_STOP_HALO_BOUNDS = [12, 26, 338, 242] as const;
+const CLAWD_STOP_HALO_WEIGHT = 0.22;
+const CLAWD_VEHICLE_ROUTE_RATIOS = {
+  tiny: 3 / 560,
+  small: 13 / 560,
+  medium: 29 / 560,
+  easing: 51 / 560,
+  decelStart: 80 / 560,
+  raceExitNear: 430 / 560,
+  rowNear: 460 / 560,
+  raceEntryReveal: 506 / 560,
+  raceBridgeNearEdge: 534 / 560,
+} as const;
+const CLAWD_ACTIONS: readonly TimetableClawdActionName[] = [
+  "waving",
+  "jumping",
+  "dancing",
+  "laptop",
+  "magnifier",
+];
+const CLAWD_WEIGHTED_ARRIVALS: readonly TimetableClawdArrivalMode[] = [
+  "lurking",
+  "walking",
+  "walking",
+  "racing",
+  "rowing",
+];
+const CLAWD_ACTION_BLOCK_SIZES: readonly number[] = [1, 1, 2, 2, 3];
+const CLAWD_BRIDGE_COUNTS: readonly number[] = [0, 0, 1, 1, 2];
+const CLAWD_WEIGHTED_BRIDGE_MODES: readonly TimetableClawdTravelMode[] = [
+  "walking",
+  "walking",
+  "racing",
+  "racing",
+];
+const CLAWD_WEIGHTED_DEPARTURES: readonly TimetableClawdDepartureMode[] = [
+  "walking",
+  "walking",
+  "racing",
+  "rowing",
+];
+const CLAWD_SCENE_SOURCES: Record<TimetableClawdSceneName, string> = {
+  walking: "/assets/images/timetable-theme-clawd-walking.gif",
+  lurking: "/assets/login/lurking.gif",
+  waving: "/assets/login/waving.gif",
+  jumping: "/assets/images/timetable-theme-clawd-jumping.gif",
+  dancing: "/assets/login/dancing.gif",
+  laptop: "/assets/login/laptop.gif",
+  magnifier: "/assets/login/magnifier.gif",
+  racing: "/assets/images/timetable-theme-clawd-racing-car.gif",
+  "rowing-intro": "/assets/images/timetable-theme-clawd-rowing-intro.gif",
+  "rowing-outro": "/assets/images/timetable-theme-clawd-rowing-outro.gif",
+  rowing: "/assets/images/timetable-theme-clawd-rowing.gif",
+};
+const CLAWD_ACTION_DURATIONS: Record<TimetableClawdActionName, number> = {
+  waving: CLAWD_WAVING_DURATION_MS,
+  jumping: CLAWD_JUMPING_DURATION_MS,
+  dancing: CLAWD_DANCING_DURATION_MS,
+  laptop: CLAWD_LAPTOP_DURATION_MS,
+  magnifier: CLAWD_MAGNIFIER_DURATION_MS,
+};
+
+function randomIntegerInclusive(
+  range: readonly [number, number],
+  random: () => number = Math.random,
+): number {
+  const [minimum, maximum] = range;
+  return minimum + Math.floor(random() * (maximum - minimum + 1));
+}
+
+function fisherYatesShuffle<T>(
+  values: readonly T[],
+  random: () => number,
+): T[] {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+  return shuffled;
+}
+
+function refillNoAdjacentBag<T>(
+  values: readonly T[],
+  previousValue: T | "",
+  random: () => number,
+): T[] {
+  const shuffled = fisherYatesShuffle(values, random);
+  if (previousValue !== "" && shuffled[0] === previousValue) {
+    const replacementIndex = shuffled.findIndex(
+      (value) => value !== previousValue,
+    );
+    if (replacementIndex > 0) {
+      [shuffled[0], shuffled[replacementIndex]] = [
+        shuffled[replacementIndex],
+        shuffled[0],
+      ];
+    }
+  }
+  return shuffled;
+}
+
+function drawNoAdjacentBagValue<T>(
+  bag: T[],
+  values: readonly T[],
+  previousValue: T | "",
+  random: () => number,
+): T {
+  if (bag.length === 0) {
+    bag.push(...refillNoAdjacentBag(values, previousValue, random));
+  }
+  const value = bag.shift();
+  if (value === undefined) throw new Error("Unable to draw a Clawd bag value");
+  return value;
+}
+
+function drawBagValue<T>(
+  bag: T[],
+  values: readonly T[],
+  random: () => number,
+): T {
+  if (bag.length === 0) bag.push(...fisherYatesShuffle(values, random));
+  const value = bag.shift();
+  if (value === undefined) throw new Error("Unable to draw a Clawd bag value");
+  return value;
+}
+
+function orderClawdRunBoundedBag<T extends string>(
+  candidates: readonly T[],
+  previousValue: T | "",
+  previousRunLength: number,
+): T[] | null {
+  if (candidates.length === 0) return [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    if (candidate === previousValue && previousRunLength >= 2) continue;
+    const remaining = [
+      ...candidates.slice(0, index),
+      ...candidates.slice(index + 1),
+    ];
+    const nextRunLength =
+      candidate === previousValue ? previousRunLength + 1 : 1;
+    const orderedTail = orderClawdRunBoundedBag(
+      remaining,
+      candidate,
+      nextRunLength,
+    );
+    if (orderedTail) return [candidate, ...orderedTail];
+  }
+  return null;
+}
+
+function refillClawdRunBoundedBag<T extends string>(
+  values: readonly T[],
+  previousValue: T | "",
+  previousRunLength: number,
+  random: () => number,
+): T[] {
+  const ordered = orderClawdRunBoundedBag(
+    fisherYatesShuffle(values, random),
+    previousValue,
+    previousRunLength,
+  );
+  if (!ordered) throw new Error("Unable to build a Clawd run-bounded bag");
+  return ordered;
+}
+
+function drawClawdArrivalMode(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdArrivalMode {
+  if (planner.arrivalBag.length === 0) {
+    planner.arrivalBag.push(
+      ...refillClawdRunBoundedBag(
+        CLAWD_WEIGHTED_ARRIVALS,
+        planner.lastArrivalMode,
+        planner.arrivalModeRunLength,
+        random,
+      ),
+    );
+  }
+  const mode = planner.arrivalBag.shift();
+  if (!mode) throw new Error("Unable to draw a Clawd arrival mode");
+  planner.arrivalModeRunLength =
+    mode === planner.lastArrivalMode ? planner.arrivalModeRunLength + 1 : 1;
+  planner.lastArrivalMode = mode;
+  return mode;
+}
+
+function drawClawdBridgeMode(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdTravelMode {
+  if (planner.bridgeModeBag.length === 0) {
+    planner.bridgeModeBag.push(
+      ...refillClawdRunBoundedBag(
+        CLAWD_WEIGHTED_BRIDGE_MODES,
+        planner.lastBridgeMode,
+        planner.bridgeModeRunLength,
+        random,
+      ),
+    );
+  }
+  const mode = planner.bridgeModeBag.shift();
+  if (!mode) throw new Error("Unable to draw a Clawd bridge mode");
+  planner.bridgeModeRunLength =
+    mode === planner.lastBridgeMode ? planner.bridgeModeRunLength + 1 : 1;
+  planner.lastBridgeMode = mode;
+  return mode;
+}
+
+function isClawdDepartureSafe(
+  previousMode: TimetableClawdDepartureMode | "",
+  previousRunLength: number,
+  candidate: TimetableClawdDepartureMode,
+): boolean {
+  if (candidate === "walking") {
+    return previousMode !== "walking" || previousRunLength < 2;
+  }
+  return candidate !== previousMode;
+}
+
+function orderClawdDepartureBag(
+  candidates: readonly TimetableClawdDepartureMode[],
+  previousMode: TimetableClawdDepartureMode | "",
+  previousRunLength: number,
+): TimetableClawdDepartureMode[] | null {
+  if (candidates.length === 0) return [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    if (!isClawdDepartureSafe(previousMode, previousRunLength, candidate)) {
+      continue;
+    }
+    const remaining = [
+      ...candidates.slice(0, index),
+      ...candidates.slice(index + 1),
+    ];
+    const nextRunLength =
+      candidate === previousMode ? previousRunLength + 1 : 1;
+    const orderedTail = orderClawdDepartureBag(
+      remaining,
+      candidate,
+      nextRunLength,
+    );
+    if (orderedTail) return [candidate, ...orderedTail];
+  }
+  return null;
+}
+
+function refillClawdDepartureBag(
+  previousMode: TimetableClawdDepartureMode | "",
+  previousRunLength: number,
+  random: () => number,
+): TimetableClawdDepartureMode[] {
+  const shuffled = fisherYatesShuffle(CLAWD_WEIGHTED_DEPARTURES, random);
+  const ordered = orderClawdDepartureBag(
+    shuffled,
+    previousMode,
+    previousRunLength,
+  );
+  if (!ordered) throw new Error("Unable to build a Clawd departure bag");
+  return ordered;
+}
+
+function drawClawdDepartureMode(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdDepartureMode {
+  if (planner.departureBag.length === 0) {
+    planner.departureBag.push(
+      ...refillClawdDepartureBag(
+        planner.lastDepartureMode,
+        planner.departureModeRunLength,
+        random,
+      ),
+    );
+  }
+  const mode = planner.departureBag.shift();
+  if (!mode) throw new Error("Unable to draw a Clawd departure mode");
+  planner.departureModeRunLength =
+    mode === planner.lastDepartureMode ? planner.departureModeRunLength + 1 : 1;
+  planner.lastDepartureMode = mode;
+  return mode;
+}
+
+function clampClawdNumber(
+  value: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function clawdRandomUnit(random: () => number): number {
+  const value = random();
+  return Number.isFinite(value) ? clampClawdNumber(value, 0, 1) : 0.5;
+}
+
+function clawdStopLayoutGeometry(
+  input: TimetableClawdStopLayoutInput,
+): TimetableClawdStopLayoutGeometry {
+  const scale =
+    Number.isFinite(input.metrics.scale) && input.metrics.scale > 0
+      ? input.metrics.scale
+      : 1;
+  const maxPeriod = Math.max(1, Math.floor(input.maxPeriod) || 1);
+  const headerHeightPx = Number.isFinite(input.headerHeightPx)
+    ? Math.max(0, input.headerHeightPx)
+    : 0;
+  const headerHeightRpx = headerHeightPx / scale;
+  const gridTopRpx = headerHeightRpx + CLAWD_GRID_HEAD_RPX;
+  const rowHeightRpx =
+    Number.isFinite(input.metrics.rowHeightPx) && input.metrics.rowHeightPx > 0
+      ? input.metrics.rowHeightPx / scale
+      : 1;
+  const gridBottomRpx = gridTopRpx + rowHeightRpx * maxPeriod;
+  const minimumBaselineRpx = Math.min(
+    gridBottomRpx - 12,
+    gridTopRpx + (CLAWD_STAGE_HEIGHT_RPX - CLAWD_STOP_CORE_BOUNDS[1]),
+  );
+  const maximumBaselineRpx = Math.max(minimumBaselineRpx, gridBottomRpx - 12);
+  return {
+    gridTopRpx,
+    gridBottomRpx,
+    rowHeightRpx,
+    minimumBaselineRpx,
+    maximumBaselineRpx,
+    verticalPhaseLimitRpx: Math.min(26, rowHeightRpx * 0.35),
+  };
+}
+
+function clawdRectangleIntersectionArea(
+  left: TimetableClawdRectangle,
+  right: TimetableClawdRectangle,
+): number {
+  const width = Math.max(
+    0,
+    Math.min(left.right, right.right) - Math.max(left.left, right.left),
+  );
+  const height = Math.max(
+    0,
+    Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top),
+  );
+  return width * height;
+}
+
+function clawdVisibleCourseRectangles(
+  input: TimetableClawdStopLayoutInput,
+  geometry: TimetableClawdStopLayoutGeometry = clawdStopLayoutGeometry(input),
+): TimetableClawdRectangle[] {
+  const scale =
+    Number.isFinite(input.metrics.scale) && input.metrics.scale > 0
+      ? input.metrics.scale
+      : 1;
+  const maxPeriod = Math.max(1, Math.floor(input.maxPeriod) || 1);
+  const dayWidthRpx = CLAWD_GRID_WIDTH_RPX / 7;
+  const courseTopInsetRpx = input.metrics.courseTopInsetPx / scale;
+  const courseHeightExtensionRpx =
+    input.metrics.courseHeightExtensionPx / scale;
+  return input.courses.flatMap((course) => {
+    const weekday = Number(course.weekday);
+    const rawPeriodStart = Number(course.periodStart);
+    const rawPeriodEnd = Number(course.periodEnd);
+    if (
+      !Number.isInteger(weekday) ||
+      weekday < 1 ||
+      weekday > 7 ||
+      !Number.isFinite(rawPeriodStart) ||
+      !Number.isFinite(rawPeriodEnd)
+    ) {
+      return [];
+    }
+    const periodStart = clampClawdNumber(
+      Math.floor(rawPeriodStart),
+      1,
+      maxPeriod,
+    );
+    const periodEnd = clampClawdNumber(Math.floor(rawPeriodEnd), 1, maxPeriod);
+    if (periodEnd < periodStart) return [];
+    const left = CLAWD_GRID_LEFT_RPX + (weekday - 1) * dayWidthRpx;
+    const top =
+      geometry.gridTopRpx +
+      (periodStart - 1) * geometry.rowHeightRpx +
+      courseTopInsetRpx;
+    return [
+      {
+        left,
+        right: left + dayWidthRpx,
+        top,
+        bottom:
+          top +
+          (periodEnd - periodStart + 1) * geometry.rowHeightRpx +
+          (periodEnd < maxPeriod ? courseHeightExtensionRpx : 0),
+      },
+    ];
+  });
+}
+
+function clawdTranslatedStageBounds(
+  stageLeftRpx: number,
+  stageTopRpx: number,
+  bounds: readonly [number, number, number, number],
+): TimetableClawdRectangle {
+  return {
+    left: stageLeftRpx + bounds[0],
+    top: stageTopRpx + bounds[1],
+    right: stageLeftRpx + bounds[2],
+    bottom: stageTopRpx + bounds[3],
+  };
+}
+
+function clawdStopObstructionScore(
+  stageLeftRpx: number,
+  stageTopRpx: number,
+  courseRectangles: readonly TimetableClawdRectangle[],
+): number {
+  const coreRectangle = clawdTranslatedStageBounds(
+    stageLeftRpx,
+    stageTopRpx,
+    CLAWD_STOP_CORE_BOUNDS,
+  );
+  const haloRectangle = clawdTranslatedStageBounds(
+    stageLeftRpx,
+    stageTopRpx,
+    CLAWD_STOP_HALO_BOUNDS,
+  );
+  return courseRectangles.reduce((score, courseRectangle) => {
+    const coreOverlap = clawdRectangleIntersectionArea(
+      coreRectangle,
+      courseRectangle,
+    );
+    const haloOverlap = clawdRectangleIntersectionArea(
+      haloRectangle,
+      courseRectangle,
+    );
+    return (
+      score +
+      coreOverlap +
+      Math.max(0, haloOverlap - coreOverlap) * CLAWD_STOP_HALO_WEIGHT
+    );
+  }, 0);
+}
+
+function clawdRouteOffsets(centerXRpx: number) {
+  const walkLeftFar = -(centerXRpx + 95);
+  const walkRightFar = 845 - centerXRpx;
+  const vehicleLeftFar = -(centerXRpx + 185);
+  const vehicleRightFar = 935 - centerXRpx;
+  return {
+    walkLeftFar,
+    walkRightFar,
+    walkLeftReveal: walkLeftFar * (414 / 470),
+    walkRightReveal: walkRightFar * (414 / 470),
+    walkLeftNear: walkLeftFar * (390 / 470),
+    walkRightNear: walkRightFar * (390 / 470),
+    lurkLeftHold: 180 - centerXRpx,
+    lurkRightHold: 570 - centerXRpx,
+    vehicleLeftFar,
+    vehicleRightFar,
+    vehicleLeftTiny: vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.tiny,
+    vehicleRightTiny: vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.tiny,
+    vehicleLeftSmall: vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.small,
+    vehicleRightSmall: vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.small,
+    vehicleLeftMedium: vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.medium,
+    vehicleRightMedium: vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.medium,
+    vehicleLeftEasing: vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.easing,
+    vehicleRightEasing: vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.easing,
+    vehicleLeftDecelStart:
+      vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.decelStart,
+    vehicleRightDecelStart:
+      vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.decelStart,
+    vehicleLeftRaceExitNear:
+      vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceExitNear,
+    vehicleRightRaceExitNear:
+      vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceExitNear,
+    vehicleLeftRowNear: vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.rowNear,
+    vehicleRightRowNear: vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.rowNear,
+    vehicleLeftRaceEntryReveal:
+      vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceEntryReveal,
+    vehicleRightRaceEntryReveal:
+      vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceEntryReveal,
+    vehicleLeftRaceBridgeNearEdge:
+      vehicleLeftFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceBridgeNearEdge,
+    vehicleRightRaceBridgeNearEdge:
+      vehicleRightFar * CLAWD_VEHICLE_ROUTE_RATIOS.raceBridgeNearEdge,
+  };
+}
+
+function formatClawdRpx(value: number): string {
+  if (!Number.isFinite(value))
+    throw new Error("Invalid Clawd route coordinate");
+  const rounded = Math.abs(value) < 0.005 ? 0 : value;
+  return `${rounded.toFixed(2)}rpx`;
+}
+
+function clawdStopPositionStyle(
+  centerXRpx: number,
+  baselineYRpx: number,
+): string {
+  const route = clawdRouteOffsets(centerXRpx);
+  const declarations: readonly [string, number][] = [
+    ["left", centerXRpx - CLAWD_STAGE_WIDTH_RPX / 2],
+    ["top", baselineYRpx - CLAWD_STAGE_HEIGHT_RPX],
+    ["--clawd-walk-left-far", route.walkLeftFar],
+    ["--clawd-walk-right-far", route.walkRightFar],
+    ["--clawd-walk-left-reveal", route.walkLeftReveal],
+    ["--clawd-walk-right-reveal", route.walkRightReveal],
+    ["--clawd-walk-left-near", route.walkLeftNear],
+    ["--clawd-walk-right-near", route.walkRightNear],
+    ["--clawd-lurk-left-hold", route.lurkLeftHold],
+    ["--clawd-lurk-right-hold", route.lurkRightHold],
+    ["--clawd-vehicle-left-far", route.vehicleLeftFar],
+    ["--clawd-vehicle-right-far", route.vehicleRightFar],
+    ["--clawd-vehicle-left-tiny", route.vehicleLeftTiny],
+    ["--clawd-vehicle-right-tiny", route.vehicleRightTiny],
+    ["--clawd-vehicle-left-small", route.vehicleLeftSmall],
+    ["--clawd-vehicle-right-small", route.vehicleRightSmall],
+    ["--clawd-vehicle-left-medium", route.vehicleLeftMedium],
+    ["--clawd-vehicle-right-medium", route.vehicleRightMedium],
+    ["--clawd-vehicle-left-easing", route.vehicleLeftEasing],
+    ["--clawd-vehicle-right-easing", route.vehicleRightEasing],
+    ["--clawd-vehicle-left-decel-start", route.vehicleLeftDecelStart],
+    ["--clawd-vehicle-right-decel-start", route.vehicleRightDecelStart],
+    ["--clawd-vehicle-left-race-exit-near", route.vehicleLeftRaceExitNear],
+    ["--clawd-vehicle-right-race-exit-near", route.vehicleRightRaceExitNear],
+    ["--clawd-vehicle-left-row-near", route.vehicleLeftRowNear],
+    ["--clawd-vehicle-right-row-near", route.vehicleRightRowNear],
+    [
+      "--clawd-vehicle-left-race-entry-reveal",
+      route.vehicleLeftRaceEntryReveal,
+    ],
+    [
+      "--clawd-vehicle-right-race-entry-reveal",
+      route.vehicleRightRaceEntryReveal,
+    ],
+    [
+      "--clawd-vehicle-left-race-bridge-near-edge",
+      route.vehicleLeftRaceBridgeNearEdge,
+    ],
+    [
+      "--clawd-vehicle-right-race-bridge-near-edge",
+      route.vehicleRightRaceBridgeNearEdge,
+    ],
+  ];
+  return declarations
+    .map(([property, value]) => `${property}: ${formatClawdRpx(value)};`)
+    .join(" ");
+}
+
+const CLAWD_DEFAULT_POSITION_STYLE = clawdStopPositionStyle(375, 560);
+
+function clawdStopCandidates(
+  input: TimetableClawdStopLayoutInput,
+  horizontalPhaseRpx: number,
+  verticalPhaseRpx: number,
+): TimetableClawdStopPoint[] {
+  const geometry = clawdStopLayoutGeometry(input);
+  const courseRectangles = clawdVisibleCourseRectangles(input, geometry);
+  const xPhase = clampClawdNumber(
+    horizontalPhaseRpx,
+    -CLAWD_STOP_X_PHASE_RPX,
+    CLAWD_STOP_X_PHASE_RPX,
+  );
+  const yPhase = clampClawdNumber(
+    verticalPhaseRpx,
+    -geometry.verticalPhaseLimitRpx,
+    geometry.verticalPhaseLimitRpx,
+  );
+  const xMinimum = CLAWD_STOP_X_RANGE_RPX[0] - CLAWD_STOP_X_PHASE_RPX;
+  const xMaximum = CLAWD_STOP_X_RANGE_RPX[1] + CLAWD_STOP_X_PHASE_RPX;
+  const candidates: TimetableClawdStopPoint[] = [];
+  for (let rowIndex = 0; rowIndex < CLAWD_STOP_ROW_COUNT; rowIndex += 1) {
+    const rowProgress = rowIndex / Math.max(1, CLAWD_STOP_ROW_COUNT - 1);
+    const baseBaselineYRpx =
+      geometry.minimumBaselineRpx +
+      (geometry.maximumBaselineRpx - geometry.minimumBaselineRpx) * rowProgress;
+    const baselineYRpx = clampClawdNumber(
+      baseBaselineYRpx + yPhase,
+      geometry.minimumBaselineRpx,
+      geometry.maximumBaselineRpx,
+    );
+    for (
+      let columnIndex = 0;
+      columnIndex < CLAWD_STOP_COLUMN_COUNT;
+      columnIndex += 1
+    ) {
+      const columnProgress =
+        columnIndex / Math.max(1, CLAWD_STOP_COLUMN_COUNT - 1);
+      const baseCenterXRpx =
+        CLAWD_STOP_X_RANGE_RPX[0] +
+        (CLAWD_STOP_X_RANGE_RPX[1] - CLAWD_STOP_X_RANGE_RPX[0]) *
+          columnProgress;
+      const centerXRpx = clampClawdNumber(
+        baseCenterXRpx + xPhase,
+        xMinimum,
+        xMaximum,
+      );
+      const stageLeftRpx = centerXRpx - CLAWD_STAGE_WIDTH_RPX / 2;
+      const stageTopRpx = baselineYRpx - CLAWD_STAGE_HEIGHT_RPX;
+      candidates.push({
+        cellKey: `${columnIndex}:${rowIndex}`,
+        columnIndex,
+        rowIndex,
+        centerXRpx,
+        baselineYRpx,
+        stageLeftRpx,
+        stageTopRpx,
+        obstructionScore: clawdStopObstructionScore(
+          stageLeftRpx,
+          stageTopRpx,
+          courseRectangles,
+        ),
+        positionStyle: clawdStopPositionStyle(centerXRpx, baselineYRpx),
+      });
+    }
+  }
+  return candidates;
+}
+
+function drawClawdStopPoint(
+  planner: TimetableClawdJourneyPlanner,
+  input: TimetableClawdStopLayoutInput,
+  random: () => number,
+): TimetableClawdStopPoint {
+  const horizontalPhaseRpx =
+    (clawdRandomUnit(random) * 2 - 1) * CLAWD_STOP_X_PHASE_RPX;
+  const verticalPhaseLimitRpx =
+    clawdStopLayoutGeometry(input).verticalPhaseLimitRpx;
+  const verticalPhaseRpx =
+    (clawdRandomUnit(random) * 2 - 1) * verticalPhaseLimitRpx;
+  const rankedCandidates = fisherYatesShuffle(
+    clawdStopCandidates(input, horizontalPhaseRpx, verticalPhaseRpx),
+    random,
+  ).sort((left, right) => left.obstructionScore - right.obstructionScore);
+  const pool = rankedCandidates.slice(0, CLAWD_STOP_POOL_SIZE);
+  const nonRepeatingPool = pool.filter(
+    (candidate) => candidate.cellKey !== planner.lastStopCellKey,
+  );
+  const eligible = nonRepeatingPool.length > 0 ? nonRepeatingPool : pool;
+  const selected =
+    eligible[
+      Math.min(
+        eligible.length - 1,
+        Math.floor(clawdRandomUnit(random) * eligible.length),
+      )
+    ];
+  if (!selected) throw new Error("Unable to draw a Clawd stop point");
+  planner.lastStopCellKey = selected.cellKey;
+  return selected;
+}
+
+function drawClawdEntryEdge(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdEdge {
+  const edge =
+    planner.entryEdgeRunLength >= 2 && planner.lastEntryEdge
+      ? oppositeClawdEdge(planner.lastEntryEdge)
+      : clawdRandomUnit(random) < 0.5
+        ? "left"
+        : "right";
+  planner.entryEdgeRunLength =
+    edge === planner.lastEntryEdge ? planner.entryEdgeRunLength + 1 : 1;
+  planner.lastEntryEdge = edge;
+  return edge;
+}
+
+function drawClawdExitEdge(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdEdge {
+  const edge =
+    planner.exitEdgeRunLength >= 2 && planner.lastExitEdge
+      ? planner.lastExitEdge === "left"
+        ? "right"
+        : "left"
+      : clawdRandomUnit(random) < 0.5
+        ? "left"
+        : "right";
+  planner.exitEdgeRunLength =
+    edge === planner.lastExitEdge ? planner.exitEdgeRunLength + 1 : 1;
+  planner.lastExitEdge = edge;
+  return edge;
+}
+
+function clawdTravelMediaClass(direction: TimetableClawdEdge): string {
+  return direction === "left" ? CLAWD_MIRRORED_MEDIA_CLASS : "";
+}
+
+function oppositeClawdEdge(edge: TimetableClawdEdge): TimetableClawdEdge {
+  return edge === "left" ? "right" : "left";
+}
+
+function clawdJourneyStep(
+  kind: TimetableClawdJourneyStepKind,
+  scene: TimetableClawdSceneName,
+  positionStyle: string,
+  motionClass: string,
+  durationMs: number,
+  mediaClass = "",
+  exitOffscreen = false,
+  restartOffscreen = false,
+): TimetableClawdJourneyStep {
+  return {
+    kind,
+    scene,
+    positionStyle,
+    motionClass,
+    mediaClass,
+    durationMs,
+    exitOffscreen,
+    restartOffscreen,
+  };
+}
+
+function clawdTravelJourneyStep(
+  kind: "arrival" | "bridge-enter" | "bridge-exit" | "exit",
+  mode: TimetableClawdTravelMode,
+  route: "enter" | "exit",
+  edge: TimetableClawdEdge,
+  positionStyle: string,
+  restartOffscreen = false,
+): TimetableClawdJourneyStep {
+  const entering = route === "enter";
+  const mediaDirection = entering ? oppositeClawdEdge(edge) : edge;
+  const motionPrefix =
+    mode === "walking"
+      ? entering
+        ? "clawd-scene-motion--emerge-from-"
+        : "clawd-scene-motion--walk-exit-"
+      : entering
+        ? "clawd-scene-motion--race-enter-"
+        : kind === "bridge-exit"
+          ? "clawd-scene-motion--race-bridge-exit-"
+          : "clawd-scene-motion--race-exit-";
+  return clawdJourneyStep(
+    kind,
+    mode,
+    positionStyle,
+    motionPrefix + edge,
+    mode === "walking" ? CLAWD_WALKING_DURATION_MS : CLAWD_RACING_DURATION_MS,
+    clawdTravelMediaClass(mediaDirection),
+    !entering,
+    restartOffscreen,
+  );
+}
+
+function createClawdJourneyPlanner(): TimetableClawdJourneyPlanner {
+  return {
+    actionBag: [],
+    actionCountBag: [],
+    arrivalBag: [],
+    bridgeCountBag: [],
+    bridgeModeBag: [],
+    departureBag: [],
+    lastAction: "",
+    lastArrivalMode: "",
+    arrivalModeRunLength: 0,
+    lastBridgeMode: "",
+    bridgeModeRunLength: 0,
+    lastEntryEdge: "",
+    entryEdgeRunLength: 0,
+    lastStopCellKey: "",
+    lastExitEdge: "",
+    exitEdgeRunLength: 0,
+    lastDepartureMode: "",
+    departureModeRunLength: 0,
+  };
+}
+
+function drawClawdAction(
+  planner: TimetableClawdJourneyPlanner,
+  random: () => number,
+): TimetableClawdActionName {
+  const action = drawNoAdjacentBagValue(
+    planner.actionBag,
+    CLAWD_ACTIONS,
+    planner.lastAction,
+    random,
+  );
+  planner.lastAction = action;
+  return action;
+}
+
+function appendClawdActionBlock(
+  steps: TimetableClawdJourneyStep[],
+  actionBlocks: TimetableClawdActionName[][],
+  planner: TimetableClawdJourneyPlanner,
+  positionStyle: string,
+  mediaClass: string,
+  random: () => number,
+): void {
+  const actionCount = drawBagValue(
+    planner.actionCountBag,
+    CLAWD_ACTION_BLOCK_SIZES,
+    random,
+  );
+  const actionBlock: TimetableClawdActionName[] = [];
+  for (let index = 0; index < actionCount; index += 1) {
+    const action = drawClawdAction(planner, random);
+    actionBlock.push(action);
+    steps.push(
+      clawdJourneyStep(
+        "action",
+        action,
+        positionStyle,
+        "clawd-scene-motion--anchored",
+        CLAWD_ACTION_DURATIONS[action],
+        mediaClass,
+      ),
+    );
+  }
+  actionBlocks.push(actionBlock);
+}
+
+function buildClawdJourney(
+  planner: TimetableClawdJourneyPlanner,
+  stopLayoutInput: TimetableClawdStopLayoutInput,
+  random: () => number = Math.random,
+): TimetableClawdJourney {
+  const arrivalMode = drawClawdArrivalMode(planner, random);
+  const stopPoint = drawClawdStopPoint(planner, stopLayoutInput, random);
+  const entryEdge = drawClawdEntryEdge(planner, random);
+  const bridgeCount = drawBagValue(
+    planner.bridgeCountBag,
+    CLAWD_BRIDGE_COUNTS,
+    random,
+  );
+  const positionStyle = stopPoint.positionStyle;
+  const entryMediaClass = clawdTravelMediaClass(oppositeClawdEdge(entryEdge));
+  const steps: TimetableClawdJourneyStep[] = [];
+  if (arrivalMode === "lurking") {
+    steps.push(
+      clawdJourneyStep(
+        "lurking",
+        "lurking",
+        positionStyle,
+        "clawd-scene-motion--lurk-from-" + entryEdge,
+        CLAWD_LURKING_DURATION_MS,
+        entryMediaClass,
+      ),
+      clawdTravelJourneyStep(
+        "arrival",
+        "walking",
+        "enter",
+        entryEdge,
+        positionStyle,
+      ),
+    );
+  } else if (arrivalMode === "rowing") {
+    steps.push(
+      clawdJourneyStep(
+        "arrival",
+        "rowing",
+        positionStyle,
+        "clawd-scene-motion--row-enter-" + entryEdge,
+        CLAWD_ROWING_DURATION_MS,
+        entryMediaClass,
+      ),
+      clawdJourneyStep(
+        "rowing-outro",
+        "rowing-outro",
+        positionStyle,
+        "clawd-scene-motion--anchored",
+        CLAWD_ROWING_OUTRO_DURATION_MS,
+        entryMediaClass,
+      ),
+    );
+  } else {
+    steps.push(
+      clawdTravelJourneyStep(
+        "arrival",
+        arrivalMode,
+        "enter",
+        entryEdge,
+        positionStyle,
+      ),
+    );
+  }
+
+  const actionBlocks: TimetableClawdActionName[][] = [];
+  appendClawdActionBlock(
+    steps,
+    actionBlocks,
+    planner,
+    positionStyle,
+    entryMediaClass,
+    random,
+  );
+
+  const bridgeModes: TimetableClawdTravelMode[] = [];
+  let activeMediaClass = entryMediaClass;
+  for (let index = 0; index < bridgeCount; index += 1) {
+    const bridgeMode = drawClawdBridgeMode(planner, random);
+    const bridgeExitEdge = drawClawdExitEdge(planner, random);
+    const bridgeEntryEdge = oppositeClawdEdge(bridgeExitEdge);
+    const bridgeExit = clawdTravelJourneyStep(
+      "bridge-exit",
+      bridgeMode,
+      "exit",
+      bridgeExitEdge,
+      positionStyle,
+    );
+    const bridgeEnter = clawdTravelJourneyStep(
+      "bridge-enter",
+      bridgeMode,
+      "enter",
+      bridgeEntryEdge,
+      positionStyle,
+      true,
+    );
+    bridgeModes.push(bridgeMode);
+    steps.push(bridgeExit, bridgeEnter);
+    activeMediaClass = bridgeEnter.mediaClass;
+    appendClawdActionBlock(
+      steps,
+      actionBlocks,
+      planner,
+      positionStyle,
+      activeMediaClass,
+      random,
+    );
+  }
+
+  const exitEdge = drawClawdExitEdge(planner, random);
+  const departureMode = drawClawdDepartureMode(planner, random);
+  const exitMediaClass = clawdTravelMediaClass(exitEdge);
+  const actionNames = actionBlocks.flat();
+  const lastAction = actionNames[actionNames.length - 1];
+  if (lastAction !== "waving" && random() < CLAWD_FAREWELL_CHANCE) {
+    steps.push(
+      clawdJourneyStep(
+        "farewell",
+        "waving",
+        positionStyle,
+        "clawd-scene-motion--anchored",
+        CLAWD_WAVING_DURATION_MS,
+        exitMediaClass,
+      ),
+    );
+  }
+
+  if (departureMode === "rowing") {
+    steps.push(
+      clawdJourneyStep(
+        "rowing-intro",
+        "rowing-intro",
+        positionStyle,
+        "clawd-scene-motion--anchored",
+        CLAWD_ROWING_INTRO_DURATION_MS,
+        exitMediaClass,
+      ),
+      clawdJourneyStep(
+        "exit",
+        "rowing",
+        positionStyle,
+        "clawd-scene-motion--row-exit-" + exitEdge,
+        CLAWD_ROWING_DURATION_MS,
+        exitMediaClass,
+        true,
+      ),
+    );
+  } else {
+    steps.push(
+      clawdTravelJourneyStep(
+        "exit",
+        departureMode,
+        "exit",
+        exitEdge,
+        positionStyle,
+      ),
+    );
+  }
+
+  return {
+    arrivalMode,
+    entryEdge,
+    stopPoint,
+    bridgeCount,
+    bridgeModes,
+    actionBlocks,
+    exitEdge,
+    departureMode,
+    actionNames,
+    steps,
+  };
+}
 
 interface InFlightTimetableRequest {
   refresh: boolean;
@@ -113,17 +1260,30 @@ let defaultSemesterId = "";
 let activeSnapshot: TimetableSnapshot | null = null;
 let weekMenuOpenTimer: ReturnType<typeof setTimeout> | undefined;
 let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+let menuOpenTimer: ReturnType<typeof setTimeout> | undefined;
+let menuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
 let companionGazeTimer: ReturnType<typeof setTimeout> | undefined;
+let clawdSceneTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingCompanionGaze: TimetableGazeTarget | null = null;
+let clawdSequenceRevision = 0;
+let clawdSceneStepIndex = 0;
+let clawdJourneyPlanner = createClawdJourneyPlanner();
+let clawdActiveJourney: TimetableClawdJourney | null = null;
 let weekBuildSequence = 0;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
 let passRateRequestSequence = 0;
 let pageAlive = false;
+
+function resetClawdSceneScheduler(): void {
+  clawdSceneStepIndex = 0;
+  clawdJourneyPlanner = createClawdJourneyPlanner();
+  clawdActiveJourney = null;
+}
 
 function timetableSemesterOptions(
   semesters: AcademicSemesterOption[],
@@ -376,18 +1536,21 @@ function timetableVisualPreferencesPatch(
   const pet: PetPreferences = account
     ? loadPetPreferences(account)
     : { ...DEFAULT_PET_PREFERENCES };
-  const companionColor = pet.selected
-    ? pet.color
+  const petEnabled = Boolean(account) && shouldShowPet(pet);
+  const timetablePet = petEnabled ? pet : DEFAULT_PET_PREFERENCES;
+  const companionColor = petEnabled
+    ? timetablePet.color
     : DEFAULT_TIMETABLE_COMPANION_COLOR;
   return {
     ...appearance,
     ...timetableThemePatch(themeId, companionColor),
     companionColor,
-    petShape: pet.shape,
-    petColor: pet.color,
-    petEnhanced: pet.enhanced,
-    petSelected: pet.selected,
-    petVisible: Boolean(account) && shouldShowPet(pet),
+    petShape: timetablePet.shape,
+    petColor: companionColor,
+    petEnhanced: petEnabled && timetablePet.enhanced,
+    petSelected: petEnabled,
+    // The fallback belongs to the timetable theme only; no pet preference is saved.
+    petVisible: true,
     petReducedMotion: appearance.motionClass === "motion-reduced",
   };
 }
@@ -404,6 +1567,24 @@ function clearRefreshToastTimers(): void {
   if (refreshToastUnmountTimer !== undefined) {
     clearTimeout(refreshToastUnmountTimer);
     refreshToastUnmountTimer = undefined;
+  }
+}
+
+function clearTimetableMenuTimers(): void {
+  if (menuOpenTimer !== undefined) {
+    clearTimeout(menuOpenTimer);
+    menuOpenTimer = undefined;
+  }
+  if (menuUnmountTimer !== undefined) {
+    clearTimeout(menuUnmountTimer);
+    menuUnmountTimer = undefined;
+  }
+}
+
+function clearClawdSceneTimer(): void {
+  if (clawdSceneTimer !== undefined) {
+    clearTimeout(clawdSceneTimer);
+    clawdSceneTimer = undefined;
   }
 }
 
@@ -437,8 +1618,13 @@ Page({
     petColor: DEFAULT_PET_PREFERENCES.color,
     petEnhanced: false,
     petSelected: false,
-    petVisible: false,
+    petVisible: true,
     petReducedMotion: false,
+    clawdSceneSrc: "",
+    clawdScenePositionStyle: CLAWD_DEFAULT_POSITION_STYLE,
+    clawdSceneMotionClass: "",
+    clawdSceneMediaClass: "",
+    menuMounted: false,
     menuOpen: false,
     semesterOpen: false,
     weekMenuMounted: false,
@@ -487,7 +1673,11 @@ Page({
       clearTimeout(weekMenuUnmountTimer);
       weekMenuUnmountTimer = undefined;
     }
+    clearTimetableMenuTimers();
     clearRefreshToastTimers();
+    clearClawdSceneTimer();
+    clawdSequenceRevision += 1;
+    resetClawdSceneScheduler();
     cancelPendingWeekBuilds();
     cancelCompanionGazeUpdate();
     activeAccount = "";
@@ -498,22 +1688,31 @@ Page({
     passRateRequestSequence += 1;
     pendingVisibleRequestId = null;
     const compactHeader = options.source === "schedule";
-    this.setData({
-      ...timetableVisualPreferencesPatch(),
-      compactHeader,
-      ...backgroundMetrics(compactHeader),
-    });
+    this.setData(
+      {
+        ...timetableVisualPreferencesPatch(),
+        compactHeader,
+        ...backgroundMetrics(compactHeader),
+      },
+      () => this.syncClawdSceneSequence(),
+    );
     this.hydrate();
     this.syncTimetableIfNeeded();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
-    this.setData({
-      ...timetableVisualPreferencesPatch(),
-      ...backgroundMetrics(this.data.compactHeader),
-    });
+    this.setData(
+      {
+        ...timetableVisualPreferencesPatch(),
+        ...backgroundMetrics(this.data.compactHeader),
+      },
+      () => this.syncClawdSceneSequence(),
+    );
     this.hydrate();
     this.syncTimetableIfNeeded();
+  },
+  onHide() {
+    this.stopClawdSceneSequence();
   },
   onUnload() {
     pageAlive = false;
@@ -525,10 +1724,133 @@ Page({
       clearTimeout(weekMenuUnmountTimer);
       weekMenuUnmountTimer = undefined;
     }
+    clearTimetableMenuTimers();
     clearRefreshToastTimers();
+    clearClawdSceneTimer();
+    clawdSequenceRevision += 1;
+    resetClawdSceneScheduler();
     cancelPendingWeekBuilds();
     cancelCompanionGazeUpdate();
     passRateRequestSequence += 1;
+  },
+  syncClawdSceneSequence() {
+    if (this.data.timetableThemeId === "clawd" && !this.data.petReducedMotion) {
+      this.startClawdSceneSequence();
+      return;
+    }
+    this.stopClawdSceneSequence();
+  },
+  startClawdSceneSequence() {
+    clearClawdSceneTimer();
+    clawdSequenceRevision += 1;
+    resetClawdSceneScheduler();
+    this.playClawdSceneStep(clawdSequenceRevision);
+  },
+  stopClawdSceneSequence() {
+    clearClawdSceneTimer();
+    clawdSequenceRevision += 1;
+    resetClawdSceneScheduler();
+    if (
+      pageAlive &&
+      (this.data.clawdSceneSrc ||
+        this.data.clawdSceneMotionClass ||
+        this.data.clawdSceneMediaClass)
+    ) {
+      this.setData({
+        clawdSceneSrc: "",
+        clawdSceneMotionClass: "",
+        clawdSceneMediaClass: "",
+      });
+    }
+  },
+  playClawdSceneStep(revision: number) {
+    if (
+      !pageAlive ||
+      revision !== clawdSequenceRevision ||
+      this.data.timetableThemeId !== "clawd" ||
+      this.data.petReducedMotion
+    ) {
+      return;
+    }
+    if (!clawdActiveJourney) {
+      const maxPeriod = Math.max(1, this.data.periodRows.length);
+      const headerHeightPx = Number(this.data.headerHeight) || 64;
+      clawdActiveJourney = buildClawdJourney(clawdJourneyPlanner, {
+        courses: visibleCourses,
+        maxPeriod,
+        headerHeightPx,
+        metrics: timetableGridLayoutMetrics(maxPeriod, headerHeightPx),
+      });
+      clawdSceneStepIndex = 0;
+    }
+    const journey = clawdActiveJourney;
+    const step = journey.steps[clawdSceneStepIndex];
+    const mountStep = () => {
+      this.setData(
+        {
+          clawdSceneSrc: CLAWD_SCENE_SOURCES[step.scene],
+          clawdScenePositionStyle: step.positionStyle,
+          clawdSceneMotionClass: step.motionClass,
+          clawdSceneMediaClass: step.mediaClass,
+        },
+        () => {
+          if (!pageAlive || revision !== clawdSequenceRevision) return;
+          clawdSceneTimer = setTimeout(() => {
+            clawdSceneTimer = undefined;
+            if (!pageAlive || revision !== clawdSequenceRevision) return;
+            clawdSceneStepIndex += 1;
+            if (clawdSceneStepIndex >= journey.steps.length) {
+              if (!step.exitOffscreen || step.kind !== "exit") return;
+              const quietDurationMs =
+                randomIntegerInclusive(CLAWD_QUIET_RANGE_MS);
+              clawdActiveJourney = null;
+              clawdSceneStepIndex = 0;
+              this.setData(
+                {
+                  clawdSceneSrc: "",
+                  clawdSceneMotionClass: "",
+                  clawdSceneMediaClass: "",
+                },
+                () => {
+                  if (!pageAlive || revision !== clawdSequenceRevision) return;
+                  clawdSceneTimer = setTimeout(() => {
+                    clawdSceneTimer = undefined;
+                    this.playClawdSceneStep(revision);
+                  }, quietDurationMs);
+                },
+              );
+              return;
+            }
+            this.playClawdSceneStep(revision);
+          }, step.durationMs);
+        },
+      );
+    };
+    if (step.restartOffscreen) {
+      const previousStep = journey.steps[clawdSceneStepIndex - 1];
+      if (
+        !previousStep ||
+        !previousStep.exitOffscreen ||
+        previousStep.kind !== "bridge-exit" ||
+        previousStep.scene !== step.scene ||
+        previousStep.positionStyle !== step.positionStyle
+      ) {
+        return;
+      }
+      this.setData(
+        {
+          clawdSceneSrc: "",
+          clawdSceneMotionClass: "",
+          clawdSceneMediaClass: "",
+        },
+        () => {
+          if (!pageAlive || revision !== clawdSequenceRevision) return;
+          mountStep();
+        },
+      );
+      return;
+    }
+    mountStep();
   },
   queueRemainingWeekPages(
     timetable: TimetableData,
@@ -854,11 +2176,7 @@ Page({
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semester = String(event.currentTarget.dataset.semester || "");
-    this.setData({
-      menuOpen: false,
-      semesterOpen: false,
-      menuHeight: MAIN_MENU_HEIGHT,
-    });
+    this.closeTimetableMenu();
     if (!semester || semester === this.data.semesterId) return;
     haptic("light");
     const querySemester = semester === defaultSemesterId ? undefined : semester;
@@ -866,14 +2184,12 @@ Page({
     if (cached) {
       visibleRequestSequence += 1;
       pendingVisibleRequestId = null;
-      this.setData({ menuOpen: false, semesterOpen: false });
       activeSnapshot = cached;
       activeTimetable = cached.data;
       this.applyTimetable(cached.data, false);
       this.syncTimetableIfNeeded(querySemester);
       return;
     }
-    this.setData({ menuOpen: false, semesterOpen: false });
     void this.loadTimetable(false, querySemester, true);
   },
   toggleWeekMenu() {
@@ -886,11 +2202,9 @@ Page({
       clearTimeout(weekMenuUnmountTimer);
       weekMenuUnmountTimer = undefined;
     }
+    this.closeTimetableMenu();
     this.setData(
       {
-        menuOpen: false,
-        semesterOpen: false,
-        menuHeight: MAIN_MENU_HEIGHT,
         weekMenuMounted: true,
         weekScrollIntoView: "",
       },
@@ -928,11 +2242,50 @@ Page({
   toggleMenu() {
     haptic("light");
     this.closeWeekMenu();
-    this.setData({
-      menuOpen: !this.data.menuOpen,
-      semesterOpen: false,
-      menuHeight: MAIN_MENU_HEIGHT,
-    });
+    if (this.data.menuOpen || menuOpenTimer !== undefined) {
+      this.closeTimetableMenu();
+      return;
+    }
+    this.openTimetableMenu();
+  },
+  openTimetableMenu() {
+    clearTimetableMenuTimers();
+    this.setData(
+      {
+        menuMounted: true,
+        menuOpen: false,
+        semesterOpen: false,
+        menuHeight: MAIN_MENU_HEIGHT,
+      },
+      () => {
+        wx.nextTick(() => {
+          if (!this.data.menuMounted) return;
+          menuOpenTimer = setTimeout(() => {
+            menuOpenTimer = undefined;
+            if (this.data.menuMounted) this.setData({ menuOpen: true });
+          }, 16);
+        });
+      },
+    );
+  },
+  closeTimetableMenu() {
+    if (!this.data.menuMounted) return;
+    if (menuOpenTimer !== undefined) {
+      clearTimeout(menuOpenTimer);
+      menuOpenTimer = undefined;
+    }
+    this.setData({ menuOpen: false });
+    if (menuUnmountTimer !== undefined) clearTimeout(menuUnmountTimer);
+    menuUnmountTimer = setTimeout(() => {
+      menuUnmountTimer = undefined;
+      if (!this.data.menuOpen) {
+        this.setData({
+          menuMounted: false,
+          semesterOpen: false,
+          menuHeight: MAIN_MENU_HEIGHT,
+        });
+      }
+    }, MENU_TRANSITION_MS);
   },
   openSemesterMenu() {
     haptic("light");
@@ -946,11 +2299,7 @@ Page({
     this.setData({ semesterOpen: false, menuHeight: MAIN_MENU_HEIGHT });
   },
   closeMenus() {
-    this.setData({
-      menuOpen: false,
-      semesterOpen: false,
-      menuHeight: MAIN_MENU_HEIGHT,
-    });
+    this.closeTimetableMenu();
   },
   stopPropagation() {},
   companionComponent(): TimetableCompanionInstance | null {
@@ -996,7 +2345,7 @@ Page({
     const id = String(event.currentTarget.dataset.theme || "default");
     const patch = timetableThemePatch(id, this.data.companionColor);
     if (patch.timetableThemeId !== "companion") this.clearCompanionGaze();
-    this.setData(patch);
+    this.setData(patch, () => this.syncClawdSceneSequence());
     try {
       wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, patch.timetableThemeId);
     } catch {
@@ -1005,13 +2354,13 @@ Page({
     haptic("light");
   },
   openCalendar() {
-    this.setData({ menuOpen: false });
+    this.closeTimetableMenu();
     haptic("light");
     void navigateTo("/pages/calendar/index", "wx://upwards");
   },
   goToday() {
     if (!activeTimetable) return;
-    this.setData({ menuOpen: false });
+    this.closeTimetableMenu();
     const week = teachingWeekForDate(activeTimetable);
     if (week !== null && week >= 1 && week <= this.data.maxWeek) {
       this.setWeek(week, true);
@@ -1043,7 +2392,7 @@ Page({
     );
   },
   async onRefresh() {
-    this.setData({ menuOpen: false });
+    this.closeTimetableMenu();
     haptic("light");
     const requestAccount = activeAccount;
     const requestSemesterId = this.data.semesterId;
