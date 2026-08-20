@@ -6,21 +6,9 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const pageRoot = path.resolve(
-  __dirname,
-  "..",
-  "miniprogram",
-  "pages",
-  "inbox",
-);
+const pageRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "inbox");
 const source = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
-const homeRoot = path.resolve(
-  __dirname,
-  "..",
-  "miniprogram",
-  "pages",
-  "home",
-);
+const homeRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "home");
 const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
 const homeTemplate = fs.readFileSync(path.join(homeRoot, "index.wxml"), "utf8");
 const semesterSource = fs.readFileSync(
@@ -73,6 +61,9 @@ const stubs = {
     ensureAuthenticated: () => true,
     navigateTo: async () => undefined,
   },
+  "../../utils/refresh-feedback": {
+    showRefreshConfirmation: () => undefined,
+  },
   "../../utils/semester": {
     ...semesterModule.exports,
     startedCurrentSemester: (timetable) =>
@@ -121,8 +112,7 @@ assert(
 );
 select(3);
 assert(
-  page.data.messageTypes.join(",") ===
-    "course_rescheduled,course_cancelled" &&
+  page.data.messageTypes.join(",") === "course_rescheduled,course_cancelled" &&
     page.data.messageTypeOptions[3].selected === true,
   "消息筛选必须支持同时勾选多个类型",
 );

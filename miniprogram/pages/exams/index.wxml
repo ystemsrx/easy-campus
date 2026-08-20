@@ -49,4 +49,5 @@
   <bottom-sheet visible="{{selectedExamVisible}}" title="{{selectedExamTitle}}" theme="{{theme}}" scrollable="{{false}}" bindclose="closeExam">
     <scroll-view wx:if="{{selectedExam}}" class="exam-detail-scroll" type="custom" style="{{selectedExamDetailHeight > 0 ? 'height:' + selectedExamDetailHeight + 'px;' : ''}}" scroll-y enhanced show-scrollbar="{{false}}"><view id="exam-detail-content" class="exam-detail-content"><view class="exam-detail-card card"><view wx:for="{{selectedExam.rows}}" wx:key="label" class="exam-detail-row {{index < selectedExam.rows.length - 1 ? 'exam-detail-row--divided' : ''}}"><text>{{item.label}}</text><text overflow="ellipsis" max-lines="4">{{item.value}}</text></view></view><view wx:if="{{selectedExam.note}}" class="exam-note"><text>备注</text><text>{{selectedExam.note}}</text></view><view class="exam-detail-spacer"></view></view></scroll-view>
   </bottom-sheet>
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

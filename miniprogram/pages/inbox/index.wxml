@@ -105,4 +105,5 @@
     </swiper-item>
   </swiper>
 
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

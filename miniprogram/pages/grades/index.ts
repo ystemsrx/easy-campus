@@ -26,6 +26,7 @@ import {
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import { numberedAcademicSemesterLabel } from "../../utils/semester";
 import {
   canActivateTap,
@@ -292,12 +293,12 @@ Page({
       filterLabel: this.buildFilterLabel(data.semesters),
     });
   },
-  async loadGrades(reset: boolean, refresh: boolean) {
+  async loadGrades(reset: boolean, refresh: boolean): Promise<boolean> {
     if (
       !reset &&
       (this.data.loading || this.data.loadingMore || this.data.refreshing)
     ) {
-      return;
+      return false;
     }
     const page = reset ? 1 : this.data.page + 1;
     const academicYear = this.data.academicYear;
@@ -326,7 +327,7 @@ Page({
         order,
         refresh,
       });
-      if (sequence !== requestSequence) return;
+      if (sequence !== requestSequence) return false;
 
       const account = getSession()?.user.account || "";
       const canonical =
@@ -363,12 +364,14 @@ Page({
         !refresh &&
         isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
         claimAutomaticRefresh("grades", account);
+      return true;
     } catch (error) {
       if (sequence === requestSequence) {
         this.setData({
           errorMessage: getErrorMessage(error, "成绩加载失败。"),
         });
       }
+      return false;
     } finally {
       if (sequence === requestSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
@@ -383,10 +386,10 @@ Page({
       }
     }
   },
-  onRefresh() {
+  async onRefresh() {
     if (this.data.refreshing) return;
     haptic("medium");
-    void this.loadGrades(true, true);
+    if (await this.loadGrades(true, true)) showRefreshConfirmation(this);
   },
   selectSemesterQuick(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");

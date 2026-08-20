@@ -218,14 +218,6 @@
     </view>
   </view>
 
-  <view
-    wx:if="{{refreshToastMounted}}"
-    class="refresh-confirmation {{refreshToastVisible ? 'refresh-confirmation--visible' : ''}}"
-    aria-role="status"
-  >
-    <text>已刷新</text>
-  </view>
-
   <view wx:if="{{menuMounted}}" class="popover-dismiss {{menuOpen ? 'popover-dismiss--open' : ''}}" catchtap="closeMenus"></view>
 
   <view
@@ -366,4 +358,5 @@
       <view class="course-pass-rate-bottom-space"></view>
     </scroll-view>
   </bottom-sheet>
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

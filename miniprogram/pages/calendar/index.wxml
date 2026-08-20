@@ -5,12 +5,12 @@
     scroll-y
     enhanced
     show-scrollbar="{{false}}"
-    refresher-enabled
-    refresher-default-style="none"
-    refresher-triggered="{{refreshing}}"
-    bindrefresherrefresh="onRefresh"
   >
-    <navigation-bar title="教学日历" back transparent theme="{{theme}}"></navigation-bar>
+    <navigation-bar title="教学日历" back extra-left transparent theme="{{theme}}">
+      <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="刷新教学日历">
+        <lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+      </view>
+    </navigation-bar>
     <view class="calendar-content page-content page-enter">
       <view class="calendar-hero stagger-item stagger-1">
         <view class="ambient-blob calendar-blob calendar-blob--one"></view>
@@ -81,4 +81,6 @@
       </scroll-view>
     </view>
   </view>
+
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

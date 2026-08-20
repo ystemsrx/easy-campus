@@ -33,7 +33,7 @@
         <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
           <view class="section-header result-heading">
             <view class="result-copy"><text class="section-title">寝室电费</text><text class="section-caption" overflow="ellipsis" max-lines="1">{{boundBuildingName}} · {{boundRoomNumber}} · {{cacheLabel}}</text></view>
-            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="refreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="刷新电费"><lucide-icon name="refresh-cw" tone="amber" size="{{22}}"></lucide-icon></view></view>
+            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="onRefreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="刷新电费"><lucide-icon name="refresh-cw" tone="amber" size="{{22}}"></lucide-icon></view></view>
           </view>
           <view wx:if="{{serviceUnavailable}}" class="service-warning"><lucide-icon name="circle-alert" tone="danger" size="{{22}}"></lucide-icon><text>校园电费服务暂不可用，当前仍显示上次保存的数据。</text></view>
           <view class="balance-card {{account.balanceNegative ? 'balance-card--negative' : ''}}">
@@ -71,4 +71,6 @@
   <view wx:if="{{bindingToastMounted}}" class="binding-limit-toast {{bindingToastVisible ? 'binding-limit-toast--visible' : ''}}" aria-role="status">
     <text>一个月仅能绑定一次</text>
   </view>
+
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

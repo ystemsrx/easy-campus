@@ -13,6 +13,7 @@ import { formatDateTime } from "../../utils/date";
 import { formatSchedule } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   isCurrentSemesterTimestamp,
   startedCurrentSemester,
@@ -366,9 +367,9 @@ Page({
     mergeFresh = false,
     showRefresher = false,
     allowBackgroundFollowup = true,
-  ) {
-    if (this.data.messageLoading && !refresh) return;
-    if (showRefresher && this.data.messageRefreshing) return;
+  ): Promise<boolean> {
+    if (this.data.messageLoading && !refresh) return false;
+    if (showRefresher && this.data.messageRefreshing) return false;
     const sequence = ++messageRequestSequence;
     this.setData({
       messageLoading: this.data.messageItems.length === 0,
@@ -385,7 +386,7 @@ Page({
         refresh,
       });
       if (sequence !== messageRequestSequence) {
-        return;
+        return false;
       }
       const incoming = result.data.items.map(toMessageView);
       if (!this.data.messageTypes.length) {
@@ -411,10 +412,12 @@ Page({
           void this.loadMessages(false, true, false, false);
         }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
+      return true;
     } catch (error) {
       if (sequence === messageRequestSequence) {
         this.setData({ messageError: getErrorMessage(error) });
       }
+      return false;
     } finally {
       if (sequence === messageRequestSequence) {
         this.setData({
@@ -429,9 +432,9 @@ Page({
     mergeFresh = false,
     showRefresher = false,
     allowBackgroundFollowup = true,
-  ) {
-    if (this.data.noticeLoading && !refresh) return;
-    if (showRefresher && this.data.noticeRefreshing) return;
+  ): Promise<boolean> {
+    if (this.data.noticeLoading && !refresh) return false;
+    if (showRefresher && this.data.noticeRefreshing) return false;
     const sequence = ++noticeRequestSequence;
     this.setData({
       noticeLoading: this.data.noticeItems.length === 0,
@@ -446,7 +449,7 @@ Page({
         refresh,
       });
       if (sequence !== noticeRequestSequence) {
-        return;
+        return false;
       }
       const incoming = result.data.items.map(toNoticeView);
       if (!this.data.noticeQuery.trim()) {
@@ -472,10 +475,12 @@ Page({
           void this.loadNotices(false, true, false, false);
         }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
+      return true;
     } catch (error) {
       if (sequence === noticeRequestSequence) {
         this.setData({ noticeError: getErrorMessage(error) });
       }
+      return false;
     } finally {
       if (sequence === noticeRequestSequence) {
         this.setData({
@@ -485,13 +490,17 @@ Page({
       }
     }
   },
-  refreshMessages() {
+  async refreshMessages() {
     haptic("light");
-    void this.loadMessages(true, true, true);
+    if (await this.loadMessages(true, true, true)) {
+      showRefreshConfirmation(this);
+    }
   },
-  refreshNotices() {
+  async refreshNotices() {
     haptic("light");
-    void this.loadNotices(true, true, true);
+    if (await this.loadNotices(true, true, true)) {
+      showRefreshConfirmation(this);
+    }
   },
   onPageTap() {
     if (this.data.messageFilterMounted) this.closeMessageFilter();

@@ -25,6 +25,7 @@ import { resolveAppearance } from "../../utils/appearance";
 import { formatDateTime } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 
 interface ElectricityView {
   billedElectricityLabel: string;
@@ -286,10 +287,10 @@ Page({
     }
   },
   retryService() {
-    haptic("light");
     if (this.data.boundBuildingId && this.data.boundRoomNumber) {
-      void this.refreshBoundAccount();
+      void this.onRefreshBoundAccount();
     } else {
+      haptic("light");
       void this.loadBuildings();
     }
   },
@@ -389,11 +390,16 @@ Page({
     }
     await this.queryBoundAccount(true);
   },
-  async refreshBoundAccount() {
-    if (!this.data.boundBuildingId || !this.data.boundRoomNumber) return;
-    await this.queryBoundAccount(false);
+  async refreshBoundAccount(): Promise<boolean> {
+    if (!this.data.boundBuildingId || !this.data.boundRoomNumber) return false;
+    return this.queryBoundAccount(false);
   },
-  async queryBoundAccount(rebinding: boolean) {
+  async onRefreshBoundAccount() {
+    if (this.data.querying) return;
+    haptic("light");
+    if (await this.refreshBoundAccount()) showRefreshConfirmation(this);
+  },
+  async queryBoundAccount(rebinding: boolean): Promise<boolean> {
     const sequence = ++accountRequestSequence;
     const buildingId = rebinding
       ? this.data.buildingId
@@ -418,7 +424,7 @@ Page({
         buildingName,
         roomNumber: normalizedRoomNumber,
       });
-      if (sequence !== accountRequestSequence) return;
+      if (sequence !== accountRequestSequence) return false;
       activeSnapshot = saveElectricitySnapshot(
         activeAccount,
         result.data,
@@ -427,8 +433,9 @@ Page({
       this.applyElectricityData(result.data);
       this.setData({ bindingEditing: false, serviceUnavailable: false });
       if (rebinding) haptic("medium");
+      return true;
     } catch (error) {
-      if (sequence !== accountRequestSequence) return;
+      if (sequence !== accountRequestSequence) return false;
       if (isUnavailable(error)) {
         this.setData({
           serviceUnavailable: true,
@@ -448,6 +455,7 @@ Page({
           errorMessage: getErrorMessage(error, "电费查询失败。"),
         });
       }
+      return false;
     } finally {
       if (sequence === accountRequestSequence) {
         this.setData({ querying: false });

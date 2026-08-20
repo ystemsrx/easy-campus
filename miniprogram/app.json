@@ -22,6 +22,7 @@
     "bottom-sheet": "/components/bottom-sheet/bottom-sheet",
     "empty-state": "/components/empty-state/empty-state",
     "loading-view": "/components/loading-view/loading-view",
+    "refresh-confirmation": "/components/refresh-confirmation/refresh-confirmation",
     "geometric-pet": "/components/geometric-pet/geometric-pet"
   },
   "window": {

@@ -5,6 +5,7 @@ import type { CalendarAcademicYearOption, CalendarData } from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 
 interface YearOption {
   value: number;
@@ -76,10 +77,10 @@ Page({
       forceDownload,
     );
   },
-  async loadCalendar(academicYear?: number, refresh = false) {
+  async loadCalendar(academicYear?: number, refresh = false): Promise<boolean> {
     this.setData({
       loading: !this.data.calendar,
-      refreshing: false,
+      refreshing: refresh,
       imageLoading: !this.data.imagePath,
       errorMessage: "",
     });
@@ -98,6 +99,7 @@ Page({
         imagePath,
       });
       if (refresh) haptic("medium");
+      return true;
     } catch (error) {
       if (error instanceof ApiClientError) {
         const details = error.details as
@@ -113,12 +115,18 @@ Page({
         }
       }
       this.setData({ errorMessage: getErrorMessage(error, "校历加载失败。") });
+      return false;
     } finally {
       this.setData({ loading: false, refreshing: false, imageLoading: false });
     }
   },
-  onRefresh() {
-    void this.loadCalendar(this.data.academicYear || undefined, true);
+  async onRefresh() {
+    if (this.data.refreshing) return;
+    const succeeded = await this.loadCalendar(
+      this.data.academicYear || undefined,
+      true,
+    );
+    if (succeeded) showRefreshConfirmation(this);
   },
   previewImage() {
     if (!this.data.imagePath) return;

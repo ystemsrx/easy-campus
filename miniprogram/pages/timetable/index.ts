@@ -57,6 +57,7 @@ import { formatScore } from "../../utils/format";
 import { haptic } from "../../utils/haptics";
 import { preloadTimetableThemeAssets } from "../../utils/icon-preload";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   shortAcademicSemesterLabel,
   timetableSemesterMenuLabel,
@@ -1264,9 +1265,6 @@ let weekMenuOpenTimer: ReturnType<typeof setTimeout> | undefined;
 let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let menuOpenTimer: ReturnType<typeof setTimeout> | undefined;
 let menuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
-let refreshToastShowTimer: ReturnType<typeof setTimeout> | undefined;
-let refreshToastHideTimer: ReturnType<typeof setTimeout> | undefined;
-let refreshToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
 let companionGazeTimer: ReturnType<typeof setTimeout> | undefined;
 let clawdSceneTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1549,21 +1547,6 @@ function timetableVisualPreferencesPatch(
 
 const INITIAL_TIMETABLE_VISUAL_PREFERENCES = timetableVisualPreferencesPatch();
 
-function clearRefreshToastTimers(): void {
-  if (refreshToastShowTimer !== undefined) {
-    clearTimeout(refreshToastShowTimer);
-    refreshToastShowTimer = undefined;
-  }
-  if (refreshToastHideTimer !== undefined) {
-    clearTimeout(refreshToastHideTimer);
-    refreshToastHideTimer = undefined;
-  }
-  if (refreshToastUnmountTimer !== undefined) {
-    clearTimeout(refreshToastUnmountTimer);
-    refreshToastUnmountTimer = undefined;
-  }
-}
-
 function clearTimetableMenuTimers(): void {
   if (menuOpenTimer !== undefined) {
     clearTimeout(menuOpenTimer);
@@ -1615,8 +1598,6 @@ Page({
     weekMenuOpen: false,
     weekScrollIntoView: "",
     weekMenuListHeight: 114,
-    refreshToastMounted: false,
-    refreshToastVisible: false,
     menuHeight: MAIN_MENU_HEIGHT,
     semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
@@ -1658,7 +1639,6 @@ Page({
       weekMenuUnmountTimer = undefined;
     }
     clearTimetableMenuTimers();
-    clearRefreshToastTimers();
     clearClawdSceneTimer();
     clawdSequenceRevision += 1;
     resetClawdSceneScheduler();
@@ -1709,7 +1689,6 @@ Page({
       weekMenuUnmountTimer = undefined;
     }
     clearTimetableMenuTimers();
-    clearRefreshToastTimers();
     clearClawdSceneTimer();
     clawdSequenceRevision += 1;
     resetClawdSceneScheduler();
@@ -2363,31 +2342,6 @@ Page({
       this.setWeek(week, true);
     }
   },
-  showRefreshConfirmation() {
-    if (!pageAlive) return;
-    clearRefreshToastTimers();
-    this.setData(
-      { refreshToastMounted: true, refreshToastVisible: false },
-      () => {
-        refreshToastShowTimer = setTimeout(() => {
-          refreshToastShowTimer = undefined;
-          if (!pageAlive) return;
-          this.setData({ refreshToastVisible: true });
-          refreshToastHideTimer = setTimeout(() => {
-            refreshToastHideTimer = undefined;
-            if (!pageAlive) return;
-            this.setData({ refreshToastVisible: false });
-            refreshToastUnmountTimer = setTimeout(() => {
-              refreshToastUnmountTimer = undefined;
-              if (pageAlive && !this.data.refreshToastVisible) {
-                this.setData({ refreshToastMounted: false });
-              }
-            }, 320);
-          }, 3000);
-        }, 16);
-      },
-    );
-  },
   async onRefresh() {
     this.closeTimetableMenu();
     haptic("light");
@@ -2405,7 +2359,7 @@ Page({
       activeAccount === requestAccount &&
       this.data.semesterId === requestSemesterId
     ) {
-      this.showRefreshConfirmation();
+      showRefreshConfirmation(this);
     }
   },
   goBack() {

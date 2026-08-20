@@ -55,4 +55,5 @@
   </scroll-view>
 
   <grade-sort-filter id="grade-sort-filter" value="{{sortMode}}" theme="{{theme}}" bindchange="selectSortMode"></grade-sort-filter>
+  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

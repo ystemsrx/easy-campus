@@ -1083,6 +1083,17 @@ const timetablePageStyles = fs.readFileSync(
   path.join(timetablePageRoot, "index.wxss"),
   "utf8",
 );
+const refreshConfirmationScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "refresh-confirmation",
+    "refresh-confirmation.ts",
+  ),
+  "utf8",
+);
 const timetableThemeSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "data", "timetable-theme.ts"),
   "utf8",
@@ -3237,8 +3248,11 @@ assert(
   "课程详情必须直接展开，并从课程卡片打开复用的当前课程通过率统计卡片",
 );
 assert(
-  timetablePageTemplate.includes("refresh-confirmation--visible") &&
-    /},\s*3000\);/.test(timetablePageScript) &&
+  timetablePageTemplate.includes(
+    '<refresh-confirmation id="refresh-confirmation"',
+  ) &&
+    /},\s*3000\)/.test(refreshConfirmationScript) &&
+    timetablePageScript.includes("showRefreshConfirmation(this)") &&
     timetablePageScript.includes("const succeeded = await this.loadTimetable"),
   "手动刷新成功后必须显示三秒的非阻塞完成反馈",
 );

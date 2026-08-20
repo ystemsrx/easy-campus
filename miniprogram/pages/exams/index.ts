@@ -23,6 +23,7 @@ import {
 } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated } from "../../utils/navigation";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   examBatchLabel,
   examCountdown,
@@ -204,13 +205,13 @@ Page({
         : "暂无可用学期",
     });
   },
-  async loadExams(reset: boolean, refresh: boolean) {
+  async loadExams(reset: boolean, refresh: boolean): Promise<boolean> {
     if (
       (this.data.loading || this.data.loadingMore) &&
       this.data.loaded &&
       !refresh
     ) {
-      return;
+      return false;
     }
     const page = reset ? 1 : this.data.page + 1;
     const sequence = ++examsSequence;
@@ -229,7 +230,7 @@ Page({
     let shouldRefreshAfterward = false;
     try {
       const result = await getExams(query);
-      if (sequence !== examsSequence) return;
+      if (sequence !== examsSequence) return false;
       const session = getSession();
       const account = session?.user.account || "";
       const storageSemester = query.semester || "default";
@@ -269,6 +270,7 @@ Page({
         !refresh &&
         Boolean(session?.signedInAt) &&
         isExamAutomaticRefreshDue(current?.lastAutomaticRefreshAt || 0);
+      return true;
     } catch (error) {
       if (sequence === examsSequence) {
         const message = getErrorMessage(error, "考试信息加载失败。");
@@ -278,6 +280,7 @@ Page({
           this.setData({ errorMessage: message });
         }
       }
+      return false;
     } finally {
       if (sequence === examsSequence) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
@@ -294,10 +297,10 @@ Page({
       }
     }
   },
-  onRefresh() {
+  async onRefresh() {
     if (this.data.refreshing) return;
     haptic("medium");
-    void this.loadExams(true, true);
+    if (await this.loadExams(true, true)) showRefreshConfirmation(this);
   },
   loadMore() {
     if (this.data.page < this.data.totalPages) {

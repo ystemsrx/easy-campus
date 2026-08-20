@@ -50,8 +50,7 @@ const stableDataConsumers = [
 ];
 for (const [label, pageSource] of stableDataConsumers) {
   assert(
-    pageSource.includes("FIFTEEN_DAYS_MS") &&
-      !pageSource.includes("WEEK_MS"),
+    pageSource.includes("FIFTEEN_DAYS_MS") && !pageSource.includes("WEEK_MS"),
     `${label}必须统一使用 15 天成绩/课表刷新阈值`,
   );
 }
@@ -68,6 +67,34 @@ assert(
     inboxSource.includes("this.loadMessages(true, true, true)") &&
     inboxSource.includes("this.loadNotices(true, true, true)"),
   "消息和通知后台回读不得伪装成手动刷新，用户主动刷新仍必须绕过缓存间隔",
+);
+
+const manualRefreshPages = [
+  "calendar",
+  "electricity",
+  "exams",
+  "grades",
+  "inbox",
+  "timetable",
+];
+for (const page of manualRefreshPages) {
+  assert(
+    source("pages", page, "index.wxml").includes(
+      '<refresh-confirmation id="refresh-confirmation"',
+    ) &&
+      source("pages", page, "index.ts").includes(
+        "showRefreshConfirmation(this)",
+      ),
+    `${page} 手动刷新成功后必须显示统一的完成反馈`,
+  );
+}
+
+const calendarTemplate = source("pages", "calendar", "index.wxml");
+assert(
+  !calendarTemplate.includes("refresher-") &&
+    !calendarTemplate.includes("bindrefresherrefresh") &&
+    calendarTemplate.includes('bindtap="onRefresh"'),
+  "教学日历必须使用明确的刷新按钮，避免 Skyline 报 Cannot find refresher",
 );
 
 console.log("Refresh policy checks passed.");
