@@ -1,9 +1,13 @@
 import { getApiUrl } from "../config/index";
 import {
+  captureSessionLease,
   clearSession,
+  clearSessionIfCurrent,
   getSession,
+  isSessionLeaseCurrent,
   queueAccountDeactivatedNotice,
   queueSessionInvalidNotice,
+  type SessionLease,
 } from "../store/session";
 import type {
   ApiErrorPayload,
@@ -40,6 +44,7 @@ const CREDENTIAL_INVALIDATION_CODES = new Set([
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
+const STALE_SESSION_ERROR_CODE = "STALE_SESSION";
 export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";
 let redirectingToLogin = false;
 
@@ -86,16 +91,15 @@ function showRateLimitToast(): void {
   wx.showToast({ title: "访问速度太快了", icon: "none", duration: 3000 });
 }
 
-function redirectAfterAuthFailure(credentialInvalid = false): void {
-  if (redirectingToLogin) {
-    if (credentialInvalid) {
-      wx.hideToast();
-      queueSessionInvalidNotice();
-    }
+function redirectAfterAuthFailure(
+  credentialInvalid = false,
+  lease?: SessionLease | null,
+): void {
+  if (lease === undefined) {
+    clearSession();
+  } else if (!clearSessionIfCurrent(lease)) {
     return;
   }
-  redirectingToLogin = true;
-  clearSession();
   if (credentialInvalid) {
     queueSessionInvalidNotice();
   } else {
@@ -105,22 +109,28 @@ function redirectAfterAuthFailure(credentialInvalid = false): void {
       duration: 2200,
     });
   }
+  if (redirectingToLogin) return;
+  redirectingToLogin = true;
   setTimeout(
     () => {
-      goToLogin();
+      if (!getSession()) goToLogin();
       redirectingToLogin = false;
     },
     credentialInvalid ? 0 : 320,
   );
 }
 
-function redirectAfterAccountDeactivation(): void {
-  clearSession();
+function redirectAfterAccountDeactivation(lease?: SessionLease | null): void {
+  if (lease !== undefined) {
+    if (!clearSessionIfCurrent(lease)) return;
+  } else {
+    clearSession();
+  }
   queueAccountDeactivatedNotice();
   if (redirectingToLogin) return;
   redirectingToLogin = true;
   setTimeout(() => {
-    goToLogin();
+    if (!getSession()) goToLogin();
     redirectingToLogin = false;
   }, 0);
 }
@@ -156,13 +166,34 @@ function toApiError(data: unknown, statusCode: number): ApiClientError {
   });
 }
 
+function staleSessionError(): ApiClientError {
+  return new ApiClientError({
+    code: STALE_SESSION_ERROR_CODE,
+    message: "登录账号已经切换。",
+    statusCode: 0,
+  });
+}
+
+interface RequestContext {
+  authenticated: boolean;
+  lease: SessionLease | null;
+}
+
+function createRequestContext(options: RequestOptions): RequestContext {
+  const authenticated = options.authenticated !== false;
+  return {
+    authenticated,
+    lease: authenticated ? captureSessionLease() : null,
+  };
+}
+
 function requestOnce<T>(
   path: string,
   options: RequestOptions,
+  context: RequestContext,
 ): Promise<SuccessEnvelope<T>> {
-  const authenticated = options.authenticated !== false;
-  const session = getSession();
-  if (authenticated && !session) {
+  const { authenticated, lease } = context;
+  if (authenticated && !lease) {
     const error = new ApiClientError({
       code: "INVALID_TOKEN",
       message: "请先登录。",
@@ -183,9 +214,13 @@ function requestOnce<T>(
         ...(options.method && options.method !== "GET"
           ? { "Content-Type": "application/json" }
           : {}),
-        ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
+        ...(lease ? { Authorization: `Bearer ${lease.token}` } : {}),
       },
       success: (response) => {
+        if (authenticated && !isSessionLeaseCurrent(lease)) {
+          reject(staleSessionError());
+          return;
+        }
         if (response.statusCode >= 200 && response.statusCode < 300) {
           if (isSuccessEnvelope<T>(response.data)) {
             resolve(response.data);
@@ -197,7 +232,7 @@ function requestOnce<T>(
 
         const error = toApiError(response.data, response.statusCode);
         if (authenticated && error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
-          redirectAfterAccountDeactivation();
+          redirectAfterAccountDeactivation(lease);
         }
         if (
           authenticated &&
@@ -206,11 +241,18 @@ function requestOnce<T>(
         ) {
           redirectAfterAuthFailure(
             CREDENTIAL_INVALIDATION_CODES.has(error.code),
+            lease,
           );
         }
         reject(error);
       },
-      fail: () => reject(toApiError(undefined, 0)),
+      fail: () => {
+        if (authenticated && !isSessionLeaseCurrent(lease)) {
+          reject(staleSessionError());
+          return;
+        }
+        reject(toApiError(undefined, 0));
+      },
     });
   });
 }
@@ -219,8 +261,9 @@ async function requestEnvelope<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<SuccessEnvelope<T>> {
+  const context = createRequestContext(options);
   try {
-    return await requestOnce<T>(path, options);
+    return await requestOnce<T>(path, options, context);
   } catch (error) {
     const apiError = error as ApiClientError;
     if (isRateLimitError(apiError)) {
@@ -237,22 +280,33 @@ async function requestEnvelope<T>(
     }
 
     await wait(360);
-    return requestOnce<T>(path, { ...options, retry: false });
+    if (context.authenticated && !isSessionLeaseCurrent(context.lease)) {
+      throw staleSessionError();
+    }
+    return requestOnce<T>(path, { ...options, retry: false }, context);
   }
 }
 
-export function handleAuthenticationFailure(error: ApiClientError): void {
+export function handleAuthenticationFailure(
+  error: ApiClientError,
+  lease?: SessionLease | null,
+): void {
   if (error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
-    redirectAfterAccountDeactivation();
+    redirectAfterAccountDeactivation(lease);
     return;
   }
   if (error.statusCode === 401 || AUTH_ERROR_CODES.has(error.code)) {
-    redirectAfterAuthFailure(CREDENTIAL_INVALIDATION_CODES.has(error.code));
+    redirectAfterAuthFailure(
+      CREDENTIAL_INVALIDATION_CODES.has(error.code),
+      lease,
+    );
   }
 }
 
-export function handleCredentialInvalidation(): void {
-  redirectAfterAuthFailure(true);
+export function handleCredentialInvalidation(
+  lease?: SessionLease | null,
+): void {
+  redirectAfterAuthFailure(true, lease);
 }
 
 export async function apiRequest<T>(

@@ -4,7 +4,16 @@ const path = require("node:path");
 const projectRoot = path.resolve(__dirname, "..");
 const miniprogramRoot = path.join(projectRoot, "miniprogram");
 const iconRoot = path.join(miniprogramRoot, "assets", "icons");
-const tones = ["ink", "muted", "white", "coral", "amber", "sage", "rose", "danger"];
+const tones = [
+  "ink",
+  "muted",
+  "white",
+  "coral",
+  "amber",
+  "sage",
+  "rose",
+  "danger",
+];
 const usedNames = new Set(["circle-help", "eye", "eye-off"]);
 const failures = [];
 
@@ -52,7 +61,9 @@ if (!fs.existsSync(iconRoot)) {
       }
       const source = fs.readFileSync(fullPath, "utf8");
       if (!source.includes("<svg") || source.includes("currentColor")) {
-        failures.push(`${relativePath}: SVG 未固定描边色，无法作为 image 稳定渲染`);
+        failures.push(
+          `${relativePath}: SVG 未固定描边色，无法作为 image 稳定渲染`,
+        );
       }
     }
   }
@@ -61,7 +72,13 @@ if (!fs.existsSync(iconRoot)) {
 const projectConfig = JSON.parse(
   fs.readFileSync(path.join(projectRoot, "project.config.json"), "utf8"),
 );
-if (projectConfig.setting?.ignoreUploadUnusedFiles !== false) {
+const explicitlyIncludesIcons = projectConfig.packOptions?.include?.some(
+  (entry) => entry.type === "folder" && entry.value === "assets/icons",
+);
+if (
+  projectConfig.setting?.ignoreUploadUnusedFiles !== false &&
+  !explicitlyIncludesIcons
+) {
   failures.push("project.config.json: 必须打包动态引用的 Lucide 图标资源");
 }
 

@@ -171,8 +171,8 @@
           </view>
         </open-container>
         <view class="side-actions">
-          <view class="side-action card pressable" data-route="/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
-          <view class="side-action card pressable" data-route="/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
+          <view class="side-action card pressable" data-route="/features/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
+          <view class="side-action card pressable" data-route="/features/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
         </view>
       </view>
 

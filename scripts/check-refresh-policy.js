@@ -44,9 +44,9 @@ assert(
 
 const stableDataConsumers = [
   ["首页", source("pages", "home", "index.ts")],
-  ["成绩页", source("pages", "grades", "index.ts")],
+  ["成绩页", source("features", "pages", "grades", "index.ts")],
   ["日程页", source("pages", "schedule", "index.ts")],
-  ["课表页", source("pages", "timetable", "index.ts")],
+  ["课表页", source("features", "pages", "timetable", "index.ts")],
 ];
 for (const [label, pageSource] of stableDataConsumers) {
   assert(
@@ -56,7 +56,7 @@ for (const [label, pageSource] of stableDataConsumers) {
 }
 
 const homeSource = stableDataConsumers[0][1];
-const inboxSource = source("pages", "inbox", "index.ts");
+const inboxSource = source("features", "pages", "inbox", "index.ts");
 assert(
   homeSource.includes("refresh: refreshTeaching") &&
     homeSource.includes("refresh: refreshStable") &&
@@ -70,26 +70,26 @@ assert(
 );
 
 const manualRefreshPages = [
-  "calendar",
-  "electricity",
-  "exams",
-  "grades",
-  "inbox",
-  "timetable",
+  ["calendar", "features", "pages", "calendar"],
+  ["electricity", "features", "pages", "electricity"],
+  ["exams", "features", "pages", "exams"],
+  ["grades", "features", "pages", "grades"],
+  ["inbox", "features", "pages", "inbox"],
+  ["timetable", "features", "pages", "timetable"],
 ];
-for (const page of manualRefreshPages) {
+for (const [page, ...pageSegments] of manualRefreshPages) {
   assert(
-    source("pages", page, "index.wxml").includes(
+    source(...pageSegments, "index.wxml").includes(
       '<refresh-confirmation id="refresh-confirmation"',
     ) &&
-      source("pages", page, "index.ts").includes(
+      source(...pageSegments, "index.ts").includes(
         "showRefreshConfirmation(this)",
       ),
     `${page} 手动刷新成功后必须显示统一的完成反馈`,
   );
 }
 
-const calendarTemplate = source("pages", "calendar", "index.wxml");
+const calendarTemplate = source("features", "pages", "calendar", "index.wxml");
 assert(
   !calendarTemplate.includes("refresher-") &&
     !calendarTemplate.includes("bindrefresherrefresh") &&

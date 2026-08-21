@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "../config/index";
-import { getSession } from "../store/session";
+import { captureSessionLease, isSessionLeaseCurrent } from "../store/session";
 import type {
   CalendarData,
   ExamsData,
@@ -147,8 +147,8 @@ export function downloadCalendarImage(
   academicYear: number,
   refresh = false,
 ): Promise<string> {
-  const session = getSession();
-  if (!session) {
+  const lease = captureSessionLease();
+  if (!lease) {
     return Promise.reject(
       new ApiClientError({
         code: "INVALID_TOKEN",
@@ -162,9 +162,19 @@ export function downloadCalendarImage(
   return new Promise((resolve, reject) => {
     wx.downloadFile({
       url: `${getApiBaseUrl()}/teaching/calendar/image${query}`,
-      header: { Authorization: `Bearer ${session.token}` },
+      header: { Authorization: `Bearer ${lease.token}` },
       timeout: 60000,
       success: (response) => {
+        if (!isSessionLeaseCurrent(lease)) {
+          reject(
+            new ApiClientError({
+              code: "STALE_SESSION",
+              message: "登录账号已经切换。",
+              statusCode: 0,
+            }),
+          );
+          return;
+        }
         if (response.statusCode === 200) {
           resolve(response.tempFilePath);
           return;
@@ -178,11 +188,21 @@ export function downloadCalendarImage(
           statusCode: response.statusCode,
         });
         if (response.statusCode === 401) {
-          handleAuthenticationFailure(error);
+          handleAuthenticationFailure(error, lease);
         }
         reject(error);
       },
       fail: () => {
+        if (!isSessionLeaseCurrent(lease)) {
+          reject(
+            new ApiClientError({
+              code: "STALE_SESSION",
+              message: "登录账号已经切换。",
+              statusCode: 0,
+            }),
+          );
+          return;
+        }
         reject(
           new ApiClientError({
             code: "NETWORK_ERROR",

@@ -48,12 +48,12 @@ const requiredTitleColors = [
     dark: /\.sheet-layer--dark \.sheet-title\s*\{[^}]*color:\s*#f7f3e9;/,
   },
   {
-    file: "pages/pass-rates/index.wxss",
+    file: "features/pages/pass-rates/index.wxss",
     light: /\.pass-picker-title\s*\{[^}]*color:\s*#16161a;/,
     dark: /\.theme-dark \.pass-picker-title\s*\{[^}]*color:\s*#f7f3e9;/,
   },
   {
-    file: "pages/rooms/index.wxss",
+    file: "features/pages/rooms/index.wxss",
     light: /\.period-picker-title\s*\{[^}]*color:\s*#16161a;/,
     dark: /\.theme-dark \.period-picker-title\s*\{[^}]*color:\s*#f7f3e9;/,
   },

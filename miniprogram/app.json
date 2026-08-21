@@ -1,20 +1,24 @@
 {
-  "pages": [
-    "pages/home/index",
-    "pages/schedule/index",
-    "pages/inbox/index",
-    "pages/profile/index",
-    "pages/login/index",
-    "pages/pet-setup/index",
-    "pages/grades/index",
-    "pages/pass-rates/index",
-    "pages/grade-detail/index",
-    "pages/rooms/index",
-    "pages/exams/index",
-    "pages/calendar/index",
-    "pages/electricity/index",
-    "pages/timetable/index",
-    "pages/browser/index"
+  "pages": ["pages/home/index", "pages/schedule/index", "pages/profile/index"],
+  "subPackages": [
+    {
+      "name": "features",
+      "root": "features",
+      "pages": [
+        "pages/login/index",
+        "pages/pet-setup/index",
+        "pages/inbox/index",
+        "pages/grades/index",
+        "pages/pass-rates/index",
+        "pages/grade-detail/index",
+        "pages/rooms/index",
+        "pages/exams/index",
+        "pages/calendar/index",
+        "pages/electricity/index",
+        "pages/timetable/index",
+        "pages/browser/index"
+      ]
+    }
   ],
   "usingComponents": {
     "lucide-icon": "/components/lucide-icon/lucide-icon",

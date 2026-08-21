@@ -1,11 +1,18 @@
-import { ApiClientError, getErrorMessage } from "../../services/request";
-import { downloadCalendarImage, getCalendar } from "../../services/teaching";
-import { getCachedCalendarImage } from "../../store/calendar";
-import type { CalendarAcademicYearOption, CalendarData } from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import { ApiClientError, getErrorMessage } from "../../../services/request";
+import { downloadCalendarImage, getCalendar } from "../../../services/teaching";
+import { getCachedCalendarImage } from "../../../store/calendar";
+import type {
+  CalendarAcademicYearOption,
+  CalendarData,
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+import {
+  captureSessionLease,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 
 interface YearOption {
   value: number;
@@ -78,6 +85,8 @@ Page({
     );
   },
   async loadCalendar(academicYear?: number, refresh = false): Promise<boolean> {
+    const lease = captureSessionLease();
+    if (!lease) return false;
     this.setData({
       loading: !this.data.calendar,
       refreshing: refresh,
@@ -86,7 +95,9 @@ Page({
     });
     try {
       const calendar = await getCalendar(academicYear, refresh);
+      if (!isSessionLeaseCurrent(lease)) return false;
       const imagePath = await this.getCachedImage(calendar, refresh);
+      if (!isSessionLeaseCurrent(lease)) return false;
       this.setData({
         calendar,
         academicYear: calendar.startYear,
@@ -101,6 +112,7 @@ Page({
       if (refresh) haptic("medium");
       return true;
     } catch (error) {
+      if (!isSessionLeaseCurrent(lease)) return false;
       if (error instanceof ApiClientError) {
         const details = error.details as
           { availableCalendars?: CalendarAcademicYearOption[] } | undefined;
@@ -117,7 +129,13 @@ Page({
       this.setData({ errorMessage: getErrorMessage(error, "校历加载失败。") });
       return false;
     } finally {
-      this.setData({ loading: false, refreshing: false, imageLoading: false });
+      if (isSessionLeaseCurrent(lease)) {
+        this.setData({
+          loading: false,
+          refreshing: false,
+          imageLoading: false,
+        });
+      }
     }
   },
   async onRefresh() {

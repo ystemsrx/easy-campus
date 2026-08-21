@@ -1,7 +1,13 @@
 import { prewarmScheduleFirstScreen } from "../data/schedule-render";
 import { shouldUseServerSnapshot, timestampValue } from "../store/cache-policy";
 import { loadScheduleData, storeScheduleData } from "../store/schedule";
-import { getSession } from "../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
+} from "../store/session";
 import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
@@ -23,6 +29,7 @@ import {
 interface PrimaryTabPreloadState {
   key: string;
   account: string;
+  lease: SessionLease;
   timetable: TimetableData | null;
   timetableStoredAt: number;
   schedule: LocalScheduleData;
@@ -40,11 +47,13 @@ function preloadKey(session: Session): string {
   } catch {
     // 单元检查或应用初始化早期没有 App 实例时，登录时间仍可隔离账号会话。
   }
-  return `${session.user.account}:${session.signedInAt}:${foregroundEntryId}`;
+  const lease = captureSessionLease(session);
+  if (!lease) return "";
+  return `${sessionLeaseKey(lease)}:${foregroundEntryId}`;
 }
 
 function isActive(state: PrimaryTabPreloadState): boolean {
-  return activeState === state && getSession()?.user.account === state.account;
+  return activeState === state && isSessionLeaseCurrent(state.lease);
 }
 
 function warmSchedule(
@@ -118,6 +127,10 @@ async function preloadSchedule(
 }
 
 function startPreload(session: Session): PrimaryTabPreloadState {
+  const lease = captureSessionLease(session);
+  if (!lease) {
+    throw new Error("无法为无效登录创建预加载任务。");
+  }
   const account = session.user.account;
   const timetableSnapshot = loadTimetableSnapshot(account);
   const timetable = timetableSnapshot?.data || null;
@@ -125,6 +138,7 @@ function startPreload(session: Session): PrimaryTabPreloadState {
   const state: PrimaryTabPreloadState = {
     key: preloadKey(session),
     account,
+    lease,
     timetable,
     timetableStoredAt: timetableSnapshot?.localStoredAt || 0,
     schedule,

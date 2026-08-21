@@ -1,5 +1,10 @@
 import { loadExamsSnapshot, saveExamsSnapshot } from "../store/exams";
-import { getSession } from "../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  sessionLeaseKey,
+} from "../store/session";
 import type { Session } from "../types/api";
 import { getExams } from "./teaching";
 
@@ -32,23 +37,21 @@ export function refreshExamsOnForeground(
   session: Session | null = getSession(),
 ): Promise<ReturnType<typeof loadExamsSnapshot>> {
   if (!session) return Promise.resolve(null);
+  const lease = captureSessionLease(session);
+  if (!lease) return Promise.resolve(null);
   const account = session.user.account;
   const current = loadExamsSnapshot(account);
   if (!isExamAutomaticRefreshDue(current?.lastAutomaticRefreshAt || 0)) {
     return Promise.resolve(current);
   }
 
-  const key = `${account}:${session.signedInAt}`;
+  const key = sessionLeaseKey(lease);
   const active = examRefreshes.get(key);
   if (active) return active;
 
   const pending = getExams({ page: 1, pageSize: EXAM_PAGE_SIZE, refresh: true })
     .then((result) => {
-      const latestSession = getSession();
-      if (
-        latestSession?.user.account !== account ||
-        latestSession.signedInAt !== session.signedInAt
-      ) {
+      if (!isSessionLeaseCurrent(lease)) {
         return null;
       }
       return saveExamsSnapshot(account, result.data, {
@@ -56,7 +59,9 @@ export function refreshExamsOnForeground(
         lastAutomaticRefreshAt: Date.now(),
       });
     })
-    .catch(() => loadExamsSnapshot(account))
+    .catch(() =>
+      isSessionLeaseCurrent(lease) ? loadExamsSnapshot(account) : null,
+    )
     .finally(() => examRefreshes.delete(key));
   examRefreshes.set(key, pending);
   return pending;

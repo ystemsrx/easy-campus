@@ -1,11 +1,11 @@
-import type { GradeCourse } from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { academicTermLabel } from "../../utils/date";
-import { formatCredits, formatScore, scoreTone } from "../../utils/format";
+import type { GradeCourse } from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { academicTermLabel } from "../../../utils/date";
+import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
   gradeComponentWidths,
   isMakeupOrDeferredGrade,
-} from "../../utils/grades";
+} from "../../../utils/grades";
 
 interface ComponentView {
   name: string;

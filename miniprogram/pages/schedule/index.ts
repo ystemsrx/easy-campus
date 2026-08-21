@@ -21,7 +21,12 @@ import {
   shouldUseServerSnapshot,
 } from "../../store/cache-policy";
 import { loadScheduleData, saveScheduleData } from "../../store/schedule";
-import { getSession } from "../../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  type SessionLease,
+} from "../../store/session";
 import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
@@ -34,8 +39,8 @@ import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 
 let activeTimetable: TimetableData | null = null;
 let activeAccount = "";
-let timetableRequestInFlight = false;
-let scheduleSyncInFlight = false;
+let timetableRequestLease: SessionLease | null = null;
+let scheduleSyncLease: SessionLease | null = null;
 let skipNextScheduleRebuild = false;
 let activeSchedulePrewarmRevision = 0;
 let activeTimetableStoredAt = 0;
@@ -140,20 +145,30 @@ Page({
     return true;
   },
   async loadTimetable() {
-    if (timetableRequestInFlight) return;
-    timetableRequestInFlight = true;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    if (timetableRequestLease && isSessionLeaseCurrent(timetableRequestLease)) {
+      return;
+    }
+    timetableRequestLease = lease;
     let shouldRefreshAfterward = false;
     try {
       const result = await getPreloadedTimetable();
-      if (!result) return;
-      const local = loadTimetableSnapshot(activeAccount);
+      if (
+        !result ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
+        return;
+      }
+      const local = loadTimetableSnapshot(lease.account);
       if (shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
-        saveTimetableSnapshot(activeAccount, result.data, {
+        saveTimetableSnapshot(lease.account, result.data, {
           serverFetchedAt: result.meta.fetchedAt,
         });
       }
       this.applyPrewarmedSchedule();
-      const current = loadTimetableSnapshot(activeAccount);
+      const current = loadTimetableSnapshot(lease.account);
       const storedAt = current?.localStoredAt || 0;
       if (storedAt !== activeTimetableStoredAt) {
         activeTimetable = current?.data || result.data;
@@ -162,23 +177,34 @@ Page({
       }
       shouldRefreshAfterward =
         isCacheStale(current, FIFTEEN_DAYS_MS) &&
-        claimAutomaticRefresh("timetable", activeAccount);
+        claimAutomaticRefresh("timetable", lease.account);
     } catch {
       // 保留本地课表与用户日程，不用加载态打断当前页面。
     } finally {
-      timetableRequestInFlight = false;
-      if (shouldRefreshAfterward) {
-        setTimeout(() => void this.refreshTimetable(), 0);
+      if (timetableRequestLease === lease) timetableRequestLease = null;
+      if (shouldRefreshAfterward && isSessionLeaseCurrent(lease)) {
+        setTimeout(() => {
+          if (isSessionLeaseCurrent(lease) && activeAccount === lease.account) {
+            void this.refreshTimetable();
+          }
+        }, 0);
       }
     }
   },
   async refreshTimetable() {
-    if (timetableRequestInFlight) return;
-    timetableRequestInFlight = true;
+    const lease = captureSessionLease();
+    if (!lease || activeAccount !== lease.account) return;
+    if (timetableRequestLease && isSessionLeaseCurrent(timetableRequestLease)) {
+      return;
+    }
+    timetableRequestLease = lease;
     try {
       const result = await getTimetable({ refresh: true });
+      if (!isSessionLeaseCurrent(lease) || activeAccount !== lease.account) {
+        return;
+      }
       activeTimetable = result.data;
-      const snapshot = saveTimetableSnapshot(activeAccount, result.data, {
+      const snapshot = saveTimetableSnapshot(lease.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
       });
       activeTimetableStoredAt = snapshot?.localStoredAt || Date.now();
@@ -186,16 +212,21 @@ Page({
     } catch {
       // 周期刷新失败时继续使用旧课表。
     } finally {
-      timetableRequestInFlight = false;
+      if (timetableRequestLease === lease) timetableRequestLease = null;
     }
   },
   async syncSchedule() {
-    if (scheduleSyncInFlight || !activeAccount) return;
-    scheduleSyncInFlight = true;
+    const lease = captureSessionLease();
+    if (!lease || activeAccount !== lease.account) return;
+    if (scheduleSyncLease && isSessionLeaseCurrent(scheduleSyncLease)) return;
+    scheduleSyncLease = lease;
     try {
       await getPreloadedSchedule();
+      if (!isSessionLeaseCurrent(lease) || activeAccount !== lease.account) {
+        return;
+      }
       if (!this.applyPrewarmedSchedule()) {
-        const updatedAt = loadScheduleData(activeAccount).clientUpdatedAt;
+        const updatedAt = loadScheduleData(lease.account).clientUpdatedAt;
         if (updatedAt !== activeScheduleUpdatedAt) {
           this.rebuildWeek();
         }
@@ -203,7 +234,7 @@ Page({
     } catch {
       // 日程以本地状态为准，服务端暂不可用时等待下次进入再同步。
     } finally {
-      scheduleSyncInFlight = false;
+      if (scheduleSyncLease === lease) scheduleSyncLease = null;
     }
   },
   persistPlans(plans: LocalSchedulePlan[]) {
@@ -248,7 +279,7 @@ Page({
   },
   openTimetable() {
     haptic("light");
-    void navigateTo("/pages/timetable/index?source=schedule");
+    void navigateTo("/features/pages/timetable/index?source=schedule");
   },
   openCreator() {
     haptic("light");

@@ -28,10 +28,12 @@ const preloadedTimetableThemes = new Set<TimetableThemeId>();
 const TIMETABLE_THEME_FIRST_SCREEN_ASSETS: Partial<
   Record<TimetableThemeId, readonly string[]>
 > = {
-  default: ["/assets/images/timetable-theme-default-background.jpg"],
+  default: [
+    "/features/assets/timetable/timetable-theme-default-background.jpg",
+  ],
   clawd: [
-    "/assets/images/timetable-theme-clawd-background.jpg",
-    "/assets/images/timetable-theme-clawd-idle.svg",
+    "/features/assets/timetable/timetable-theme-clawd-background.jpg",
+    "/features/assets/timetable/timetable-theme-clawd-idle.svg",
   ],
 };
 

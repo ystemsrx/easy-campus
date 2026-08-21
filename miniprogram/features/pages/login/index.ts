@@ -1,25 +1,25 @@
-import { MINIPROGRAM_NAME } from "../../config/env";
-import { login } from "../../services/auth";
-import { refreshExamsOnForeground } from "../../services/cache-refresh";
+import { MINIPROGRAM_NAME } from "../../../config/env";
+import { cancelPendingLogin, login } from "../../../services/auth";
+import { refreshExamsOnForeground } from "../../../services/cache-refresh";
 import {
   getPreloadedCurrentUser,
   preloadPrimaryTabs,
-} from "../../services/primary-tab-preload";
+} from "../../../services/primary-tab-preload";
 import {
   ACCOUNT_DEACTIVATED_MESSAGE,
   getErrorMessage,
-} from "../../services/request";
-import { loadPreferences } from "../../store/preferences";
+} from "../../../services/request";
+import { loadPreferences } from "../../../store/preferences";
 import {
   consumeAccountDeactivatedNotice,
   consumeSessionInvalidNotice,
   isAuthenticated,
-} from "../../store/session";
+} from "../../../store/session";
 import {
   resolveAppearance,
   syncWindowBackground,
-} from "../../utils/appearance";
-import { haptic } from "../../utils/haptics";
+} from "../../../utils/appearance";
+import { haptic } from "../../../utils/haptics";
 import {
   CRABWALKING_LEG_MS,
   LAPTOP_DURATION_MS,
@@ -36,12 +36,12 @@ type MascotScheme = "laptop" | "lurking";
 const INITIAL_LOGIN_APPEARANCE = resolveAppearance(loadPreferences());
 
 const MASCOT_SOURCES: Record<MascotName, string> = {
-  laptop: "/assets/login/laptop.gif",
-  magnifier: "/assets/login/magnifier.gif",
-  lurking: "/assets/login/lurking.gif",
-  crabwalking: "/assets/login/crabwalking.gif",
-  waving: "/assets/login/waving.gif",
-  dancing: "/assets/login/dancing.gif",
+  laptop: "/features/assets/login/laptop.gif",
+  magnifier: "/features/assets/login/magnifier.gif",
+  lurking: "/features/assets/login/lurking.gif",
+  crabwalking: "/features/assets/login/crabwalking.gif",
+  waving: "/features/assets/login/waving.gif",
+  dancing: "/features/assets/login/dancing.gif",
 };
 
 const ERROR_TOAST_HOLD_MS = 3000;
@@ -131,7 +131,7 @@ function homePageBelowLogin(): PreparedHomePage | null {
   const pages = getCurrentPages() as PreparedHomePage[];
   const current = pages[pages.length - 1];
   const previous = pages[pages.length - 2];
-  return current?.route === "pages/login/index" &&
+  return current?.route === "features/pages/login/index" &&
     previous?.route === "pages/home/index"
     ? previous
     : null;
@@ -254,6 +254,7 @@ Page({
     preloadHomeFramework();
   },
   onUnload() {
+    cancelPendingLogin();
     pageActive = false;
     routingToHome = false;
     currentMascot = "";
@@ -601,6 +602,7 @@ Page({
         this.showErrorToast("暂时无法进入首页，请重试。");
       });
     } catch (error) {
+      if (!pageActive) return;
       haptic("heavy");
       this.setData({ loginScrollAnchor: "" });
       const message = getErrorMessage(

@@ -39,7 +39,14 @@ import {
 import { uploadLocalCompanionPreferences } from "../../services/companion";
 import { loadPreferences } from "../../store/preferences";
 import { loadScheduleData } from "../../store/schedule";
-import { getSession, loadCurrentUser } from "../../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  loadCurrentUser,
+  sessionLeaseKey,
+  type SessionLease,
+} from "../../store/session";
 import {
   cleanupTeachingPreview,
   loadTeachingPreview,
@@ -176,8 +183,9 @@ interface ShortcutCachePatch {
 let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
 let announcementModalTimer: number | undefined;
-let publicationRequestInFlight = false;
+let publicationRequestLease: SessionLease | null = null;
 let lastPublicationRequestAt = 0;
+let lastPublicationRequestSessionKey = "";
 let homeVisible = false;
 let homeReady = false;
 let homeActivationTimer: ReturnType<typeof setTimeout> | undefined;
@@ -186,12 +194,12 @@ let nextPrimaryTabFrameworkPreloadStarted = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
 let automaticPopupEntryKey = "";
-let dashboardRequestInFlight = false;
+let dashboardRequestLease: SessionLease | null = null;
 let dashboardTeachingRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
 let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 let credentialPollTimer: number | undefined;
-let credentialExitInFlight = false;
+let credentialExitLease: SessionLease | null = null;
 let hydratedAccount = "";
 let timetableRouteOpening = false;
 let gradesRouteOpening = false;
@@ -582,7 +590,7 @@ Page({
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
     }
-    credentialExitInFlight = false;
+    credentialExitLease = null;
     lastPublicationRequestAt = 0;
     dashboardTeachingRefreshQueued = false;
     dashboardStableRefreshQueued = false;
@@ -710,6 +718,11 @@ Page({
       this.prepareForAuthenticationRequired(onReady);
       return;
     }
+    const lease = captureSessionLease(session);
+    if (!lease) {
+      this.prepareForAuthenticationRequired(onReady);
+      return;
+    }
     const appearance = resolveAppearance();
     const identity = resolveHomeIdentity(session, loadCurrentUser());
     syncWindowBackground(appearance.theme);
@@ -722,13 +735,18 @@ Page({
         petReducedMotion: appearance.motionClass === "motion-reduced",
       },
       () => {
-        const account = session.user.account;
+        if (!isSessionLeaseCurrent(lease)) return;
+        const account = lease.account;
         this.hydratePet(account);
         this.hydrateCachedDashboard();
         this.hydrateShortcutCaches();
         this.setData({ plans: loadPlanPreviews(account) }, () => {
+          if (!isSessionLeaseCurrent(lease)) return;
           const tabBar = this.getTabBar();
-          const finish = () => wx.nextTick(() => onReady?.());
+          const finish = () =>
+            wx.nextTick(() => {
+              if (isSessionLeaseCurrent(lease)) onReady?.();
+            });
           if (!tabBar) {
             finish();
             return;
@@ -740,7 +758,9 @@ Page({
               motionClass: appearance.motionClass,
               hidden: false,
             },
-            finish,
+            () => {
+              if (isSessionLeaseCurrent(lease)) finish();
+            },
           );
         });
       },
@@ -782,8 +802,11 @@ Page({
     ) as unknown as number;
     void this.loadDashboard(false);
     void this.loadPublicationFeed();
+    const lease = captureSessionLease();
     void refreshExamsOnForeground().then(() => {
-      if (homeVisible) this.hydrateShortcutCaches();
+      if (homeVisible && isSessionLeaseCurrent(lease)) {
+        this.hydrateShortcutCaches();
+      }
     });
     preloadNextPrimaryTabFramework();
   },
@@ -972,6 +995,20 @@ Page({
             cachedGrades.data,
             this.data.motionClass !== "motion-reduced",
           )
+        : changedAccount
+          ? {
+              gradeRingSource: progressRingSource(null),
+              gradeAverageLabel: "—",
+              gradePointAverageLabel: "—",
+              gradeCourseCount: 0,
+            }
+          : {}),
+      ...(changedAccount
+        ? {
+            publications: [],
+            publicationUnreadCount: 0,
+            publicationUnreadLabel: "",
+          }
         : {}),
       loaded:
         messages.length > 0 || notices.length > 0 || Boolean(cachedTimetable),
@@ -1027,31 +1064,47 @@ Page({
     credentialPollTimer = setTimeout(async () => {
       credentialPollTimer = undefined;
       if (!homeVisible) return;
+      const lease = captureSessionLease();
+      if (!lease) return;
       try {
-        this.handleCredentialState(await getCredentialStatus());
+        const credential = await getCredentialStatus();
+        if (homeVisible && isSessionLeaseCurrent(lease)) {
+          this.handleCredentialState(credential);
+        }
       } catch {
         // 普通网络失败不应清除仍然有效的本地会话。
       }
     }, 1800) as unknown as number;
   },
   exitInvalidCredential() {
-    if (credentialExitInFlight) return;
-    credentialExitInFlight = true;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    if (credentialExitLease && isSessionLeaseCurrent(credentialExitLease)) {
+      return;
+    }
+    credentialExitLease = lease;
     this.stopCredentialPoll();
-    handleCredentialInvalidation();
+    handleCredentialInvalidation(lease);
   },
   async loadPublicationFeed() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const sessionKey = sessionLeaseKey(lease);
     const now = Date.now();
     if (
-      publicationRequestInFlight ||
-      now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS
+      (publicationRequestLease &&
+        isSessionLeaseCurrent(publicationRequestLease)) ||
+      (lastPublicationRequestSessionKey === sessionKey &&
+        now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS)
     ) {
       return;
     }
     lastPublicationRequestAt = now;
-    publicationRequestInFlight = true;
+    lastPublicationRequestSessionKey = sessionKey;
+    publicationRequestLease = lease;
     try {
       const feed = await getPublicationFeed();
+      if (!homeVisible || !isSessionLeaseCurrent(lease)) return;
       const expandedIds = new Set(
         this.data.publications
           .filter((item) => item.kind === "notification" && item.expanded)
@@ -1082,7 +1135,7 @@ Page({
     } catch {
       // 平台公告是附加信息。刷新失败时保留当前内容，不打断主页使用。
     } finally {
-      publicationRequestInFlight = false;
+      if (publicationRequestLease === lease) publicationRequestLease = null;
     }
   },
   togglePublicationPanel() {
@@ -1248,6 +1301,8 @@ Page({
     publication: Publication | PublicationPreview,
     automatic: boolean,
   ) {
+    const lease = captureSessionLease();
+    if (!lease) return;
     const preview = publicationPreview(publication, false, this.data.theme);
     this.closePublicationPanel();
     this.setTabBarHidden(true);
@@ -1274,6 +1329,7 @@ Page({
         path: await downloadPublicationMedia(asset),
       })),
     );
+    if (!isSessionLeaseCurrent(lease)) return;
     const mediaUrls: Record<string, string> = {};
     for (const asset of downloaded) {
       if (asset.path) mediaUrls[asset.id] = asset.path;
@@ -1448,14 +1504,16 @@ Page({
     refreshStable = refreshTeaching,
     allowTeachingFollowup = true,
   ) {
-    if (dashboardRequestInFlight) {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    if (dashboardRequestLease && isSessionLeaseCurrent(dashboardRequestLease)) {
       if (refreshTeaching) dashboardTeachingRefreshQueued = true;
       if (includeStableData && refreshStable) {
         dashboardStableRefreshQueued = true;
       }
       return;
     }
-    dashboardRequestInFlight = true;
+    dashboardRequestLease = lease;
 
     this.setData({
       loading: false,
@@ -1464,10 +1522,10 @@ Page({
       dateLabel: formatFriendlyDate(today()),
     });
 
-    const account = getSession()?.user.account || "";
+    const account = lease.account;
     const userRequest = includeStableData
       ? getPreloadedCurrentUser(refreshTeaching).then((user) => {
-          if (user && homeVisible) {
+          if (user && homeVisible && isSessionLeaseCurrent(lease)) {
             this.hydrateIdentity(user);
             this.hydratePet(account);
             const preferences = loadPetPreferences(account);
@@ -1485,7 +1543,9 @@ Page({
     const gradeRequest = includeStableData
       ? getGrades({ page: 1, pageSize: 200, refresh: refreshStable }).then(
           (result) => {
-            this.hydrateServerGrade(account, result, refreshStable);
+            if (isSessionLeaseCurrent(lease)) {
+              this.hydrateServerGrade(account, result, refreshStable);
+            }
             return result;
           },
         )
@@ -1508,6 +1568,15 @@ Page({
         : Promise.resolve(null),
     ]);
 
+    if (!homeVisible || !isSessionLeaseCurrent(lease)) {
+      if (dashboardRequestLease === lease) {
+        dashboardRequestLease = null;
+        dashboardTeachingRefreshQueued = false;
+        dashboardStableRefreshQueued = false;
+      }
+      return;
+    }
+
     const serviceHealthy =
       (includeStableData && userResult.status === "fulfilled") ||
       messageResult.status === "fulfilled" ||
@@ -1525,7 +1594,6 @@ Page({
       this.handleCredentialState(userResult.value.credential);
     }
     if (timetableResult.status === "fulfilled" && timetableResult.value) {
-      const account = getSession()?.user.account || "";
       const local = loadTimetableSnapshot(account);
       if (
         refreshStable ||
@@ -1556,7 +1624,7 @@ Page({
       isCurrentSemesterTimestamp(item.publishedAt, semesterBoundary),
     );
     if (messageResult.status === "fulfilled") {
-      saveTeachingPreview(getSession()?.user.account || "", {
+      saveTeachingPreview(account, {
         messages: messageResult.value.data.items,
       });
       patch.messages = mergeMessagePreviews(
@@ -1566,7 +1634,7 @@ Page({
       );
     }
     if (noticeResult.status === "fulfilled") {
-      saveTeachingPreview(getSession()?.user.account || "", {
+      saveTeachingPreview(account, {
         notices: noticeResult.value.data.items,
       });
       patch.notices = mergeNoticePreviews(
@@ -1592,7 +1660,6 @@ Page({
         (noticeResult.status === "fulfilled" &&
           noticeResult.value.meta.refreshing));
     if (!refreshStable && includeStableData) {
-      const account = getSession()?.user.account || "";
       const stableDataStale =
         (isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
           claimAutomaticRefresh("grades", account)) ||
@@ -1602,7 +1669,7 @@ Page({
         dashboardStableRefreshQueued = true;
       }
     }
-    dashboardRequestInFlight = false;
+    if (dashboardRequestLease === lease) dashboardRequestLease = null;
     const queuedTeachingRefresh = dashboardTeachingRefreshQueued;
     const queuedStableRefresh = dashboardStableRefreshQueued;
     dashboardTeachingRefreshQueued = false;
@@ -1641,7 +1708,7 @@ Page({
     haptic("light");
     if (route === "inbox") {
       wx.setStorageSync("easy-swu:inbox-tab", "messages");
-      wx.navigateTo({ url: "/pages/inbox/index" });
+      wx.navigateTo({ url: "/features/pages/inbox/index" });
       return;
     }
     if (route) {
@@ -1653,7 +1720,7 @@ Page({
     timetableRouteOpening = true;
     haptic("light");
     wx.navigateTo({
-      url: "/pages/timetable/index",
+      url: "/features/pages/timetable/index",
       complete: () => {
         timetableRouteOpening = false;
       },
@@ -1664,7 +1731,7 @@ Page({
     gradesRouteOpening = true;
     haptic("light");
     wx.navigateTo({
-      url: "/pages/grades/index",
+      url: "/features/pages/grades/index",
       complete: () => {
         gradesRouteOpening = false;
       },
@@ -1675,7 +1742,7 @@ Page({
     electricityRouteOpening = true;
     haptic("light");
     wx.navigateTo({
-      url: "/pages/electricity/index",
+      url: "/features/pages/electricity/index",
       complete: () => {
         electricityRouteOpening = false;
       },
@@ -1686,7 +1753,7 @@ Page({
     examsRouteOpening = true;
     haptic("light");
     wx.navigateTo({
-      url: "/pages/exams/index",
+      url: "/features/pages/exams/index",
       complete: () => {
         examsRouteOpening = false;
       },
@@ -1695,12 +1762,12 @@ Page({
   openMessages() {
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
-    wx.navigateTo({ url: "/pages/inbox/index" });
+    wx.navigateTo({ url: "/features/pages/inbox/index" });
   },
   openNotices() {
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
-    wx.navigateTo({ url: "/pages/inbox/index" });
+    wx.navigateTo({ url: "/features/pages/inbox/index" });
   },
   openMessagesFromCard() {
     if (inboxRouteOpening) return;
@@ -1708,7 +1775,7 @@ Page({
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
     wx.navigateTo({
-      url: "/pages/inbox/index",
+      url: "/features/pages/inbox/index",
       complete: () => {
         inboxRouteOpening = false;
       },
@@ -1720,7 +1787,7 @@ Page({
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
     wx.navigateTo({
-      url: "/pages/inbox/index",
+      url: "/features/pages/inbox/index",
       complete: () => {
         inboxRouteOpening = false;
       },
@@ -1738,7 +1805,7 @@ Page({
     if (!id && !link) return;
     haptic("light");
     void navigateTo(
-      `/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
+      `/features/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
       "wx://upwards",
     );
   },

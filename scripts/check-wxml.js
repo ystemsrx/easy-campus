@@ -204,11 +204,11 @@ if (
 }
 
 const inboxTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "inbox", "index.wxml"),
+  path.join(miniprogramRoot, "features", "pages", "inbox", "index.wxml"),
   "utf8",
 );
 const inboxStyles = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "inbox", "index.wxss"),
+  path.join(miniprogramRoot, "features", "pages", "inbox", "index.wxss"),
   "utf8",
 );
 const profileTemplate = fs.readFileSync(
@@ -230,7 +230,7 @@ if (
   )
 ) {
   failures.push(
-    "pages/inbox/index.wxss: 消息选择器必须与顶部原生胶囊保留明确间距",
+    "features/pages/inbox/index.wxss: 消息选择器必须与顶部原生胶囊保留明确间距",
   );
 }
 if (
@@ -242,7 +242,7 @@ if (
   /slot="refresher"/.test(inboxTemplate)
 ) {
   failures.push(
-    "pages/inbox/index.wxml: 两个消息列表必须使用原生黑白刷新指示器，不得回退到缺失的自定义 refresher",
+    "features/pages/inbox/index.wxml: 两个消息列表必须使用原生黑白刷新指示器，不得回退到缺失的自定义 refresher",
   );
 }
 if (
@@ -254,7 +254,7 @@ if (
   !inboxTemplate.includes('catchtap="selectMessageType"')
 ) {
   failures.push(
-    "pages/inbox/index.wxml: 消息筛选必须与触发按钮位于同一 Skyline 层，并以稳定索引直接触发勾选状态",
+    "features/pages/inbox/index.wxml: 消息筛选必须与触发按钮位于同一 Skyline 层，并以稳定索引直接触发勾选状态",
   );
 }
 
@@ -271,15 +271,15 @@ const homeStyles = fs.readFileSync(
   "utf8",
 );
 const gradesTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "grades", "index.wxml"),
+  path.join(miniprogramRoot, "features", "pages", "grades", "index.wxml"),
   "utf8",
 );
 const gradesScript = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "grades", "index.ts"),
+  path.join(miniprogramRoot, "features", "pages", "grades", "index.ts"),
   "utf8",
 );
 const gradesStyles = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "grades", "index.wxss"),
+  path.join(miniprogramRoot, "features", "pages", "grades", "index.wxss"),
   "utf8",
 );
 const gradeSortTemplate = fs.readFileSync(
@@ -310,11 +310,11 @@ const gradeSortStyles = fs.readFileSync(
   "utf8",
 );
 const gradeDetailTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "grade-detail", "index.wxml"),
+  path.join(miniprogramRoot, "features", "pages", "grade-detail", "index.wxml"),
   "utf8",
 );
 const gradeDetailScript = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "grade-detail", "index.ts"),
+  path.join(miniprogramRoot, "features", "pages", "grade-detail", "index.ts"),
   "utf8",
 );
 const progressRingScript = fs.readFileSync(
@@ -322,23 +322,23 @@ const progressRingScript = fs.readFileSync(
   "utf8",
 );
 const electricityTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "electricity", "index.wxml"),
+  path.join(miniprogramRoot, "features", "pages", "electricity", "index.wxml"),
   "utf8",
 );
 const electricityScript = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "electricity", "index.ts"),
+  path.join(miniprogramRoot, "features", "pages", "electricity", "index.ts"),
   "utf8",
 );
 const passRateTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "pass-rates", "index.wxml"),
+  path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxml"),
   "utf8",
 );
 const passRateScript = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "pass-rates", "index.ts"),
+  path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.ts"),
   "utf8",
 );
 const passRateStyles = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "pass-rates", "index.wxss"),
+  path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxss"),
   "utf8",
 );
 if (
@@ -392,7 +392,7 @@ if (
   /\.average-ring\s*\{[^}]*\bborder\s*:/.test(gradesStyles)
 ) {
   failures.push(
-    "pages/home、pages/grades: 首页绩点圆环须以 5.0 为满环，成绩页均分圆环须以 100 为满环",
+    "pages/home、features/pages/grades: 首页绩点圆环须以 5.0 为满环，成绩页均分圆环须以 100 为满环",
   );
 }
 if (
@@ -430,7 +430,7 @@ if (
   gradesScript.includes("缓存更新于")
 ) {
   failures.push(
-    "pages/grades: 排序浮窗必须隔离页面状态，成绩卡片只在首次进入和切换排序时整批播放动画",
+    "features/pages/grades: 排序浮窗必须隔离页面状态，成绩卡片只在首次进入和切换排序时整批播放动画",
   );
 }
 if (
@@ -441,15 +441,13 @@ if (
   !gradeDetailScript.includes(
     'detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩"',
   ) ||
-  !gradeDetailTemplate.includes(
-    '<block wx:if="{{showComponentsSection}}">',
-  ) ||
+  !gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') ||
   gradeDetailTemplate.includes("教务系统返回的全部细分项目") ||
   gradeDetailTemplate.includes("只保留查询有用的字段") ||
   gradeDetailTemplate.includes("数字成绩以数字展示")
 ) {
   failures.push(
-    "pages/grade-detail: 详情标题、内嵌返回按钮及普通成绩的真实权重组成必须正确展示",
+    "features/pages/grade-detail: 详情标题、内嵌返回按钮及普通成绩的真实权重组成必须正确展示",
   );
 }
 if (
@@ -459,7 +457,7 @@ if (
   !electricityTemplate.includes('class="building-picker-scroll"')
 ) {
   failures.push(
-    "pages/electricity/index.wxml: 宿舍楼选择必须使用展开式底部抽屉及独立列表滚动区",
+    "features/pages/electricity/index.wxml: 宿舍楼选择必须使用展开式底部抽屉及独立列表滚动区",
   );
 }
 if (
@@ -474,7 +472,7 @@ if (
   !electricityScript.includes("this.data.boundBuildingId")
 ) {
   failures.push(
-    "pages/electricity: 换绑草稿必须与当前绑定分离，并保留紧凑的读取、换绑和刷新状态",
+    "features/pages/electricity: 换绑草稿必须与当前绑定分离，并保留紧凑的读取、换绑和刷新状态",
   );
 }
 
@@ -514,7 +512,7 @@ if (
   )
 ) {
   failures.push(
-    "pages/pass-rates: 课程选择必须与校园消息一致，在同一模板中使用明确高度的滚动区、内容层和底部占位",
+    "features/pages/pass-rates: 课程选择必须与校园消息一致，在同一模板中使用明确高度的滚动区、内容层和底部占位",
   );
 }
 
@@ -523,7 +521,7 @@ if (
   !/\.composition-tags text\s*\{[^}]*font-size:\s*19rpx/.test(passRateStyles)
 ) {
   failures.push(
-    "pages/pass-rates: 顶部卡片的成绩组成标题和个人成绩明细必须保持放大后的字号",
+    "features/pages/pass-rates: 顶部卡片的成绩组成标题和个人成绩明细必须保持放大后的字号",
   );
 }
 

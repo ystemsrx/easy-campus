@@ -4,7 +4,7 @@ import {
   timetableWeekCount,
   timetableWeekForDisplay,
   type TimetableCourse,
-} from "../../data/timetable";
+} from "../../../data/timetable";
 import {
   buildTimetablePeriodRows,
   buildTimetableWeekPage,
@@ -16,7 +16,7 @@ import {
   type TimetableGridLayoutMetrics,
   type TimetablePeriodRow,
   type TimetableWeekPage,
-} from "../../data/timetable-render";
+} from "../../../data/timetable-render";
 import {
   DEFAULT_TIMETABLE_COMPANION_COLOR,
   loadTimetableThemeId,
@@ -24,44 +24,49 @@ import {
   TIMETABLE_THEME_STORAGE_KEY,
   timetableThemePatch,
   type TimetableThemeId,
-} from "../../data/timetable-theme";
-import { getErrorMessage } from "../../services/request";
-import { getPassRates, getTimetable } from "../../services/teaching";
+} from "../../../data/timetable-theme";
+import { getErrorMessage } from "../../../services/request";
+import { getPassRates, getTimetable } from "../../../services/teaching";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-} from "../../store/cache-policy";
+} from "../../../store/cache-policy";
 import {
   DEFAULT_PET_PREFERENCES,
   loadPetPreferences,
   shouldShowPet,
   type PetPreferences,
-} from "../../store/pet";
-import { getSession } from "../../store/session";
+} from "../../../store/pet";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  sessionLeaseKey,
+} from "../../../store/session";
 import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
   type TimetableSnapshot,
-} from "../../store/timetable";
+} from "../../../store/timetable";
 import type {
   AcademicSemesterOption,
   PassRateCourse,
   PassRateStatistics,
   TimetableData,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { courseStatisticsKey } from "../../utils/course-statistics";
-import { formatScore } from "../../utils/format";
-import { haptic } from "../../utils/haptics";
-import { preloadTimetableThemeAssets } from "../../utils/icon-preload";
-import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { courseStatisticsKey } from "../../../utils/course-statistics";
+import { formatScore } from "../../../utils/format";
+import { haptic } from "../../../utils/haptics";
+import { preloadTimetableThemeAssets } from "../../../utils/icon-preload";
+import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   shortAcademicSemesterLabel,
   timetableSemesterMenuLabel,
-} from "../../utils/semester";
+} from "../../../utils/semester";
 
 interface TimetableSemesterOption extends AcademicSemesterOption {
   displayLabel: string;
@@ -304,17 +309,19 @@ const CLAWD_WEIGHTED_DEPARTURES: readonly TimetableClawdDepartureMode[] = [
   "rowing",
 ];
 const CLAWD_SCENE_SOURCES: Record<TimetableClawdSceneName, string> = {
-  walking: "/assets/images/timetable-theme-clawd-walking.gif",
-  lurking: "/assets/login/lurking.gif",
-  waving: "/assets/login/waving.gif",
-  jumping: "/assets/images/timetable-theme-clawd-jumping.gif",
-  dancing: "/assets/login/dancing.gif",
-  laptop: "/assets/login/laptop.gif",
-  magnifier: "/assets/login/magnifier.gif",
-  racing: "/assets/images/timetable-theme-clawd-racing-car.gif",
-  "rowing-intro": "/assets/images/timetable-theme-clawd-rowing-intro.gif",
-  "rowing-outro": "/assets/images/timetable-theme-clawd-rowing-outro.gif",
-  rowing: "/assets/images/timetable-theme-clawd-rowing.gif",
+  walking: "/features/assets/timetable/timetable-theme-clawd-walking.gif",
+  lurking: "/features/assets/login/lurking.gif",
+  waving: "/features/assets/login/waving.gif",
+  jumping: "/features/assets/timetable/timetable-theme-clawd-jumping.gif",
+  dancing: "/features/assets/login/dancing.gif",
+  laptop: "/features/assets/login/laptop.gif",
+  magnifier: "/features/assets/login/magnifier.gif",
+  racing: "/features/assets/timetable/timetable-theme-clawd-racing-car.gif",
+  "rowing-intro":
+    "/features/assets/timetable/timetable-theme-clawd-rowing-intro.gif",
+  "rowing-outro":
+    "/features/assets/timetable/timetable-theme-clawd-rowing-outro.gif",
+  rowing: "/features/assets/timetable/timetable-theme-clawd-rowing.gif",
 };
 const CLAWD_ACTION_DURATIONS: Record<TimetableClawdActionName, number> = {
   waving: CLAWD_WAVING_DURATION_MS,
@@ -1696,9 +1703,11 @@ Page({
     passRateRequestSequence += 1;
     pendingVisibleRequestId = null;
     const compactHeader = options.source === "schedule";
+    const visualPreferences = timetableVisualPreferencesPatch();
+    preloadTimetableThemeAssets(visualPreferences.timetableThemeId);
     this.setData(
       {
-        ...timetableVisualPreferencesPatch(),
+        ...visualPreferences,
         compactHeader,
         ...backgroundMetrics(compactHeader),
       },
@@ -1917,12 +1926,64 @@ Page({
       if (!this.data.hasHydrated) this.setData({ hasHydrated: true });
       return;
     }
+    if (activeAccount) {
+      visibleRequestSequence += 1;
+      passRateRequestSequence += 1;
+      pendingVisibleRequestId = null;
+      visibleCourses = [];
+      cancelPendingWeekBuilds();
+      cancelCompanionGazeUpdate();
+      clearTimetableMenuTimers();
+      clearClawdSceneTimer();
+      clawdSequenceRevision += 1;
+      resetClawdSceneScheduler();
+      this.setData({
+        clawdSceneSrc: "",
+        clawdSceneMotionClass: "",
+        clawdSceneMediaClass: "",
+        menuMounted: false,
+        menuOpen: false,
+        semesterOpen: false,
+        weekMenuMounted: false,
+        weekMenuOpen: false,
+        weekScrollIntoView: "",
+        semesterMenuHeight: 250,
+        semesterShortLabel: "选择学期",
+        semesterId: "",
+        semesters: [],
+        weekNumber: 1,
+        currentWeekNumber: 0,
+        weekIndex: 0,
+        weekLabel: "第 1 周",
+        maxWeek: 1,
+        weekMenuListHeight: 114,
+        weekPages: [],
+        weekMenuRows: [],
+        periodRows: [],
+        selectedCourse: null,
+        courseSheetVisible: false,
+        courseSheetHeight: 60,
+        passRateSheetVisible: false,
+        passRateSheetHeight: 46,
+        passRateLoading: false,
+        passRateErrorMessage: "",
+        passRateCourseName: "",
+        passRateCourse: null,
+        passRateStatistics: null,
+        passRateStatus: "collecting",
+        passRateMessage: "统计中，请稍后查看",
+        passRateCohortLabel: "",
+        passRateOwnScore: -1,
+        passRateDisplayScore: "—",
+        hasHydrated: false,
+      });
+    }
     activeAccount = account;
     activeSnapshot = loadTimetableSnapshot(account);
     activeTimetable = activeSnapshot?.data || null;
     defaultSemesterId = activeTimetable?.semester.id || "";
     if (activeTimetable) this.applyTimetable(activeTimetable, false);
-    this.setData({ hasHydrated: true });
+    this.setData({ hasHydrated: true }, () => this.syncClawdSceneSequence());
   },
   syncTimetableIfNeeded(semester?: string) {
     if (!activeAccount) return;
@@ -1948,12 +2009,16 @@ Page({
     semester?: string,
     activate = false,
   ): Promise<boolean> {
-    const requestAccount = activeAccount;
-    if (!requestAccount) return false;
-    const requestKey = `${requestAccount}:${semester || "default"}`;
+    const lease = captureSessionLease();
+    const requestAccount = lease?.account || "";
+    if (!lease || !requestAccount || activeAccount !== requestAccount) {
+      return false;
+    }
+    const requestKey = `${sessionLeaseKey(lease)}:${semester || "default"}`;
     const existingRequest = timetableRequestsInFlight.get(requestKey);
     if (existingRequest) {
       const succeeded = await existingRequest.completion;
+      if (!isSessionLeaseCurrent(lease)) return false;
       return refresh && !existingRequest.refresh
         ? this.loadTimetable(true, semester, activate)
         : succeeded;
@@ -1969,6 +2034,7 @@ Page({
     let succeeded = false;
     try {
       const result = await getTimetable({ semester, refresh });
+      if (!isSessionLeaseCurrent(lease)) return false;
       const local = loadTimetableSnapshot(requestAccount, semester);
       const shouldStore =
         refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt);
@@ -1980,9 +2046,11 @@ Page({
         });
       }
       const stillViewingResult = activate
-        ? activeAccount === requestAccount &&
+        ? isSessionLeaseCurrent(lease) &&
+          activeAccount === requestAccount &&
           pendingVisibleRequestId === visibleRequestId
-        : activeAccount === requestAccount &&
+        : isSessionLeaseCurrent(lease) &&
+          activeAccount === requestAccount &&
           pendingVisibleRequestId === null &&
           (!activeTimetable ||
             !this.data.semesterId ||
@@ -2017,10 +2085,14 @@ Page({
       succeeded = true;
       return true;
     } catch {
-      if (activate && pendingVisibleRequestId === visibleRequestId) {
+      if (
+        isSessionLeaseCurrent(lease) &&
+        activate &&
+        pendingVisibleRequestId === visibleRequestId
+      ) {
         pendingVisibleRequestId = null;
       }
-      if (!activeTimetable) {
+      if (isSessionLeaseCurrent(lease) && !activeTimetable) {
         wx.showToast({ title: "课表暂时不可用", icon: "none" });
       }
       return false;
@@ -2034,8 +2106,19 @@ Page({
         timetableRequestsInFlight.delete(requestKey);
       }
       resolveCompletion(succeeded);
-      if (shouldRefreshAfterward) {
-        setTimeout(() => void this.loadTimetable(true, semester), 0);
+      if (
+        shouldRefreshAfterward &&
+        isSessionLeaseCurrent(lease) &&
+        activeAccount === requestAccount
+      ) {
+        setTimeout(() => {
+          if (
+            isSessionLeaseCurrent(lease) &&
+            activeAccount === requestAccount
+          ) {
+            void this.loadTimetable(true, semester);
+          }
+        }, 0);
       }
     }
   },
@@ -2376,7 +2459,7 @@ Page({
   openCalendar() {
     this.closeTimetableMenu();
     haptic("light");
-    void navigateTo("/pages/calendar/index", "wx://upwards");
+    void navigateTo("/features/pages/calendar/index", "wx://upwards");
   },
   goToday() {
     if (!activeTimetable) return;
@@ -2426,6 +2509,8 @@ Page({
     if (!selectedCourse || this.data.passRateLoading) return;
     const courseKey = courseStatisticsKey(selectedCourse.name);
     if (!courseKey) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
     const sequence = ++passRateRequestSequence;
     haptic("light");
     this.setData({
@@ -2452,7 +2537,12 @@ Page({
     });
     try {
       const result = await getPassRates(courseKey);
-      if (sequence !== passRateRequestSequence) return;
+      if (
+        sequence !== passRateRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
       const course = result.data.selectedCourse;
       const statistics = result.data.statistics;
       const ownScore =
@@ -2485,7 +2575,12 @@ Page({
         passRateDisplayScore: formatScore(course?.finalScore ?? null),
       });
     } catch (error) {
-      if (sequence !== passRateRequestSequence) return;
+      if (
+        sequence !== passRateRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
       const errorMessage = getErrorMessage(
         error,
         "通过率加载失败，请稍后重试。",

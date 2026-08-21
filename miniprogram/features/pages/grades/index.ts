@@ -1,38 +1,42 @@
-import { getGrades } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
+import { getGrades } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-} from "../../store/cache-policy";
-import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
-import { getSession } from "../../store/session";
+} from "../../../store/cache-policy";
+import { loadGradesSnapshot, saveGradesSnapshot } from "../../../store/grades";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 import type {
   AcademicSemesterOption,
   GradeCourse,
   GradeSummary,
   GradesData,
   GradesQuery,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime } from "../../utils/date";
-import { formatCredits, formatScore, scoreTone } from "../../utils/format";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { formatDateTime } from "../../../utils/date";
+import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
   gradesForSemester,
   isMakeupOrDeferredGrade,
   latestGradedSemester,
-} from "../../utils/grades";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
-import { progressRingSource } from "../../utils/progress-ring";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
-import { numberedAcademicSemesterLabel } from "../../utils/semester";
+} from "../../../utils/grades";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import { progressRingSource } from "../../../utils/progress-ring";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+import { numberedAcademicSemesterLabel } from "../../../utils/semester";
 import {
   canActivateTap,
   movementExceedsTapThreshold,
   type TapPoint,
-} from "../../utils/tap-guard";
+} from "../../../utils/tap-guard";
 
 interface GradeComponentPreview {
   name: string;
@@ -232,6 +236,35 @@ Page({
   hydrateGrades() {
     const account = getSession()?.user.account || "";
     if (!account || hydratedGradesAccount === account) return;
+    if (hydratedGradesAccount && hydratedGradesAccount !== account) {
+      requestSequence += 1;
+      gradeRenderBatch += 1;
+      this.setData({
+        loading: false,
+        refreshing: false,
+        loadingMore: false,
+        gradeItems: [],
+        summary: summaryDefaults(),
+        averageRingSource: progressRingSource(null),
+        averageLabel: "—",
+        gradePointAverageLabel: "—",
+        page: 1,
+        totalPages: 1,
+        total: 0,
+        academicYear: 0,
+        term: 0,
+        filterLabel: "全部成绩",
+        sourceLabel: "尚未更新",
+        availableSemesters: [],
+        semesterChips: [],
+        activeSemesterId: "all",
+        semesterInitialized: false,
+        loaded: false,
+        errorMessage: "",
+        searchFocused: false,
+        queryText: "",
+      });
+    }
     hydratedGradesAccount = account;
     const cached = loadGradesSnapshot(account);
     if (!cached) return;
@@ -300,6 +333,8 @@ Page({
     ) {
       return false;
     }
+    const lease = captureSessionLease();
+    if (!lease) return false;
     const page = reset ? 1 : this.data.page + 1;
     const academicYear = this.data.academicYear;
     const term = this.data.term;
@@ -327,9 +362,11 @@ Page({
         order,
         refresh,
       });
-      if (sequence !== requestSequence) return false;
+      if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) {
+        return false;
+      }
 
-      const account = getSession()?.user.account || "";
+      const account = lease.account;
       const canonical =
         page === 1 &&
         !academicYear &&
@@ -366,22 +403,27 @@ Page({
         claimAutomaticRefresh("grades", account);
       return true;
     } catch (error) {
-      if (sequence === requestSequence) {
+      if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({
           errorMessage: getErrorMessage(error, "成绩加载失败。"),
         });
       }
       return false;
     } finally {
-      if (sequence === requestSequence) {
+      if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
         if (loadInitializedSemester) {
-          setTimeout(
-            () => void this.loadGrades(true, shouldRefreshAfterward),
-            0,
-          );
+          setTimeout(() => {
+            if (isSessionLeaseCurrent(lease)) {
+              void this.loadGrades(true, shouldRefreshAfterward);
+            }
+          }, 0);
         } else if (shouldRefreshAfterward) {
-          setTimeout(() => void this.loadGrades(true, true), 0);
+          setTimeout(() => {
+            if (isSessionLeaseCurrent(lease)) {
+              void this.loadGrades(true, true);
+            }
+          }, 0);
         }
       }
     }
@@ -503,7 +545,7 @@ Page({
     haptic("light");
     getApp<IAppOption>().globalData.selectedGrade = grade;
     void navigateTo(
-      `/pages/grade-detail/index?id=${encodeURIComponent(id)}`,
+      `/features/pages/grade-detail/index?id=${encodeURIComponent(id)}`,
       "wx://cupertino-modal",
     );
   },

@@ -38,8 +38,8 @@ let loginRouteOpening = false;
 
 const HOME_ROUTE = "pages/home/index";
 const HOME_URL = "/pages/home/index";
-const LOGIN_ROUTE = "pages/login/index";
-const LOGIN_URL = "/pages/login/index";
+const LOGIN_ROUTE = "features/pages/login/index";
+const LOGIN_URL = "/features/pages/login/index";
 const AUTH_GUARD_COMMIT_TIMEOUT_MS = 300;
 const AUTH_EXIT_COMMIT_TIMEOUT_MS = 400;
 export const LOGIN_ROUTE_TYPE = "easy-swu-auth-fade";

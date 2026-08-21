@@ -11,7 +11,7 @@
   <image
     wx:if="{{timetableThemeId === 'default'}}"
     class="timetable-background"
-    src="/assets/images/timetable-theme-default-background.jpg"
+    src="/features/assets/timetable/timetable-theme-default-background.jpg"
     mode="scaleToFill"
     style="{{imageStyle}}"
     fade-in="{{false}}"
@@ -21,7 +21,7 @@
   <image
     wx:elif="{{timetableThemeId === 'clawd'}}"
     class="timetable-background"
-    src="/assets/images/timetable-theme-clawd-background.jpg"
+    src="/features/assets/timetable/timetable-theme-clawd-background.jpg"
     mode="aspectFill"
     fade-in="{{false}}"
     draggable="{{false}}"
@@ -48,7 +48,7 @@
     <image
       wx:else
       class="clawd-scene clawd-scene--still"
-      src="/assets/images/timetable-theme-clawd-idle.svg"
+      src="/features/assets/timetable/timetable-theme-clawd-idle.svg"
       mode="aspectFit"
       fade-in="{{false}}"
       draggable="{{false}}"

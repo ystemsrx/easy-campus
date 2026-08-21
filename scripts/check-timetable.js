@@ -1068,6 +1068,7 @@ const timetablePageRoot = path.resolve(
   __dirname,
   "..",
   "miniprogram",
+  "features",
   "pages",
   "timetable",
 );
@@ -1113,13 +1114,15 @@ const timetableImageRoot = path.resolve(
   __dirname,
   "..",
   "miniprogram",
+  "features",
   "assets",
-  "images",
+  "timetable",
 );
 const timetableLoginAssetRoot = path.resolve(
   __dirname,
   "..",
   "miniprogram",
+  "features",
   "assets",
   "login",
 );
@@ -1154,6 +1157,7 @@ const passRatePageTemplate = fs.readFileSync(
     __dirname,
     "..",
     "miniprogram",
+    "features",
     "pages",
     "pass-rates",
     "index.wxml",
@@ -1332,21 +1336,21 @@ assert(
       path.resolve(__dirname, "..", "assets", "source", "timetable"),
     ) &&
     timetablePageTemplate.includes(
-      'src="/assets/images/timetable-theme-default-background.jpg"',
+      'src="/features/assets/timetable/timetable-theme-default-background.jpg"',
     ) &&
     timetablePageTemplate.includes(
-      'src="/assets/images/timetable-theme-clawd-background.jpg"',
+      'src="/features/assets/timetable/timetable-theme-clawd-background.jpg"',
     ) &&
     !timetablePageTemplate.includes('webp="{{true}}"') &&
     timetablePageScript.includes(
-      "/assets/images/timetable-theme-clawd-walking.gif",
+      "/features/assets/timetable/timetable-theme-clawd-walking.gif",
     ) &&
-    timetablePageScript.includes("/assets/login/lurking.gif") &&
-    timetablePageScript.includes("/assets/login/waving.gif") &&
+    timetablePageScript.includes("/features/assets/login/lurking.gif") &&
+    timetablePageScript.includes("/features/assets/login/waving.gif") &&
     timetablePageScript.includes(
-      "/assets/images/timetable-theme-clawd-jumping.gif",
+      "/features/assets/timetable/timetable-theme-clawd-jumping.gif",
     ) &&
-    timetablePageScript.includes("/assets/login/dancing.gif") &&
+    timetablePageScript.includes("/features/assets/login/dancing.gif") &&
     !timetablePageTemplate.includes("background.png") &&
     !timetablePageTemplate.includes("background.webp"),
   "课表壁纸必须仅保留规范命名的本地 JPG 素材",
@@ -1560,27 +1564,39 @@ assert(
     ) &&
     timetablePageScript.includes("CLAWD_ROWING_SOURCE_DURATION_MS = 1760") &&
     timetablePageScript.includes(
-      'walking: "/assets/images/timetable-theme-clawd-walking.gif"',
-    ) &&
-    timetablePageScript.includes('lurking: "/assets/login/lurking.gif"') &&
-    timetablePageScript.includes('waving: "/assets/login/waving.gif"') &&
-    timetablePageScript.includes('dancing: "/assets/login/dancing.gif"') &&
-    timetablePageScript.includes('laptop: "/assets/login/laptop.gif"') &&
-    timetablePageScript.includes('magnifier: "/assets/login/magnifier.gif"') &&
-    timetablePageScript.includes(
-      'jumping: "/assets/images/timetable-theme-clawd-jumping.gif"',
+      'walking: "/features/assets/timetable/timetable-theme-clawd-walking.gif"',
     ) &&
     timetablePageScript.includes(
-      'racing: "/assets/images/timetable-theme-clawd-racing-car.gif"',
+      'lurking: "/features/assets/login/lurking.gif"',
     ) &&
     timetablePageScript.includes(
-      '"rowing-intro": "/assets/images/timetable-theme-clawd-rowing-intro.gif"',
+      'waving: "/features/assets/login/waving.gif"',
     ) &&
     timetablePageScript.includes(
-      '"rowing-outro": "/assets/images/timetable-theme-clawd-rowing-outro.gif"',
+      'dancing: "/features/assets/login/dancing.gif"',
     ) &&
     timetablePageScript.includes(
-      'rowing: "/assets/images/timetable-theme-clawd-rowing.gif"',
+      'laptop: "/features/assets/login/laptop.gif"',
+    ) &&
+    timetablePageScript.includes(
+      'magnifier: "/features/assets/login/magnifier.gif"',
+    ) &&
+    timetablePageScript.includes(
+      'jumping: "/features/assets/timetable/timetable-theme-clawd-jumping.gif"',
+    ) &&
+    timetablePageScript.includes(
+      'racing: "/features/assets/timetable/timetable-theme-clawd-racing-car.gif"',
+    ) &&
+    timetablePageScript.includes('"rowing-intro":') &&
+    timetablePageScript.includes(
+      "/features/assets/timetable/timetable-theme-clawd-rowing-intro.gif",
+    ) &&
+    timetablePageScript.includes('"rowing-outro":') &&
+    timetablePageScript.includes(
+      "/features/assets/timetable/timetable-theme-clawd-rowing-outro.gif",
+    ) &&
+    timetablePageScript.includes(
+      'rowing: "/features/assets/timetable/timetable-theme-clawd-rowing.gif"',
     ),
   "小克动作必须使用统一画布素材及包含基准帧交接的精确时长",
 );
@@ -3181,7 +3197,10 @@ assert(
   appSource.includes(
     "prewarmTimetableFirstScreen(account, timetable, timetableThemeId)",
   ) &&
-    appSource.includes("preloadTimetableThemeAssets(timetableThemeId)") &&
+    !appSource.includes("preloadTimetableThemeAssets(timetableThemeId)") &&
+    timetablePageScript.includes(
+      "preloadTimetableThemeAssets(visualPreferences.timetableThemeId)",
+    ) &&
     timetableStoreSource.includes(
       "prewarmTimetableFirstScreen(account, snapshot, loadTimetableThemeId())",
     ) &&
@@ -3199,7 +3218,7 @@ assert(
     timetablePageTemplate.includes('wx:if="{{weekPage.ready}}"') &&
     !timetablePageTemplate.includes('class="week-page page-enter"') &&
     timetableRenderSource.includes("buildTimetableWeekPlaceholder"),
-  "应用启动时必须按已选主题预渲染首屏周次和资源，进入课表后再静默补齐其他周",
+  "应用启动时必须预渲染首屏周次，分包加载后再预热主题资源并静默补齐其他周",
 );
 assert(
   timetableStoreSource.includes(

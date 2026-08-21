@@ -1,18 +1,18 @@
 import {
   PET_SHAPE_IDS,
   type PetShapeId,
-} from "../../components/geometric-pet/engine-data";
+} from "../../../components/geometric-pet/engine-data";
 import {
   loadPetPreferences,
   PET_COLORS,
   savePetSelection,
   skipPetSetup,
-} from "../../store/pet";
-import { uploadLocalCompanionPreferences } from "../../services/companion";
-import { getSession } from "../../store/session";
-import { resolveAppearance } from "../../utils/appearance";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
+} from "../../../store/pet";
+import { uploadLocalCompanionPreferences } from "../../../services/companion";
+import { getSession } from "../../../store/session";
+import { resolveAppearance } from "../../../utils/appearance";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
 
 type SetupSource = "login" | "home" | "profile";
 

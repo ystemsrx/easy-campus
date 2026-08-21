@@ -6,7 +6,14 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const pageRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "rooms");
+const pageRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "features",
+  "pages",
+  "rooms",
+);
 const template = fs.readFileSync(path.join(pageRoot, "index.wxml"), "utf8");
 const script = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
 const styles = fs.readFileSync(path.join(pageRoot, "index.wxss"), "utf8");
@@ -95,9 +102,7 @@ assert(
 assert(
   template.includes('class="rooms-loading" aria-role="alert"') &&
     template.includes('class="rooms-loading-spinner"') &&
-    template.includes(
-      '<text class="rooms-loading-label">读取中</text>',
-    ) &&
+    template.includes('<text class="rooms-loading-label">读取中</text>') &&
     !/<view wx:if="{{optionsLoading && !campuses.length}}"[^>]*>\s*<loading-view/.test(
       template,
     ) &&

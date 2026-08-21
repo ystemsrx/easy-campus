@@ -6,7 +6,14 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const pageRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "inbox");
+const pageRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "features",
+  "pages",
+  "inbox",
+);
 const source = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
 const homeRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "home");
 const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
@@ -37,34 +44,41 @@ const output = ts.transpileModule(source, {
 let cachedPreview = null;
 let cachedTimetable = null;
 const stubs = {
-  "../../services/teaching": {
+  "../../../services/teaching": {
     getMessages: async () => ({ data: { items: [] }, meta: {} }),
     getNotices: async () => ({ data: { items: [] }, meta: {} }),
   },
-  "../../services/request": { getErrorMessage: () => "" },
-  "../../store/session": {
+  "../../../services/request": { getErrorMessage: () => "" },
+  "../../../store/session": {
     getSession: () => ({ user: { account: "test" } }),
+    captureSessionLease: () => ({
+      token: "test-token",
+      userId: "test-user",
+      account: "test",
+      signedInAt: 1,
+    }),
+    isSessionLeaseCurrent: () => true,
   },
-  "../../store/teaching-preview": {
+  "../../../store/teaching-preview": {
     cleanupTeachingPreview: () => null,
     loadTeachingPreview: () => cachedPreview,
     saveTeachingPreview: () => undefined,
   },
-  "../../store/timetable": {
+  "../../../store/timetable": {
     loadTimetableSnapshot: () => cachedTimetable,
   },
-  "../../utils/appearance": { resolveAppearance: () => ({}) },
-  "../../utils/date": { formatDateTime: (value) => value },
-  "../../utils/format": { formatSchedule: () => "" },
-  "../../utils/haptics": { haptic: () => undefined },
-  "../../utils/navigation": {
+  "../../../utils/appearance": { resolveAppearance: () => ({}) },
+  "../../../utils/date": { formatDateTime: (value) => value },
+  "../../../utils/format": { formatSchedule: () => "" },
+  "../../../utils/haptics": { haptic: () => undefined },
+  "../../../utils/navigation": {
     ensureAuthenticated: () => true,
     navigateTo: async () => undefined,
   },
-  "../../utils/refresh-feedback": {
+  "../../../utils/refresh-feedback": {
     showRefreshConfirmation: () => undefined,
   },
-  "../../utils/semester": {
+  "../../../utils/semester": {
     ...semesterModule.exports,
     startedCurrentSemester: (timetable) =>
       semesterModule.exports.startedCurrentSemester(timetable, "2026-08-31"),

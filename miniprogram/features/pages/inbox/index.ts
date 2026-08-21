@@ -1,24 +1,28 @@
-import { getMessages, getNotices } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
-import { getSession } from "../../store/session";
-import { loadTimetableSnapshot } from "../../store/timetable";
+import { getMessages, getNotices } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
+import { loadTimetableSnapshot } from "../../../store/timetable";
 import {
   cleanupTeachingPreview,
   loadTeachingPreview,
   saveTeachingPreview,
-} from "../../store/teaching-preview";
-import type { MessageType, Notice, TeachingMessage } from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime } from "../../utils/date";
-import { formatSchedule } from "../../utils/format";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+} from "../../../store/teaching-preview";
+import type { MessageType, Notice, TeachingMessage } from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { formatDateTime } from "../../../utils/date";
+import { formatSchedule } from "../../../utils/format";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   isCurrentSemesterTimestamp,
   startedCurrentSemester,
   type StartedSemesterBoundary,
-} from "../../utils/semester";
+} from "../../../utils/semester";
 
 interface ScheduleView {
   primary: string;
@@ -321,6 +325,27 @@ Page({
       });
       return;
     }
+    if (hydratedInboxAccount && hydratedInboxAccount !== account) {
+      messageRequestSequence += 1;
+      noticeRequestSequence += 1;
+      clearFilterTransitionTimer();
+      clearBackgroundFollowupTimers();
+      this.setData({
+        messageLoading: false,
+        noticeLoading: false,
+        messageRefreshing: false,
+        noticeRefreshing: false,
+        messageError: "",
+        noticeError: "",
+        messageFilterMounted: false,
+        messageFilterOpen: false,
+        messageTypes: [],
+        messageFilterCount: 0,
+        messageTypeOptions: messageTypeOptions([]),
+        noticeQuery: "",
+        noticeSearchFocused: false,
+      });
+    }
     hydratedInboxAccount = account;
     const cached =
       cleanupTeachingPreview(account) || loadTeachingPreview(account);
@@ -370,6 +395,8 @@ Page({
   ): Promise<boolean> {
     if (this.data.messageLoading && !refresh) return false;
     if (showRefresher && this.data.messageRefreshing) return false;
+    const lease = captureSessionLease();
+    if (!lease) return false;
     const sequence = ++messageRequestSequence;
     this.setData({
       messageLoading: this.data.messageItems.length === 0,
@@ -385,12 +412,15 @@ Page({
           : undefined,
         refresh,
       });
-      if (sequence !== messageRequestSequence) {
+      if (
+        sequence !== messageRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
         return false;
       }
       const incoming = result.data.items.map(toMessageView);
       if (!this.data.messageTypes.length) {
-        saveTeachingPreview(getSession()?.user.account || "", {
+        saveTeachingPreview(lease.account, {
           messages: result.data.items,
         });
       }
@@ -409,17 +439,19 @@ Page({
       ) {
         messageFollowupTimer = setTimeout(() => {
           messageFollowupTimer = undefined;
-          void this.loadMessages(false, true, false, false);
+          if (isSessionLeaseCurrent(lease)) {
+            void this.loadMessages(false, true, false, false);
+          }
         }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
       return true;
     } catch (error) {
-      if (sequence === messageRequestSequence) {
+      if (sequence === messageRequestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ messageError: getErrorMessage(error) });
       }
       return false;
     } finally {
-      if (sequence === messageRequestSequence) {
+      if (sequence === messageRequestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({
           messageLoading: false,
           messageRefreshing: false,
@@ -435,6 +467,8 @@ Page({
   ): Promise<boolean> {
     if (this.data.noticeLoading && !refresh) return false;
     if (showRefresher && this.data.noticeRefreshing) return false;
+    const lease = captureSessionLease();
+    if (!lease) return false;
     const sequence = ++noticeRequestSequence;
     this.setData({
       noticeLoading: this.data.noticeItems.length === 0,
@@ -448,12 +482,12 @@ Page({
         q: this.data.noticeQuery.trim() || undefined,
         refresh,
       });
-      if (sequence !== noticeRequestSequence) {
+      if (sequence !== noticeRequestSequence || !isSessionLeaseCurrent(lease)) {
         return false;
       }
       const incoming = result.data.items.map(toNoticeView);
       if (!this.data.noticeQuery.trim()) {
-        saveTeachingPreview(getSession()?.user.account || "", {
+        saveTeachingPreview(lease.account, {
           notices: result.data.items,
         });
       }
@@ -472,17 +506,19 @@ Page({
       ) {
         noticeFollowupTimer = setTimeout(() => {
           noticeFollowupTimer = undefined;
-          void this.loadNotices(false, true, false, false);
+          if (isSessionLeaseCurrent(lease)) {
+            void this.loadNotices(false, true, false, false);
+          }
         }, BACKGROUND_REFRESH_FOLLOWUP_MS);
       }
       return true;
     } catch (error) {
-      if (sequence === noticeRequestSequence) {
+      if (sequence === noticeRequestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ noticeError: getErrorMessage(error) });
       }
       return false;
     } finally {
-      if (sequence === noticeRequestSequence) {
+      if (sequence === noticeRequestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({
           noticeLoading: false,
           noticeRefreshing: false,
@@ -580,7 +616,7 @@ Page({
     }
     haptic("light");
     void navigateTo(
-      `/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
+      `/features/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
       "wx://upwards",
     );
   },

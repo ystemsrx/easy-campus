@@ -6,6 +6,7 @@ import {
 } from "../store/pet";
 import type { CompanionPreferencesData } from "../types/api";
 import { apiRequest } from "./request";
+import { captureSessionLease, isSessionLeaseCurrent } from "../store/session";
 
 type CompanionPreferencesInput = Omit<CompanionPreferencesData, "updatedAt">;
 
@@ -75,12 +76,17 @@ function queueLocalCompanionPreferences(
   const queued = previous
     .catch(() => null)
     .then(async () => {
+      const lease = captureSessionLease();
+      if (!lease || lease.account !== account) return null;
       const local = loadPetPreferences(account);
       const saved = await putLocalPreferences(local);
-      if (samePreferences(loadPetPreferences(account), saved)) {
+      if (
+        isSessionLeaseCurrent(lease) &&
+        samePreferences(loadPetPreferences(account), saved)
+      ) {
         storeServerPetPreferences(account, saved);
       }
-      return saved;
+      return isSessionLeaseCurrent(lease) ? saved : null;
     })
     .catch(() => null)
     .finally(() => {
@@ -98,17 +104,20 @@ export async function synchronizeCompanionPreferences(
   server: CompanionPreferencesData | null,
 ): Promise<CompanionPreferencesData | null> {
   if (!account) return server;
+  const lease = captureSessionLease();
+  if (!lease || lease.account !== account) return null;
   if (!hasStoredPetPreferences(account)) {
-    if (server) storeServerPetPreferences(account, server);
+    if (server && isSessionLeaseCurrent(lease)) {
+      storeServerPetPreferences(account, server);
+    }
     return server;
   }
 
   const local = loadPetPreferences(account);
   if (samePreferences(local, server)) return server;
-  return (
-    (await queueLocalCompanionPreferences(account, true)) ||
-    dataFromLocal(local)
-  );
+  const saved = await queueLocalCompanionPreferences(account, true);
+  if (!isSessionLeaseCurrent(lease)) return null;
+  return saved || dataFromLocal(local);
 }
 
 /** 将刚写入本地的最新设置串行同步，避免快速切换形状时旧请求反向覆盖。 */

@@ -32,7 +32,7 @@ const sessionStore = fs.readFileSync(
   "utf8",
 );
 const loginScript = fs.readFileSync(
-  path.join(miniprogramRoot, "pages", "login", "index.ts"),
+  path.join(miniprogramRoot, "features", "pages", "login", "index.ts"),
   "utf8",
 );
 const failures = [];
@@ -49,7 +49,7 @@ if (
     'export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";',
   ) ||
   !requestScript.includes("return ACCOUNT_DEACTIVATED_MESSAGE;") ||
-  !requestScript.includes("redirectAfterAccountDeactivation()") ||
+  !requestScript.includes("redirectAfterAccountDeactivation(") ||
   !sessionStore.includes("queueAccountDeactivatedNotice") ||
   !sessionStore.includes("consumeAccountDeactivatedNotice") ||
   !loginScript.includes("consumeAccountDeactivatedNotice()") ||
@@ -73,7 +73,13 @@ if (
   failures.push("429 必须统一触发胶囊并阻止服务端英文文案进入页面错误态");
 }
 
-for (const page of appConfig.pages || []) {
+const declaredPages = [
+  ...(appConfig.pages || []),
+  ...(appConfig.subPackages || []).flatMap((subpackage) =>
+    (subpackage.pages || []).map((page) => `${subpackage.root}/${page}`),
+  ),
+];
+for (const page of declaredPages) {
   const template = fs.readFileSync(
     path.join(miniprogramRoot, `${page}.wxml`),
     "utf8",

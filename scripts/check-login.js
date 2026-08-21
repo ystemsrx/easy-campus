@@ -3,7 +3,13 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
-const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
+const loginRoot = path.join(
+  projectRoot,
+  "miniprogram",
+  "features",
+  "pages",
+  "login",
+);
 const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
 const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
 const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
@@ -147,7 +153,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
     JSON.stringify(calls) !==
     JSON.stringify([
       ["guard", "home"],
-      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("首页进入登录态前必须先提交匿名保护层，再覆盖打开登录页");
@@ -192,7 +198,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
       ["exit", "profile"],
       ["switchTab", "/pages/home/index"],
       ["guard", "home"],
-      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("退出登录必须先封住缓存首页，不能让首页内容暴露一帧");
@@ -217,7 +223,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
       ["exit", "profile"],
       ["switchTab", "/pages/home/index"],
       ["guard", "home"],
-      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("其他页面失效时必须先重建受保护首页，再覆盖打开登录页");
@@ -254,7 +260,7 @@ for (const copy of removedCopy) {
 
 if (
   !envExample.includes("MINIPROGRAM_NAME=") ||
-  !script.includes('import { MINIPROGRAM_NAME } from "../../config/env";') ||
+  !script.includes('import { MINIPROGRAM_NAME } from "../../../config/env";') ||
   !script.includes("appName: MINIPROGRAM_NAME") ||
   !template.includes("欢迎来到{{appName}}")
 ) {
@@ -435,6 +441,7 @@ if (
 const clawdMarkPath = path.join(
   projectRoot,
   "miniprogram",
+  "features",
   "assets",
   "login",
   "clawd-mark.svg",
@@ -444,7 +451,7 @@ const clawdMarkSource = fs.existsSync(clawdMarkPath)
   : "";
 if (
   !template.includes('class="login-clawd-mark-row"') ||
-  !template.includes('src="/assets/login/clawd-mark.svg"') ||
+  !template.includes('src="/features/assets/login/clawd-mark.svg"') ||
   clawdMarkIndex <= buttonIndex ||
   !clawdMarkSource.includes('viewBox="0 0 68 67"') ||
   !clawdMarkRowStyles.includes("min-height: 134rpx;") ||
@@ -594,7 +601,10 @@ if (
   !homeStyles.includes(".home-framework--guarded {") ||
   !homeStyles.includes("visibility: hidden;") ||
   !homeStyles.includes("animation-name: home-auth-login-backdrop-in;") ||
-  !profileScript.includes(".finally(() => goToLogin())") ||
+  !profileScript.includes(".finally(() => {") ||
+  !profileScript.includes(
+    "if (!getSession() || isSessionLeaseCurrent(lease)) goToLogin();",
+  ) ||
   !profileScript.includes(
     "prepareForAuthenticationRequired(onReady?: () => void)",
   ) ||
@@ -624,7 +634,13 @@ if (
   failures.push("登录页和已有会话直达路径都必须预加载首页 Skyline 运行环境");
 }
 
-const animationRoot = path.join(projectRoot, "miniprogram", "assets", "login");
+const animationRoot = path.join(
+  projectRoot,
+  "miniprogram",
+  "features",
+  "assets",
+  "login",
+);
 let animationBytes = 0;
 for (const name of [
   "laptop",

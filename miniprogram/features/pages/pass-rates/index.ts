@@ -1,16 +1,21 @@
-import { getPassRates } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
+import { getPassRates } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
 import type {
   PassRateCourse,
   PassRatesData,
   PassRateStatistics,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { academicTermLabel } from "../../utils/date";
-import { formatCredits, formatScore } from "../../utils/format";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
-import { shortAcademicSemesterLabel } from "../../utils/semester";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { academicTermLabel } from "../../../utils/date";
+import { formatCredits, formatScore } from "../../../utils/format";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
+import { shortAcademicSemesterLabel } from "../../../utils/semester";
+import {
+  captureSessionLease,
+  isSessionLeaseCurrent,
+  sessionLeaseKey,
+} from "../../../store/session";
 
 interface CourseView extends PassRateCourse {
   displayScore: string;
@@ -45,6 +50,7 @@ interface ComponentView {
 }
 
 let requestSequence = 0;
+let activePassRateSessionKey = "";
 let pickerTransitionTimer: number | undefined;
 
 function clearPickerTransitionTimer() {
@@ -185,10 +191,43 @@ Page({
     ownScore: -1,
   },
   onLoad() {
+    activePassRateSessionKey = "";
     this.setData(resolveAppearance());
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const currentSessionKey = sessionLeaseKey(lease);
+    if (
+      activePassRateSessionKey &&
+      activePassRateSessionKey !== currentSessionKey
+    ) {
+      requestSequence += 1;
+      clearPickerTransitionTimer();
+      this.setData({
+        loading: true,
+        updating: false,
+        loaded: false,
+        errorMessage: "",
+        pickerVisible: false,
+        pickerMounted: false,
+        pickerActive: false,
+        courses: [],
+        courseGroups: [],
+        selectedSemesterId: "",
+        courseRows: [],
+        course: null,
+        components: [],
+        statistics: null,
+        status: "collecting",
+        message: "统计中，请稍后查看",
+        averageScoreLabel: "—",
+        cohortLabel: "",
+        ownScore: -1,
+      });
+    }
+    activePassRateSessionKey = currentSessionKey;
     this.setData(resolveAppearance());
     if (!this.data.loaded) void this.loadPassRates();
   },
@@ -197,6 +236,8 @@ Page({
     clearPickerTransitionTimer();
   },
   async loadPassRates(courseKey = "") {
+    const lease = captureSessionLease();
+    if (!lease) return;
     const sequence = ++requestSequence;
     const hasCourse = Boolean(this.data.course);
     this.setData({
@@ -206,10 +247,10 @@ Page({
     });
     try {
       const result = await getPassRates(courseKey || undefined);
-      if (sequence !== requestSequence) return;
+      if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) return;
       this.applyData(result.data);
     } catch (error) {
-      if (sequence !== requestSequence) return;
+      if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) return;
       const message = getErrorMessage(error, "通过率加载失败，请稍后重试。");
       if (message && hasCourse) {
         wx.showToast({ title: message, icon: "none" });
@@ -217,7 +258,7 @@ Page({
         this.setData({ errorMessage: message });
       }
     } finally {
-      if (sequence === requestSequence) {
+      if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ loading: false, updating: false, loaded: true });
       }
     }

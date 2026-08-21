@@ -4,7 +4,13 @@ import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 import { loadPetPreferences, shouldShowPet } from "../../store/pet";
-import { getSession, loadCurrentUser } from "../../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  loadCurrentUser,
+  sessionLeaseKey,
+} from "../../store/session";
 import { loadPreferences, updatePreferences } from "../../store/preferences";
 import type { ThemePreference } from "../../types/app";
 import type { CurrentUserData } from "../../types/api";
@@ -41,6 +47,7 @@ const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
 const PROFILE_AUTH_EXIT_MS = 180;
 
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
+let activeProfileSessionKey = "";
 
 function clearAuthenticationExitTimer(): void {
   if (authenticationExitTimer === undefined) return;
@@ -80,9 +87,11 @@ Page({
     ],
   },
   onLoad() {
+    activeProfileSessionKey = "";
     this.applyAppearance();
+    const sessionAccount = getSession()?.user.account || "";
     const cached = getApp<IAppOption>().globalData.user || loadCurrentUser();
-    if (cached) {
+    if (cached?.account === sessionAccount) {
       this.applyUser(cached);
       this.loadPet(cached.account);
     }
@@ -92,9 +101,29 @@ Page({
       return;
     }
     clearAuthenticationExitTimer();
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const account = lease.account;
+    const sessionKey = sessionLeaseKey(lease);
+    if (
+      (activeProfileSessionKey && activeProfileSessionKey !== sessionKey) ||
+      (this.data.account && this.data.account !== account)
+    ) {
+      this.setData({
+        loading: false,
+        userName: "同学",
+        avatarText: "易",
+        account: "",
+        organizationName: "西南大学",
+        classLabel: "",
+        enrollmentDate: "",
+        errorMessage: "",
+      });
+    }
+    activeProfileSessionKey = sessionKey;
     this.setData({ loggingOut: false, authenticationExitClass: "" });
     this.applyAppearance();
-    this.loadPet(getSession()?.user.account || "");
+    this.loadPet(account);
     this.syncTabBarAppearance();
     void this.loadUser();
   },
@@ -147,19 +176,23 @@ Page({
     if (this.data.loading) {
       return;
     }
+    const lease = captureSessionLease();
+    if (!lease) return;
     this.setData({
       loading: !this.data.account,
       errorMessage: "",
     });
     try {
       const user = await getPreloadedCurrentUser(refresh);
-      if (user) this.applyUser(user);
+      if (user && isSessionLeaseCurrent(lease)) this.applyUser(user);
     } catch (error) {
-      this.setData({
-        errorMessage: getErrorMessage(error, "个人资料加载失败。"),
-      });
+      if (isSessionLeaseCurrent(lease)) {
+        this.setData({
+          errorMessage: getErrorMessage(error, "个人资料加载失败。"),
+        });
+      }
     } finally {
-      this.setData({ loading: false });
+      if (isSessionLeaseCurrent(lease)) this.setData({ loading: false });
     }
   },
   retryLoadUser() {
@@ -168,7 +201,7 @@ Page({
   },
   openPetSetup() {
     haptic("light");
-    wx.navigateTo({ url: "/pages/pet-setup/index?source=profile" });
+    wx.navigateTo({ url: "/features/pages/pet-setup/index?source=profile" });
   },
   openThemeSheet() {
     haptic("light");
@@ -219,10 +252,13 @@ Page({
   },
   logout() {
     if (this.data.loggingOut) return;
+    const lease = captureSessionLease();
     haptic("heavy");
     this.setData({ loggingOut: true });
     void logoutSession()
       .catch(() => undefined)
-      .finally(() => goToLogin());
+      .finally(() => {
+        if (!getSession() || isSessionLeaseCurrent(lease)) goToLogin();
+      });
   },
 });

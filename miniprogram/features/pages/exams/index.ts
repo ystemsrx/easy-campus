@@ -1,36 +1,40 @@
-import { getExams } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
+import { getExams } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
 import {
   isExamAutomaticRefreshDue,
   refreshExamsOnForeground,
-} from "../../services/cache-refresh";
-import { shouldUseServerSnapshot } from "../../store/cache-policy";
-import { loadExamsSnapshot, saveExamsSnapshot } from "../../store/exams";
-import { getSession } from "../../store/session";
+} from "../../../services/cache-refresh";
+import { shouldUseServerSnapshot } from "../../../store/cache-policy";
+import { loadExamsSnapshot, saveExamsSnapshot } from "../../../store/exams";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 import type {
   AcademicSemesterOption,
   Exam,
   ExamsData,
   ExamsQuery,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
 import {
   formatDateTime,
   formatFriendlyDate,
   formatTimestampDate,
   formatTimestampTime,
   localDateKey,
-} from "../../utils/date";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+} from "../../../utils/date";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   examBatchLabel,
   examCountdown,
   summarizeExamProgress,
   type ExamCountdownTone,
-} from "../../utils/exams";
-import { numberedAcademicSemesterLabel } from "../../utils/semester";
+} from "../../../utils/exams";
+import { numberedAcademicSemesterLabel } from "../../../utils/semester";
 
 interface ExamView extends Exam {
   dateLabel: string;
@@ -174,6 +178,28 @@ Page({
   hydrateExams(semesterId = "default"): boolean {
     const account = getSession()?.user.account || "";
     if (!account) return false;
+    if (hydratedExamsAccount && hydratedExamsAccount !== account) {
+      examsSequence += 1;
+      this.setData({
+        loading: false,
+        refreshing: false,
+        loadingMore: false,
+        semesterId: "",
+        semesters: [],
+        examItems: [],
+        statusSummary: { total: 0, pending: 0, past: 0 },
+        page: 1,
+        totalPages: 0,
+        total: 0,
+        filterLabel: "最新学期",
+        selectedExamVisible: false,
+        selectedExamTitle: "考试详情",
+        selectedExamDetailHeight: 0,
+        selectedExam: null,
+        loaded: false,
+        errorMessage: "",
+      });
+    }
     if (
       semesterId === "default" &&
       hydratedExamsAccount === account &&
@@ -213,6 +239,8 @@ Page({
     ) {
       return false;
     }
+    const lease = captureSessionLease();
+    if (!lease) return false;
     const page = reset ? 1 : this.data.page + 1;
     const sequence = ++examsSequence;
     this.setData({
@@ -230,9 +258,10 @@ Page({
     let shouldRefreshAfterward = false;
     try {
       const result = await getExams(query);
-      if (sequence !== examsSequence) return false;
-      const session = getSession();
-      const account = session?.user.account || "";
+      if (sequence !== examsSequence || !isSessionLeaseCurrent(lease)) {
+        return false;
+      }
+      const account = lease.account;
       const storageSemester = query.semester || "default";
       const local = loadExamsSnapshot(account, storageSemester);
       if (
@@ -268,11 +297,11 @@ Page({
       const current = loadExamsSnapshot(account, storageSemester);
       shouldRefreshAfterward =
         !refresh &&
-        Boolean(session?.signedInAt) &&
+        Boolean(lease.signedInAt) &&
         isExamAutomaticRefreshDue(current?.lastAutomaticRefreshAt || 0);
       return true;
     } catch (error) {
-      if (sequence === examsSequence) {
+      if (sequence === examsSequence && isSessionLeaseCurrent(lease)) {
         const message = getErrorMessage(error, "考试信息加载失败。");
         if (message && this.data.examItems.length) {
           wx.showToast({ title: message, icon: "none" });
@@ -282,11 +311,17 @@ Page({
       }
       return false;
     } finally {
-      if (sequence === examsSequence) {
+      if (sequence === examsSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
         if (shouldRefreshAfterward) {
           void refreshExamsOnForeground().then((snapshot) => {
-            if (!snapshot || sequence !== examsSequence) return;
+            if (
+              !snapshot ||
+              sequence !== examsSequence ||
+              !isSessionLeaseCurrent(lease)
+            ) {
+              return;
+            }
             const currentSemester = this.data.semesterId;
             const refreshedSemester = snapshot.data.semester?.id || "";
             if (!currentSemester || currentSemester === refreshedSemester) {

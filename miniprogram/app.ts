@@ -6,10 +6,7 @@ import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
 import { prewarmTimetableFirstScreen } from "./data/timetable-render";
 import { loadTimetableThemeId } from "./data/timetable-theme";
-import {
-  preloadPrimaryTabAssets,
-  preloadTimetableThemeAssets,
-} from "./utils/icon-preload";
+import { preloadPrimaryTabAssets } from "./utils/icon-preload";
 import { registerAuthenticationRoute } from "./utils/navigation";
 
 App<IAppOption>({
@@ -26,7 +23,6 @@ App<IAppOption>({
     this.globalData.user = loadCurrentUser();
     preloadPrimaryTabAssets();
     const timetableThemeId = loadTimetableThemeId();
-    preloadTimetableThemeAssets(timetableThemeId);
     const account = this.globalData.session?.user.account || "";
     const timetable = account ? loadTimetableSnapshot(account) : null;
     if (timetable) {

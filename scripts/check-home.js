@@ -140,7 +140,7 @@ assert(
     /onShow\(\)[\s\S]*?homeVisible = true;[\s\S]*?this\.prepareForAuthenticatedReveal\(\);[\s\S]*?if \(homeReady\)/.test(
       homeScript,
     ) &&
-    /prepareForAuthenticatedReveal\(onReady\?: \(\) => void\)[\s\S]*?authenticated: true[\s\S]*?this\.hydrateCachedDashboard\(\);[\s\S]*?wx\.nextTick\(\(\) => onReady\?\.\(\)\)/.test(
+    /prepareForAuthenticatedReveal\(onReady\?: \(\) => void\)[\s\S]*?authenticated: true[\s\S]*?this\.hydrateCachedDashboard\(\);[\s\S]*?wx\.nextTick\(\(\) => \{[\s\S]*?isSessionLeaseCurrent\(lease\)[\s\S]*?onReady\?\.\(\)/.test(
       homeScript,
     ) &&
     /activateHomeAfterFirstFrame\(\)[\s\S]*?const petSetupPending = this\.openPendingPetSetup\(sessionAccount\);[\s\S]*?void this\.loadDashboard\(false\)/.test(

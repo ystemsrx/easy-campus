@@ -1,5 +1,5 @@
 import { getApiUrl } from "../config/index";
-import { getSession } from "../store/session";
+import { captureSessionLease, isSessionLeaseCurrent } from "../store/session";
 import type { PublicationFeed, PublicationMedia } from "../types/api";
 import { apiRequest } from "./request";
 
@@ -38,21 +38,26 @@ export function recordAnnouncementPopup(
 export function downloadPublicationMedia(
   media: PublicationMedia,
 ): Promise<string | null> {
-  const cached = mediaCache.get(media.id);
+  const lease = captureSessionLease();
+  if (!lease) return Promise.resolve(null);
+  const cacheKey = `${lease.userId}:${media.id}`;
+  const cached = mediaCache.get(cacheKey);
   if (cached) return Promise.resolve(cached);
-  const session = getSession();
-  if (!session) return Promise.resolve(null);
 
   return new Promise((resolve) => {
     wx.downloadFile({
       url: getApiUrl(media.url),
       header: {
-        Authorization: `Bearer ${session.token}`,
+        Authorization: `Bearer ${lease.token}`,
       },
       timeout: 30000,
       success: (response) => {
+        if (!isSessionLeaseCurrent(lease)) {
+          resolve(null);
+          return;
+        }
         if (response.statusCode >= 200 && response.statusCode < 300) {
-          mediaCache.set(media.id, response.tempFilePath);
+          mediaCache.set(cacheKey, response.tempFilePath);
           resolve(response.tempFilePath);
           return;
         }

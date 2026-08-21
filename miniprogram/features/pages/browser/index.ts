@@ -1,9 +1,13 @@
-import { getNoticeDetail } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
-import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime } from "../../utils/date";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
+import { getNoticeDetail } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
+import { resolveAppearance } from "../../../utils/appearance";
+import { formatDateTime } from "../../../utils/date";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
+import {
+  captureSessionLease,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 
 function safeDecode(value: string | undefined, fallback: string): string {
   if (!value) return fallback;
@@ -71,12 +75,15 @@ Page({
       });
       return;
     }
+    const lease = captureSessionLease();
+    if (!lease) return;
     this.setData({
       loading: !this.data.contentHtml,
       errorMessage: "",
     });
     try {
       const result = await getNoticeDetail(this.data.id, refresh);
+      if (!isSessionLeaseCurrent(lease)) return;
       const detail = result.data;
       const publishedAt = detail.publishedAt || this.data.publishedAt;
       const url = detail.link || this.data.url;
@@ -95,13 +102,14 @@ Page({
         void this.loadDetail(true);
       }
     } catch (error) {
+      if (!isSessionLeaseCurrent(lease)) return;
       if (refresh && this.data.contentHtml) return;
       this.setData({
         loaded: true,
         errorMessage: getErrorMessage(error, "通知正文加载失败，请稍后重试。"),
       });
     } finally {
-      this.setData({ loading: false });
+      if (isSessionLeaseCurrent(lease)) this.setData({ loading: false });
     }
   },
   retry() {

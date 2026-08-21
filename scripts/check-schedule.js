@@ -119,6 +119,7 @@ const timetableScript = fs.readFileSync(
     __dirname,
     "..",
     "miniprogram",
+    "features",
     "pages",
     "timetable",
     "index.ts",
@@ -271,11 +272,13 @@ assert(
   "图例项目必须保持独立宽度且不得被附加说明挤压重叠",
 );
 assert(
-  pageScript.includes('navigateTo("/pages/timetable/index?source=schedule")') &&
+  pageScript.includes(
+    'navigateTo("/features/pages/timetable/index?source=schedule")',
+  ) &&
     timetableScript.includes('options.source === "schedule"') &&
     timetableScript.includes("MODAL_HEADER_EDGE_INSET_RPX") &&
     timetableScript.includes("backgroundMetrics(this.data.compactHeader)") &&
-    homeScript.includes('url: "/pages/timetable/index"'),
+    homeScript.includes('url: "/features/pages/timetable/index"'),
   "日程的模态课表入口必须使用等边距紧凑顶部，同时保持首页原生安全区布局",
 );
 

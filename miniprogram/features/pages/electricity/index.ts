@@ -1,31 +1,35 @@
-import { ApiClientError, getErrorMessage } from "../../services/request";
+import { ApiClientError, getErrorMessage } from "../../../services/request";
 import {
   getElectricityAccount,
   getElectricityBuildings,
   queryElectricity,
-} from "../../services/utilities";
+} from "../../../services/utilities";
 import {
   claimAutomaticRefresh,
   isCacheStale,
   shouldUseServerSnapshot,
   THREE_DAYS_MS,
-} from "../../store/cache-policy";
+} from "../../../store/cache-policy";
 import {
   loadElectricitySnapshot,
   saveElectricitySnapshot,
   type ElectricitySnapshot,
-} from "../../store/electricity";
-import { getSession } from "../../store/session";
+} from "../../../store/electricity";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 import type {
   ElectricityAccount,
   ElectricityBuilding,
   ElectricityCachedData,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { formatDateTime } from "../../utils/date";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { formatDateTime } from "../../../utils/date";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
+import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 
 interface ElectricityView {
   billedElectricityLabel: string;
@@ -185,9 +189,37 @@ Page({
   hydrateAccount() {
     const account = getSession()?.user.account || "";
     if (!account || account === activeAccount) return;
+    if (activeAccount) {
+      accountRequestSequence += 1;
+      buildingRequestSequence += 1;
+      clearBindingToastTimers();
+      this.setData({
+        optionsLoading: false,
+        querying: false,
+        serviceUnavailable: false,
+        errorMessage: "",
+        buildingId: "",
+        buildingName: "",
+        draftBuildingId: "",
+        buildingQuery: "",
+        buildingSearchFocused: false,
+        buildingPickerVisible: false,
+        bindingEditing: false,
+        roomNumber: "",
+        boundBuildingId: "",
+        boundBuildingName: "",
+        boundRoomNumber: "",
+        account: null,
+        cacheLabel: "尚未绑定寝室",
+        bindingToastMounted: false,
+        bindingToastVisible: false,
+      });
+    }
     activeAccount = account;
     activeSnapshot = loadElectricitySnapshot(account);
-    if (activeSnapshot) this.applyElectricityData(activeSnapshot.data);
+    this.applyElectricityData(
+      activeSnapshot?.data || { binding: null, account: null },
+    );
   },
   applyElectricityData(data: ElectricityCachedData) {
     const binding = data.binding;
@@ -214,11 +246,19 @@ Page({
     });
   },
   async loadSavedAccount() {
+    const lease = captureSessionLease();
+    if (!lease) return;
     const sequence = ++accountRequestSequence;
     let shouldRefreshAfterward = false;
     try {
       const result = await getElectricityAccount();
-      if (sequence !== accountRequestSequence) return;
+      if (
+        sequence !== accountRequestSequence ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
+        return;
+      }
       const serverBindingCleared = !result.data.binding && !result.data.account;
       if (
         serverBindingCleared ||
@@ -239,12 +279,23 @@ Page({
     } catch {
       // 服务端快照不可用时继续展示本地保存的数据。
     } finally {
-      if (sequence === accountRequestSequence && shouldRefreshAfterward) {
-        setTimeout(() => void this.refreshBoundAccount(), 0);
+      if (
+        sequence === accountRequestSequence &&
+        isSessionLeaseCurrent(lease) &&
+        activeAccount === lease.account &&
+        shouldRefreshAfterward
+      ) {
+        setTimeout(() => {
+          if (isSessionLeaseCurrent(lease) && activeAccount === lease.account) {
+            void this.refreshBoundAccount();
+          }
+        }, 0);
       }
     }
   },
   async loadBuildings() {
+    const lease = captureSessionLease();
+    if (!lease) return;
     const sequence = ++buildingRequestSequence;
     this.setData({
       optionsLoading: !this.data.allBuildings.length,
@@ -253,7 +304,12 @@ Page({
     });
     try {
       const result = await getElectricityBuildings();
-      if (sequence !== buildingRequestSequence) return;
+      if (
+        sequence !== buildingRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
       const selected = result.buildings.find(
         (building) => building.id === this.data.buildingId,
       );
@@ -269,7 +325,12 @@ Page({
         buildingName: selected?.name || "",
       });
     } catch (error) {
-      if (sequence !== buildingRequestSequence) return;
+      if (
+        sequence !== buildingRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
       if (isUnavailable(error)) {
         this.setData({
           serviceUnavailable: true,
@@ -281,7 +342,10 @@ Page({
         });
       }
     } finally {
-      if (sequence === buildingRequestSequence) {
+      if (
+        sequence === buildingRequestSequence &&
+        isSessionLeaseCurrent(lease)
+      ) {
         this.setData({ optionsLoading: false });
       }
     }
@@ -400,6 +464,8 @@ Page({
     if (await this.refreshBoundAccount()) showRefreshConfirmation(this);
   },
   async queryBoundAccount(rebinding: boolean): Promise<boolean> {
+    const lease = captureSessionLease();
+    if (!lease || activeAccount !== lease.account) return false;
     const sequence = ++accountRequestSequence;
     const buildingId = rebinding
       ? this.data.buildingId
@@ -424,7 +490,13 @@ Page({
         buildingName,
         roomNumber: normalizedRoomNumber,
       });
-      if (sequence !== accountRequestSequence) return false;
+      if (
+        sequence !== accountRequestSequence ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
+        return false;
+      }
       activeSnapshot = saveElectricitySnapshot(
         activeAccount,
         result.data,
@@ -435,7 +507,13 @@ Page({
       if (rebinding) haptic("medium");
       return true;
     } catch (error) {
-      if (sequence !== accountRequestSequence) return false;
+      if (
+        sequence !== accountRequestSequence ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
+        return false;
+      }
       if (isUnavailable(error)) {
         this.setData({
           serviceUnavailable: true,
@@ -457,7 +535,11 @@ Page({
       }
       return false;
     } finally {
-      if (sequence === accountRequestSequence) {
+      if (
+        sequence === accountRequestSequence &&
+        isSessionLeaseCurrent(lease) &&
+        activeAccount === lease.account
+      ) {
         this.setData({ querying: false });
       }
     }

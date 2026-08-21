@@ -66,12 +66,30 @@ function loadCompanionService(petStore) {
     },
   }).outputText;
   const writes = [];
+  let activeAccount = "";
   const moduleRecord = { exports: {} };
   new Function("module", "exports", "require", output)(
     moduleRecord,
     moduleRecord.exports,
     (request) => {
       if (request.endsWith("store/pet")) return petStore;
+      if (request.endsWith("store/session")) {
+        return {
+          captureSessionLease() {
+            return activeAccount
+              ? {
+                  token: `token:${activeAccount}`,
+                  userId: `user:${activeAccount}`,
+                  account: activeAccount,
+                  signedInAt: 1,
+                }
+              : null;
+          },
+          isSessionLeaseCurrent(lease) {
+            return Boolean(lease && lease.account === activeAccount);
+          },
+        };
+      }
       if (request === "./request") {
         return {
           async apiRequest(path, options) {
@@ -86,7 +104,13 @@ function loadCompanionService(petStore) {
       throw new Error(`Unexpected companion service dependency: ${request}`);
     },
   );
-  return { service: moduleRecord.exports, writes };
+  return {
+    service: moduleRecord.exports,
+    writes,
+    setActiveAccount(account) {
+      activeAccount = account;
+    },
+  };
 }
 
 const data = loadGeneratedData();
@@ -237,9 +261,9 @@ const component = read("components/geometric-pet/geometric-pet.ts");
 const componentTemplate = read("components/geometric-pet/geometric-pet.wxml");
 const componentStyles = read("components/geometric-pet/geometric-pet.wxss");
 const originalEngine = read("components/geometric-pet/original-engine.ts");
-const setupScript = read("pages/pet-setup/index.ts");
-const setupTemplate = read("pages/pet-setup/index.wxml");
-const setupStyles = read("pages/pet-setup/index.wxss");
+const setupScript = read("features/pages/pet-setup/index.ts");
+const setupTemplate = read("features/pages/pet-setup/index.wxml");
+const setupStyles = read("features/pages/pet-setup/index.wxss");
 const pickerScript = read("components/pet-picker-drawer/pet-picker-drawer.ts");
 const pickerTemplate = read(
   "components/pet-picker-drawer/pet-picker-drawer.wxml",
@@ -257,7 +281,7 @@ const petStore = read("store/pet.ts");
 const companionService = read("services/companion.ts");
 const authService = read("services/auth.ts");
 const apiTypes = read("types/api.ts");
-const loginScript = read("pages/login/index.ts");
+const loginScript = read("features/pages/login/index.ts");
 const navigationScript = read("utils/navigation.ts");
 const appConfig = JSON.parse(read("app.json"));
 
@@ -474,7 +498,7 @@ assert(
     petStore.includes("export function storeServerPetPreferences") &&
     petStore.includes("preferences.selected && preferences.enabled") &&
     companionService.includes("if (!hasStoredPetPreferences(account))") &&
-    companionService.includes("if (server) storeServerPetPreferences") &&
+    companionService.includes("server && isSessionLeaseCurrent(lease)") &&
     companionService.includes("if (samePreferences(local, server))") &&
     companionService.includes(
       'apiRequest<CompanionPreferencesData>("/auth/companion"',
@@ -487,7 +511,7 @@ assert(
     ) &&
     loginScript.includes('url: "/pages/home/index"') &&
     loginScript.includes("void getPreloadedCurrentUser().catch") &&
-    !loginScript.includes("/pages/pet-setup/index?source=login") &&
+    !loginScript.includes("/features/pages/pet-setup/index?source=login") &&
     !loginScript.includes("wx.redirectTo") &&
     homeScript.includes("openPendingPetSetup(sessionAccount)") &&
     homeScript.includes(
@@ -496,7 +520,7 @@ assert(
     !homeScript.includes(
       "if (this.openPendingPetSetup(sessionAccount)) return",
     ) &&
-    !homeScript.includes("/pages/pet-setup/index?source=home") &&
+    !homeScript.includes("/features/pages/pet-setup/index?source=home") &&
     homeScript.includes("petSetupDrawerMounted: true") &&
     homeScript.includes("savePetSelection(account") &&
     homeScript.includes("skipPetSetup(account)") &&
@@ -586,7 +610,11 @@ assert(
   "姓名卡片必须用定高容器承载互动宠物，未开启时恢复头像，并只保留独立设置入口",
 );
 assert(
-  appConfig.pages.includes("pages/pet-setup/index") &&
+  appConfig.subPackages.some(
+    (subpackage) =>
+      subpackage.root === "features" &&
+      subpackage.pages.includes("pages/pet-setup/index"),
+  ) &&
     appConfig.usingComponents["geometric-pet"] ===
       "/components/geometric-pet/geometric-pet",
   "校园伙伴页面和组件必须在 app.json 注册",
@@ -823,6 +851,7 @@ function runOriginalEngineSmokeTest() {
 
 async function runCompanionSyncSmokeTest() {
   const runtime = loadCompanionService(petStoreRuntime.store);
+  runtime.setActiveAccount("local-priority");
   petStoreRuntime.store.savePetSelection("local-priority", {
     shape: "leaf",
     color: "#2a92fe",
@@ -856,6 +885,7 @@ async function runCompanionSyncSmokeTest() {
     color: "#f0449d",
     updatedAt: "2026-08-20T03:00:00.000Z",
   };
+  runtime.setActiveAccount("fresh-device");
   await runtime.service.synchronizeCompanionPreferences(
     "fresh-device",
     serverOnly,

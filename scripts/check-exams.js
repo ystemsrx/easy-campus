@@ -107,12 +107,18 @@ assert(
 );
 
 assert(
-  examUtilities.examBatchLabel({ examName: "2025-2026-2期末考试", retake: false }) ===
-    "正常考试" &&
-    examUtilities.examBatchLabel({ examName: "2025-2026-2期末考试", retake: true }) ===
-      "重修" &&
-    examUtilities.examBatchLabel({ examName: "2025-2026-2补缓考名单", retake: true }) ===
-      "补/缓考",
+  examUtilities.examBatchLabel({
+    examName: "2025-2026-2期末考试",
+    retake: false,
+  }) === "正常考试" &&
+    examUtilities.examBatchLabel({
+      examName: "2025-2026-2期末考试",
+      retake: true,
+    }) === "重修" &&
+    examUtilities.examBatchLabel({
+      examName: "2025-2026-2补缓考名单",
+      retake: true,
+    }) === "补/缓考",
   "考试批次必须按补缓考、重修、正常考试的优先级统一显示",
 );
 
@@ -126,15 +132,39 @@ assert(
 );
 
 const examsPage = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "exams", "index.wxml"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "exams",
+    "index.wxml",
+  ),
   "utf8",
 );
 const examsStyles = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "exams", "index.wxss"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "exams",
+    "index.wxss",
+  ),
   "utf8",
 );
 const examsScript = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "exams", "index.ts"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "exams",
+    "index.ts",
+  ),
   "utf8",
 );
 const apiTypes = fs.readFileSync(
@@ -154,15 +184,39 @@ const appScript = fs.readFileSync(
   "utf8",
 );
 const gradesPage = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxml"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.wxml",
+  ),
   "utf8",
 );
 const gradesScript = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.ts"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.ts",
+  ),
   "utf8",
 );
 const gradesStyles = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxss"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.wxss",
+  ),
   "utf8",
 );
 const homePage = fs.readFileSync(

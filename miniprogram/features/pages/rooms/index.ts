@@ -1,21 +1,28 @@
-import { getRoomOptions, getRooms } from "../../services/teaching";
-import { getErrorMessage } from "../../services/request";
+import { getRoomOptions, getRooms } from "../../../services/teaching";
+import { getErrorMessage } from "../../../services/request";
 import type {
   EmptyRoom,
   PeriodGroup,
   PeriodOption,
   RoomOptionsData,
   SelectOption,
-} from "../../types/api";
-import { resolveAppearance } from "../../utils/appearance";
-import { formatFriendlyDate, toDateString } from "../../utils/date";
-import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated } from "../../utils/navigation";
+} from "../../../types/api";
+import { resolveAppearance } from "../../../utils/appearance";
+import { formatFriendlyDate, toDateString } from "../../../utils/date";
+import { haptic } from "../../../utils/haptics";
+import { ensureAuthenticated } from "../../../utils/navigation";
 import {
   formatRoomResultDate,
   resolveInitialRoomDate,
-} from "../../utils/room-date";
-import { groupRoomsByFloor, type FloorRoomGroup } from "../../utils/room-floor";
+} from "../../../utils/room-date";
+import {
+  groupRoomsByFloor,
+  type FloorRoomGroup,
+} from "../../../utils/room-floor";
+import {
+  captureSessionLease,
+  isSessionLeaseCurrent,
+} from "../../../store/session";
 
 interface PeriodView extends PeriodOption {
   selected: boolean;
@@ -254,20 +261,24 @@ Page({
     });
   },
   async loadInitialOptions() {
+    const lease = captureSessionLease();
+    if (!lease) return;
     const sequence = ++optionsSequence;
     this.setData({ optionsLoading: true, errorMessage: "" });
     try {
       const result = await getRoomOptions();
-      if (sequence !== optionsSequence) return;
+      if (sequence !== optionsSequence || !isSessionLeaseCurrent(lease)) return;
       this.applyOptionData(result.data);
     } catch (error) {
-      if (sequence === optionsSequence) {
+      if (sequence === optionsSequence && isSessionLeaseCurrent(lease)) {
         this.setData({
           errorMessage: getErrorMessage(error, "查询选项加载失败。"),
         });
       }
     } finally {
-      if (sequence === optionsSequence) this.setData({ optionsLoading: false });
+      if (sequence === optionsSequence && isSessionLeaseCurrent(lease)) {
+        this.setData({ optionsLoading: false });
+      }
     }
   },
   onDateChange(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
@@ -494,6 +505,8 @@ Page({
   },
   async queryRooms(reset: boolean) {
     if (!this.validateQuery()) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
     const page = reset ? 1 : this.data.page + 1;
     const queryDate = this.data.date;
     const queryPeriods = [...this.data.selectedPeriods];
@@ -513,7 +526,7 @@ Page({
         page,
         pageSize: PAGE_SIZE,
       });
-      if (sequence !== roomsSequence) return;
+      if (sequence !== roomsSequence || !isSessionLeaseCurrent(lease)) return;
       const incoming = result.data.items.map(toRoomView);
       const roomItems = reset
         ? incoming
@@ -535,7 +548,7 @@ Page({
       );
       if (reset) haptic("medium");
     } catch (error) {
-      if (sequence === roomsSequence) {
+      if (sequence === roomsSequence && isSessionLeaseCurrent(lease)) {
         const errorMessage = getErrorMessage(error, "空教室查询失败。");
         if (reset && errorMessage) {
           this.setData(
@@ -557,7 +570,7 @@ Page({
         }
       }
     } finally {
-      if (sequence === roomsSequence) {
+      if (sequence === roomsSequence && isSessionLeaseCurrent(lease)) {
         this.setData({
           querying: false,
           loadingMore: false,

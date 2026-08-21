@@ -73,11 +73,8 @@ new Function("module", "exports", "require", tapGuardOutput)(
   tapGuardModule.exports,
   require,
 );
-const {
-  canActivateTap,
-  movementExceedsTapThreshold,
-  SCROLL_TAP_SETTLE_MS,
-} = tapGuardModule.exports;
+const { canActivateTap, movementExceedsTapThreshold, SCROLL_TAP_SETTLE_MS } =
+  tapGuardModule.exports;
 
 assert(
   !movementExceedsTapThreshold({ x: 10, y: 10 }, { x: 15, y: 15 }) &&
@@ -229,15 +226,39 @@ assert(
 );
 
 const gradesPageScript = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.ts"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.ts",
+  ),
   "utf8",
 );
 const gradesPageTemplate = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxml"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.wxml",
+  ),
   "utf8",
 );
 const gradesPageStyles = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "grades", "index.wxss"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grades",
+    "index.wxss",
+  ),
   "utf8",
 );
 const gradeDetailScript = fs.readFileSync(
@@ -245,6 +266,7 @@ const gradeDetailScript = fs.readFileSync(
     __dirname,
     "..",
     "miniprogram",
+    "features",
     "pages",
     "grade-detail",
     "index.ts",
@@ -256,6 +278,7 @@ const gradeDetailTemplate = fs.readFileSync(
     __dirname,
     "..",
     "miniprogram",
+    "features",
     "pages",
     "grade-detail",
     "index.wxml",
@@ -323,9 +346,7 @@ assert(
       'detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩"',
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
-    gradeDetailTemplate.includes(
-      '<block wx:if="{{showComponentsSection}}">',
-    ) &&
+    gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
     gradesStore.includes("const SCHEMA_VERSION = 6;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
 );
@@ -351,7 +372,9 @@ assert(
       'style="animation-delay: {{item.animationDelay}}ms;"',
     ) &&
     gradesPageScript.includes("let gradeListAnimationRequested = true;") &&
-    gradesPageScript.includes("const animateEntries = gradeListAnimationRequested;") &&
+    gradesPageScript.includes(
+      "const animateEntries = gradeListAnimationRequested;",
+    ) &&
     gradesPageScript.includes("`${gradeRenderBatch}:${course.id}`") &&
     gradesPageScript.includes("animateEntries || animatedIds.has(course.id)") &&
     (gradesPageScript.match(/^\s+gradeListAnimationRequested = true;/gm) || [])

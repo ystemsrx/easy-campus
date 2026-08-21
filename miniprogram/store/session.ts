@@ -6,6 +6,13 @@ const SESSION_INVALID_NOTICE_KEY = "easy-swu:session-invalid-notice";
 const ACCOUNT_DEACTIVATED_NOTICE_KEY = "easy-swu:account-deactivated-notice";
 const SESSION_INVALID_NOTICE_TTL_MS = 15_000;
 
+export interface SessionLease {
+  token: string;
+  userId: string;
+  account: string;
+  signedInAt: number;
+}
+
 function isSession(value: unknown): value is Session {
   if (!value || typeof value !== "object") {
     return false;
@@ -49,12 +56,22 @@ export function loadSession(): Session | null {
 }
 
 export function saveSession(loginData: LoginData): Session {
+  const previousAccount =
+    getSession()?.user.account || loadCurrentUser()?.account || "";
   const session: Session = {
     ...loginData,
     signedInAt: Date.now(),
   };
   wx.setStorageSync(SESSION_KEY, session);
-  getApp<IAppOption>().globalData.session = session;
+  wx.removeStorageSync(SESSION_INVALID_NOTICE_KEY);
+  wx.removeStorageSync(ACCOUNT_DEACTIVATED_NOTICE_KEY);
+  const app = getApp<IAppOption>();
+  if (previousAccount && previousAccount !== session.user.account) {
+    wx.removeStorageSync(USER_KEY);
+    app.globalData.user = null;
+    app.globalData.selectedGrade = null;
+  }
+  app.globalData.session = session;
   return session;
 }
 
@@ -77,6 +94,48 @@ export function getSession(): Session | null {
   }
 }
 
+/**
+ * 捕获一次登录会话的不可变身份。异步工作必须在写缓存或页面状态前校验它，
+ * 避免旧账号请求在退出并登录新账号后污染新会话。
+ */
+export function captureSessionLease(
+  session: Session | null = getSession(),
+): SessionLease | null {
+  if (!session) return null;
+  return {
+    token: session.token,
+    userId: session.user.id,
+    account: session.user.account,
+    signedInAt: session.signedInAt,
+  };
+}
+
+export function sessionLeaseKey(lease: SessionLease): string {
+  return `${lease.userId}:${lease.account}:${lease.signedInAt}:${lease.token}`;
+}
+
+export function isSessionLeaseCurrent(
+  lease: SessionLease | null,
+  session: Session | null = getSession(),
+): boolean {
+  return Boolean(
+    lease &&
+    session &&
+    lease.token === session.token &&
+    lease.userId === session.user.id &&
+    lease.account === session.user.account &&
+    lease.signedInAt === session.signedInAt,
+  );
+}
+
+export function assertSessionLeaseCurrent(
+  lease: SessionLease | null,
+): asserts lease is SessionLease {
+  if (!isSessionLeaseCurrent(lease)) {
+    throw new Error("登录账号已经切换。");
+  }
+}
+
 export function saveCurrentUser(user: CurrentUserData): void {
   wx.setStorageSync(USER_KEY, user);
   getApp<IAppOption>().globalData.user = user;
@@ -94,6 +153,13 @@ export function clearSession(): void {
   app.globalData.session = null;
   app.globalData.user = null;
   app.globalData.selectedGrade = null;
+}
+
+/** 仅清理由发起方捕获的会话，不能让旧请求退出后来登录的新账号。 */
+export function clearSessionIfCurrent(lease: SessionLease | null): boolean {
+  if (!isSessionLeaseCurrent(lease)) return false;
+  clearSession();
+  return true;
 }
 
 export function queueSessionInvalidNotice(): void {
