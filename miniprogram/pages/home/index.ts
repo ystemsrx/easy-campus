@@ -1,4 +1,4 @@
-import { MINIPROGRAM_NAME } from "../../config/env";
+import { APP_NAME } from "../../config/app";
 import { getCredentialStatus } from "../../services/auth";
 import {
   getPreloadedCurrentUser,
@@ -523,7 +523,7 @@ function clearHomeActivationTimer(): void {
 Page({
   data: {
     ...INITIAL_HOME_APPEARANCE,
-    appName: MINIPROGRAM_NAME,
+    appName: APP_NAME,
     authenticated: INITIAL_HOME_AUTHENTICATED,
     loading: false,
     loaded: false,

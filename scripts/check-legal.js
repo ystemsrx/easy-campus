@@ -93,11 +93,11 @@ if (
 
 if (
   !content.includes(
-    'import { MINIPROGRAM_NAME } from "../../config/env";',
+    'import { APP_NAME } from "../../config/app";',
   ) ||
-  !content.includes("${MINIPROGRAM_NAME}")
+  !content.includes("${APP_NAME}")
 ) {
-  failures.push("用户协议和隐私政策必须使用运行时小程序名称");
+  failures.push("用户协议和隐私政策必须使用固定小程序名称");
 }
 
 if (

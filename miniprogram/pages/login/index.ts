@@ -1,4 +1,4 @@
-import { MINIPROGRAM_NAME } from "../../config/env";
+import { APP_NAME } from "../../config/app";
 import { cancelPendingLogin, login } from "../../services/auth";
 import { refreshExamsOnForeground } from "../../services/cache-refresh";
 import {
@@ -193,7 +193,7 @@ function routeAfterAuthentication(onFailure?: () => void): void {
 
 Page({
   data: {
-    appName: MINIPROGRAM_NAME,
+    appName: APP_NAME,
     account: "",
     password: "",
     passwordVisible: false,

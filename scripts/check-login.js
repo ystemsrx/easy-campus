@@ -65,8 +65,8 @@ const sessionStore = fs.readFileSync(
   path.join(projectRoot, "miniprogram", "store", "session.ts"),
   "utf8",
 );
-const envExample = fs.readFileSync(
-  path.join(projectRoot, ".env.example"),
+const appConfigScript = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "config", "app.ts"),
   "utf8",
 );
 const failures = [];
@@ -273,12 +273,12 @@ for (const copy of removedCopy) {
 }
 
 if (
-  !envExample.includes("MINIPROGRAM_NAME=西小易") ||
-  !script.includes('import { MINIPROGRAM_NAME } from "../../config/env";') ||
-  !script.includes("appName: MINIPROGRAM_NAME") ||
+  !appConfigScript.includes('export const APP_NAME = "西小易";') ||
+  !script.includes('import { APP_NAME } from "../../config/app";') ||
+  !script.includes("appName: APP_NAME") ||
   !template.includes("欢迎来到{{appName}}")
 ) {
-  failures.push("小程序名称必须从 frontend/.env 生成并注入登录页");
+  failures.push("小程序名称必须使用固定配置并注入登录页");
 }
 
 if (

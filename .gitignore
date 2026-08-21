@@ -7,6 +7,3 @@ project.private.config.json
 .eslintcache
 coverage/
 dist/
-.env
-.env.*
-!.env.example

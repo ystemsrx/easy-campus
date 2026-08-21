@@ -1,4 +1,4 @@
-import { MINIPROGRAM_NAME } from "../../config/env";
+import { APP_NAME } from "../../config/app";
 
 export type LegalDocumentType = "terms" | "privacy";
 
@@ -40,7 +40,7 @@ const terms: LegalDocument = {
   updatedAt: UPDATED_AT,
   effectiveAt: EFFECTIVE_AT,
   summary:
-    `本协议说明你使用“${MINIPROGRAM_NAME}”提供的课表、成绩、考试、校园消息、校历、空教室和寝室电费等服务时，双方应遵守的基本规则。`,
+    `本协议说明你使用“${APP_NAME}”提供的课表、成绩、考试、校园消息、校历、空教室和寝室电费等服务时，双方应遵守的基本规则。`,
   noticeTitle: "请在登录前阅读",
   notice:
     "勾选登录页选项并登录，表示你已阅读、理解并同意本协议与《隐私政策》。若不同意，请停止使用需要校园账号的功能。",
@@ -49,7 +49,7 @@ const terms: LegalDocument = {
     {
       title: "一、协议范围",
       paragraphs: [
-        `本协议适用于“${MINIPROGRAM_NAME}”微信小程序现有及后续提供的校园查询、提醒、日程和个性化服务。《隐私政策》及具体功能中的规则和提示均为本协议的组成部分。`,
+        `本协议适用于“${APP_NAME}”微信小程序现有及后续提供的校园查询、提醒、日程和个性化服务。《隐私政策》及具体功能中的规则和提示均为本协议的组成部分。`,
         "本服务面向西南大学学生提供校园信息的便捷查询与整理，不替代学校官方通知、证明、成绩单或业务办理渠道。信息存在差异时，以学校官方系统为准。",
       ],
       entries: [],
@@ -187,7 +187,7 @@ const privacy: LegalDocument = {
   updatedAt: UPDATED_AT,
   effectiveAt: EFFECTIVE_AT,
   summary:
-    `本政策说明“${MINIPROGRAM_NAME}”处理哪些个人信息、为何处理、向谁提供、保留多久，以及你如何行使个人信息权利。`,
+    `本政策说明“${APP_NAME}”处理哪些个人信息、为何处理、向谁提供、保留多久，以及你如何行使个人信息权利。`,
   noticeTitle: "账号信息提示",
   notice:
     "登录后，我们会处理学号、统一身份认证密码及必要的校园数据，用于身份认证、查询和更新本人信息。若不同意，请不要登录。",
@@ -196,7 +196,7 @@ const privacy: LegalDocument = {
     {
       title: "一、适用范围与原则",
       paragraphs: [
-        `本政策适用于“${MINIPROGRAM_NAME}”微信小程序全部用户端功能。个人信息处理者为微信公众平台中登记的本小程序开发者、运营者，以下称“我们”。`,
+        `本政策适用于“${APP_NAME}”微信小程序全部用户端功能。个人信息处理者为微信公众平台中登记的本小程序开发者、运营者，以下称“我们”。`,
         "我们遵循合法、正当、必要、诚信和目的明确原则，仅处理实现功能、保障安全和履行法定义务所需的信息。处理目的、方式或信息种类发生实质变化时，我们会依法重新告知并取得同意。",
       ],
       entries: [],

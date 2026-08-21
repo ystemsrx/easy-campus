@@ -1,4 +1,4 @@
-import { MINIPROGRAM_NAME } from "../../config/env";
+import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
@@ -58,7 +58,7 @@ function clearAuthenticationExitTimer(): void {
 Page({
   data: {
     ...INITIAL_PROFILE_APPEARANCE,
-    appName: MINIPROGRAM_NAME,
+    appName: APP_NAME,
     loading: false,
     loggingOut: false,
     authenticationExitClass: "",
