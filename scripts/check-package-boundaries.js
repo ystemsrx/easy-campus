@@ -55,6 +55,25 @@ if (!featurePackage || featurePackage.independent === true) {
   failures.push("功能页必须注册为可复用主包公共代码的 features 普通分包");
 }
 
+const featurePreloadPages = [
+  "pages/home/index",
+  "pages/schedule/index",
+  "pages/profile/index",
+];
+for (const page of featurePreloadPages) {
+  const rule = appConfig.preloadRule?.[page];
+  if (
+    rule?.network !== "all" ||
+    !Array.isArray(rule.packages) ||
+    !rule.packages.includes(featurePackage?.name || featurePackage?.root)
+  ) {
+    failures.push(`${page} 必须在全网络下预下载 features 分包`);
+  }
+}
+if (appConfig.preloadRule?.["pages/login/index"]) {
+  failures.push("登录页不得提前下载未登录功能分包");
+}
+
 const allFiles = walk(root);
 const sourceFiles = allFiles.filter((file) =>
   /\.(?:ts|wxml|wxss|json)$/.test(file),

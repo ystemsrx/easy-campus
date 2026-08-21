@@ -24,6 +24,20 @@
       ]
     }
   ],
+  "preloadRule": {
+    "pages/home/index": {
+      "network": "all",
+      "packages": ["features"]
+    },
+    "pages/schedule/index": {
+      "network": "all",
+      "packages": ["features"]
+    },
+    "pages/profile/index": {
+      "network": "all",
+      "packages": ["features"]
+    }
+  },
   "usingComponents": {
     "lucide-icon": "/components/lucide-icon/lucide-icon",
     "navigation-bar": "/components/navigation-bar/navigation-bar",
