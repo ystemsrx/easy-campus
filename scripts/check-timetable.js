@@ -1095,6 +1095,17 @@ const refreshConfirmationScript = fs.readFileSync(
   ),
   "utf8",
 );
+const refreshConfirmationTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "components",
+    "refresh-confirmation",
+    "refresh-confirmation.wxml",
+  ),
+  "utf8",
+);
 const timetableThemeSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "data", "timetable-theme.ts"),
   "utf8",
@@ -3136,8 +3147,16 @@ assert(
 );
 assert(
   timetablePageTemplate.includes('bindtap="toggleWeekMenu"') &&
-    timetablePageTemplate.includes('bindtap="selectWeek"'),
-  "顶部周次必须提供可直接切换周次的弹出菜单",
+    timetablePageTemplate.includes('bindtap="selectWeek"') &&
+    /\.header-week\s*\{[^}]*background-color:\s*var\(--timetable-week-surface\);/s.test(
+      timetablePageStyles,
+    ) &&
+    !/\.header-week\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles) &&
+    /\.week-popover\s*\{[^}]*background:\s*#fff;/s.test(
+      timetablePageStyles,
+    ) &&
+    !/\.week-popover\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles),
+  "顶部周次及其弹出菜单必须使用不透明实体表面，不能模糊中间课表",
 );
 assert(
   timetablePageTemplate.includes(
@@ -3280,6 +3299,9 @@ assert(
   timetablePageTemplate.includes(
     '<refresh-confirmation id="refresh-confirmation"',
   ) &&
+    refreshConfirmationTemplate.includes('wx:if="{{mounted}}"') &&
+    refreshConfirmationScript.includes("mounted: false") &&
+    refreshConfirmationScript.includes("this.setData({ mounted: false })") &&
     /},\s*3000\)/.test(refreshConfirmationScript) &&
     timetablePageScript.includes("showRefreshConfirmation(this)") &&
     timetablePageScript.includes("const succeeded = await this.loadTimetable"),

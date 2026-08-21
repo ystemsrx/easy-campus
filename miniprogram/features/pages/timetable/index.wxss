@@ -8,6 +8,8 @@
   --timetable-header-surface-pressed: rgba(255, 255, 255, 0.2);
   --timetable-header-shadow: rgba(0, 32, 84, 0.14);
   --timetable-week-shadow: rgba(0, 32, 84, 0.12);
+  --timetable-week-surface: #0862ad;
+  --timetable-week-surface-pressed: #075697;
   --timetable-today-background: #fff;
   --timetable-today-text: #075ca8;
   --timetable-today-shadow: rgba(0, 31, 78, 0.18);
@@ -60,6 +62,8 @@
   --timetable-header-surface-pressed: rgba(255, 255, 255, 0.86);
   --timetable-header-shadow: rgba(88, 69, 52, 0.11);
   --timetable-week-shadow: rgba(88, 69, 52, 0.1);
+  --timetable-week-surface: #fffdf8;
+  --timetable-week-surface-pressed: #f3eee5;
   --timetable-today-background: #34302b;
   --timetable-today-text: #fffdf8;
   --timetable-today-shadow: rgba(88, 69, 52, 0.14);
@@ -408,20 +412,19 @@
   font-size: 27rpx;
   font-weight: 780;
   letter-spacing: -0.5rpx;
-  background-color: var(--timetable-header-surface);
+  background-color: var(--timetable-week-surface);
   box-shadow: 0 10rpx 30rpx var(--timetable-week-shadow);
   text-overflow: ellipsis;
   white-space: nowrap;
   transform: translate(-50%, -50%);
   transform-origin: center;
-  backdrop-filter: blur(18px) saturate(1.35);
   transition:
     background-color 180ms ease,
     transform 180ms ease;
 }
 
 .header-week--pressed {
-  background-color: var(--timetable-header-surface-pressed);
+  background-color: var(--timetable-week-surface-pressed);
   transform: translate(-50%, -50%) scale(0.94);
 }
 
@@ -788,12 +791,11 @@
   border: 1rpx solid rgba(255, 255, 255, 0.82);
   border-radius: 34rpx;
   color: #17171b;
-  background: rgba(255, 255, 255, 0.96);
+  background: #fff;
   box-shadow: 0 34rpx 90rpx -16rpx rgba(0, 31, 78, 0.34);
   opacity: 0;
   transform: translateX(-50%) translateY(-10rpx) scale(0.92);
   transform-origin: top center;
-  backdrop-filter: blur(24px) saturate(1.4);
   transition:
     opacity 160ms ease-out,
     transform 240ms cubic-bezier(0.23, 1, 0.32, 1);

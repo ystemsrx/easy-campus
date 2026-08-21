@@ -1,4 +1,5 @@
 <view
+  wx:if="{{mounted}}"
   class="refresh-confirmation {{visible ? 'refresh-confirmation--visible' : ''}} {{reducedMotion ? 'refresh-confirmation--reduced-motion' : ''}}"
   aria-role="status"
 >
