@@ -71,6 +71,7 @@ Page({
     enrollmentDate: "",
     themePreference: INITIAL_PROFILE_PREFERENCES.theme,
     themePreferenceLabel: themeLabel(INITIAL_PROFILE_PREFERENCES.theme),
+    showGradesOnHome: INITIAL_PROFILE_PREFERENCES.showGradesOnHome,
     reducedMotion: INITIAL_PROFILE_PREFERENCES.reducedMotion,
     haptics: INITIAL_PROFILE_PREFERENCES.haptics,
     themeSheetVisible: false,
@@ -138,6 +139,7 @@ Page({
       ...appearance,
       themePreference: preferences.theme,
       themePreferenceLabel: themeLabel(preferences.theme),
+      showGradesOnHome: preferences.showGradesOnHome,
       reducedMotion: preferences.reducedMotion,
       haptics: preferences.haptics,
     });
@@ -231,6 +233,11 @@ Page({
     haptic("light");
     this.applyAppearance();
     this.syncTabBarAppearance();
+  },
+  onShowGradesOnHomeChange(event: WechatMiniprogram.SwitchChange) {
+    updatePreferences({ showGradesOnHome: event.detail.value });
+    haptic("light");
+    this.applyAppearance();
   },
   onHapticsChange(event: WechatMiniprogram.SwitchChange) {
     if (event.detail.value) {

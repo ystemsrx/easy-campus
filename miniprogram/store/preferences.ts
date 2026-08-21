@@ -21,6 +21,10 @@ export function loadPreferences(): AppPreferences {
     theme: isThemePreference(stored.theme)
       ? stored.theme
       : DEFAULT_PREFERENCES.theme,
+    showGradesOnHome:
+      typeof stored.showGradesOnHome === "boolean"
+        ? stored.showGradesOnHome
+        : DEFAULT_PREFERENCES.showGradesOnHome,
     reducedMotion:
       typeof stored.reducedMotion === "boolean"
         ? stored.reducedMotion

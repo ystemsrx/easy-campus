@@ -92,6 +92,22 @@ const tabBarScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "custom-tab-bar", "index.ts"),
   "utf8",
 );
+const preferencesScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "store", "preferences.ts"),
+  "utf8",
+);
+const appTypes = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "types", "app.ts"),
+  "utf8",
+);
+const profileScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.ts"),
+  "utf8",
+);
+const profileTemplate = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.wxml"),
+  "utf8",
+);
 
 const homePageSettle =
   homeStyles.match(/@keyframes home-page-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
@@ -99,7 +115,7 @@ const homeItemSettle =
   homeStyles.match(/@keyframes home-item-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
 assert(
   homeScript.includes(
-    "const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());",
+    "const INITIAL_HOME_APPEARANCE = resolveAppearance(INITIAL_HOME_PREFERENCES);",
   ) &&
     homeScript.includes("...INITIAL_HOME_APPEARANCE") &&
     homeScript.includes("syncWindowBackground(appearance.theme);") &&
@@ -123,6 +139,33 @@ assert(
     !homePageSettle.includes("opacity") &&
     !homeItemSettle.includes("opacity"),
   "首页、窗口和底栏必须从首帧使用同一主题，首页入场不得从全透明状态开始",
+);
+
+assert(
+  appTypes.includes("showGradesOnHome: true") &&
+    preferencesScript.includes(
+      'typeof stored.showGradesOnHome === "boolean"',
+    ) &&
+    profileTemplate.includes(">主页展示成绩</text>") &&
+    profileTemplate.includes('checked="{{showGradesOnHome}}"') &&
+    profileScript.includes(
+      "updatePreferences({ showGradesOnHome: event.detail.value });",
+    ) &&
+    homeScript.includes(
+      "showGradesOnHome: INITIAL_HOME_PREFERENCES.showGradesOnHome",
+    ) &&
+    homeScript.includes(
+      "showGradesOnHome: preferences.showGradesOnHome",
+    ) &&
+    homeTemplate.includes(
+      "{{showGradesOnHome ? gradePointAverageLabel : '**'}}",
+    ) &&
+    homeTemplate.includes("'** 门课程 · 均分 **'") &&
+    homeTemplate.includes(
+      "{{showGradesOnHome ? gradeRingSource : hiddenGradeRingSource}}",
+    ) &&
+    homeTemplate.includes('bind:tap="openGrades"'),
+  "主页成绩展示开关必须默认开启，关闭后遮住预览数字但保留成绩页入口",
 );
 
 assert(

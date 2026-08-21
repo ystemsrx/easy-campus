@@ -53,6 +53,10 @@
           </view>
         </view>
         <view class="setting-row setting-row--divided">
+          <view class="setting-copy"><text class="setting-title">主页展示成绩</text><text class="setting-caption">关闭后首页以星号隐藏</text></view>
+          <switch class="setting-switch" checked="{{showGradesOnHome}}" color="#7d8f6e" bindchange="onShowGradesOnHomeChange" aria-label="主页展示成绩" />
+        </view>
+        <view class="setting-row setting-row--divided">
           <view class="setting-copy"><text class="setting-title">减少动态效果</text><text class="setting-caption">降低页面过渡与漂浮动画</text></view>
           <switch class="setting-switch" checked="{{reducedMotion}}" color="#7d8f6e" bindchange="onReducedMotionChange" aria-label="减少动态效果" />
         </view>

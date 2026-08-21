@@ -364,7 +364,7 @@ if (
 }
 if (
   !homeTemplate.includes(
-    'class="score-ring-image" src="{{gradeRingSource}}" mode="aspectFit"',
+    'class="score-ring-image" src="{{showGradesOnHome ? gradeRingSource : hiddenGradeRingSource}}" mode="aspectFit"',
   ) ||
   !gradesTemplate.includes(
     'class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"',
@@ -377,7 +377,9 @@ if (
   gradesTemplate.includes("average-ring-half") ||
   !homeScript.includes("gradeRingSource: progressRingSource(") ||
   !homeScript.includes("gradePointRingValue(summary.gradePointAverage)") ||
-  !homeTemplate.includes("{{gradePointAverageLabel}}") ||
+  !homeTemplate.includes(
+    "{{showGradesOnHome ? gradePointAverageLabel : '**'}}",
+  ) ||
   !homeTemplate.includes("· 均分 ") ||
   !gradesScript.includes("averageRingSource: progressRingSource(") ||
   !homeScript.includes('this.data.motionClass !== "motion-reduced"') ||

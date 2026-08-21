@@ -169,7 +169,8 @@ const HOME_FIRST_FRAME_SETTLE_MS = 32;
 const HOME_LOGIN_REVEAL_SETTLE_MS = 360;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
-const INITIAL_HOME_APPEARANCE = resolveAppearance(loadPreferences());
+const INITIAL_HOME_PREFERENCES = loadPreferences();
+const INITIAL_HOME_APPEARANCE = resolveAppearance(INITIAL_HOME_PREFERENCES);
 const INITIAL_HOME_AUTHENTICATED = Boolean(getSession()?.token);
 
 interface ShortcutCachePatch {
@@ -545,6 +546,8 @@ Page({
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
     gradeCourseCount: 0,
+    showGradesOnHome: INITIAL_HOME_PREFERENCES.showGradesOnHome,
+    hiddenGradeRingSource: progressRingSource(null),
     electricityBound: false,
     electricityBalanceLabel: "—",
     electricityUsageLabel: "绑定寝室后查看",
@@ -723,7 +726,8 @@ Page({
       this.prepareForAuthenticationRequired(onReady);
       return;
     }
-    const appearance = resolveAppearance();
+    const preferences = getApp<IAppOption>().globalData.preferences;
+    const appearance = resolveAppearance(preferences);
     const identity = resolveHomeIdentity(session, loadCurrentUser());
     syncWindowBackground(appearance.theme);
     authenticationRevealPrepared = true;
@@ -732,6 +736,7 @@ Page({
         authenticated: true,
         ...appearance,
         ...identity,
+        showGradesOnHome: preferences.showGradesOnHome,
         petReducedMotion: appearance.motionClass === "motion-reduced",
       },
       () => {
@@ -851,10 +856,12 @@ Page({
     });
   },
   applyAppearance() {
-    const appearance = resolveAppearance();
+    const preferences = getApp<IAppOption>().globalData.preferences;
+    const appearance = resolveAppearance(preferences);
     syncWindowBackground(appearance.theme);
     this.setData({
       ...appearance,
+      showGradesOnHome: preferences.showGradesOnHome,
       petReducedMotion: appearance.motionClass === "motion-reduced",
     });
   },

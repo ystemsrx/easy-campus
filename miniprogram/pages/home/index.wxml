@@ -107,8 +107,8 @@
           <view class="feature-card feature-card--grades pressable" hover-class="feature-card--pressed">
             <view class="ambient-blob feature-blob"></view>
             <text class="feature-kicker">平均绩点</text>
-            <view class="score-ring"><image class="score-ring-image" src="{{gradeRingSource}}" mode="aspectFit"></image><text class="score-ring-value tnum">{{gradePointAverageLabel}}</text></view>
-            <text class="feature-caption">{{gradeCourseCount ? gradeCourseCount + ' 门课程 · 均分 ' + gradeAverageLabel : '查看成绩明细'}}</text>
+            <view class="score-ring"><image class="score-ring-image" src="{{showGradesOnHome ? gradeRingSource : hiddenGradeRingSource}}" mode="aspectFit"></image><text class="score-ring-value tnum">{{showGradesOnHome ? gradePointAverageLabel : '**'}}</text></view>
+            <text class="feature-caption">{{gradeCourseCount ? (showGradesOnHome ? gradeCourseCount + ' 门课程 · 均分 ' + gradeAverageLabel : '** 门课程 · 均分 **') : '查看成绩明细'}}</text>
           </view>
         </open-container>
         <open-container
