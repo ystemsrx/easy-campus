@@ -1122,7 +1122,6 @@ const timetableLoginAssetRoot = path.resolve(
   __dirname,
   "..",
   "miniprogram",
-  "features",
   "assets",
   "login",
 );
@@ -1345,12 +1344,12 @@ assert(
     timetablePageScript.includes(
       "/features/assets/timetable/timetable-theme-clawd-walking.gif",
     ) &&
-    timetablePageScript.includes("/features/assets/login/lurking.gif") &&
-    timetablePageScript.includes("/features/assets/login/waving.gif") &&
+    timetablePageScript.includes("/assets/login/lurking.gif") &&
+    timetablePageScript.includes("/assets/login/waving.gif") &&
     timetablePageScript.includes(
       "/features/assets/timetable/timetable-theme-clawd-jumping.gif",
     ) &&
-    timetablePageScript.includes("/features/assets/login/dancing.gif") &&
+    timetablePageScript.includes("/assets/login/dancing.gif") &&
     !timetablePageTemplate.includes("background.png") &&
     !timetablePageTemplate.includes("background.webp"),
   "课表壁纸必须仅保留规范命名的本地 JPG 素材",
@@ -1567,19 +1566,19 @@ assert(
       'walking: "/features/assets/timetable/timetable-theme-clawd-walking.gif"',
     ) &&
     timetablePageScript.includes(
-      'lurking: "/features/assets/login/lurking.gif"',
+      'lurking: "/assets/login/lurking.gif"',
     ) &&
     timetablePageScript.includes(
-      'waving: "/features/assets/login/waving.gif"',
+      'waving: "/assets/login/waving.gif"',
     ) &&
     timetablePageScript.includes(
-      'dancing: "/features/assets/login/dancing.gif"',
+      'dancing: "/assets/login/dancing.gif"',
     ) &&
     timetablePageScript.includes(
-      'laptop: "/features/assets/login/laptop.gif"',
+      'laptop: "/assets/login/laptop.gif"',
     ) &&
     timetablePageScript.includes(
-      'magnifier: "/features/assets/login/magnifier.gif"',
+      'magnifier: "/assets/login/magnifier.gif"',
     ) &&
     timetablePageScript.includes(
       'jumping: "/features/assets/timetable/timetable-theme-clawd-jumping.gif"',

@@ -32,7 +32,7 @@ const sessionStore = fs.readFileSync(
   "utf8",
 );
 const loginScript = fs.readFileSync(
-  path.join(miniprogramRoot, "features", "pages", "login", "index.ts"),
+  path.join(miniprogramRoot, "pages", "login", "index.ts"),
   "utf8",
 );
 const failures = [];

@@ -79,7 +79,7 @@
           </button>
 
           <view class="login-clawd-mark-row" aria-hidden="true">
-            <image class="login-clawd-mark" src="/features/assets/login/clawd-mark.svg" mode="aspectFit" draggable="{{false}}"></image>
+            <image class="login-clawd-mark" src="/assets/login/clawd-mark.svg" mode="aspectFit" draggable="{{false}}"></image>
           </view>
         </form>
       </view>

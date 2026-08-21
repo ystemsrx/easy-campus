@@ -37,7 +37,7 @@ const schedulePage = source("pages", "schedule", "index.ts");
 const profilePage = source("pages", "profile", "index.ts");
 const profileStyles = source("pages", "profile", "index.wxss");
 const homePage = source("pages", "home", "index.ts");
-const loginPage = source("features", "pages", "login", "index.ts");
+const loginPage = source("pages", "login", "index.ts");
 const iconPreload = source("utils", "icon-preload.ts");
 const sessionStore = source("store", "session.ts");
 

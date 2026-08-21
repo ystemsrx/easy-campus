@@ -6,7 +6,6 @@ const projectRoot = path.resolve(__dirname, "..");
 const loginRoot = path.join(
   projectRoot,
   "miniprogram",
-  "features",
   "pages",
   "login",
 );
@@ -15,6 +14,9 @@ const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
 const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
 const styles = fs.readFileSync(path.join(loginRoot, "index.wxss"), "utf8");
 const loginConfig = fs.readFileSync(path.join(loginRoot, "index.json"), "utf8");
+const appConfig = JSON.parse(
+  fs.readFileSync(path.join(projectRoot, "miniprogram", "app.json"), "utf8"),
+);
 const appScript = fs.readFileSync(
   path.join(projectRoot, "miniprogram", "app.ts"),
   "utf8",
@@ -68,6 +70,18 @@ const envExample = fs.readFileSync(
   "utf8",
 );
 const failures = [];
+
+const loginRoute = "pages/login/index";
+const loginInFeaturePackage = (
+  appConfig.subPackages || appConfig.subpackages || []
+).some(
+  (subpackage) =>
+    subpackage.root === "features" &&
+    (subpackage.pages || []).includes(loginRoute),
+);
+if (!(appConfig.pages || []).includes(loginRoute) || loginInFeaturePackage) {
+  failures.push("登录页必须保留在主包，避免首次认证跳转时分包页面无法渲染");
+}
 
 function loadNavigationRuntime({ pages, session, calls }) {
   const output = ts.transpileModule(navigationScript, {
@@ -153,7 +167,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
     JSON.stringify(calls) !==
     JSON.stringify([
       ["guard", "home"],
-      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("首页进入登录态前必须先提交匿名保护层，再覆盖打开登录页");
@@ -198,7 +212,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
       ["exit", "profile"],
       ["switchTab", "/pages/home/index"],
       ["guard", "home"],
-      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("退出登录必须先封住缓存首页，不能让首页内容暴露一帧");
@@ -223,7 +237,7 @@ function loadNavigationRuntime({ pages, session, calls }) {
       ["exit", "profile"],
       ["switchTab", "/pages/home/index"],
       ["guard", "home"],
-      ["navigateTo", "/features/pages/login/index", "easy-swu-auth-fade"],
+      ["navigateTo", "/pages/login/index", "easy-swu-auth-fade"],
     ])
   ) {
     failures.push("其他页面失效时必须先重建受保护首页，再覆盖打开登录页");
@@ -260,7 +274,7 @@ for (const copy of removedCopy) {
 
 if (
   !envExample.includes("MINIPROGRAM_NAME=") ||
-  !script.includes('import { MINIPROGRAM_NAME } from "../../../config/env";') ||
+  !script.includes('import { MINIPROGRAM_NAME } from "../../config/env";') ||
   !script.includes("appName: MINIPROGRAM_NAME") ||
   !template.includes("欢迎来到{{appName}}")
 ) {
@@ -441,7 +455,6 @@ if (
 const clawdMarkPath = path.join(
   projectRoot,
   "miniprogram",
-  "features",
   "assets",
   "login",
   "clawd-mark.svg",
@@ -451,7 +464,7 @@ const clawdMarkSource = fs.existsSync(clawdMarkPath)
   : "";
 if (
   !template.includes('class="login-clawd-mark-row"') ||
-  !template.includes('src="/features/assets/login/clawd-mark.svg"') ||
+  !template.includes('src="/assets/login/clawd-mark.svg"') ||
   clawdMarkIndex <= buttonIndex ||
   !clawdMarkSource.includes('viewBox="0 0 68 67"') ||
   !clawdMarkRowStyles.includes("min-height: 134rpx;") ||
@@ -637,7 +650,6 @@ if (
 const animationRoot = path.join(
   projectRoot,
   "miniprogram",
-  "features",
   "assets",
   "login",
 );

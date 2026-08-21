@@ -281,7 +281,7 @@ const petStore = read("store/pet.ts");
 const companionService = read("services/companion.ts");
 const authService = read("services/auth.ts");
 const apiTypes = read("types/api.ts");
-const loginScript = read("features/pages/login/index.ts");
+const loginScript = read("pages/login/index.ts");
 const navigationScript = read("utils/navigation.ts");
 const appConfig = JSON.parse(read("app.json"));
 

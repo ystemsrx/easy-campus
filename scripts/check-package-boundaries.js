@@ -130,6 +130,9 @@ if (
     (entry) => entry.type === "folder" && entry.value === "assets/icons",
   ) ||
   !projectConfig.packOptions?.include?.some(
+    (entry) => entry.type === "folder" && entry.value === "assets/login",
+  ) ||
+  !projectConfig.packOptions?.include?.some(
     (entry) => entry.type === "folder" && entry.value === "features/assets",
   )
 ) {

@@ -92,7 +92,7 @@ assert(
 );
 
 const authSource = source("services", "auth.ts");
-const loginPageSource = source("features", "pages", "login", "index.ts");
+const loginPageSource = source("pages", "login", "index.ts");
 const companionSource = source("services", "companion.ts");
 const teachingSource = source("services", "teaching.ts");
 const contentSource = source("services", "content.ts");

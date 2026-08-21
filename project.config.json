@@ -49,6 +49,10 @@
       },
       {
         "type": "folder",
+        "value": "assets/login"
+      },
+      {
+        "type": "folder",
         "value": "features/assets"
       }
     ]

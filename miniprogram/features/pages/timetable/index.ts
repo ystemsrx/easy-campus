@@ -310,12 +310,12 @@ const CLAWD_WEIGHTED_DEPARTURES: readonly TimetableClawdDepartureMode[] = [
 ];
 const CLAWD_SCENE_SOURCES: Record<TimetableClawdSceneName, string> = {
   walking: "/features/assets/timetable/timetable-theme-clawd-walking.gif",
-  lurking: "/features/assets/login/lurking.gif",
-  waving: "/features/assets/login/waving.gif",
+  lurking: "/assets/login/lurking.gif",
+  waving: "/assets/login/waving.gif",
   jumping: "/features/assets/timetable/timetable-theme-clawd-jumping.gif",
-  dancing: "/features/assets/login/dancing.gif",
-  laptop: "/features/assets/login/laptop.gif",
-  magnifier: "/features/assets/login/magnifier.gif",
+  dancing: "/assets/login/dancing.gif",
+  laptop: "/assets/login/laptop.gif",
+  magnifier: "/assets/login/magnifier.gif",
   racing: "/features/assets/timetable/timetable-theme-clawd-racing-car.gif",
   "rowing-intro":
     "/features/assets/timetable/timetable-theme-clawd-rowing-intro.gif",

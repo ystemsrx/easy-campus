@@ -1,11 +1,15 @@
 {
-  "pages": ["pages/home/index", "pages/schedule/index", "pages/profile/index"],
+  "pages": [
+    "pages/home/index",
+    "pages/schedule/index",
+    "pages/profile/index",
+    "pages/login/index"
+  ],
   "subPackages": [
     {
       "name": "features",
       "root": "features",
       "pages": [
-        "pages/login/index",
         "pages/pet-setup/index",
         "pages/inbox/index",
         "pages/grades/index",
