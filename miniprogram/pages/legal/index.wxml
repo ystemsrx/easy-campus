@@ -1,0 +1,76 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
+<view class="page legal-page {{themeClass}} {{motionClass}}">
+  <scroll-view
+    class="page-scroll"
+    type="list"
+    scroll-y
+    enhanced
+    show-scrollbar="{{false}}"
+  >
+    <navigation-bar title="{{document.title}}" back transparent theme="{{theme}}"></navigation-bar>
+
+    <view class="legal-content page-content page-enter">
+      <view class="legal-intro card">
+        <text class="legal-summary" selectable user-select>{{document.summary}}</text>
+        <view class="legal-meta">
+          <view class="legal-meta-item"><text>版本</text><text class="tnum">{{document.version}}</text></view>
+          <view class="legal-meta-item"><text>更新日期</text><text class="tnum">{{document.updatedAt}}</text></view>
+          <view class="legal-meta-item"><text>生效日期</text><text class="tnum">{{document.effectiveAt}}</text></view>
+        </view>
+      </view>
+
+      <view class="legal-notice legal-notice--{{document.noticeTone}}">
+        <lucide-icon name="circle-alert" tone="{{document.noticeTone}}" size="{{27}}"></lucide-icon>
+        <view class="legal-notice-copy">
+          <text class="legal-notice-title">{{document.noticeTitle}}</text>
+          <text class="legal-notice-text" selectable user-select>{{document.notice}}</text>
+        </view>
+      </view>
+
+      <view class="legal-article card">
+        <view
+          wx:for="{{document.sections}}"
+          wx:key="title"
+          wx:for-item="section"
+          class="legal-section {{index ? 'legal-section--divided' : ''}}"
+        >
+          <text class="legal-section-title">{{section.title}}</text>
+
+          <text
+            wx:for="{{section.paragraphs}}"
+            wx:key="*this"
+            wx:for-item="paragraph"
+            class="legal-paragraph"
+            selectable
+            user-select
+          >{{paragraph}}</text>
+
+          <view wx:if="{{section.entries.length}}" class="legal-entry-list">
+            <view
+              wx:for="{{section.entries}}"
+              wx:key="title"
+              wx:for-item="entry"
+              class="legal-entry"
+            >
+              <view class="legal-entry-marker"></view>
+              <view class="legal-entry-copy">
+                <text class="legal-entry-title">{{entry.title}}</text>
+                <text class="legal-entry-text" selectable user-select>{{entry.text}}</text>
+              </view>
+            </view>
+          </view>
+
+          <view wx:if="{{section.note}}" class="legal-section-note">
+            <text selectable user-select>{{section.note}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="legal-footer">
+        <text>支持邮箱</text>
+        <text class="legal-footer-email tnum" selectable user-select>{{contactEmail}}</text>
+        <text class="legal-footer-hint">请勿发送密码、验证码或登录令牌</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

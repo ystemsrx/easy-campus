@@ -2,8 +2,8 @@ type EnvironmentVersion = "develop" | "trial" | "release";
 
 const API_ORIGINS: Record<EnvironmentVersion, string> = {
   develop: "http://127.0.0.1:3000",
-  trial: "https://api.example.com",
-  release: "https://api.example.com",
+  trial: "https://easy-api.lazycampus.com",
+  release: "https://easy-api.lazycampus.com",
 };
 
 const DEVELOPMENT_OVERRIDE_KEY = "easy-swu:development-api-origin";

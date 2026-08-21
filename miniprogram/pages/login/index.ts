@@ -550,6 +550,14 @@ Page({
     haptic("light");
     this.setData({ agreementAccepted: !this.data.agreementAccepted });
   },
+  openLegalDocument(event: WechatMiniprogram.TouchEvent) {
+    const document =
+      String(event.currentTarget.dataset.document) === "privacy"
+        ? "privacy"
+        : "terms";
+    haptic("light");
+    wx.navigateTo({ url: `/pages/legal/index?document=${document}` });
+  },
   async onSubmit() {
     if (this.data.loading) {
       return;

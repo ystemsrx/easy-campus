@@ -70,7 +70,7 @@
             <view class="agreement-checkbox {{agreementAccepted ? 'agreement-checkbox--checked' : ''}}">
               <lucide-icon wx:if="{{agreementAccepted}}" name="check" tone="white" size="{{24}}"></lucide-icon>
             </view>
-            <text class="agreement-copy">登录即代表同意<text class="agreement-link">《用户协议》</text><text class="agreement-link">《隐私政策》</text></text>
+            <view class="agreement-copy"><text>我已阅读并同意</text><text class="agreement-link" data-document="terms" catchtap="openLegalDocument" aria-role="link">《用户协议》</text><text>和</text><text class="agreement-link" data-document="privacy" catchtap="openLegalDocument" aria-role="link">《隐私政策》</text></view>
           </view>
 
           <button class="login-button {{loading ? 'login-button--loading' : ''}}" form-type="submit" disabled="{{loading}}" hover-class="login-button--pressed">

@@ -203,6 +203,14 @@ Page({
     haptic("light");
     wx.navigateTo({ url: "/features/pages/pet-setup/index?source=profile" });
   },
+  openLegalDocument(event: WechatMiniprogram.TouchEvent) {
+    const document =
+      String(event.currentTarget.dataset.document) === "privacy"
+        ? "privacy"
+        : "terms";
+    haptic("light");
+    wx.navigateTo({ url: `/pages/legal/index?document=${document}` });
+  },
   openThemeSheet() {
     haptic("light");
     this.setData({ themeSheetVisible: true });

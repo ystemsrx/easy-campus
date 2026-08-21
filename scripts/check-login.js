@@ -273,7 +273,7 @@ for (const copy of removedCopy) {
 }
 
 if (
-  !envExample.includes("MINIPROGRAM_NAME=") ||
+  !envExample.includes("MINIPROGRAM_NAME=西小易") ||
   !script.includes('import { MINIPROGRAM_NAME } from "../../config/env";') ||
   !script.includes("appName: MINIPROGRAM_NAME") ||
   !template.includes("欢迎来到{{appName}}")
@@ -306,11 +306,15 @@ if (
   passwordIndex < 0 ||
   agreementIndex <= passwordIndex ||
   buttonIndex <= agreementIndex ||
-  !template.includes('class="agreement-link">《用户协议》') ||
-  !template.includes('class="agreement-link">《隐私政策》') ||
+  !template.includes('data-document="terms" catchtap="openLegalDocument"') ||
+  !template.includes('data-document="privacy" catchtap="openLegalDocument"') ||
+  !template.includes("我已阅读并同意") ||
+  template.includes("登录即代表同意") ||
+  !script.includes("openLegalDocument(event:") ||
+  !script.includes("/pages/legal/index?document=${document}") ||
   !script.includes("if (!this.data.agreementAccepted)")
 ) {
-  failures.push("协议勾选必须位于密码框与登录按钮之间并参与提交校验");
+  failures.push("协议勾选必须明示同意、链接可独立查阅，并在提交前校验");
 }
 
 const buttonStyles = styles.match(/\.login-button\s*\{([\s\S]*?)\}/)?.[1] || "";

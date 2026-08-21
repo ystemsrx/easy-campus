@@ -3,7 +3,8 @@
     "pages/home/index",
     "pages/schedule/index",
     "pages/profile/index",
-    "pages/login/index"
+    "pages/login/index",
+    "pages/legal/index"
   ],
   "subPackages": [
     {
