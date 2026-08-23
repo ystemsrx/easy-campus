@@ -23,15 +23,27 @@ export function beijingHour(now: Date): number {
   return new Date(now.getTime() + BEIJING_OFFSET_MS).getUTCHours();
 }
 
+export function beijingDate(now: Date): string {
+  return new Date(now.getTime() + BEIJING_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function resolveInitialRoomDate(
   minDate: string,
   currentDate: string,
   now = new Date(),
+  maxDate = "",
 ): string {
   if (currentDate) return currentDate;
-  return beijingHour(now) >= LATE_DAY_CUTOFF_HOUR
-    ? addCalendarDays(minDate, 1)
-    : minDate;
+  if (
+    minDate !== beijingDate(now) ||
+    beijingHour(now) < LATE_DAY_CUTOFF_HOUR
+  ) {
+    return minDate;
+  }
+  const nextDate = addCalendarDays(minDate, 1);
+  return maxDate && nextDate > maxDate ? minDate : nextDate;
 }
 
 export function formatRoomResultDate(value: string): string {

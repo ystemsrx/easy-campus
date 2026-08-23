@@ -177,6 +177,22 @@ assert(
 );
 
 assert(
+  resolveInitialRoomDate(
+    "2026-08-31",
+    "",
+    new Date("2026-08-23T15:00:00.000Z"),
+    "2027-01-17",
+  ) === "2026-08-31" &&
+    resolveInitialRoomDate(
+      "2026-08-23",
+      "",
+      new Date("2026-08-23T15:00:00.000Z"),
+      "2026-08-23",
+    ) === "2026-08-23",
+  "晚间顺延只能作用于北京时间当天，未来开学日和查询范围末日不得被错误推进",
+);
+
+assert(
   formatRoomResultDate("2026-08-18") === "8-18 周二" &&
     formatRoomResultDate("invalid") === "invalid",
   "结果抽屉日期必须使用月-日格式并保留星期",

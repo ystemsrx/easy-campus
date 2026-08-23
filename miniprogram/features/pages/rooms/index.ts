@@ -232,6 +232,8 @@ Page({
     const date = resolveInitialRoomDate(
       data.minDate,
       this.data.dateTouched ? this.data.date : "",
+      new Date(),
+      data.maxDate,
     );
     const dateOptions = quickDates(data.minDate, date);
     this.setData({
@@ -306,7 +308,12 @@ Page({
   },
   syncLateDateDefault() {
     if (this.data.dateTouched || !this.data.minDate) return;
-    const date = resolveInitialRoomDate(this.data.minDate, "");
+    const date = resolveInitialRoomDate(
+      this.data.minDate,
+      "",
+      new Date(),
+      this.data.maxDate,
+    );
     if (!date || date === this.data.date) return;
     this.setData({
       date,
