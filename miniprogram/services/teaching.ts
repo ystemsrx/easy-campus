@@ -23,6 +23,7 @@ import type {
   LocalScheduleData,
 } from "../types/api";
 import { buildQuery, type QueryValue } from "../utils/query";
+import { withoutUnsuccessfulGrades } from "../utils/grades";
 import {
   ApiClientError,
   apiRequest,
@@ -82,6 +83,10 @@ export function getGrades(
   };
   return teachingRequest<GradesData>(
     `/teaching/grades${buildQuery(asQuery(requestQuery))}`,
+  ).then((result) =>
+    query.includeUnsuccessful === false
+      ? { ...result, data: withoutUnsuccessfulGrades(result.data) }
+      : result,
   );
 }
 

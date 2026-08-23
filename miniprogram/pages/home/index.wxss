@@ -230,17 +230,36 @@
 .side-action-icon--pass-rate { background: #edf1e6; }
 .side-action-icon--rooms { background: #f9eae2; }
 
-.plan-card { min-height: 224rpx; overflow: hidden; }
-.plan-list { display: flex; flex-direction: column; justify-content: center; min-height: 224rpx; }
-.plan-row { display: flex; flex-direction: row; align-items: center; gap: 22rpx; min-height: 104rpx; padding: 20rpx 28rpx; }
-.plan-row--divided { border-bottom: 1rpx solid var(--color-separator); }
-.plan-circle { flex: none; width: 37rpx; height: 37rpx; border: 3rpx solid #c9c9d2; border-radius: 50%; }
+.plan-card { height: 224rpx; min-height: 224rpx; overflow: hidden; transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1); }
+.plan-list { display: flex; flex-direction: column; justify-content: flex-start; width: 100%; height: 100%; min-height: 0; }
+.plan-row { display: block; flex: none; width: 100%; height: 104rpx; min-height: 104rpx; overflow: hidden; opacity: 1; transform: translateX(0) scale(1); transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1), min-height 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+.plan-row-content { display: flex; flex-direction: row; align-items: center; gap: 22rpx; box-sizing: border-box; width: 100%; height: 104rpx; min-height: 104rpx; padding: 20rpx 28rpx; }
+.plan-row--divided .plan-row-content { border-bottom: 1rpx solid var(--color-separator); }
+.plan-row--completing .plan-copy,
+.plan-row--completing .plan-tag { opacity: 0.58; }
+.plan-row--leaving { height: 0; min-height: 0; opacity: 0; transform: translateX(30rpx) scale(0.98); pointer-events: none; }
+.plan-row--entering { animation-name: plan-row-enter; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); animation-fill-mode: both; }
+.plan-check { display: flex; flex: none; align-items: center; justify-content: center; width: 61rpx; height: 61rpx; margin-right: -12rpx; margin-left: -12rpx; border-radius: 50%; transition: transform 120ms ease-out; }
+.plan-check--pressed { transform: scale(0.88); }
+.plan-circle { display: flex; flex: none; align-items: center; justify-content: center; width: 37rpx; height: 37rpx; border: 3rpx solid #c9c9d2; border-radius: 50%; background: transparent; transform: scale(1); transition: background-color 160ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+.plan-circle--checked { border-color: #a55357; background: #a55357; transform: scale(1.08); }
 .plan-copy { flex: 1; min-width: 0; }
 .plan-title { display: block; color: var(--color-text); font-size: 27rpx; font-weight: 700; }
 .plan-time { display: block; margin-top: 3rpx; color: var(--color-text-tertiary); font-size: 21rpx; }
 .plan-tag { flex: none; padding: 7rpx 16rpx; border-radius: 999rpx; color: #a55357; background: #f7e9e8; font-size: 19rpx; font-weight: 700; }
-.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; box-sizing: border-box; min-height: 224rpx; padding: 32rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; }
+.plan-copy,
+.plan-tag { transition: opacity 180ms ease; }
+.plan-empty { display: flex; flex-direction: row; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 100%; min-height: 0; padding: 32rpx 28rpx; color: var(--color-text-tertiary); font-size: 24rpx; text-align: center; animation-name: plan-empty-enter; animation-duration: 220ms; animation-timing-function: ease-out; animation-fill-mode: both; }
 .plan-empty > text { display: block; max-width: 420rpx; }
+
+.home-page.motion-reduced .plan-card,
+.home-page.motion-reduced .plan-row,
+.home-page.motion-reduced .plan-check,
+.home-page.motion-reduced .plan-circle,
+.home-page.motion-reduced .plan-copy,
+.home-page.motion-reduced .plan-tag { transition-duration: 1ms; }
+.home-page.motion-reduced .plan-row--entering,
+.home-page.motion-reduced .plan-empty { animation-duration: 1ms; }
 
 .campus-stack { display: flex; flex-direction: column; gap: 30rpx; }
 .campus-group { display: flex; flex-direction: column; gap: 16rpx; }
@@ -332,6 +351,16 @@
 @keyframes home-item-settle {
   from { transform: translateY(10rpx); }
   to { transform: translateY(0); }
+}
+
+@keyframes plan-row-enter {
+  from { opacity: 0; transform: translateY(20rpx) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes plan-empty-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .theme-dark .publication-popover,

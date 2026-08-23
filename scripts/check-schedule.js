@@ -273,12 +273,12 @@ assert(
 );
 assert(
   pageScript.includes(
-    'navigateTo("/features/pages/timetable/index?source=schedule")',
+    '"/features/pages/timetable/index?source=schedule",\n      "wx://cupertino-modal"',
   ) &&
     timetableScript.includes('options.source === "schedule"') &&
     timetableScript.includes("MODAL_HEADER_EDGE_INSET_RPX") &&
     timetableScript.includes("backgroundMetrics(this.data.compactHeader)") &&
-    homeScript.includes('url: "/features/pages/timetable/index"'),
+    homeScript.includes('navigateTo("/features/pages/timetable/index")'),
   "日程的模态课表入口必须使用等边距紧凑顶部，同时保持首页原生安全区布局",
 );
 

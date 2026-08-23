@@ -1,11 +1,18 @@
 .nav-refresh {
+  box-sizing: border-box;
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
   width: 76rpx;
+  min-width: 76rpx;
+  max-width: 76rpx;
   height: 76rpx;
-  border-radius: 50%;
+  min-height: 76rpx;
+  max-height: 76rpx;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 999rpx;
   color: #2b2620;
   background: #fff;
   box-shadow:
@@ -22,12 +29,19 @@
 }
 
 .nav-refresh--loading {
-  opacity: 0.7;
+  opacity: 1;
 }
 
-.nav-refresh--loading lucide-icon {
+.nav-refresh-spinner {
+  display: block;
+  flex: none;
+  width: 34rpx;
+  min-width: 34rpx;
+  height: 34rpx;
+  min-height: 34rpx;
+  border-radius: 999rpx;
   animation-name: calendar-refresh-spin;
-  animation-duration: 850ms;
+  animation-duration: 720ms;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
@@ -40,7 +54,7 @@
   background: #2d2a24;
 }
 
-.motion-reduced .nav-refresh--loading lucide-icon {
+.motion-reduced .nav-refresh-spinner {
   animation-name: none;
 }
 

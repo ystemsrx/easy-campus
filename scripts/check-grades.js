@@ -27,8 +27,10 @@ const {
   gradeComponentWidths,
   gradePointRingValue,
   isMakeupOrDeferredGrade,
+  isUnsuccessfulGrade,
   latestGradedSemester,
   latestSemesterGrades,
+  withoutUnsuccessfulGrades,
 } = moduleRecord.exports;
 
 const regularGrade = {
@@ -225,6 +227,76 @@ assert(
   "五级制换算后的分数和零绩点课程必须按学分进入最新学期汇总",
 );
 
+assert(
+  isUnsuccessfulGrade({ finalScore: 59 }) &&
+    !isUnsuccessfulGrade({ finalScore: 60 }) &&
+    !isUnsuccessfulGrade({ finalScore: "A" }) &&
+    !isUnsuccessfulGrade({ finalScore: "及格" }) &&
+    isUnsuccessfulGrade({ finalScore: "E" }) &&
+    isUnsuccessfulGrade({ finalScore: "不及格" }) &&
+    isUnsuccessfulGrade({ finalScore: "作弊" }) &&
+    !isUnsuccessfulGrade({ finalScore: "缓考" }),
+  "低分隐藏必须识别百分制、不及格等级与异常状态，且不得误伤及格五级制",
+);
+
+const visibilityFiltered = withoutUnsuccessfulGrades({
+  ...data,
+  items: [
+    {
+      ...latestCourses[0],
+      id: "numeric-fail",
+      finalScore: 59,
+      calculationScore: 59,
+      gradePoint: 0,
+      credits: 2,
+    },
+    {
+      ...latestCourses[0],
+      id: "numeric-pass",
+      finalScore: 60,
+      calculationScore: 60,
+      gradePoint: 1,
+      credits: 2,
+    },
+    {
+      ...latestCourses[0],
+      id: "level-a",
+      finalScore: "A",
+      calculationScore: 95,
+      gradePoint: 4.6,
+      credits: 1,
+    },
+    {
+      ...latestCourses[0],
+      id: "level-e",
+      finalScore: "E",
+      calculationScore: 55,
+      gradePoint: 0,
+      credits: 1,
+    },
+    {
+      ...latestCourses[0],
+      id: "cheating",
+      finalScore: "作弊",
+      calculationScore: null,
+      gradePoint: null,
+      credits: 3,
+    },
+  ],
+  pagination: { page: 1, pageSize: 200, total: 5, totalPages: 1 },
+});
+assert(
+  visibilityFiltered.items.map((course) => course.id).join(",") ===
+    "numeric-pass,level-a" &&
+    visibilityFiltered.summary.courseCount === 2 &&
+    visibilityFiltered.summary.totalCredits === 3 &&
+    visibilityFiltered.summary.weightedAverage === 71.67 &&
+    visibilityFiltered.summary.gradePointAverage === 2.2 &&
+    visibilityFiltered.semesters.map((semester) => semester.id).join(",") ===
+      data.semesters.map((semester) => semester.id).join(","),
+  "隐藏成绩后只能过滤成绩并重算统计，完整历史学期选项必须保留",
+);
+
 const gradesPageScript = fs.readFileSync(
   path.resolve(
     __dirname,
@@ -261,6 +333,28 @@ const gradesPageStyles = fs.readFileSync(
   ),
   "utf8",
 );
+const refreshSpinnerInk = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "assets",
+    "icons",
+    "refresh-spinner-ink.svg",
+  ),
+  "utf8",
+);
+const refreshSpinnerWhite = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "assets",
+    "icons",
+    "refresh-spinner-white.svg",
+  ),
+  "utf8",
+);
 const gradeDetailScript = fs.readFileSync(
   path.resolve(
     __dirname,
@@ -287,6 +381,41 @@ const gradeDetailTemplate = fs.readFileSync(
 );
 const gradesStore = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "store", "grades.ts"),
+  "utf8",
+);
+const preferencesStore = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "store", "preferences.ts"),
+  "utf8",
+);
+const appTypes = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "types", "app.ts"),
+  "utf8",
+);
+const profileScript = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.ts"),
+  "utf8",
+);
+const profileTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "pages",
+    "profile",
+    "index.wxml",
+  ),
+  "utf8",
+);
+const gradeSettingsTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grade-settings",
+    "index.wxml",
+  ),
   "utf8",
 );
 const teachingService = fs.readFileSync(
@@ -347,8 +476,50 @@ assert(
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
     gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
-    gradesStore.includes("const SCHEMA_VERSION = 6;"),
+    gradesStore.includes("const SCHEMA_VERSION = 7;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
+);
+assert(
+  gradesPageTemplate.includes(
+    '<image wx:if="{{refreshing}}" class="nav-refresh-spinner"',
+  ) &&
+    gradesPageTemplate.includes("refresh-spinner-white.svg") &&
+    gradesPageTemplate.includes("refresh-spinner-ink.svg") &&
+    gradesPageTemplate.includes('<lucide-icon wx:else name="refresh-cw"') &&
+    gradesPageStyles.includes(".nav-refresh-spinner") &&
+    /\.nav-refresh\s*\{[^}]*width:\s*76rpx;[^}]*height:\s*76rpx;[^}]*border-radius:\s*999rpx;/.test(
+      gradesPageStyles,
+    ) &&
+    /\.nav-refresh-spinner\s*\{[^}]*width:\s*34rpx;[^}]*height:\s*34rpx;[^}]*border-radius:\s*999rpx;/.test(
+      gradesPageStyles,
+    ) &&
+    refreshSpinnerInk.includes('<circle cx="16" cy="16" r="11.5"') &&
+    refreshSpinnerInk.includes("<path") &&
+    refreshSpinnerWhite.includes('<circle cx="16" cy="16" r="11.5"') &&
+    refreshSpinnerWhite.includes("<path") &&
+    gradesPageStyles.includes("@keyframes grade-refresh-spin") &&
+    gradesPageScript.includes("if (this.data.refreshing) return;") &&
+    gradesPageScript.includes("showRefreshConfirmation(this)"),
+  "成绩刷新期间必须用固定圆形按钮与真实圆形 SVG 加载环替换刷新图标",
+);
+assert(
+  appTypes.includes("showGradesBelow60: boolean;") &&
+    appTypes.includes("showGradesBelow60: true,") &&
+    preferencesStore.includes("typeof stored.showGradesBelow60") &&
+    profileTemplate.includes("成绩展示设置") &&
+    profileScript.includes(
+      'void navigateTo("/features/pages/grade-settings/index")',
+    ) &&
+    !profileTemplate.includes('bindchange="onShowGradesOnHomeChange"') &&
+    gradeSettingsTemplate.includes('checked="{{showGradesOnHome}}"') &&
+    gradeSettingsTemplate.includes('checked="{{showGradesBelow60}}"') &&
+    gradesPageScript.includes(
+      "includeUnsuccessful: this.data.includeUnsuccessful",
+    ) &&
+    teachingService.includes("query.includeUnsuccessful === false") &&
+    teachingService.includes("withoutUnsuccessfulGrades(result.data)") &&
+    gradesStore.includes("loadGradesSnapshotForPreference"),
+  "成绩展示选项必须位于独立设置页，默认展示低分，并在网络与缓存两条路径本地兜底过滤",
 );
 assert(
   gradesPageTemplate.includes('bindscroll="onGradeScroll"') &&

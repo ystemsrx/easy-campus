@@ -44,6 +44,7 @@ import {
   getSession,
   isSessionLeaseCurrent,
   sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
 import {
   loadTimetableSnapshot,
@@ -62,6 +63,15 @@ import { formatScore } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
 import { preloadTimetableThemeAssets } from "../../../utils/icon-preload";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   shortAcademicSemesterLabel,
@@ -1265,6 +1275,11 @@ interface InFlightTimetableRequest {
   completion: Promise<boolean>;
 }
 
+interface TimetableRefreshOutcome {
+  succeeded: boolean;
+  semester?: string;
+}
+
 let activeTimetable: TimetableData | null = null;
 let visibleCourses: TimetableCourse[] = [];
 const timetableRequestsInFlight = new Map<string, InFlightTimetableRequest>();
@@ -1288,6 +1303,59 @@ let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
 let passRateRequestSequence = 0;
 let pageAlive = false;
+
+function timetableRequestKey(lease: SessionLease, semester?: string): string {
+  return `${sessionLeaseKey(lease)}:${semester || "default"}`;
+}
+
+function timetableRefreshFlightKey(lease: SessionLease): string {
+  return `timetable:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshTimetableSnapshot(
+  lease: SessionLease,
+  semester?: string,
+): Promise<boolean> {
+  if (!isSessionLeaseCurrent(lease)) return false;
+  const requestKey = timetableRequestKey(lease, semester);
+  const existingRequest = timetableRequestsInFlight.get(requestKey);
+  if (existingRequest) {
+    const succeeded = await existingRequest.completion;
+    if (!isSessionLeaseCurrent(lease)) return false;
+    return existingRequest.refresh
+      ? succeeded
+      : refreshTimetableSnapshot(lease, semester);
+  }
+
+  let resolveCompletion: (succeeded: boolean) => void = () => undefined;
+  const completion = new Promise<boolean>((resolve) => {
+    resolveCompletion = resolve;
+  });
+  timetableRequestsInFlight.set(requestKey, { refresh: true, completion });
+  void (async () => {
+    let succeeded = false;
+    try {
+      const result = await getTimetable({ semester, refresh: true });
+      if (isSessionLeaseCurrent(lease)) {
+        saveTimetableSnapshot(lease.account, result.data, {
+          semesterId: semester,
+          serverFetchedAt: result.meta.fetchedAt,
+        });
+        succeeded = true;
+      }
+    } catch {
+      // 手动刷新失败时保留已有课表，下次进入或再次操作时可重试。
+    } finally {
+      if (
+        timetableRequestsInFlight.get(requestKey)?.completion === completion
+      ) {
+        timetableRequestsInFlight.delete(requestKey);
+      }
+      resolveCompletion(succeeded);
+    }
+  })();
+  return completion;
+}
 
 function resetClawdSceneScheduler(): void {
   clawdSceneStepIndex = 0;
@@ -1678,9 +1746,14 @@ Page({
     passRateOwnScore: -1,
     passRateDisplayScore: "—",
     hasHydrated: false,
+    refreshing: false,
+    refreshPageToken: 0,
+    observedRefreshFlightId: 0,
   },
   onLoad(options: Record<string, string | undefined>) {
     pageAlive = true;
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
     if (weekMenuOpenTimer !== undefined) {
       clearTimeout(weekMenuOpenTimer);
       weekMenuOpenTimer = undefined;
@@ -1709,15 +1782,18 @@ Page({
       {
         ...visualPreferences,
         compactHeader,
+        refreshPageToken,
         ...backgroundMetrics(compactHeader),
       },
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    markRefreshPageVisible(this.data.refreshPageToken);
     this.setData(
       {
         ...timetableVisualPreferencesPatch(),
@@ -1726,13 +1802,16 @@ Page({
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
   },
   onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
     this.stopClawdSceneSequence();
   },
   onUnload() {
     pageAlive = false;
+    markRefreshPageHidden(this.data.refreshPageToken);
     if (weekMenuOpenTimer !== undefined) {
       clearTimeout(weekMenuOpenTimer);
       weekMenuOpenTimer = undefined;
@@ -1976,6 +2055,8 @@ Page({
         passRateOwnScore: -1,
         passRateDisplayScore: "—",
         hasHydrated: false,
+        refreshing: false,
+        observedRefreshFlightId: 0,
       });
     }
     activeAccount = account;
@@ -1984,6 +2065,65 @@ Page({
     defaultSemesterId = activeTimetable?.semester.id || "";
     if (activeTimetable) this.applyTimetable(activeTimetable, false);
     this.setData({ hasHydrated: true }, () => this.syncClawdSceneSequence());
+  },
+  currentTimetableSemesterQuery(): string | undefined {
+    return this.data.semesterId === defaultSemesterId
+      ? undefined
+      : this.data.semesterId || undefined;
+  },
+  syncActiveTimetableRefresh(): boolean {
+    const lease = captureSessionLease();
+    if (!lease || activeAccount !== lease.account) {
+      if (this.data.refreshing || this.data.observedRefreshFlightId) {
+        this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    const flight = findRefreshFlight<TimetableRefreshOutcome>(
+      timetableRefreshFlightKey(lease),
+    );
+    if (!flight) {
+      if (this.data.refreshing || this.data.observedRefreshFlightId) {
+        this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    this.observeTimetableRefresh(flight, lease);
+    return true;
+  },
+  observeTimetableRefresh(
+    flight: RefreshFlight<TimetableRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedRefreshFlightId === flight.id) {
+      if (!this.data.refreshing) this.setData({ refreshing: true });
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({
+      refreshing: true,
+      observedRefreshFlightId: flight.id,
+    });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
+        return;
+      }
+      this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      if (!outcome.succeeded) return;
+      const snapshot = loadTimetableSnapshot(lease.account, outcome.semester);
+      if (snapshot) {
+        activeSnapshot = snapshot;
+        activeTimetable = snapshot.data;
+        if (!outcome.semester) defaultSemesterId = snapshot.data.semester.id;
+        this.applyTimetable(snapshot.data, true);
+      }
+      showRefreshConfirmation(this);
+    });
   },
   syncTimetableIfNeeded(semester?: string) {
     if (!activeAccount) return;
@@ -2014,7 +2154,7 @@ Page({
     if (!lease || !requestAccount || activeAccount !== requestAccount) {
       return false;
     }
-    const requestKey = `${sessionLeaseKey(lease)}:${semester || "default"}`;
+    const requestKey = timetableRequestKey(lease, semester);
     const existingRequest = timetableRequestsInFlight.get(requestKey);
     if (existingRequest) {
       const succeeded = await existingRequest.completion;
@@ -2266,6 +2406,7 @@ Page({
     this.setWeek(weekNumber, true);
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.refreshing) return;
     const semester = String(event.currentTarget.dataset.semester || "");
     this.closeTimetableMenu();
     if (!semester || semester === this.data.semesterId) return;
@@ -2459,7 +2600,7 @@ Page({
   openCalendar() {
     this.closeTimetableMenu();
     haptic("light");
-    void navigateTo("/features/pages/calendar/index", "wx://upwards");
+    void navigateTo("/features/pages/calendar/index");
   },
   goToday() {
     if (!activeTimetable) return;
@@ -2469,25 +2610,20 @@ Page({
       this.setWeek(week, true);
     }
   },
-  async onRefresh() {
-    this.closeTimetableMenu();
-    haptic("light");
-    const requestAccount = activeAccount;
-    const requestSemesterId = this.data.semesterId;
-    const succeeded = await this.loadTimetable(
-      true,
-      this.data.semesterId === defaultSemesterId
-        ? undefined
-        : this.data.semesterId || undefined,
+  onRefresh() {
+    if (this.data.refreshing) return;
+    const lease = captureSessionLease();
+    if (!lease || activeAccount !== lease.account) return;
+    const semester = this.currentTimetableSemesterQuery();
+    const { flight, started } = startRefreshFlight(
+      timetableRefreshFlightKey(lease),
+      async () => ({
+        succeeded: await refreshTimetableSnapshot(lease, semester),
+        semester,
+      }),
     );
-    if (
-      succeeded &&
-      pageAlive &&
-      activeAccount === requestAccount &&
-      this.data.semesterId === requestSemesterId
-    ) {
-      showRefreshConfirmation(this);
-    }
+    this.observeTimetableRefresh(flight, lease);
+    if (started) haptic("light");
   },
   goBack() {
     haptic("light");

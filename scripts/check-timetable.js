@@ -3304,8 +3304,17 @@ assert(
     refreshConfirmationScript.includes("this.setData({ mounted: false })") &&
     /},\s*3000\)/.test(refreshConfirmationScript) &&
     timetablePageScript.includes("showRefreshConfirmation(this)") &&
-    timetablePageScript.includes("const succeeded = await this.loadTimetable"),
+    timetablePageScript.includes("startRefreshFlight(") &&
+    timetablePageScript.includes("this.observeTimetableRefresh(flight, lease)"),
   "手动刷新成功后必须显示三秒的非阻塞完成反馈",
+);
+const openCalendarHandler =
+  timetablePageScript.match(/  openCalendar\(\) \{[\s\S]*?\n  \},/)?.[0] || "";
+assert(
+  openCalendarHandler.includes(
+    'navigateTo("/features/pages/calendar/index")',
+  ) && !openCalendarHandler.includes("wx://upwards"),
+  "教学日历必须使用微信标准右侧页面转场",
 );
 
 console.log("Timetable preview checks passed.");

@@ -12,11 +12,30 @@ import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 
 interface YearOption {
   value: number;
   label: string;
+}
+
+interface CalendarRefreshOutcome {
+  succeeded: boolean;
+  calendar: CalendarData | null;
+  imagePath: string;
+  errorMessage: string;
+  availableCalendars: CalendarAcademicYearOption[];
 }
 
 function buildYearOptions(
@@ -39,6 +58,54 @@ function buildYearOptions(
 }
 
 let yearPickerCloseTimer: ReturnType<typeof setTimeout> | null = null;
+let calendarRequestSequence = 0;
+
+function calendarRefreshFlightKey(lease: SessionLease): string {
+  return `calendar:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshCalendar(
+  lease: SessionLease,
+  academicYear?: number,
+): Promise<CalendarRefreshOutcome> {
+  try {
+    const calendar = await getCalendar(academicYear, true);
+    if (!isSessionLeaseCurrent(lease)) {
+      return {
+        succeeded: false,
+        calendar: null,
+        imagePath: "",
+        errorMessage: "",
+        availableCalendars: [],
+      };
+    }
+    const imagePath = await getCachedCalendarImage(
+      calendar,
+      () => downloadCalendarImage(calendar.startYear),
+      true,
+    );
+    return {
+      succeeded: isSessionLeaseCurrent(lease),
+      calendar,
+      imagePath,
+      errorMessage: "",
+      availableCalendars: [],
+    };
+  } catch (error) {
+    const details =
+      error instanceof ApiClientError
+        ? (error.details as
+            { availableCalendars?: CalendarAcademicYearOption[] } | undefined)
+        : undefined;
+    return {
+      succeeded: false,
+      calendar: null,
+      imagePath: "",
+      errorMessage: getErrorMessage(error, "校历加载失败。"),
+      availableCalendars: details?.availableCalendars || [],
+    };
+  }
+}
 
 Page({
   data: {
@@ -56,23 +123,110 @@ Page({
     yearOptions: [] as YearOption[],
     yearPickerMounted: false,
     yearPickerOpen: false,
+    refreshPageToken: 0,
+    observedRefreshFlightId: 0,
   },
   onLoad() {
+    calendarRequestSequence += 1;
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
+    this.setData({ refreshPageToken });
     this.applyAppearance();
+    this.syncActiveCalendarRefresh();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    markRefreshPageVisible(this.data.refreshPageToken);
     this.applyAppearance();
-    if (!this.data.calendar) {
+    if (!this.syncActiveCalendarRefresh() && !this.data.calendar) {
       void this.loadCalendar(undefined, false);
     }
   },
+  onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
+  },
   onUnload() {
+    markRefreshPageHidden(this.data.refreshPageToken);
     if (yearPickerCloseTimer) clearTimeout(yearPickerCloseTimer);
     yearPickerCloseTimer = null;
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  syncActiveCalendarRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<CalendarRefreshOutcome>(
+          calendarRefreshFlightKey(lease),
+        )
+      : null;
+    if (!lease || !flight) {
+      if (this.data.refreshing || this.data.observedRefreshFlightId) {
+        this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    this.observeCalendarRefresh(flight, lease);
+    return true;
+  },
+  observeCalendarRefresh(
+    flight: RefreshFlight<CalendarRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedRefreshFlightId === flight.id) {
+      if (!this.data.refreshing) this.setData({ refreshing: true });
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({ refreshing: true, observedRefreshFlightId: flight.id });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({
+        loading: false,
+        refreshing: false,
+        imageLoading: false,
+        observedRefreshFlightId: 0,
+      });
+      if (!outcome.succeeded || !outcome.calendar) {
+        const available = outcome.availableCalendars;
+        this.setData({
+          errorMessage: outcome.errorMessage,
+          ...(available.length
+            ? {
+                yearOptions: buildYearOptions(
+                  available[0].startYear,
+                  available[0].academicYear,
+                  available,
+                ),
+              }
+            : {}),
+        });
+        return;
+      }
+      const calendar = outcome.calendar;
+      this.setData({
+        calendar,
+        academicYear: calendar.startYear,
+        yearLabel: calendar.academicYear,
+        yearOptions: buildYearOptions(
+          calendar.startYear,
+          calendar.academicYear,
+          calendar.availableCalendars,
+        ),
+        imagePath: outcome.imagePath,
+        errorMessage: "",
+        loading: false,
+        imageLoading: false,
+      });
+      haptic("medium");
+      showRefreshConfirmation(this);
+    });
   },
   async getCachedImage(
     calendar: CalendarData,
@@ -87,6 +241,7 @@ Page({
   async loadCalendar(academicYear?: number, refresh = false): Promise<boolean> {
     const lease = captureSessionLease();
     if (!lease) return false;
+    const sequence = ++calendarRequestSequence;
     this.setData({
       loading: !this.data.calendar,
       refreshing: refresh,
@@ -95,9 +250,19 @@ Page({
     });
     try {
       const calendar = await getCalendar(academicYear, refresh);
-      if (!isSessionLeaseCurrent(lease)) return false;
+      if (
+        sequence !== calendarRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return false;
+      }
       const imagePath = await this.getCachedImage(calendar, refresh);
-      if (!isSessionLeaseCurrent(lease)) return false;
+      if (
+        sequence !== calendarRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return false;
+      }
       this.setData({
         calendar,
         academicYear: calendar.startYear,
@@ -112,7 +277,12 @@ Page({
       if (refresh) haptic("medium");
       return true;
     } catch (error) {
-      if (!isSessionLeaseCurrent(lease)) return false;
+      if (
+        sequence !== calendarRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return false;
+      }
       if (error instanceof ApiClientError) {
         const details = error.details as
           { availableCalendars?: CalendarAcademicYearOption[] } | undefined;
@@ -129,7 +299,10 @@ Page({
       this.setData({ errorMessage: getErrorMessage(error, "校历加载失败。") });
       return false;
     } finally {
-      if (isSessionLeaseCurrent(lease)) {
+      if (
+        sequence === calendarRequestSequence &&
+        isSessionLeaseCurrent(lease)
+      ) {
         this.setData({
           loading: false,
           refreshing: false,
@@ -138,13 +311,17 @@ Page({
       }
     }
   },
-  async onRefresh() {
+  onRefresh() {
     if (this.data.refreshing) return;
-    const succeeded = await this.loadCalendar(
-      this.data.academicYear || undefined,
-      true,
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const academicYear = this.data.academicYear || undefined;
+    const { flight, started } = startRefreshFlight(
+      calendarRefreshFlightKey(lease),
+      () => refreshCalendar(lease, academicYear),
     );
-    if (succeeded) showRefreshConfirmation(this);
+    this.observeCalendarRefresh(flight, lease);
+    if (started) calendarRequestSequence += 1;
   },
   previewImage() {
     if (!this.data.imagePath) return;

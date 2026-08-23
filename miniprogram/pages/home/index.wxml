@@ -180,12 +180,18 @@
         <view><text class="section-title">接下来</text></view>
         <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
-      <view class="plan-card card stagger-item stagger-3">
+      <view class="plan-card card stagger-item stagger-3" style="height: {{planCardHeight}}rpx;">
         <view wx:if="{{plans.length}}" class="plan-list">
-          <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}}">
-            <view class="plan-circle"></view>
-            <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
-            <text class="plan-tag">日程</text>
+          <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}} {{item.id === completingPlanId ? 'plan-row--completing' : ''}} {{item.id === removingPlanId ? 'plan-row--leaving' : ''}} {{item.id === enteringPlanId ? 'plan-row--entering' : ''}}">
+            <view class="plan-row-content">
+              <view class="plan-check pressable" data-id="{{item.id}}" catchtap="completePlan" hover-class="plan-check--pressed" aria-role="button" aria-label="标记{{item.title}}为已完成" aria-disabled="{{completingPlanId !== ''}}">
+                <view class="plan-circle {{item.id === completingPlanId ? 'plan-circle--checked' : ''}}">
+                  <lucide-icon wx:if="{{item.id === completingPlanId}}" name="check" tone="white" size="{{23}}"></lucide-icon>
+                </view>
+              </view>
+              <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
+              <text class="plan-tag">日程</text>
+            </view>
           </view>
         </view>
         <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing">

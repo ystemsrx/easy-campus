@@ -3,6 +3,7 @@ export type ThemePreference = "system" | "light" | "dark";
 export interface AppPreferences {
   theme: ThemePreference;
   showGradesOnHome: boolean;
+  showGradesBelow60: boolean;
   reducedMotion: boolean;
   haptics: boolean;
 }
@@ -10,6 +11,7 @@ export interface AppPreferences {
 export const DEFAULT_PREFERENCES: AppPreferences = {
   theme: "system",
   showGradesOnHome: true,
+  showGradesBelow60: true,
   reducedMotion: false,
   haptics: false,
 };

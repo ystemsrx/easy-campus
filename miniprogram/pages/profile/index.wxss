@@ -163,7 +163,8 @@
 .setting-row--pressed { background-color: var(--color-bg-subtle); transform: scale(0.99); }
 .setting-copy { flex: 1; min-width: 0; }
 .setting-switch { flex: none; transform: scale(0.82); transform-origin: right center; }
-.pet-setting-value { display: flex; flex: none; flex-direction: row; align-items: center; gap: 7rpx; color: var(--color-text-tertiary); font-size: 22rpx; font-weight: 650; white-space: nowrap; }
+.pet-setting-value,
+.grade-setting-value,
 .legal-setting-value { display: flex; flex: none; flex-direction: row; align-items: center; gap: 7rpx; color: var(--color-text-tertiary); font-size: 22rpx; font-weight: 650; white-space: nowrap; }
 .pet-color-dot { flex: none; width: 22rpx; height: 22rpx; margin-right: 2rpx; border: 3rpx solid rgba(255, 255, 255, 0.76); border-radius: 50%; box-shadow: 0 2rpx 8rpx rgba(20, 20, 30, 0.18); }
 

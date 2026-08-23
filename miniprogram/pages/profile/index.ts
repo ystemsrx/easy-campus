@@ -19,7 +19,11 @@ import {
   syncWindowBackground,
 } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
-import { ensureAuthenticated, goToLogin } from "../../utils/navigation";
+import {
+  ensureAuthenticated,
+  goToLogin,
+  navigateTo,
+} from "../../utils/navigation";
 
 function classLabel(user: CurrentUserData): string {
   const grade = (user.profile.grade || "").trim().replace(/级$/, "");
@@ -71,7 +75,6 @@ Page({
     enrollmentDate: "",
     themePreference: INITIAL_PROFILE_PREFERENCES.theme,
     themePreferenceLabel: themeLabel(INITIAL_PROFILE_PREFERENCES.theme),
-    showGradesOnHome: INITIAL_PROFILE_PREFERENCES.showGradesOnHome,
     reducedMotion: INITIAL_PROFILE_PREFERENCES.reducedMotion,
     haptics: INITIAL_PROFILE_PREFERENCES.haptics,
     themeSheetVisible: false,
@@ -139,7 +142,6 @@ Page({
       ...appearance,
       themePreference: preferences.theme,
       themePreferenceLabel: themeLabel(preferences.theme),
-      showGradesOnHome: preferences.showGradesOnHome,
       reducedMotion: preferences.reducedMotion,
       haptics: preferences.haptics,
     });
@@ -203,7 +205,11 @@ Page({
   },
   openPetSetup() {
     haptic("light");
-    wx.navigateTo({ url: "/features/pages/pet-setup/index?source=profile" });
+    void navigateTo("/features/pages/pet-setup/index?source=profile");
+  },
+  openGradeDisplaySettings() {
+    haptic("light");
+    void navigateTo("/features/pages/grade-settings/index");
   },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =
@@ -211,7 +217,7 @@ Page({
         ? "privacy"
         : "terms";
     haptic("light");
-    wx.navigateTo({ url: `/pages/legal/index?document=${document}` });
+    void navigateTo(`/pages/legal/index?document=${document}`);
   },
   openThemeSheet() {
     haptic("light");
@@ -233,11 +239,6 @@ Page({
     haptic("light");
     this.applyAppearance();
     this.syncTabBarAppearance();
-  },
-  onShowGradesOnHomeChange(event: WechatMiniprogram.SwitchChange) {
-    updatePreferences({ showGradesOnHome: event.detail.value });
-    haptic("light");
-    this.applyAppearance();
   },
   onHapticsChange(event: WechatMiniprogram.SwitchChange) {
     if (event.detail.value) {

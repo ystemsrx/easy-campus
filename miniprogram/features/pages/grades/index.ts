@@ -6,11 +6,18 @@ import {
   isCacheStale,
   shouldUseServerSnapshot,
 } from "../../../store/cache-policy";
-import { loadGradesSnapshot, saveGradesSnapshot } from "../../../store/grades";
+import {
+  loadGradesSnapshot,
+  loadGradesSnapshotForPreference,
+  saveGradesSnapshot,
+} from "../../../store/grades";
+import { loadPreferences } from "../../../store/preferences";
 import {
   captureSessionLease,
   getSession,
   isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
 import type {
   AcademicSemesterOption,
@@ -30,6 +37,15 @@ import {
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
 import { progressRingSource } from "../../../utils/progress-ring";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import { numberedAcademicSemesterLabel } from "../../../utils/semester";
 import {
@@ -75,6 +91,23 @@ interface GradeSortFilterController {
   toggle(anchor: { bottom: number; right: number }): void;
 }
 
+interface GradesRefreshInput {
+  academicYear: number;
+  term: number;
+  queryText: string;
+  sort: NonNullable<GradesQuery["sort"]>;
+  order: NonNullable<GradesQuery["order"]>;
+  sortMode: GradeSortMode;
+  includeUnsuccessful: boolean;
+}
+
+interface GradesRefreshOutcome {
+  succeeded: boolean;
+  input: GradesRefreshInput;
+  result: Awaited<ReturnType<typeof getGrades>> | null;
+  errorMessage: string;
+}
+
 const PAGE_SIZE = 200;
 const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
   default: { sort: "default", order: "desc", label: "默认" },
@@ -97,6 +130,54 @@ let gradeListAnimationRequested = true;
 let gradeTouchStart: TapPoint | null = null;
 let gradeTouchMoved = false;
 let lastGradeScrollAt = 0;
+
+function gradesRefreshFlightKey(lease: SessionLease): string {
+  return `grades:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshGrades(
+  lease: SessionLease,
+  input: GradesRefreshInput,
+): Promise<GradesRefreshOutcome> {
+  try {
+    const result = await getGrades({
+      page: 1,
+      pageSize: PAGE_SIZE,
+      academicYear: input.academicYear || undefined,
+      term: (input.term || undefined) as 1 | 2 | 3 | undefined,
+      q: input.queryText || undefined,
+      sort: input.sort,
+      order: input.order,
+      includeUnsuccessful: input.includeUnsuccessful,
+      refresh: true,
+    });
+    if (!isSessionLeaseCurrent(lease)) {
+      return { succeeded: false, input, result: null, errorMessage: "" };
+    }
+    const canonical =
+      !input.academicYear &&
+      !input.term &&
+      !input.queryText &&
+      input.sort === "default" &&
+      input.order === "desc";
+    if (canonical) {
+      saveGradesSnapshot(
+        lease.account,
+        result.data,
+        result.meta.fetchedAt,
+        input.includeUnsuccessful,
+      );
+    }
+    return { succeeded: true, input, result, errorMessage: "" };
+  } catch (error) {
+    return {
+      succeeded: false,
+      input,
+      result: null,
+      errorMessage: getErrorMessage(error, "成绩加载失败。"),
+    };
+  }
+}
 
 function isCompactScore(value: string): boolean {
   const normalized = value.trim();
@@ -201,6 +282,9 @@ Page({
     semesterChips: [] as SemesterChip[],
     activeSemesterId: "all",
     semesterInitialized: false,
+    includeUnsuccessful: loadPreferences().showGradesBelow60,
+    refreshPageToken: 0,
+    observedRefreshFlightId: 0,
   },
   onLoad() {
     hydratedGradesAccount = "";
@@ -210,13 +294,47 @@ Page({
     gradeTouchStart = null;
     gradeTouchMoved = false;
     lastGradeScrollAt = 0;
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
+    this.setData({ refreshPageToken });
     this.applyAppearance();
+    this.syncActiveGradesRefresh();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    markRefreshPageVisible(this.data.refreshPageToken);
+    const includeUnsuccessful = loadPreferences().showGradesBelow60;
+    if (includeUnsuccessful !== this.data.includeUnsuccessful) {
+      hydratedGradesAccount = "";
+      requestSequence += 1;
+      this.setData({
+        includeUnsuccessful,
+        gradeItems: [],
+        summary: summaryDefaults(),
+        averageRingSource: progressRingSource(null),
+        averageLabel: "—",
+        gradePointAverageLabel: "—",
+        total: 0,
+        availableSemesters: [],
+        semesterChips: [],
+        loaded: false,
+        semesterInitialized: false,
+        academicYear: 0,
+        term: 0,
+        activeSemesterId: "all",
+      });
+    }
     this.applyAppearance();
     this.hydrateGrades();
-    void this.loadGrades(true, false);
+    if (!this.syncActiveGradesRefresh()) {
+      void this.loadGrades(true, false);
+    }
+  },
+  onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
+  },
+  onUnload() {
+    markRefreshPageHidden(this.data.refreshPageToken);
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -266,13 +384,96 @@ Page({
       });
     }
     hydratedGradesAccount = account;
-    const cached = loadGradesSnapshot(account);
+    const cached = loadGradesSnapshotForPreference(
+      account,
+      this.data.includeUnsuccessful,
+    );
     if (!cached) return;
     const semester = this.initializeLatestSemester(cached.data);
     this.applyGradesData(
       semester ? gradesForSemester(cached.data, semester) : cached.data,
       cached.serverFetchedAt,
     );
+  },
+  syncActiveGradesRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<GradesRefreshOutcome>(gradesRefreshFlightKey(lease))
+      : null;
+    if (!lease || !flight) {
+      if (this.data.refreshing || this.data.observedRefreshFlightId) {
+        this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    this.observeGradesRefresh(flight, lease);
+    return true;
+  },
+  observeGradesRefresh(
+    flight: RefreshFlight<GradesRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedRefreshFlightId === flight.id) {
+      if (!this.data.refreshing) this.setData({ refreshing: true });
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({ refreshing: true, observedRefreshFlightId: flight.id });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({
+        loading: false,
+        refreshing: false,
+        loadingMore: false,
+        observedRefreshFlightId: 0,
+      });
+      if (
+        outcome.input.includeUnsuccessful !==
+        loadPreferences().showGradesBelow60
+      ) {
+        void this.loadGrades(true, false);
+        return;
+      }
+      if (!outcome.succeeded || !outcome.result) {
+        if (outcome.errorMessage) {
+          this.setData({ errorMessage: outcome.errorMessage });
+        }
+        return;
+      }
+      const input = outcome.input;
+      this.setData({
+        academicYear: input.academicYear,
+        term: input.term,
+        queryText: input.queryText,
+        sort: input.sort,
+        order: input.order,
+        sortMode: input.sortMode,
+        sortLabel: SORT_CONFIG[input.sortMode].label,
+        includeUnsuccessful: input.includeUnsuccessful,
+        semesterInitialized: Boolean(input.academicYear && input.term),
+        activeSemesterId:
+          input.academicYear && input.term
+            ? `${input.academicYear}-${input.term}`
+            : "all",
+        errorMessage: "",
+      });
+      const initializedSemester = this.initializeLatestSemester(
+        outcome.result.data,
+      );
+      this.applyGradesData(
+        initializedSemester
+          ? gradesForSemester(outcome.result.data, initializedSemester)
+          : outcome.result.data,
+        outcome.result.meta.fetchedAt,
+      );
+      showRefreshConfirmation(this);
+    });
   },
   buildFilterLabel(semesters?: AcademicSemesterOption[]): string {
     const semester = (semesters || this.data.availableSemesters).find(
@@ -335,6 +536,15 @@ Page({
     }
     const lease = captureSessionLease();
     if (!lease) return false;
+    if (refresh) {
+      const activeRefresh = findRefreshFlight<GradesRefreshOutcome>(
+        gradesRefreshFlightKey(lease),
+      );
+      if (activeRefresh) {
+        this.observeGradesRefresh(activeRefresh, lease);
+        return (await activeRefresh.completion).succeeded;
+      }
+    }
     const page = reset ? 1 : this.data.page + 1;
     const academicYear = this.data.academicYear;
     const term = this.data.term;
@@ -360,6 +570,7 @@ Page({
         q: queryText || undefined,
         sort,
         order,
+        includeUnsuccessful: this.data.includeUnsuccessful,
         refresh,
       });
       if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) {
@@ -374,12 +585,22 @@ Page({
         !queryText &&
         sort === "default" &&
         order === "desc";
-      const local = loadGradesSnapshot(account);
+      const local = loadGradesSnapshotForPreference(
+        account,
+        this.data.includeUnsuccessful,
+      );
       if (
         canonical &&
-        (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt))
+        (refresh ||
+          !local ||
+          shouldUseServerSnapshot(local, result.meta.fetchedAt))
       ) {
-        saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
+        saveGradesSnapshot(
+          account,
+          result.data,
+          result.meta.fetchedAt,
+          this.data.includeUnsuccessful,
+        );
       }
 
       const initializedSemester = this.initializeLatestSemester(result.data);
@@ -428,10 +649,28 @@ Page({
       }
     }
   },
-  async onRefresh() {
+  onRefresh() {
     if (this.data.refreshing) return;
-    haptic("medium");
-    if (await this.loadGrades(true, true)) showRefreshConfirmation(this);
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const input: GradesRefreshInput = {
+      academicYear: this.data.academicYear,
+      term: this.data.term,
+      queryText: this.data.queryText.trim(),
+      sort: this.data.sort,
+      order: this.data.order,
+      sortMode: this.data.sortMode,
+      includeUnsuccessful: this.data.includeUnsuccessful,
+    };
+    const { flight, started } = startRefreshFlight(
+      gradesRefreshFlightKey(lease),
+      () => refreshGrades(lease, input),
+    );
+    this.observeGradesRefresh(flight, lease);
+    if (started) {
+      requestSequence += 1;
+      haptic("medium");
+    }
   },
   selectSemesterQuick(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");

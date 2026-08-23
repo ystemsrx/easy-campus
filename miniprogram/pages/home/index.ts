@@ -15,6 +15,7 @@ import {
   getMessages,
   getNotices,
   getTimetable,
+  putLocalSchedule,
 } from "../../services/teaching";
 import { refreshExamsOnForeground } from "../../services/cache-refresh";
 import {
@@ -27,7 +28,11 @@ import {
   isCacheStale,
   shouldUseServerSnapshot,
 } from "../../store/cache-policy";
-import { loadGradesSnapshot, saveGradesSnapshot } from "../../store/grades";
+import {
+  loadGradesSnapshot,
+  loadGradesSnapshotForPreference,
+  saveGradesSnapshot,
+} from "../../store/grades";
 import { loadElectricitySnapshot } from "../../store/electricity";
 import { loadExamsSnapshot } from "../../store/exams";
 import {
@@ -38,7 +43,7 @@ import {
 } from "../../store/pet";
 import { uploadLocalCompanionPreferences } from "../../services/companion";
 import { loadPreferences } from "../../store/preferences";
-import { loadScheduleData } from "../../store/schedule";
+import { loadScheduleData, saveScheduleData } from "../../store/schedule";
 import {
   captureSessionLease,
   getSession,
@@ -67,6 +72,7 @@ import type {
   CurrentUserData,
   Exam,
   GradesData,
+  LocalSchedulePlan,
   Notice,
   Publication,
   TeachingMessage,
@@ -134,13 +140,7 @@ interface TodayCoursePreview extends TimetableCourse {
   current: boolean;
 }
 
-interface PlanPreview {
-  id: string;
-  title: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  done: boolean;
+interface PlanPreview extends LocalSchedulePlan {
   dateLabel: string;
   timeLabel: string;
 }
@@ -169,6 +169,15 @@ const HOME_FIRST_FRAME_SETTLE_MS = 32;
 const HOME_LOGIN_REVEAL_SETTLE_MS = 360;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
+const PLAN_CARD_MIN_HEIGHT_RPX = 224;
+const PLAN_ROW_HEIGHT_RPX = 104;
+const PLAN_COMPLETION_ACK_MS = 140;
+const PLAN_REMOVAL_TRANSITION_MS = 360;
+const PLAN_ENTRY_TRANSITION_MS = 280;
+const MODAL_QUICK_ACTION_ROUTES = new Set([
+  "/features/pages/pass-rates/index",
+  "/features/pages/rooms/index",
+]);
 const INITIAL_HOME_PREFERENCES = loadPreferences();
 const INITIAL_HOME_APPEARANCE = resolveAppearance(INITIAL_HOME_PREFERENCES);
 const INITIAL_HOME_AUTHENTICATED = Boolean(getSession()?.token);
@@ -202,12 +211,10 @@ let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 let credentialPollTimer: number | undefined;
 let credentialExitLease: SessionLease | null = null;
 let hydratedAccount = "";
-let timetableRouteOpening = false;
-let gradesRouteOpening = false;
-let electricityRouteOpening = false;
-let examsRouteOpening = false;
-let inboxRouteOpening = false;
 let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
+let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
+let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
+let planEntryTimer: ReturnType<typeof setTimeout> | undefined;
 let activeTimetable: TimetableData | null = null;
 
 function examBadge(exam: Exam): Pick<ExamPreview, "badgeText" | "badgeTone"> {
@@ -435,16 +442,7 @@ function noticeSourceIdFromLink(link: string): string {
 function loadPlanPreviews(account: string): PlanPreview[] {
   const stored = loadScheduleData(account).plans;
   const todayKey = today();
-  return (
-    stored as Array<{
-      id: string;
-      title: string;
-      date: string;
-      startTime: string;
-      endTime: string;
-      done: boolean;
-    }>
-  )
+  return stored
     .filter((plan) => !plan.done && plan.date >= todayKey)
     .sort((left, right) =>
       `${left.date} ${left.startTime}`.localeCompare(
@@ -458,6 +456,33 @@ function loadPlanPreviews(account: string): PlanPreview[] {
         plan.date === todayKey ? "今天" : formatFriendlyDate(plan.date),
       timeLabel: `${plan.startTime}–${plan.endTime}`,
     }));
+}
+
+function planCardHeight(planCount: number): number {
+  return Math.max(PLAN_CARD_MIN_HEIGHT_RPX, planCount * PLAN_ROW_HEIGHT_RPX);
+}
+
+function planPreviewPatch(account: string): {
+  plans: PlanPreview[];
+  planCardHeight: number;
+} {
+  const plans = loadPlanPreviews(account);
+  return { plans, planCardHeight: planCardHeight(plans.length) };
+}
+
+function clearPlanTransitionTimers(): void {
+  if (planCompletionTimer !== undefined) {
+    clearTimeout(planCompletionTimer);
+    planCompletionTimer = undefined;
+  }
+  if (planRemovalTimer !== undefined) {
+    clearTimeout(planRemovalTimer);
+    planRemovalTimer = undefined;
+  }
+  if (planEntryTimer !== undefined) {
+    clearTimeout(planEntryTimer);
+    planEntryTimer = undefined;
+  }
 }
 
 function mergeMessagePreviews(
@@ -554,6 +579,10 @@ Page({
     examPreviews: [] as ExamPreview[],
     examEmptyLabel: "暂时没有考试安排",
     plans: [] as PlanPreview[],
+    planCardHeight: PLAN_CARD_MIN_HEIGHT_RPX,
+    completingPlanId: "",
+    removingPlanId: "",
+    enteringPlanId: "",
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
     publications: [] as PublicationPreview[],
@@ -583,12 +612,9 @@ Page({
     homeReady = false;
     authenticationRevealPrepared = false;
     clearHomeActivationTimer();
+    clearPlanTransitionTimers();
     hydratedAccount = "";
     activeTimetable = null;
-    timetableRouteOpening = false;
-    gradesRouteOpening = false;
-    electricityRouteOpening = false;
-    inboxRouteOpening = false;
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
@@ -646,6 +672,7 @@ Page({
     authenticationRevealPrepared = false;
     clearHomeActivationTimer();
     clearDashboardTeachingFollowupTimer();
+    clearPlanTransitionTimers();
     this.stopCourseClock();
     this.stopCredentialPoll();
     this.setTabBarHidden(true);
@@ -692,6 +719,10 @@ Page({
         examPreviews: [],
         examEmptyLabel: "暂时没有考试安排",
         plans: [],
+        planCardHeight: PLAN_CARD_MIN_HEIGHT_RPX,
+        completingPlanId: "",
+        removingPlanId: "",
+        enteringPlanId: "",
         messages: [],
         notices: [],
         publications: [],
@@ -745,7 +776,7 @@ Page({
         this.hydratePet(account);
         this.hydrateCachedDashboard();
         this.hydrateShortcutCaches();
-        this.setData({ plans: loadPlanPreviews(account) }, () => {
+        this.setData(planPreviewPatch(account), () => {
           if (!isSessionLeaseCurrent(lease)) return;
           const tabBar = this.getTabBar();
           const finish = () =>
@@ -797,9 +828,7 @@ Page({
       hidden: petSetupPending,
     });
     this.updateTodayCourses();
-    this.setData({
-      plans: loadPlanPreviews(getSession()?.user.account || ""),
-    });
+    this.setData(planPreviewPatch(sessionAccount));
     this.stopCourseClock();
     courseClockTimer = setInterval(
       () => this.updateTodayCourses(),
@@ -817,6 +846,7 @@ Page({
   },
   onHide() {
     homeVisible = false;
+    this.settlePlanTransition();
     clearHomeActivationTimer();
     clearDashboardTeachingFollowupTimer();
     this.stopCourseClock();
@@ -830,6 +860,7 @@ Page({
     homeReady = false;
     clearHomeActivationTimer();
     clearDashboardTeachingFollowupTimer();
+    clearPlanTransitionTimers();
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
@@ -843,6 +874,26 @@ Page({
       clearInterval(courseClockTimer);
       courseClockTimer = undefined;
     }
+  },
+  settlePlanTransition() {
+    if (
+      planCompletionTimer === undefined &&
+      planRemovalTimer === undefined &&
+      planEntryTimer === undefined &&
+      !this.data.completingPlanId &&
+      !this.data.removingPlanId &&
+      !this.data.enteringPlanId
+    ) {
+      return;
+    }
+    clearPlanTransitionTimers();
+    const account = getSession()?.user.account || "";
+    this.setData({
+      ...planPreviewPatch(account),
+      completingPlanId: "",
+      removingPlanId: "",
+      enteringPlanId: "",
+    });
   },
   updateTodayCourses() {
     const now = new Date();
@@ -979,7 +1030,10 @@ Page({
     const cached =
       cleanupTeachingPreview(account) || loadTeachingPreview(account);
     const cachedTimetable = loadTimetableSnapshot(account);
-    const cachedGrades = loadGradesSnapshot(account);
+    const cachedGrades = loadGradesSnapshotForPreference(
+      account,
+      loadPreferences().showGradesBelow60,
+    );
     activeTimetable = cachedTimetable?.data || null;
     const semesterBoundary = startedCurrentSemester(activeTimetable);
     const messages = (cached?.messages || [])
@@ -1027,12 +1081,20 @@ Page({
     account: string,
     result: Awaited<ReturnType<typeof getGrades>>,
     refresh: boolean,
+    includeUnsuccessful: boolean,
   ) {
-    const local = loadGradesSnapshot(account);
+    const local = loadGradesSnapshotForPreference(account, includeUnsuccessful);
     const useServer =
-      refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt);
+      refresh ||
+      !local ||
+      shouldUseServerSnapshot(local, result.meta.fetchedAt);
     if (useServer) {
-      saveGradesSnapshot(account, result.data, result.meta.fetchedAt);
+      saveGradesSnapshot(
+        account,
+        result.data,
+        result.meta.fetchedAt,
+        includeUnsuccessful,
+      );
     }
     if (useServer && getSession()?.user.account === account) {
       this.setData(
@@ -1530,6 +1592,7 @@ Page({
     });
 
     const account = lease.account;
+    const includeUnsuccessful = loadPreferences().showGradesBelow60;
     const userRequest = includeStableData
       ? getPreloadedCurrentUser(refreshTeaching).then((user) => {
           if (user && homeVisible && isSessionLeaseCurrent(lease)) {
@@ -1548,14 +1611,22 @@ Page({
         })
       : Promise.resolve(null);
     const gradeRequest = includeStableData
-      ? getGrades({ page: 1, pageSize: 200, refresh: refreshStable }).then(
-          (result) => {
-            if (isSessionLeaseCurrent(lease)) {
-              this.hydrateServerGrade(account, result, refreshStable);
-            }
-            return result;
-          },
-        )
+      ? getGrades({
+          page: 1,
+          pageSize: 200,
+          includeUnsuccessful,
+          refresh: refreshStable,
+        }).then((result) => {
+          if (isSessionLeaseCurrent(lease)) {
+            this.hydrateServerGrade(
+              account,
+              result,
+              refreshStable,
+              includeUnsuccessful,
+            );
+          }
+          return result;
+        })
       : Promise.resolve(null);
     const [
       userResult,
@@ -1715,90 +1786,121 @@ Page({
     haptic("light");
     if (route === "inbox") {
       wx.setStorageSync("easy-swu:inbox-tab", "messages");
-      wx.navigateTo({ url: "/features/pages/inbox/index" });
+      void navigateTo("/features/pages/inbox/index");
       return;
     }
     if (route) {
+      if (MODAL_QUICK_ACTION_ROUTES.has(route)) {
+        void navigateTo(route, "wx://cupertino-modal");
+        return;
+      }
       void navigateTo(route);
     }
   },
   openTimetable() {
-    if (timetableRouteOpening) return;
-    timetableRouteOpening = true;
     haptic("light");
-    wx.navigateTo({
-      url: "/features/pages/timetable/index",
-      complete: () => {
-        timetableRouteOpening = false;
-      },
-    });
+    void navigateTo("/features/pages/timetable/index");
   },
   openGrades() {
-    if (gradesRouteOpening) return;
-    gradesRouteOpening = true;
     haptic("light");
-    wx.navigateTo({
-      url: "/features/pages/grades/index",
-      complete: () => {
-        gradesRouteOpening = false;
-      },
-    });
+    void navigateTo("/features/pages/grades/index");
   },
   openElectricity() {
-    if (electricityRouteOpening) return;
-    electricityRouteOpening = true;
     haptic("light");
-    wx.navigateTo({
-      url: "/features/pages/electricity/index",
-      complete: () => {
-        electricityRouteOpening = false;
-      },
-    });
+    void navigateTo("/features/pages/electricity/index");
   },
   openExams() {
-    if (examsRouteOpening) return;
-    examsRouteOpening = true;
     haptic("light");
-    wx.navigateTo({
-      url: "/features/pages/exams/index",
-      complete: () => {
-        examsRouteOpening = false;
-      },
-    });
+    void navigateTo("/features/pages/exams/index");
   },
   openMessages() {
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
-    wx.navigateTo({ url: "/features/pages/inbox/index" });
+    void navigateTo("/features/pages/inbox/index");
   },
   openNotices() {
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
-    wx.navigateTo({ url: "/features/pages/inbox/index" });
+    void navigateTo("/features/pages/inbox/index");
   },
   openMessagesFromCard() {
-    if (inboxRouteOpening) return;
-    inboxRouteOpening = true;
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "messages");
-    wx.navigateTo({
-      url: "/features/pages/inbox/index",
-      complete: () => {
-        inboxRouteOpening = false;
-      },
-    });
+    void navigateTo("/features/pages/inbox/index");
   },
   openNoticesFromCard() {
-    if (inboxRouteOpening) return;
-    inboxRouteOpening = true;
     haptic("light");
     wx.setStorageSync("easy-swu:inbox-tab", "notices");
-    wx.navigateTo({
-      url: "/features/pages/inbox/index",
-      complete: () => {
-        inboxRouteOpening = false;
-      },
+    void navigateTo("/features/pages/inbox/index");
+  },
+  completePlan(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    if (!id || this.data.completingPlanId || this.data.removingPlanId) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const schedule = loadScheduleData(lease.account);
+    const target = schedule.plans.find((plan) => plan.id === id && !plan.done);
+    if (!target) {
+      this.setData(planPreviewPatch(lease.account));
+      return;
+    }
+
+    const saved = saveScheduleData(
+      lease.account,
+      schedule.plans.map((plan) =>
+        plan.id === id ? { ...plan, done: true } : plan,
+      ),
+    );
+    const nextPlans = loadPlanPreviews(lease.account);
+    const retainedIds = new Set(
+      this.data.plans.filter((plan) => plan.id !== id).map((plan) => plan.id),
+    );
+    const enteringPlanId =
+      nextPlans.find((plan) => !retainedIds.has(plan.id))?.id || "";
+    const reducedMotion = this.data.motionClass === "motion-reduced";
+    clearPlanTransitionTimers();
+    haptic("light");
+    this.setData({ completingPlanId: id, enteringPlanId: "" });
+    void putLocalSchedule(saved).catch(() => {
+      // 本地状态已经生效，服务端会在下一次日程同步时追平。
     });
+
+    planCompletionTimer = setTimeout(
+      () => {
+        planCompletionTimer = undefined;
+        if (!isSessionLeaseCurrent(lease)) return;
+        this.setData({
+          removingPlanId: id,
+          planCardHeight: planCardHeight(nextPlans.length),
+        });
+        planRemovalTimer = setTimeout(
+          () => {
+            planRemovalTimer = undefined;
+            if (!isSessionLeaseCurrent(lease)) return;
+            this.setData({
+              plans: nextPlans,
+              planCardHeight: planCardHeight(nextPlans.length),
+              completingPlanId: "",
+              removingPlanId: "",
+              enteringPlanId: reducedMotion ? "" : enteringPlanId,
+            });
+            if (!reducedMotion && enteringPlanId) {
+              planEntryTimer = setTimeout(() => {
+                planEntryTimer = undefined;
+                if (
+                  isSessionLeaseCurrent(lease) &&
+                  this.data.enteringPlanId === enteringPlanId
+                ) {
+                  this.setData({ enteringPlanId: "" });
+                }
+              }, PLAN_ENTRY_TRANSITION_MS);
+            }
+          },
+          reducedMotion ? 16 : PLAN_REMOVAL_TRANSITION_MS,
+        );
+      },
+      reducedMotion ? 0 : PLAN_COMPLETION_ACK_MS,
+    );
   },
   openSchedule() {
     haptic("light");
@@ -1813,7 +1915,6 @@ Page({
     haptic("light");
     void navigateTo(
       `/features/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
-      "wx://upwards",
     );
   },
 });

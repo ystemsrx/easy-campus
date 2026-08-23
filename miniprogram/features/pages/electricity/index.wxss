@@ -34,6 +34,9 @@
 .result-action text { white-space: nowrap; }
 .result-action--icon { box-sizing: border-box; width: 58rpx; padding: 0; }
 .result-action--disabled { pointer-events: none; opacity: 0.48; }
+.result-refresh-spinner { width: 25rpx; height: 25rpx; border-radius: 50%; animation-name: electricity-refresh-spin; animation-duration: 850ms; animation-timing-function: linear; animation-iteration-count: infinite; }
+.motion-reduced .result-refresh-spinner { animation-name: none; }
+@keyframes electricity-refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .service-warning { display: flex; flex-direction: row; align-items: center; gap: 10rpx; margin-bottom: 16rpx; padding: 15rpx 18rpx; border-radius: 24rpx; color: var(--color-danger); background-color: var(--color-danger-soft); font-size: 19rpx; line-height: 1.45; }
 .balance-card { display: flex; flex-direction: row; align-items: center; justify-content: space-between; min-height: 190rpx; padding: 34rpx 36rpx; overflow: hidden; border-radius: 52rpx; color: #fff; background: linear-gradient(145deg, #7d8f6e, #acbe97); box-shadow: var(--shadow-pop); }
 .balance-card--negative { background: linear-gradient(145deg, #c26757, #df9683); }

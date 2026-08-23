@@ -279,7 +279,10 @@ Page({
   },
   openTimetable() {
     haptic("light");
-    void navigateTo("/features/pages/timetable/index?source=schedule");
+    void navigateTo(
+      "/features/pages/timetable/index?source=schedule",
+      "wx://cupertino-modal",
+    );
   },
   openCreator() {
     haptic("light");

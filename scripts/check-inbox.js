@@ -18,6 +18,26 @@ const source = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
 const homeRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "home");
 const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
 const homeTemplate = fs.readFileSync(path.join(homeRoot, "index.wxml"), "utf8");
+const noticeDetailRoot = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "features",
+  "pages",
+  "browser",
+);
+const noticeDetailSource = fs.readFileSync(
+  path.join(noticeDetailRoot, "index.ts"),
+  "utf8",
+);
+const noticeDetailTemplate = fs.readFileSync(
+  path.join(noticeDetailRoot, "index.wxml"),
+  "utf8",
+);
+const noticeDetailStyles = fs.readFileSync(
+  path.join(noticeDetailRoot, "index.wxss"),
+  "utf8",
+);
 const semesterSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "utils", "semester.ts"),
   "utf8",
@@ -43,6 +63,7 @@ const output = ts.transpileModule(source, {
 
 let cachedPreview = null;
 let cachedTimetable = null;
+const navigationCalls = [];
 const stubs = {
   "../../../services/teaching": {
     getMessages: async () => ({ data: { items: [] }, meta: {} }),
@@ -58,6 +79,7 @@ const stubs = {
       signedInAt: 1,
     }),
     isSessionLeaseCurrent: () => true,
+    sessionLeaseKey: () => "test-session",
   },
   "../../../store/teaching-preview": {
     cleanupTeachingPreview: () => null,
@@ -73,10 +95,24 @@ const stubs = {
   "../../../utils/haptics": { haptic: () => undefined },
   "../../../utils/navigation": {
     ensureAuthenticated: () => true,
-    navigateTo: async () => undefined,
+    navigateTo: async (...args) => {
+      navigationCalls.push(args);
+      return true;
+    },
   },
   "../../../utils/refresh-feedback": {
     showRefreshConfirmation: () => undefined,
+  },
+  "../../../utils/refresh-flight": {
+    createRefreshPageToken: () => 1,
+    findRefreshFlight: () => null,
+    isRefreshPageVisible: () => true,
+    markRefreshPageHidden: () => undefined,
+    markRefreshPageVisible: () => undefined,
+    startRefreshFlight: () => ({
+      started: true,
+      flight: { id: 1, key: "test", completion: Promise.resolve(null) },
+    }),
   },
   "../../../utils/semester": {
     ...semesterModule.exports,
@@ -144,6 +180,23 @@ assert(
   "点击全部必须清除其他筛选并恢复全部勾选",
 );
 assert(loadCount === 4, "每次筛选变化都必须重新读取对应消息");
+
+page.openNotice({
+  currentTarget: {
+    dataset: {
+      id: "notice-id",
+      link: "https://example.test/notice",
+      title: "测试通知",
+      publishedAt: "2026-08-23 12:00:00",
+    },
+  },
+});
+assert(
+  navigationCalls.length === 1 &&
+    navigationCalls[0].length === 1 &&
+    navigationCalls[0][0].startsWith("/features/pages/browser/index?"),
+  "通知详情必须使用微信标准右侧页面转场",
+);
 
 cachedTimetable = {
   data: {
@@ -224,6 +277,18 @@ assert(
   template.includes('<navigation-bar title="校园通知"') &&
     !template.includes('title="学校通知与教务安排"'),
   "校园通知页顶部必须使用精简标题",
+);
+assert(
+  noticeDetailTemplate.includes('<navigation-bar title="通知详情" back') &&
+    !noticeDetailTemplate.includes("已整理为易读正文") &&
+    !noticeDetailTemplate.includes("正文已在服务端清理危险标签") &&
+    !noticeDetailTemplate.includes("共享缓存") &&
+    !noticeDetailTemplate.includes("notice-footnote") &&
+    !noticeDetailTemplate.includes("cache-label") &&
+    !noticeDetailStyles.includes(".notice-footnote") &&
+    !noticeDetailStyles.includes(".cache-label") &&
+    !noticeDetailSource.includes("cached: result.meta.cached"),
+  "通知详情不得展示正文处理或共享缓存等内部实现标签",
 );
 assert(
   source.includes('return value.trim().replace(/老师/g, "").trim();') &&

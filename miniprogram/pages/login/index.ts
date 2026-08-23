@@ -20,6 +20,7 @@ import {
   syncWindowBackground,
 } from "../../utils/appearance";
 import { haptic } from "../../utils/haptics";
+import { navigateTo } from "../../utils/navigation";
 import {
   CRABWALKING_LEG_MS,
   LAPTOP_DURATION_MS,
@@ -556,7 +557,7 @@ Page({
         ? "privacy"
         : "terms";
     haptic("light");
-    wx.navigateTo({ url: `/pages/legal/index?document=${document}` });
+    void navigateTo(`/pages/legal/index?document=${document}`);
   },
   async onSubmit() {
     if (this.data.loading) {

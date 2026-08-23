@@ -1,8 +1,8 @@
 .grades-content { padding-top: 20rpx; }
-.nav-refresh { display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border-radius: 50%; color: #2b2620; background: #fff; box-shadow: 0 2rpx 4rpx rgba(20, 20, 30, 0.04), 0 14rpx 40rpx -12rpx rgba(20, 20, 30, 0.14); transition: transform 120ms ease-out, opacity 120ms ease-out; }
+.nav-refresh { box-sizing: border-box; display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; min-width: 76rpx; max-width: 76rpx; height: 76rpx; min-height: 76rpx; max-height: 76rpx; padding: 0; overflow: hidden; border-radius: 999rpx; color: #2b2620; background: #fff; box-shadow: 0 2rpx 4rpx rgba(20, 20, 30, 0.04), 0 14rpx 40rpx -12rpx rgba(20, 20, 30, 0.14); transition: transform 120ms ease-out, opacity 120ms ease-out; }
 .nav-button-pressed { transform: scale(0.93); opacity: 0.82; }
-.nav-refresh--loading { opacity: 0.7; }
-.nav-refresh--loading lucide-icon { animation-name: grade-refresh-spin; animation-duration: 850ms; animation-timing-function: linear; animation-iteration-count: infinite; }
+.nav-refresh--loading { opacity: 1; }
+.nav-refresh-spinner { display: block; flex: none; width: 34rpx; min-width: 34rpx; height: 34rpx; min-height: 34rpx; border-radius: 999rpx; animation-name: grade-refresh-spin; animation-duration: 720ms; animation-timing-function: linear; animation-iteration-count: infinite; }
 .semester-scroll { position: relative; z-index: 2; display: block; flex: none; width: calc(100% + 80rpx); height: 96rpx; margin-left: -40rpx; }
 .semester-row { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 14rpx; height: 96rpx; padding: 8rpx 40rpx 18rpx; }
 .semester-chip { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; height: 60rpx; padding: 0 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; line-height: 1; white-space: nowrap; }
@@ -69,6 +69,6 @@
 .theme-dark .course-tag--gpa { color: #e5b86e; background: rgba(201, 138, 45, 0.16); }
 .theme-dark .component-preview text { color: #bdb6a8; background: rgba(255, 255, 255, 0.06); }
 .theme-dark .score-tile--muted { color: #b0aaa0; background: rgba(255, 255, 255, 0.08); }
-.motion-reduced .nav-refresh--loading lucide-icon { animation-name: none; }
+.motion-reduced .nav-refresh-spinner { animation-name: none; }
 
 @keyframes grade-refresh-spin { to { transform: rotate(360deg); } }

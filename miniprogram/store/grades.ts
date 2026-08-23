@@ -1,12 +1,14 @@
 import type { GradesData } from "../types/api";
+import { withoutUnsuccessfulGrades } from "../utils/grades";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:grades:";
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 export interface GradesSnapshot extends CacheMetadata {
   schemaVersion: typeof SCHEMA_VERSION;
   data: GradesData;
+  includeUnsuccessful: boolean;
 }
 
 function storageKey(account: string): string {
@@ -43,20 +45,40 @@ export function loadGradesSnapshot(account: string): GradesSnapshot | null {
   return {
     schemaVersion: SCHEMA_VERSION,
     data: value.data,
+    includeUnsuccessful: value.includeUnsuccessful === true,
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || 0,
   };
+}
+
+export function loadGradesSnapshotForPreference(
+  account: string,
+  includeUnsuccessful: boolean,
+): GradesSnapshot | null {
+  const snapshot = loadGradesSnapshot(account);
+  if (!snapshot) return null;
+  if (includeUnsuccessful && !snapshot.includeUnsuccessful) return null;
+  if (!includeUnsuccessful && snapshot.includeUnsuccessful) {
+    return {
+      ...snapshot,
+      data: withoutUnsuccessfulGrades(snapshot.data),
+      includeUnsuccessful: false,
+    };
+  }
+  return snapshot;
 }
 
 export function saveGradesSnapshot(
   account: string,
   data: GradesData,
   serverFetchedAt = "",
+  includeUnsuccessful = true,
 ): GradesSnapshot | null {
   if (!account.trim()) return null;
   const snapshot: GradesSnapshot = {
     schemaVersion: SCHEMA_VERSION,
     data,
+    includeUnsuccessful,
     serverFetchedAt,
     localStoredAt: Date.now(),
   };

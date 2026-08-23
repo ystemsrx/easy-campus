@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const projectRoot = path.resolve(__dirname, "..");
 const ignoredDirectories = new Set([".git", "node_modules", "miniprogram_npm"]);
+const ignoredFiles = new Set(["project.private.config.json"]);
 const textExtensions = new Set([
   ".css",
   ".d.ts",
@@ -26,6 +27,10 @@ function visit(directory) {
     }
 
     const fullPath = path.join(directory, entry.name);
+    const relativePath = path.relative(projectRoot, fullPath);
+    if (ignoredFiles.has(relativePath)) {
+      continue;
+    }
     if (entry.isDirectory()) {
       visit(fullPath);
       continue;
@@ -37,7 +42,7 @@ function visit(directory) {
     }
 
     if (fs.readFileSync(fullPath).includes(Buffer.from("\r\n"))) {
-      failures.push(path.relative(projectRoot, fullPath));
+      failures.push(relativePath);
     }
   }
 }

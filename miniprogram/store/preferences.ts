@@ -25,6 +25,10 @@ export function loadPreferences(): AppPreferences {
       typeof stored.showGradesOnHome === "boolean"
         ? stored.showGradesOnHome
         : DEFAULT_PREFERENCES.showGradesOnHome,
+    showGradesBelow60:
+      typeof stored.showGradesBelow60 === "boolean"
+        ? stored.showGradesBelow60
+        : DEFAULT_PREFERENCES.showGradesBelow60,
     reducedMotion:
       typeof stored.reducedMotion === "boolean"
         ? stored.reducedMotion

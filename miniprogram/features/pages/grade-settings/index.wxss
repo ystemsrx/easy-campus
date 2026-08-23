@@ -1,0 +1,56 @@
+.grade-settings-page {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+}
+
+.grade-settings-content {
+  flex: 1;
+  min-height: 0;
+  padding-top: 28rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.grade-settings-card {
+  overflow: hidden;
+}
+
+.grade-setting-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  min-height: 116rpx;
+  padding: 24rpx 34rpx;
+}
+
+.grade-setting-row--divided {
+  border-bottom: 1rpx solid var(--color-separator);
+}
+
+.grade-setting-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.grade-setting-title {
+  display: block;
+  color: var(--color-text);
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.grade-setting-caption {
+  display: block;
+  margin-top: 4rpx;
+  color: var(--color-text-tertiary);
+  font-size: 21rpx;
+  line-height: 1.45;
+}
+
+.grade-setting-switch {
+  flex: none;
+  transform: scale(0.82);
+  transform-origin: right center;
+}

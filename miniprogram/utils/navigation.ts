@@ -1,36 +1,107 @@
 import { getSession } from "../store/session";
 
+type SkylineRouteType =
+  | "wx://bottom-sheet"
+  | "wx://upwards"
+  | "wx://zoom"
+  | "wx://cupertino-modal"
+  | "wx://cupertino-modal-inside"
+  | "wx://modal-navigation"
+  | "wx://modal";
+
 interface SkylineNavigateToOptions extends WechatMiniprogram.NavigateToOption {
-  routeType?:
-    | "wx://bottom-sheet"
-    | "wx://upwards"
-    | "wx://zoom"
-    | "wx://cupertino-modal"
-    | "wx://cupertino-modal-inside"
-    | "wx://modal-navigation"
-    | "wx://modal";
+  routeType?: SkylineRouteType;
   routeOptions?: Record<string, unknown>;
+}
+
+const ORDINARY_NAVIGATION_LOCK_MS = 420;
+const ORDINARY_NAVIGATION_TIMEOUT_MS = 2000;
+
+let ordinaryNavigationOpening = false;
+let ordinaryNavigationUnlockTimer: ReturnType<typeof setTimeout> | undefined;
+
+function releaseOrdinaryNavigation(delay = 0): void {
+  if (ordinaryNavigationUnlockTimer !== undefined) {
+    clearTimeout(ordinaryNavigationUnlockTimer);
+    ordinaryNavigationUnlockTimer = undefined;
+  }
+  if (delay <= 0) {
+    ordinaryNavigationOpening = false;
+    return;
+  }
+  ordinaryNavigationUnlockTimer = setTimeout(() => {
+    ordinaryNavigationOpening = false;
+    ordinaryNavigationUnlockTimer = undefined;
+  }, delay);
+}
+
+function isUnsupportedRouteType(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "errMsg" in error
+      ? String((error as { errMsg?: unknown }).errMsg || "")
+      : String(error || "");
+  return /route\s*type/i.test(message);
 }
 
 export function navigateTo(
   url: string,
-  routeType: SkylineNavigateToOptions["routeType"] = "wx://cupertino-modal",
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const options: SkylineNavigateToOptions = {
-      url,
-      routeType,
-      success: () => resolve(),
-      fail: (error) => {
-        // 旧基础库不认识 routeType 时自动回退到标准路由。
-        wx.navigateTo({
-          url,
-          success: () => resolve(),
-          fail: () => reject(error),
-        });
-      },
+  routeType?: SkylineRouteType,
+): Promise<boolean> {
+  const target = url.trim();
+  if (!target || ordinaryNavigationOpening) {
+    return Promise.resolve(false);
+  }
+
+  ordinaryNavigationOpening = true;
+  return new Promise((resolve) => {
+    let settled = false;
+    let fallbackAttempted = false;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = (opened: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (watchdog !== undefined) clearTimeout(watchdog);
+      releaseOrdinaryNavigation(opened ? ORDINARY_NAVIGATION_LOCK_MS : 0);
+      resolve(opened);
     };
-    wx.navigateTo(options);
+
+    const open = (withRouteType: boolean) => {
+      const options: SkylineNavigateToOptions = {
+        url: target,
+        success: () => finish(true),
+        fail: (error) => {
+          if (
+            withRouteType &&
+            !fallbackAttempted &&
+            isUnsupportedRouteType(error)
+          ) {
+            fallbackAttempted = true;
+            open(false);
+            return;
+          }
+          finish(false);
+        },
+      };
+      if (withRouteType) options.routeType = routeType;
+      wx.navigateTo(options);
+    };
+
+    watchdog = setTimeout(() => finish(false), ORDINARY_NAVIGATION_TIMEOUT_MS);
+    try {
+      open(Boolean(routeType));
+    } catch (error) {
+      if (routeType && !fallbackAttempted && isUnsupportedRouteType(error)) {
+        fallbackAttempted = true;
+        try {
+          open(false);
+        } catch {
+          finish(false);
+        }
+      } else {
+        finish(false);
+      }
+    }
   });
 }
 

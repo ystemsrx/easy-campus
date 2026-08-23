@@ -80,6 +80,7 @@ const homeStyles = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
+const homeNoticeHandler = homeScript.slice(homeScript.lastIndexOf("  openNotice("));
 const appScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
@@ -100,13 +101,43 @@ const appTypes = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "types", "app.ts"),
   "utf8",
 );
-const profileScript = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.ts"),
+const gradeSettingsScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grade-settings",
+    "index.ts",
+  ),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.wxml"),
+const gradeSettingsTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grade-settings",
+    "index.wxml",
+  ),
   "utf8",
+);
+
+assert(
+  homeScript.includes('"/features/pages/pass-rates/index"') &&
+    homeScript.includes('"/features/pages/rooms/index"') &&
+    /onQuickAction\(event:[\s\S]*?MODAL_QUICK_ACTION_ROUTES\.has\(route\)[\s\S]*?navigateTo\(route, "wx:\/\/cupertino-modal"\)/.test(
+      homeScript,
+    ),
+  "首页通过率和空教室入口必须保留原生抽屉转场",
+);
+assert(
+  homeNoticeHandler.includes("/features/pages/browser/index?") &&
+    !homeNoticeHandler.includes('"wx://upwards"'),
+  "首页通知详情必须使用微信标准右侧页面转场",
 );
 
 const homePageSettle =
@@ -146,17 +177,15 @@ assert(
     preferencesScript.includes(
       'typeof stored.showGradesOnHome === "boolean"',
     ) &&
-    profileTemplate.includes(">主页展示成绩</text>") &&
-    profileTemplate.includes('checked="{{showGradesOnHome}}"') &&
-    profileScript.includes(
+    gradeSettingsTemplate.includes(">主页展示成绩</text>") &&
+    gradeSettingsTemplate.includes('checked="{{showGradesOnHome}}"') &&
+    gradeSettingsScript.includes(
       "updatePreferences({ showGradesOnHome: event.detail.value });",
     ) &&
     homeScript.includes(
       "showGradesOnHome: INITIAL_HOME_PREFERENCES.showGradesOnHome",
     ) &&
-    homeScript.includes(
-      "showGradesOnHome: preferences.showGradesOnHome",
-    ) &&
+    homeScript.includes("showGradesOnHome: preferences.showGradesOnHome") &&
     homeTemplate.includes(
       "{{showGradesOnHome ? gradePointAverageLabel : '**'}}",
     ) &&
@@ -248,6 +277,35 @@ assert(
   "首页从本地教学缓存恢复时，消息和通知预览都必须限制为 3 条",
 );
 
+const planCardStyle = /\.plan-card \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const planListStyle = /\.plan-list \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const leavingPlanStyle =
+  /\.plan-row--leaving \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+assert(
+  homeTemplate.includes('style="height: {{planCardHeight}}rpx;"') &&
+    homeTemplate.includes('data-id="{{item.id}}" catchtap="completePlan"') &&
+    homeTemplate.includes("plan-circle--checked") &&
+    homeTemplate.includes('name="check" tone="white"') &&
+    planListStyle.includes("justify-content: flex-start;") &&
+    planListStyle.includes("height: 100%;") &&
+    planListStyle.includes("min-height: 0;") &&
+    planCardStyle.includes("transition: height 360ms") &&
+    leavingPlanStyle.includes("height: 0;") &&
+    leavingPlanStyle.includes("min-height: 0;") &&
+    leavingPlanStyle.includes("opacity: 0;") &&
+    leavingPlanStyle.includes("transform: translateX(30rpx) scale(0.98);") &&
+    homeStyles.includes("@keyframes plan-row-enter") &&
+    homeScript.includes("const PLAN_COMPLETION_ACK_MS = 140;") &&
+    homeScript.includes("const PLAN_REMOVAL_TRANSITION_MS = 360;") &&
+    homeScript.includes("saveScheduleData(") &&
+    homeScript.includes("void putLocalSchedule(saved)") &&
+    /completePlan\(event: WechatMiniprogram\.TouchEvent\)[\s\S]*?done: true[\s\S]*?completingPlanId: id[\s\S]*?removingPlanId: id[\s\S]*?plans: nextPlans/.test(
+      homeScript,
+    ) &&
+    homeScript.includes("planCardHeight: planCardHeight(nextPlans.length)"),
+  "主页待办必须从首行排列，圆圈可完成日程，并平滑收起行与卡片高度",
+);
+
 const semesterContext = {
   semester: { id: "2026-1" },
   currentSemester: {
@@ -261,10 +319,7 @@ assert(
   startedCurrentSemester(semesterContext, "2026-08-30") === null,
   "新学期预览不得在正式开学日前提前清空",
 );
-const startedSemester = startedCurrentSemester(
-  semesterContext,
-  "2026-08-31",
-);
+const startedSemester = startedCurrentSemester(semesterContext, "2026-08-31");
 assert(
   startedSemester?.semesterId === "2026-1" &&
     isCurrentSemesterTimestamp("2026-08-31 00:00:00", startedSemester) &&
@@ -301,7 +356,7 @@ assert(
 );
 
 assert(
-  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?refresh: refreshStable[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\(account, result, refreshStable\)/.test(
+  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?includeUnsuccessful,[\s\S]*?refresh: refreshStable[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\([\s\S]*?account,[\s\S]*?result,[\s\S]*?refreshStable,[\s\S]*?includeUnsuccessful,[\s\S]*?\)/.test(
     homeScript,
   ) &&
     /hydrateServerGrade\([\s\S]*?saveGradesSnapshot\([\s\S]*?this\.setData\([\s\S]*?gradePreviewPatch\(/.test(

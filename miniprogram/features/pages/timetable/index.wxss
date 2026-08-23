@@ -1312,6 +1312,33 @@
   background: #f9eae2;
 }
 
+.menu-action--refreshing {
+  opacity: 0.76;
+}
+
+.menu-action-refresh-spinner {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  animation-name: menu-refresh-spin;
+  animation-duration: 850ms;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.motion-reduced .menu-action-refresh-spinner {
+  animation-name: none;
+}
+
+@keyframes menu-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .submenu-header {
   display: flex;
   flex: none;

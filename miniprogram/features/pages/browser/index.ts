@@ -45,7 +45,6 @@ Page({
     loading: false,
     loaded: false,
     errorMessage: "",
-    cached: false,
   },
   onLoad(options: Record<string, string | undefined>) {
     if (!ensureAuthenticated()) return;
@@ -95,7 +94,6 @@ Page({
         contentHtml: detail.contentHtml,
         url,
         domain: domainFromUrl(url),
-        cached: result.meta.cached,
         loaded: true,
       });
       if (!refresh && result.meta.refreshing) {

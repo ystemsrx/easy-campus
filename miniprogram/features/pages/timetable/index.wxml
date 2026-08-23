@@ -279,9 +279,12 @@
         <text class="menu-action-label">回到本周</text>
         <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
       </view>
-      <view class="menu-action pressable" bindtap="onRefresh" hover-class="pressing">
-        <view class="menu-action-icon menu-action-icon--amber"><lucide-icon name="refresh-cw" tone="amber" size="{{25}}"></lucide-icon></view>
-        <text class="menu-action-label">刷新课表</text>
+      <view class="menu-action pressable {{refreshing ? 'menu-action--refreshing' : ''}}" bindtap="onRefresh" hover-class="pressing" aria-role="button" aria-label="{{refreshing ? '正在刷新课表' : '刷新课表'}}" aria-disabled="{{refreshing}}">
+        <view class="menu-action-icon menu-action-icon--amber">
+          <image wx:if="{{refreshing}}" class="menu-action-refresh-spinner" src="/assets/icons/refresh-spinner-ink.svg" mode="aspectFit" draggable="{{false}}"></image>
+          <lucide-icon wx:else name="refresh-cw" tone="amber" size="{{25}}"></lucide-icon>
+        </view>
+        <text class="menu-action-label">{{refreshing ? '正在刷新' : '刷新课表'}}</text>
         <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
       </view>
     </view>

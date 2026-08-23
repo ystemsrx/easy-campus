@@ -3,12 +3,7 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
-const loginRoot = path.join(
-  projectRoot,
-  "miniprogram",
-  "pages",
-  "login",
-);
+const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
 const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
 const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
 const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
@@ -73,7 +68,9 @@ const failures = [];
 
 const loginRoute = "pages/login/index";
 const loginInFeaturePackage = (
-  appConfig.subPackages || appConfig.subpackages || []
+  appConfig.subPackages ||
+  appConfig.subpackages ||
+  []
 ).some(
   (subpackage) =>
     subpackage.root === "features" &&
@@ -325,6 +322,10 @@ const loginPageStyles =
   styles.match(/(?:^|\n)\.page\.login-page\s*\{([\s\S]*?)\}/)?.[1] || "";
 const agreementStyles =
   styles.match(/\.agreement-row\s*\{([\s\S]*?)\}/)?.[1] || "";
+const agreementCopyStyles =
+  styles.match(/\.agreement-copy\s*\{([\s\S]*?)\}/)?.[1] || "";
+const agreementChildStyles =
+  styles.match(/\.agreement-copy > text\s*\{([\s\S]*?)\}/)?.[1] || "";
 const clawdMarkRowStyles =
   styles.match(/\.login-clawd-mark-row\s*\{([\s\S]*?)\}/)?.[1] || "";
 const clawdMarkStyles =
@@ -371,6 +372,19 @@ const loginServiceEnd = authService.indexOf(
   loginServiceStart,
 );
 const loginServiceBody = authService.slice(loginServiceStart, loginServiceEnd);
+if (
+  !agreementStyles.includes("flex-wrap: nowrap;") ||
+  !agreementStyles.includes("align-items: center;") ||
+  !agreementCopyStyles.includes("display: flex;") ||
+  !agreementCopyStyles.includes("flex-direction: row;") ||
+  !agreementCopyStyles.includes("flex-wrap: nowrap;") ||
+  !agreementCopyStyles.includes("white-space: nowrap;") ||
+  !agreementChildStyles.includes("flex: none;") ||
+  !agreementChildStyles.includes("white-space: nowrap;")
+) {
+  failures.push("登录页用户协议与隐私政策必须保持单行布局");
+}
+
 if (
   headingIndex < 0 ||
   headingIndex >= panelIndex ||
@@ -651,12 +665,7 @@ if (
   failures.push("登录页和已有会话直达路径都必须预加载首页 Skyline 运行环境");
 }
 
-const animationRoot = path.join(
-  projectRoot,
-  "miniprogram",
-  "assets",
-  "login",
-);
+const animationRoot = path.join(projectRoot, "miniprogram", "assets", "login");
 let animationBytes = 0;
 for (const name of [
   "laptop",

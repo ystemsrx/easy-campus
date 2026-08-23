@@ -4,6 +4,8 @@ import {
   captureSessionLease,
   getSession,
   isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
 import { loadTimetableSnapshot } from "../../../store/timetable";
 import {
@@ -17,6 +19,15 @@ import { formatDateTime } from "../../../utils/date";
 import { formatSchedule } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   isCurrentSemesterTimestamp,
@@ -55,6 +66,20 @@ interface MessageTypeOption {
   selected: boolean;
 }
 
+interface MessageRefreshOutcome {
+  succeeded: boolean;
+  messageTypes: MessageType[];
+  result: Awaited<ReturnType<typeof getMessages>> | null;
+  errorMessage: string;
+}
+
+interface NoticeRefreshOutcome {
+  succeeded: boolean;
+  query: string;
+  result: Awaited<ReturnType<typeof getNotices>> | null;
+  errorMessage: string;
+}
+
 const PAGE_SIZE = 15;
 const BACKGROUND_REFRESH_FOLLOWUP_MS = 1_500;
 const MESSAGE_TYPE_OPTIONS: ReadonlyArray<
@@ -68,6 +93,75 @@ const MESSAGE_TYPE_OPTIONS: ReadonlyArray<
 ];
 let messageRequestSequence = 0;
 let noticeRequestSequence = 0;
+
+function messageRefreshFlightKey(lease: SessionLease): string {
+  return `inbox-messages:${sessionLeaseKey(lease)}`;
+}
+
+function noticeRefreshFlightKey(lease: SessionLease): string {
+  return `inbox-notices:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshInboxMessages(
+  lease: SessionLease,
+  messageTypes: MessageType[],
+): Promise<MessageRefreshOutcome> {
+  try {
+    const result = await getMessages({
+      page: 1,
+      pageSize: PAGE_SIZE,
+      types: messageTypes.length ? messageTypes : undefined,
+      refresh: true,
+    });
+    if (!isSessionLeaseCurrent(lease)) {
+      return {
+        succeeded: false,
+        messageTypes,
+        result: null,
+        errorMessage: "",
+      };
+    }
+    if (!messageTypes.length) {
+      saveTeachingPreview(lease.account, { messages: result.data.items });
+    }
+    return { succeeded: true, messageTypes, result, errorMessage: "" };
+  } catch (error) {
+    return {
+      succeeded: false,
+      messageTypes,
+      result: null,
+      errorMessage: getErrorMessage(error),
+    };
+  }
+}
+
+async function refreshInboxNotices(
+  lease: SessionLease,
+  query: string,
+): Promise<NoticeRefreshOutcome> {
+  try {
+    const result = await getNotices({
+      page: 1,
+      pageSize: PAGE_SIZE,
+      q: query || undefined,
+      refresh: true,
+    });
+    if (!isSessionLeaseCurrent(lease)) {
+      return { succeeded: false, query, result: null, errorMessage: "" };
+    }
+    if (!query) {
+      saveTeachingPreview(lease.account, { notices: result.data.items });
+    }
+    return { succeeded: true, query, result, errorMessage: "" };
+  } catch (error) {
+    return {
+      succeeded: false,
+      query,
+      result: null,
+      errorMessage: getErrorMessage(error),
+    };
+  }
+}
 let hydratedInboxAccount = "";
 let filterTransitionTimer: ReturnType<typeof setTimeout> | undefined;
 let messageFollowupTimer: ReturnType<typeof setTimeout> | undefined;
@@ -280,40 +374,206 @@ Page({
     noticeQuery: "",
     noticeSearchFocused: false,
     messageTypeOptions: messageTypeOptions([]),
+    refreshPageToken: 0,
+    observedMessageRefreshFlightId: 0,
+    observedNoticeRefreshFlightId: 0,
   },
   onLoad() {
     hydratedInboxAccount = "";
+    messageRequestSequence += 1;
+    noticeRequestSequence += 1;
     clearFilterTransitionTimer();
     clearBackgroundFollowupTimers();
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
+    this.setData({ refreshPageToken });
     this.applyAppearance();
+    this.syncActiveMessageRefresh();
+    this.syncActiveNoticeRefresh();
   },
   onShow() {
     if (!ensureAuthenticated()) {
       return;
     }
+    markRefreshPageVisible(this.data.refreshPageToken);
     this.applyAppearance();
     this.hydrateCachedPreview();
     const requestedTab = wx.getStorageSync("easy-swu:inbox-tab");
     wx.removeStorageSync("easy-swu:inbox-tab");
+    const lease = captureSessionLease();
+    const hasMessageRefresh = Boolean(
+      lease &&
+      findRefreshFlight<MessageRefreshOutcome>(messageRefreshFlightKey(lease)),
+    );
+    const hasNoticeRefresh = Boolean(
+      lease &&
+      findRefreshFlight<NoticeRefreshOutcome>(noticeRefreshFlightKey(lease)),
+    );
     const activeTab =
       requestedTab === "notices"
         ? 1
         : requestedTab === "messages"
           ? 0
-          : this.data.activeTab;
+          : hasNoticeRefresh && !hasMessageRefresh
+            ? 1
+            : this.data.activeTab;
     this.setData({ activeTab });
     if (activeTab === 0) {
-      void this.loadMessages(false, this.data.messageItems.length > 0);
+      if (!this.syncActiveMessageRefresh()) {
+        void this.loadMessages(false, this.data.messageItems.length > 0);
+      }
     } else {
-      void this.loadNotices(false, this.data.noticeItems.length > 0);
+      if (!this.syncActiveNoticeRefresh()) {
+        void this.loadNotices(false, this.data.noticeItems.length > 0);
+      }
     }
   },
+  onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
+  },
   onUnload() {
+    markRefreshPageHidden(this.data.refreshPageToken);
     clearFilterTransitionTimer();
     clearBackgroundFollowupTimers();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
+  },
+  syncActiveMessageRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<MessageRefreshOutcome>(messageRefreshFlightKey(lease))
+      : null;
+    if (!lease || !flight) {
+      if (
+        this.data.messageRefreshing ||
+        this.data.observedMessageRefreshFlightId
+      ) {
+        this.setData({
+          messageRefreshing: false,
+          observedMessageRefreshFlightId: 0,
+        });
+      }
+      return false;
+    }
+    this.observeMessageRefresh(flight, lease);
+    return true;
+  },
+  observeMessageRefresh(
+    flight: RefreshFlight<MessageRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedMessageRefreshFlightId === flight.id) {
+      if (!this.data.messageRefreshing) {
+        this.setData({ messageRefreshing: true });
+      }
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({
+      messageRefreshing: true,
+      observedMessageRefreshFlightId: flight.id,
+    });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({
+        messageLoading: false,
+        messageRefreshing: false,
+        observedMessageRefreshFlightId: 0,
+      });
+      if (!outcome.succeeded || !outcome.result) {
+        if (outcome.errorMessage) {
+          this.setData({ messageError: outcome.errorMessage });
+        }
+        return;
+      }
+      const messageItems = mergeMessages(
+        outcome.result.data.items.map(toMessageView),
+        this.data.messageItems,
+      );
+      this.setData({
+        messageTypes: outcome.messageTypes,
+        messageFilterCount: outcome.messageTypes.length,
+        messageTypeOptions: messageTypeOptions(outcome.messageTypes),
+        messageItems: decorateMessages(messageItems),
+        messageLoaded: true,
+        messageError: "",
+      });
+      if (this.data.activeTab === 0) showRefreshConfirmation(this);
+    });
+  },
+  syncActiveNoticeRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<NoticeRefreshOutcome>(noticeRefreshFlightKey(lease))
+      : null;
+    if (!lease || !flight) {
+      if (
+        this.data.noticeRefreshing ||
+        this.data.observedNoticeRefreshFlightId
+      ) {
+        this.setData({
+          noticeRefreshing: false,
+          observedNoticeRefreshFlightId: 0,
+        });
+      }
+      return false;
+    }
+    this.observeNoticeRefresh(flight, lease);
+    return true;
+  },
+  observeNoticeRefresh(
+    flight: RefreshFlight<NoticeRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedNoticeRefreshFlightId === flight.id) {
+      if (!this.data.noticeRefreshing) {
+        this.setData({ noticeRefreshing: true });
+      }
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({
+      noticeRefreshing: true,
+      observedNoticeRefreshFlightId: flight.id,
+    });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({
+        noticeLoading: false,
+        noticeRefreshing: false,
+        observedNoticeRefreshFlightId: 0,
+      });
+      if (!outcome.succeeded || !outcome.result) {
+        if (outcome.errorMessage) {
+          this.setData({ noticeError: outcome.errorMessage });
+        }
+        return;
+      }
+      const noticeItems = mergeNotices(
+        outcome.result.data.items.map(toNoticeView),
+        this.data.noticeItems,
+      );
+      this.setData({
+        noticeQuery: outcome.query,
+        noticeItems: decorateNotices(noticeItems),
+        noticeLoaded: true,
+        noticeError: "",
+      });
+      if (this.data.activeTab === 1) showRefreshConfirmation(this);
+    });
   },
   hydrateCachedPreview() {
     const account = getSession()?.user.account || "";
@@ -382,9 +642,13 @@ Page({
   },
   loadActiveTab(index: number) {
     if (index === 0) {
-      void this.loadMessages(false, this.data.messageItems.length > 0);
+      if (!this.syncActiveMessageRefresh()) {
+        void this.loadMessages(false, this.data.messageItems.length > 0);
+      }
     } else {
-      void this.loadNotices(false, this.data.noticeItems.length > 0);
+      if (!this.syncActiveNoticeRefresh()) {
+        void this.loadNotices(false, this.data.noticeItems.length > 0);
+      }
     }
   },
   async loadMessages(
@@ -526,16 +790,34 @@ Page({
       }
     }
   },
-  async refreshMessages() {
-    haptic("light");
-    if (await this.loadMessages(true, true, true)) {
-      showRefreshConfirmation(this);
+  refreshMessages() {
+    if (this.data.messageRefreshing) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const messageTypes = [...this.data.messageTypes];
+    const { flight, started } = startRefreshFlight(
+      messageRefreshFlightKey(lease),
+      () => refreshInboxMessages(lease, messageTypes),
+    );
+    this.observeMessageRefresh(flight, lease);
+    if (started) {
+      messageRequestSequence += 1;
+      haptic("light");
     }
   },
-  async refreshNotices() {
-    haptic("light");
-    if (await this.loadNotices(true, true, true)) {
-      showRefreshConfirmation(this);
+  refreshNotices() {
+    if (this.data.noticeRefreshing) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const query = this.data.noticeQuery.trim();
+    const { flight, started } = startRefreshFlight(
+      noticeRefreshFlightKey(lease),
+      () => refreshInboxNotices(lease, query),
+    );
+    this.observeNoticeRefresh(flight, lease);
+    if (started) {
+      noticeRequestSequence += 1;
+      haptic("light");
     }
   },
   onPageTap() {
@@ -617,7 +899,6 @@ Page({
     haptic("light");
     void navigateTo(
       `/features/pages/browser/index?id=${encodeURIComponent(id || noticeSourceIdFromLink(link))}&url=${encodeURIComponent(link)}&title=${encodeURIComponent(title)}&publishedAt=${encodeURIComponent(publishedAt)}`,
-      "wx://upwards",
     );
   },
 });

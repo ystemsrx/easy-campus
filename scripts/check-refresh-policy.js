@@ -64,8 +64,8 @@ assert(
     !homeSource.includes("this.loadDashboard(true, includeStableRefresh)") &&
     inboxSource.includes("this.loadMessages(false, true, false, false)") &&
     inboxSource.includes("this.loadNotices(false, true, false, false)") &&
-    inboxSource.includes("this.loadMessages(true, true, true)") &&
-    inboxSource.includes("this.loadNotices(true, true, true)"),
+    inboxSource.includes("refreshInboxMessages") &&
+    inboxSource.includes("refreshInboxNotices"),
   "消息和通知后台回读不得伪装成手动刷新，用户主动刷新仍必须绕过缓存间隔",
 );
 
@@ -77,15 +77,40 @@ const manualRefreshPages = [
   ["inbox", "features", "pages", "inbox"],
   ["timetable", "features", "pages", "timetable"],
 ];
+const refreshResumeMethods = {
+  calendar: ["syncActiveCalendarRefresh"],
+  electricity: ["syncActiveElectricityRefresh"],
+  exams: ["syncActiveExamsRefresh"],
+  grades: ["syncActiveGradesRefresh"],
+  inbox: ["syncActiveMessageRefresh", "syncActiveNoticeRefresh"],
+  timetable: ["syncActiveTimetableRefresh"],
+};
 for (const [page, ...pageSegments] of manualRefreshPages) {
+  const pageSource = source(...pageSegments, "index.ts");
   assert(
     source(...pageSegments, "index.wxml").includes(
       '<refresh-confirmation id="refresh-confirmation"',
-    ) &&
-      source(...pageSegments, "index.ts").includes(
-        "showRefreshConfirmation(this)",
-      ),
+    ) && pageSource.includes("showRefreshConfirmation(this)"),
     `${page} 手动刷新成功后必须显示统一的完成反馈`,
+  );
+  assert(
+    pageSource.includes("startRefreshFlight(") &&
+      pageSource.includes("findRefreshFlight<") &&
+      pageSource.includes("markRefreshPageVisible(") &&
+      pageSource.includes("markRefreshPageHidden(") &&
+      pageSource.includes("isRefreshPageVisible("),
+    `${page} 手动刷新必须跨页面生命周期复用同一任务并按前台状态反馈`,
+  );
+  const onLoadStart = pageSource.indexOf("  onLoad(");
+  const onShowStart = pageSource.indexOf("\n  onShow(", onLoadStart);
+  const onLoadSource = pageSource.slice(onLoadStart, onShowStart);
+  assert(
+    onLoadStart >= 0 &&
+      onShowStart > onLoadStart &&
+      refreshResumeMethods[page].every((method) =>
+        onLoadSource.includes(`this.${method}()`),
+      ),
+    `${page} 页面重建时必须立即恢复未完成刷新任务的加载态`,
   );
 }
 
@@ -97,4 +122,69 @@ assert(
   "教学日历必须使用明确的刷新按钮，避免 Skyline 报 Cannot find refresher",
 );
 
-console.log("Refresh policy checks passed.");
+async function checkRefreshFlights() {
+  const refreshFlightSource = source("utils", "refresh-flight.ts");
+  const refreshFlightOutput = ts.transpileModule(refreshFlightSource, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const refreshFlightModule = { exports: {} };
+  new Function("module", "exports", refreshFlightOutput)(
+    refreshFlightModule,
+    refreshFlightModule.exports,
+  );
+  const {
+    createRefreshPageToken,
+    findRefreshFlight,
+    isRefreshPageVisible,
+    markRefreshPageHidden,
+    markRefreshPageVisible,
+    startRefreshFlight,
+  } = refreshFlightModule.exports;
+
+  let release = () => undefined;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let requestCount = 0;
+  const first = startRefreshFlight("same-resource", async () => {
+    requestCount += 1;
+    await gate;
+    return "done";
+  });
+  const second = startRefreshFlight("same-resource", async () => {
+    requestCount += 1;
+    return "duplicate";
+  });
+  assert(
+    first.started &&
+      !second.started &&
+      first.flight === second.flight &&
+      findRefreshFlight("same-resource") === first.flight,
+    "同一刷新键在完成前必须返回同一个任务",
+  );
+  await Promise.resolve();
+  assert(requestCount === 1, "重复刷新不得再次执行请求函数");
+
+  const pageToken = createRefreshPageToken();
+  markRefreshPageVisible(pageToken);
+  assert(isRefreshPageVisible(pageToken), "刷新页面进入前台后必须可被识别");
+  markRefreshPageHidden(pageToken);
+  assert(!isRefreshPageVisible(pageToken), "刷新页面离开前台后必须静默");
+
+  release();
+  assert((await first.flight.completion) === "done", "原刷新任务必须继续完成");
+  assert(
+    findRefreshFlight("same-resource") === null,
+    "刷新完成后必须释放单飞键以允许下次刷新",
+  );
+}
+
+void checkRefreshFlights()
+  .then(() => console.log("Refresh policy checks passed."))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

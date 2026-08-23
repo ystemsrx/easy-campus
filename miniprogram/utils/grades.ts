@@ -6,6 +6,10 @@ import type {
   GradesData,
 } from "../types/api";
 
+const FAILING_LEVEL_GRADES = new Set(["E", "不及格"]);
+const UNSUCCESSFUL_GRADE_PATTERN =
+  /作弊|违纪|缺考|旷考|取消(?:考试)?资格|成绩无效|作废|不合格|未通过|不通过/;
+
 function hasMakeupOrDeferredMarker(value: unknown): boolean {
   return /补考|缓考|补[/、]?缓考/.test(String(value ?? ""));
 }
@@ -52,6 +56,42 @@ function hasPublishedGrade(course: GradeCourse): boolean {
   if (course.finalScore === null) return false;
   return (
     typeof course.finalScore !== "string" || Boolean(course.finalScore.trim())
+  );
+}
+
+function normalizedGradeText(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+function directNumericScore(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
+  }
+  const normalized = normalizedGradeText(value);
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100
+    ? parsed
+    : null;
+}
+
+export function isUnsuccessfulGrade(
+  course: Pick<GradeCourse, "finalScore" | "gradeRemark" | "gradeNature">,
+): boolean {
+  const finalScore = directNumericScore(course.finalScore);
+  const labels = [
+    course.finalScore,
+    course.gradeRemark,
+    course.gradeNature,
+  ].map(normalizedGradeText);
+  return (
+    (finalScore !== null && finalScore < 60) ||
+    labels.some((label) => FAILING_LEVEL_GRADES.has(label)) ||
+    labels.some((label) => UNSUCCESSFUL_GRADE_PATTERN.test(label))
   );
 }
 
@@ -126,6 +166,21 @@ export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
     gradePointAverage: gradePointCredits
       ? Number((gradePointTotal / gradePointCredits).toFixed(2))
       : null,
+  };
+}
+
+export function withoutUnsuccessfulGrades(data: GradesData): GradesData {
+  const items = data.items.filter((course) => !isUnsuccessfulGrade(course));
+  return {
+    ...data,
+    items,
+    pagination: {
+      page: 1,
+      pageSize: Math.max(1, data.pagination.pageSize),
+      total: items.length,
+      totalPages: items.length ? 1 : 0,
+    },
+    summary: summarizeGrades(items),
   };
 }
 

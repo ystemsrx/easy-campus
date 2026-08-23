@@ -29,6 +29,43 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+const calendarTemplate = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "calendar",
+    "index.wxml",
+  ),
+  "utf8",
+);
+const calendarStyles = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "calendar",
+    "index.wxss",
+  ),
+  "utf8",
+);
+const calendarScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "calendar",
+    "index.ts",
+  ),
+  "utf8",
+);
+
 const storage = new Map([
   ["easy-swu:calendar-image:2025:123", "/saved/legacy"],
 ]);
@@ -88,6 +125,26 @@ function calendar(startYear, version, availableYears) {
 }
 
 async function main() {
+  assert(
+    calendarTemplate.includes(
+      '<image wx:if="{{refreshing}}" class="nav-refresh-spinner"',
+    ) &&
+      calendarTemplate.includes("refresh-spinner-white.svg") &&
+      calendarTemplate.includes("refresh-spinner-ink.svg") &&
+      calendarTemplate.includes('<lucide-icon wx:else name="refresh-cw"') &&
+      calendarStyles.includes(".nav-refresh-spinner") &&
+      /\.nav-refresh\s*\{[^}]*width:\s*76rpx;[^}]*height:\s*76rpx;[^}]*border-radius:\s*999rpx;/.test(
+        calendarStyles,
+      ) &&
+      /\.nav-refresh-spinner\s*\{[^}]*width:\s*34rpx;[^}]*height:\s*34rpx;[^}]*border-radius:\s*999rpx;/.test(
+        calendarStyles,
+      ) &&
+      calendarStyles.includes("@keyframes calendar-refresh-spin") &&
+      calendarScript.includes("if (this.data.refreshing) return;") &&
+      calendarScript.includes("showRefreshConfirmation(this)"),
+    "校历刷新期间必须用固定圆形按钮与真实圆形 SVG 加载环替换刷新图标",
+  );
+
   const { getCachedCalendarImage } = loadCalendarStore();
   let downloads = 0;
   const download = (name) => async () => {
@@ -126,7 +183,10 @@ async function main() {
   );
   assert(secondPath === "/saved/2", "新校历应替换旧校历缓存");
   assert(removedFiles.includes(firstPath), "发现新校历时应删除上一张");
-  assert(savedFiles.size === 1 && savedFiles.has(secondPath), "本地只能保留一张");
+  assert(
+    savedFiles.size === 1 && savedFiles.has(secondPath),
+    "本地只能保留一张",
+  );
 
   console.log("Calendar image cache checks passed.");
 }

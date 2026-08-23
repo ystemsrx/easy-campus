@@ -2,8 +2,9 @@
 <view class="page exams-page {{themeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="考试安排" back extra-left transparent theme="{{theme}}">
-      <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="刷新考试安排">
-        <lucide-icon name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+      <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{refreshing ? '正在刷新考试安排' : '刷新考试安排'}}" aria-disabled="{{refreshing}}">
+        <image wx:if="{{refreshing}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
+        <lucide-icon wx:else name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
       </view>
     </navigation-bar>
 

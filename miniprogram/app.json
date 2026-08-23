@@ -14,6 +14,7 @@
         "pages/pet-setup/index",
         "pages/inbox/index",
         "pages/grades/index",
+        "pages/grade-settings/index",
         "pages/pass-rates/index",
         "pages/grade-detail/index",
         "pages/rooms/index",

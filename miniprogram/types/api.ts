@@ -619,6 +619,7 @@ export interface GradesQuery {
   q?: string;
   sort?: "default" | "academicYear" | "courseName" | "finalScore";
   order?: "asc" | "desc";
+  includeUnsuccessful?: boolean;
   refresh?: boolean;
 }
 

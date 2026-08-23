@@ -234,6 +234,25 @@ assert(
   "考试页刷新按钮必须紧邻返回按钮且不显示顶部说明",
 );
 assert(
+  examsPage.includes(
+    '<image wx:if="{{refreshing}}" class="nav-refresh-spinner"',
+  ) &&
+    examsPage.includes("refresh-spinner-white.svg") &&
+    examsPage.includes("refresh-spinner-ink.svg") &&
+    examsPage.includes('<lucide-icon wx:else name="refresh-cw"') &&
+    examsStyles.includes(".nav-refresh-spinner") &&
+    /\.nav-refresh\s*\{[^}]*width:\s*76rpx;[^}]*height:\s*76rpx;[^}]*border-radius:\s*999rpx;/.test(
+      examsStyles,
+    ) &&
+    /\.nav-refresh-spinner\s*\{[^}]*width:\s*34rpx;[^}]*height:\s*34rpx;[^}]*border-radius:\s*999rpx;/.test(
+      examsStyles,
+    ) &&
+    examsStyles.includes("@keyframes exam-refresh-spin") &&
+    examsScript.includes("if (this.data.refreshing) return;") &&
+    examsScript.includes("showRefreshConfirmation(this)"),
+  "考试刷新期间必须用固定圆形按钮与真实圆形 SVG 加载环替换刷新图标",
+);
+assert(
   examsPage.includes("semester-chip") &&
     !examsPage.includes('title="选择学期"') &&
     !examsPage.includes('data-id="all"') &&

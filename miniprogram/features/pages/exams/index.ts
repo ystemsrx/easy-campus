@@ -10,6 +10,8 @@ import {
   captureSessionLease,
   getSession,
   isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
 import type {
   AcademicSemesterOption,
@@ -27,6 +29,15 @@ import {
 } from "../../../utils/date";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 import {
   examBatchLabel,
@@ -60,9 +71,56 @@ interface SelectedExamDetail {
   note: string;
 }
 
+interface ExamsRefreshInput {
+  semesterId: string;
+}
+
+interface ExamsRefreshOutcome {
+  succeeded: boolean;
+  input: ExamsRefreshInput;
+  result: Awaited<ReturnType<typeof getExams>> | null;
+  errorMessage: string;
+}
+
 const PAGE_SIZE = 50;
 let examsSequence = 0;
 let hydratedExamsAccount = "";
+
+function examsRefreshFlightKey(lease: SessionLease): string {
+  return `exams:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshExams(
+  lease: SessionLease,
+  input: ExamsRefreshInput,
+): Promise<ExamsRefreshOutcome> {
+  try {
+    const result = await getExams({
+      semester: input.semesterId || undefined,
+      page: 1,
+      pageSize: PAGE_SIZE,
+      refresh: true,
+    });
+    if (!isSessionLeaseCurrent(lease)) {
+      return { succeeded: false, input, result: null, errorMessage: "" };
+    }
+    const storageSemester = input.semesterId || "default";
+    const local = loadExamsSnapshot(lease.account, storageSemester);
+    saveExamsSnapshot(lease.account, result.data, {
+      semesterId: storageSemester,
+      serverFetchedAt: result.meta.fetchedAt,
+      lastAutomaticRefreshAt: local?.lastAutomaticRefreshAt || 0,
+    });
+    return { succeeded: true, input, result, errorMessage: "" };
+  } catch (error) {
+    return {
+      succeeded: false,
+      input,
+      result: null,
+      errorMessage: getErrorMessage(error, "考试信息加载失败。"),
+    };
+  }
+}
 
 function buildSemesterChips(
   semesters: AcademicSemesterOption[],
@@ -161,16 +219,32 @@ Page({
     selectedExamTitle: "考试详情",
     selectedExamDetailHeight: 0,
     selectedExam: null as SelectedExamDetail | null,
+    refreshPageToken: 0,
+    observedRefreshFlightId: 0,
   },
   onLoad() {
     hydratedExamsAccount = "";
+    examsSequence += 1;
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
+    this.setData({ refreshPageToken });
     this.applyAppearance();
+    this.syncActiveExamsRefresh();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    markRefreshPageVisible(this.data.refreshPageToken);
     this.applyAppearance();
     this.hydrateExams();
-    void this.loadExams(true, false);
+    if (!this.syncActiveExamsRefresh()) {
+      void this.loadExams(true, false);
+    }
+  },
+  onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
+  },
+  onUnload() {
+    markRefreshPageHidden(this.data.refreshPageToken);
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -213,6 +287,55 @@ Page({
     this.applyExamsData(cached.data);
     return true;
   },
+  syncActiveExamsRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<ExamsRefreshOutcome>(examsRefreshFlightKey(lease))
+      : null;
+    if (!lease || !flight) {
+      if (this.data.refreshing || this.data.observedRefreshFlightId) {
+        this.setData({ refreshing: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    this.observeExamsRefresh(flight, lease);
+    return true;
+  },
+  observeExamsRefresh(
+    flight: RefreshFlight<ExamsRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedRefreshFlightId === flight.id) {
+      if (!this.data.refreshing) this.setData({ refreshing: true });
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({ refreshing: true, observedRefreshFlightId: flight.id });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({
+        loading: false,
+        refreshing: false,
+        loadingMore: false,
+        observedRefreshFlightId: 0,
+      });
+      if (!outcome.succeeded || !outcome.result) {
+        if (outcome.errorMessage) {
+          this.setData({ errorMessage: outcome.errorMessage });
+        }
+        return;
+      }
+      this.applyExamsData(outcome.result.data);
+      this.setData({ errorMessage: "" });
+      showRefreshConfirmation(this);
+    });
+  },
   applyExamsData(data: ExamsData) {
     const semesterId = data.semester?.id || "";
     const examItems = data.items.map(toExamView);
@@ -241,6 +364,15 @@ Page({
     }
     const lease = captureSessionLease();
     if (!lease) return false;
+    if (refresh) {
+      const activeRefresh = findRefreshFlight<ExamsRefreshOutcome>(
+        examsRefreshFlightKey(lease),
+      );
+      if (activeRefresh) {
+        this.observeExamsRefresh(activeRefresh, lease);
+        return (await activeRefresh.completion).succeeded;
+      }
+    }
     const page = reset ? 1 : this.data.page + 1;
     const sequence = ++examsSequence;
     this.setData({
@@ -332,10 +464,20 @@ Page({
       }
     }
   },
-  async onRefresh() {
+  onRefresh() {
     if (this.data.refreshing) return;
-    haptic("medium");
-    if (await this.loadExams(true, true)) showRefreshConfirmation(this);
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const input: ExamsRefreshInput = { semesterId: this.data.semesterId };
+    const { flight, started } = startRefreshFlight(
+      examsRefreshFlightKey(lease),
+      () => refreshExams(lease, input),
+    );
+    this.observeExamsRefresh(flight, lease);
+    if (started) {
+      examsSequence += 1;
+      haptic("medium");
+    }
   },
   loadMore() {
     if (this.data.page < this.data.totalPages) {

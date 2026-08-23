@@ -19,6 +19,8 @@ import {
   captureSessionLease,
   getSession,
   isSessionLeaseCurrent,
+  sessionLeaseKey,
+  type SessionLease,
 } from "../../../store/session";
 import type {
   ElectricityAccount,
@@ -29,6 +31,15 @@ import { resolveAppearance } from "../../../utils/appearance";
 import { formatDateTime } from "../../../utils/date";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+import {
+  createRefreshPageToken,
+  findRefreshFlight,
+  isRefreshPageVisible,
+  markRefreshPageHidden,
+  markRefreshPageVisible,
+  startRefreshFlight,
+  type RefreshFlight,
+} from "../../../utils/refresh-flight";
 import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
 
 interface ElectricityView {
@@ -43,6 +54,20 @@ interface ElectricityView {
 interface ElectricityBuildingRow {
   id: string;
   items: ElectricityBuilding[];
+}
+
+interface ElectricityRefreshInput {
+  buildingId: string;
+  buildingName: string;
+  roomNumber: string;
+}
+
+interface ElectricityRefreshOutcome {
+  succeeded: boolean;
+  input: ElectricityRefreshInput;
+  result: Awaited<ReturnType<typeof queryElectricity>> | null;
+  errorMessage: string;
+  unavailable: boolean;
 }
 
 const BINDING_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
@@ -82,6 +107,53 @@ function isBindingLimited(error: unknown): boolean {
     error instanceof ApiClientError &&
     error.code === "ELECTRICITY_BINDING_LIMIT"
   );
+}
+
+function electricityRefreshFlightKey(lease: SessionLease): string {
+  return `electricity:${sessionLeaseKey(lease)}`;
+}
+
+async function refreshElectricity(
+  lease: SessionLease,
+  input: ElectricityRefreshInput,
+): Promise<ElectricityRefreshOutcome> {
+  const normalizedRoomNumber = /^\d{3}$/.test(input.roomNumber)
+    ? `0${input.roomNumber}`
+    : input.roomNumber;
+  try {
+    const result = await queryElectricity({
+      buildingId: input.buildingId,
+      buildingName: input.buildingName,
+      roomNumber: normalizedRoomNumber,
+    });
+    if (!isSessionLeaseCurrent(lease)) {
+      return {
+        succeeded: false,
+        input,
+        result: null,
+        errorMessage: "",
+        unavailable: false,
+      };
+    }
+    saveElectricitySnapshot(lease.account, result.data, result.meta.fetchedAt);
+    return {
+      succeeded: true,
+      input,
+      result,
+      errorMessage: "",
+      unavailable: false,
+    };
+  } catch (error) {
+    return {
+      succeeded: false,
+      input,
+      result: null,
+      errorMessage: isUnavailable(error)
+        ? ""
+        : getErrorMessage(error, "电费查询失败。"),
+      unavailable: isUnavailable(error),
+    };
+  }
 }
 
 function clearBindingToastTimers(): void {
@@ -165,22 +237,37 @@ Page({
     cacheLabel: "尚未绑定寝室",
     bindingToastMounted: false,
     bindingToastVisible: false,
+    refreshPageToken: 0,
+    observedRefreshFlightId: 0,
   },
   onLoad() {
+    buildingRequestSequence += 1;
+    accountRequestSequence += 1;
     activeAccount = "";
     activeSnapshot = null;
+    const refreshPageToken = createRefreshPageToken();
+    markRefreshPageVisible(refreshPageToken);
+    this.setData({ refreshPageToken });
     this.applyAppearance();
+    this.syncActiveElectricityRefresh();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    markRefreshPageVisible(this.data.refreshPageToken);
     this.applyAppearance();
     this.hydrateAccount();
-    void this.loadSavedAccount();
+    if (!this.syncActiveElectricityRefresh()) {
+      void this.loadSavedAccount();
+    }
     if (!this.data.buildingId && !this.data.optionsLoading) {
       void this.loadBuildings();
     }
   },
+  onHide() {
+    markRefreshPageHidden(this.data.refreshPageToken);
+  },
   onUnload() {
+    markRefreshPageHidden(this.data.refreshPageToken);
     clearBindingToastTimers();
   },
   applyAppearance() {
@@ -220,6 +307,58 @@ Page({
     this.applyElectricityData(
       activeSnapshot?.data || { binding: null, account: null },
     );
+  },
+  syncActiveElectricityRefresh(): boolean {
+    const lease = captureSessionLease();
+    const flight = lease
+      ? findRefreshFlight<ElectricityRefreshOutcome>(
+          electricityRefreshFlightKey(lease),
+        )
+      : null;
+    if (!lease || !flight) {
+      if (this.data.querying || this.data.observedRefreshFlightId) {
+        this.setData({ querying: false, observedRefreshFlightId: 0 });
+      }
+      return false;
+    }
+    this.observeElectricityRefresh(flight, lease);
+    return true;
+  },
+  observeElectricityRefresh(
+    flight: RefreshFlight<ElectricityRefreshOutcome>,
+    lease: SessionLease,
+  ) {
+    if (this.data.observedRefreshFlightId === flight.id) {
+      if (!this.data.querying) this.setData({ querying: true });
+      return;
+    }
+    const refreshPageToken = this.data.refreshPageToken;
+    this.setData({ querying: true, observedRefreshFlightId: flight.id });
+    void flight.completion.then((outcome) => {
+      if (
+        !isRefreshPageVisible(refreshPageToken) ||
+        this.data.refreshPageToken !== refreshPageToken ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setData({ querying: false, observedRefreshFlightId: 0 });
+      if (!outcome.succeeded || !outcome.result) {
+        this.setData({
+          serviceUnavailable: outcome.unavailable,
+          errorMessage: outcome.errorMessage,
+        });
+        return;
+      }
+      activeSnapshot = loadElectricitySnapshot(lease.account);
+      this.applyElectricityData(outcome.result.data);
+      this.setData({
+        bindingEditing: false,
+        serviceUnavailable: false,
+        errorMessage: "",
+      });
+      showRefreshConfirmation(this);
+    });
   },
   applyElectricityData(data: ElectricityCachedData) {
     const binding = data.binding;
@@ -456,12 +595,43 @@ Page({
   },
   async refreshBoundAccount(): Promise<boolean> {
     if (!this.data.boundBuildingId || !this.data.boundRoomNumber) return false;
+    const lease = captureSessionLease();
+    const activeRefresh = lease
+      ? findRefreshFlight<ElectricityRefreshOutcome>(
+          electricityRefreshFlightKey(lease),
+        )
+      : null;
+    if (lease && activeRefresh) {
+      this.observeElectricityRefresh(activeRefresh, lease);
+      return (await activeRefresh.completion).succeeded;
+    }
     return this.queryBoundAccount(false);
   },
-  async onRefreshBoundAccount() {
+  onRefreshBoundAccount() {
     if (this.data.querying) return;
-    haptic("light");
-    if (await this.refreshBoundAccount()) showRefreshConfirmation(this);
+    const lease = captureSessionLease();
+    if (
+      !lease ||
+      activeAccount !== lease.account ||
+      !this.data.boundBuildingId ||
+      !this.data.boundRoomNumber
+    ) {
+      return;
+    }
+    const input: ElectricityRefreshInput = {
+      buildingId: this.data.boundBuildingId,
+      buildingName: this.data.boundBuildingName,
+      roomNumber: this.data.boundRoomNumber,
+    };
+    const { flight, started } = startRefreshFlight(
+      electricityRefreshFlightKey(lease),
+      () => refreshElectricity(lease, input),
+    );
+    this.observeElectricityRefresh(flight, lease);
+    if (started) {
+      accountRequestSequence += 1;
+      haptic("light");
+    }
   },
   async queryBoundAccount(rebinding: boolean): Promise<boolean> {
     const lease = captureSessionLease();
