@@ -9,7 +9,7 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
-  theme: "system",
+  theme: "light",
   showGradesOnHome: true,
   showGradesBelow60: true,
   reducedMotion: false,

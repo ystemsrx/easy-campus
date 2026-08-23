@@ -11,8 +11,7 @@ import {
   loadCurrentUser,
   sessionLeaseKey,
 } from "../../store/session";
-import { loadPreferences, updatePreferences } from "../../store/preferences";
-import type { ThemePreference } from "../../types/app";
+import { loadPreferences } from "../../store/preferences";
 import type { CurrentUserData } from "../../types/api";
 import {
   resolveAppearance,
@@ -36,12 +35,6 @@ function classLabel(user: CurrentUserData): string {
 
 function enrollmentDateLabel(value?: string): string {
   return /^(\d{4}-\d{2}-\d{2})/.exec((value || "").trim())?.[1] || "";
-}
-
-function themeLabel(theme: ThemePreference): string {
-  if (theme === "light") return "浅色";
-  if (theme === "dark") return "深色";
-  return "跟随系统";
 }
 
 const INITIAL_PROFILE_PREFERENCES = loadPreferences();
@@ -73,22 +66,13 @@ Page({
     organizationName: "西南大学",
     classLabel: "",
     enrollmentDate: "",
-    themePreference: INITIAL_PROFILE_PREFERENCES.theme,
-    themePreferenceLabel: themeLabel(INITIAL_PROFILE_PREFERENCES.theme),
     reducedMotion: INITIAL_PROFILE_PREFERENCES.reducedMotion,
-    haptics: INITIAL_PROFILE_PREFERENCES.haptics,
-    themeSheetVisible: false,
     petShape: "blob" as PetShapeId,
     petColor: "#111214",
     petEnhanced: false,
     petSelected: false,
     petEnabled: false,
     petVisible: false,
-    themeOptions: [
-      { value: "system", label: "跟随系统", caption: "自动匹配设备外观" },
-      { value: "light", label: "浅色", caption: "明亮、清晰的界面" },
-      { value: "dark", label: "深色", caption: "降低夜间视觉亮度" },
-    ],
   },
   onLoad() {
     activeProfileSessionKey = "";
@@ -140,10 +124,7 @@ Page({
     syncWindowBackground(appearance.theme);
     this.setData({
       ...appearance,
-      themePreference: preferences.theme,
-      themePreferenceLabel: themeLabel(preferences.theme),
       reducedMotion: preferences.reducedMotion,
-      haptics: preferences.haptics,
     });
   },
   syncTabBarAppearance() {
@@ -211,6 +192,10 @@ Page({
     haptic("light");
     void navigateTo("/features/pages/grade-settings/index");
   },
+  openPersonalizationSettings() {
+    haptic("light");
+    void navigateTo("/features/pages/personalization/index");
+  },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =
       String(event.currentTarget.dataset.document) === "privacy"
@@ -218,38 +203,6 @@ Page({
         : "terms";
     haptic("light");
     void navigateTo(`/pages/legal/index?document=${document}`);
-  },
-  openThemeSheet() {
-    haptic("light");
-    this.setData({ themeSheetVisible: true });
-  },
-  closeThemeSheet() {
-    this.setData({ themeSheetVisible: false });
-  },
-  selectTheme(event: WechatMiniprogram.TouchEvent) {
-    const theme = String(event.currentTarget.dataset.value) as ThemePreference;
-    updatePreferences({ theme });
-    haptic("medium");
-    this.setData({ themeSheetVisible: false });
-    this.applyAppearance();
-    this.syncTabBarAppearance();
-  },
-  onReducedMotionChange(event: WechatMiniprogram.SwitchChange) {
-    updatePreferences({ reducedMotion: event.detail.value });
-    haptic("light");
-    this.applyAppearance();
-    this.syncTabBarAppearance();
-  },
-  onHapticsChange(event: WechatMiniprogram.SwitchChange) {
-    if (event.detail.value) {
-      updatePreferences({ haptics: true });
-      haptic("medium");
-    } else {
-      haptic("light");
-      updatePreferences({ haptics: false });
-    }
-    this.applyAppearance();
-    this.syncTabBarAppearance();
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
     clearAuthenticationExitTimer();

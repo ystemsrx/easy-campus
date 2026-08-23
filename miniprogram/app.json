@@ -15,6 +15,7 @@
         "pages/inbox/index",
         "pages/grades/index",
         "pages/grade-settings/index",
+        "pages/personalization/index",
         "pages/pass-rates/index",
         "pages/grade-detail/index",
         "pages/rooms/index",

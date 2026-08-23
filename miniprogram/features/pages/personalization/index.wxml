@@ -1,0 +1,40 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
+<view class="page personalization-page {{themeClass}} {{motionClass}}">
+  <navigation-bar title="个性化" back transparent theme="{{theme}}"></navigation-bar>
+
+  <view class="personalization-content page-content page-enter">
+    <view class="personalization-card card stagger-item stagger-1">
+      <view class="appearance-setting">
+        <text class="personalization-title">外观</text>
+        <view class="appearance-control">
+          <view class="appearance-indicator appearance-indicator--{{themePreference}}"></view>
+          <view
+            wx:for="{{themeOptions}}"
+            wx:key="value"
+            class="appearance-option {{themePreference === item.value ? 'appearance-option--active' : ''}}"
+            data-value="{{item.value}}"
+            bindtap="selectTheme"
+            aria-role="button"
+            aria-label="切换为{{item.label}}外观"
+          >
+            <text>{{item.label}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="personalization-row personalization-row--divided">
+        <view class="personalization-copy">
+          <text class="personalization-title">减少动态效果</text>
+          <text class="personalization-caption">降低页面过渡与漂浮动画</text>
+        </view>
+        <switch class="personalization-switch" checked="{{reducedMotion}}" color="#7d8f6e" bindchange="onReducedMotionChange" aria-label="减少动态效果" />
+      </view>
+      <view class="personalization-row">
+        <view class="personalization-copy">
+          <text class="personalization-title">触感反馈</text>
+          <text class="personalization-caption">开关切换与操作时轻微震动</text>
+        </view>
+        <switch class="personalization-switch" checked="{{haptics}}" color="#7d8f6e" bindchange="onHapticsChange" aria-label="触感反馈" />
+      </view>
+    </view>
+  </view>
+</view>

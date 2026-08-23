@@ -45,24 +45,13 @@
           <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
           <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
-        <view class="appearance-setting">
-          <text class="setting-title">外观</text>
-          <view class="appearance-control">
-            <view class="appearance-indicator appearance-indicator--{{themePreference}}"></view>
-            <view wx:for="{{themeOptions}}" wx:key="value" class="appearance-option {{themePreference === item.value ? 'appearance-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectTheme"><text>{{item.label}}</text></view>
-          </view>
-        </view>
         <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openGradeDisplaySettings" hover-class="setting-row--pressed" aria-role="button" aria-label="打开成绩展示设置">
           <view class="setting-copy"><text class="setting-title">成绩展示设置</text><text class="setting-caption">主页与成绩列表</text></view>
           <view class="grade-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
-        <view class="setting-row setting-row--divided">
-          <view class="setting-copy"><text class="setting-title">减少动态效果</text><text class="setting-caption">降低页面过渡与漂浮动画</text></view>
-          <switch class="setting-switch" checked="{{reducedMotion}}" color="#7d8f6e" bindchange="onReducedMotionChange" aria-label="减少动态效果" />
-        </view>
-        <view class="setting-row">
-          <view class="setting-copy"><text class="setting-title">触感反馈</text><text class="setting-caption">开关切换与操作时轻微震动</text></view>
-          <switch class="setting-switch" checked="{{haptics}}" color="#7d8f6e" bindchange="onHapticsChange" aria-label="触感反馈" />
+        <view class="setting-row setting-row--action pressable" bindtap="openPersonalizationSettings" hover-class="setting-row--pressed" aria-role="button" aria-label="打开个性化设置">
+          <view class="setting-copy"><text class="setting-title">个性化</text><text class="setting-caption">外观与交互</text></view>
+          <view class="personalization-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
       </view>
 
