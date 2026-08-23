@@ -39,7 +39,7 @@ function inlineMarkdown(
       const path = mediaUrls[mediaMatch[1].toLowerCase()];
       if (!path) {
         return token(
-          `<span style="display:block;margin:16px 0;padding:18px;border-radius:14px;color:#8a94a6;background:#f1f4f8;text-align:center;">图片载入中</span>`,
+          `<span style="display:block;margin:16px 0;padding:18px;border-radius:14px;color:#8a94a6;background:#f1f4f8;text-align:center;">图片暂时无法显示</span>`,
         );
       }
       return token(

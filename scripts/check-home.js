@@ -80,6 +80,16 @@ const homeStyles = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
+const contentServiceScript = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "services",
+    "content.ts",
+  ),
+  "utf8",
+);
 const homeNoticeHandler = homeScript.slice(homeScript.lastIndexOf("  openNotice("));
 const appScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
@@ -502,6 +512,10 @@ assert(
 const darkAnnouncement = renderMarkdown("# 公告\n\n正文", { theme: "dark" });
 const announcementModalStyle =
   /\.announcement-modal \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const announcementPresenter =
+  /async presentAnnouncement\([\s\S]*?\n  \},\n  measureAnnouncementModal/.exec(
+    homeScript,
+  )?.[0] || "";
 assert(
   darkAnnouncement.includes("正文") &&
     darkAnnouncement.includes("color:#ddd5c7") &&
@@ -554,6 +568,20 @@ assert(
       homeScript,
     ),
   "公告抽屉必须按内容自适应，并在达到最大高度后滚动正文",
+);
+assert(
+  contentServiceScript.includes("wx.getImageInfo({") &&
+    contentServiceScript.includes("preloadPublicationMedia(") &&
+    homeScript.includes("announcementPresentationPending") &&
+    announcementPresenter.includes(
+      "await preloadPublicationMedia(preview.media)",
+    ) &&
+    announcementPresenter.indexOf(
+      "await preloadPublicationMedia(preview.media)",
+    ) < announcementPresenter.indexOf("announcementModalMounted: true") &&
+    !announcementPresenter.includes("downloadPublicationMedia") &&
+    homeScript.includes("cancelPendingAnnouncementPresentation();"),
+  "含图公告必须先下载并解码全部图片，再挂载、测高和弹出",
 );
 
 console.log("Home cache and identity checks passed.");

@@ -5,9 +5,9 @@ import {
   getPreloadedTimetable,
 } from "../../services/primary-tab-preload";
 import {
-  downloadPublicationMedia,
   getPublicationFeed,
   markPublicationRead,
+  preloadPublicationMedia,
   recordAnnouncementPopup,
 } from "../../services/content";
 import {
@@ -204,6 +204,9 @@ let nextPrimaryTabFrameworkPreloadStarted = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
 let automaticPopupEntryKey = "";
+let announcementPresentationGeneration = 0;
+let announcementPresentationPending = false;
+let pendingAnnouncementId = "";
 let dashboardRequestLease: SessionLease | null = null;
 let dashboardTeachingRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
@@ -216,6 +219,12 @@ let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
 let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
 let planEntryTimer: ReturnType<typeof setTimeout> | undefined;
 let activeTimetable: TimetableData | null = null;
+
+function cancelPendingAnnouncementPresentation(): void {
+  announcementPresentationGeneration += 1;
+  announcementPresentationPending = false;
+  pendingAnnouncementId = "";
+}
 
 function examBadge(exam: Exam): Pick<ExamPreview, "badgeText" | "badgeTone"> {
   const countdown = examCountdown(exam);
@@ -615,6 +624,7 @@ Page({
     clearPlanTransitionTimers();
     hydratedAccount = "";
     activeTimetable = null;
+    cancelPendingAnnouncementPresentation();
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
@@ -681,6 +691,7 @@ Page({
     queuedAnnouncements = [];
     automaticPopupsThisEntry = new Set<string>();
     automaticPopupEntryKey = "";
+    cancelPendingAnnouncementPresentation();
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
@@ -1195,7 +1206,10 @@ Page({
 
       if (homeVisible && !this.data.announcementModalMounted) {
         queuedAnnouncements = feed.announcements.filter(
-          (item) => item.shouldPopup && !automaticPopupsThisEntry.has(item.id),
+          (item) =>
+            item.shouldPopup &&
+            item.id !== pendingAnnouncementId &&
+            !automaticPopupsThisEntry.has(item.id),
         );
         if (!this.data.petSetupDrawerMounted) {
           this.showNextQueuedAnnouncement();
@@ -1292,6 +1306,7 @@ Page({
     }, 260) as unknown as number;
   },
   resetPublicationLayers() {
+    cancelPendingAnnouncementPresentation();
     if (publicationPanelTimer !== undefined) {
       clearTimeout(publicationPanelTimer);
       publicationPanelTimer = undefined;
@@ -1359,6 +1374,7 @@ Page({
       !homeVisible ||
       this.data.petSetupDrawerMounted ||
       this.data.announcementModalMounted ||
+      announcementPresentationPending ||
       !queuedAnnouncements.length
     ) {
       return;
@@ -1372,58 +1388,59 @@ Page({
   ) {
     const lease = captureSessionLease();
     if (!lease) return;
-    const preview = publicationPreview(publication, false, this.data.theme);
+    const generation = ++announcementPresentationGeneration;
+    announcementPresentationPending = true;
+    pendingAnnouncementId = publication.id;
+    let preview = publicationPreview(publication, false, this.data.theme);
     this.closePublicationPanel();
-    this.setTabBarHidden(true);
-    this.setData(
-      {
-        activeAnnouncement: preview,
-        announcementModalMounted: true,
-        announcementScrollHeight: 1,
-      },
-      () => this.measureAnnouncementModal(preview.id, true),
-    );
-    this.markPublicationLocallyRead(preview.id);
-    if (automatic) {
-      automaticPopupsThisEntry.add(preview.id);
-      void recordAnnouncementPopup(preview.id).catch(() => undefined);
-    } else if (!preview.isRead) {
-      void markPublicationRead(preview.id).catch(() => undefined);
-    }
-
-    if (!preview.media.length) return;
-    const downloaded = await Promise.all(
-      preview.media.map(async (asset) => ({
-        id: asset.id.toLowerCase(),
-        path: await downloadPublicationMedia(asset),
-      })),
-    );
-    if (!isSessionLeaseCurrent(lease)) return;
-    const mediaUrls: Record<string, string> = {};
-    for (const asset of downloaded) {
-      if (asset.path) mediaUrls[asset.id] = asset.path;
-    }
-    if (this.data.activeAnnouncement?.id !== preview.id) return;
-    this.setData(
-      {
-        activeAnnouncement: {
-          ...this.data.activeAnnouncement,
+    try {
+      if (preview.media.length) {
+        const mediaUrls = await preloadPublicationMedia(preview.media);
+        if (
+          generation !== announcementPresentationGeneration ||
+          !homeVisible ||
+          !isSessionLeaseCurrent(lease)
+        ) {
+          return;
+        }
+        preview = {
+          ...preview,
           contentHtml: renderMarkdown(preview.contentMarkdown, {
             accentColor: preview.accentColor,
             mediaUrls,
             theme: this.data.theme,
           }),
+        };
+      }
+      if (
+        generation !== announcementPresentationGeneration ||
+        !homeVisible ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      this.setTabBarHidden(true);
+      this.setData(
+        {
+          activeAnnouncement: preview,
+          announcementModalMounted: true,
+          announcementScrollHeight: 1,
         },
-      },
-      () => {
-        this.measureAnnouncementModal(preview.id, false, true);
-        setTimeout(() => {
-          if (this.data.activeAnnouncement?.id === preview.id) {
-            this.measureAnnouncementModal(preview.id, false, true);
-          }
-        }, 240);
-      },
-    );
+        () => this.measureAnnouncementModal(preview.id, true),
+      );
+      this.markPublicationLocallyRead(preview.id);
+      if (automatic) {
+        automaticPopupsThisEntry.add(preview.id);
+        void recordAnnouncementPopup(preview.id).catch(() => undefined);
+      } else if (!preview.isRead) {
+        void markPublicationRead(preview.id).catch(() => undefined);
+      }
+    } finally {
+      if (generation === announcementPresentationGeneration) {
+        announcementPresentationPending = false;
+        pendingAnnouncementId = "";
+      }
+    }
   },
   measureAnnouncementModal(
     id: string,
