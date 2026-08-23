@@ -39,10 +39,11 @@
 .grade-card-motion { width: 100%; }
 .grade-card { display: flex; flex-direction: row; align-items: center; gap: 16rpx; width: 100%; padding: 24rpx; }
 .score-tile { display: flex; flex: none; box-sizing: border-box; align-items: center; justify-content: center; width: 104rpx; height: 104rpx; border-radius: 34rpx; color: #b85c38; background: linear-gradient(135deg, #f9eae2, #f2d7ca); }
-.score-tile--great,
+.score-tile--great { color: #75629a; background: linear-gradient(135deg, #f1edf8, #e4dcf0); }
 .score-tile--good { color: #5f7350; background: linear-gradient(135deg, #edf1e6, #dde6d1); }
+.score-tile--average { color: #4f769a; background: linear-gradient(135deg, #e9f1f7, #d5e5f0); }
 .score-tile--warning { color: #a66f1f; background: linear-gradient(135deg, #f8eedd, #f0dfbd); }
-.score-tile--text { color: #a55357; background: linear-gradient(135deg, #f7e9e8, #efd6d5); }
+.score-tile--danger { color: #a55357; background: linear-gradient(135deg, #f7e9e8, #efd6d5); }
 .score-tile--muted { color: #8b8b94; background: #f1f1f3; }
 .score-value { max-width: 100%; font-size: 34rpx; font-weight: 800; line-height: 1.12; text-align: center; }
 .score-tile--compact { padding: 10rpx; }

@@ -33,6 +33,52 @@ const {
   withoutUnsuccessfulGrades,
 } = moduleRecord.exports;
 
+const formatSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "utils", "format.ts"),
+  "utf8",
+);
+const formatOutput = ts.transpileModule(formatSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const formatModule = { exports: {} };
+new Function("module", "exports", "require", formatOutput)(
+  formatModule,
+  formatModule.exports,
+  (request) => {
+    if (request === "./date") return { formatMessageWeekday: () => "" };
+    return require(request);
+  },
+);
+const { scoreTone } = formatModule.exports;
+
+assert(
+  scoreTone(90) === "great" &&
+    scoreTone(89.99) === "good" &&
+    scoreTone(80) === "good" &&
+    scoreTone(79.99) === "average" &&
+    scoreTone(70) === "average" &&
+    scoreTone(69.99) === "warning" &&
+    scoreTone(60) === "warning" &&
+    scoreTone(59.99) === "danger",
+  "百分制成绩必须按 90、80、70、60 四个边界映射为五档颜色",
+);
+assert(
+  ["A", "优秀", "优"].every((value) => scoreTone(value) === "great") &&
+    ["B", "良好", "良"].every((value) => scoreTone(value) === "good") &&
+    ["C", "中等", "中"].every((value) => scoreTone(value) === "average") &&
+    ["D", "及格"].every((value) => scoreTone(value) === "warning") &&
+    ["E", "不及格"].every((value) => scoreTone(value) === "danger") &&
+    scoreTone(" c ") === "average" &&
+    scoreTone("作弊") === "danger" &&
+    scoreTone(95, true) === "danger" &&
+    scoreTone(null) === "muted" &&
+    scoreTone("") === "muted",
+  "五级制、异常状态与空成绩必须映射到对应颜色",
+);
+
 const regularGrade = {
   gradeNatureCode: "01",
   gradeNature: "正常考试",
@@ -443,6 +489,21 @@ assert(
     gradesPageTemplate.includes("{{item.displayScore}}") &&
     !gradesPageTemplate.includes("calculationScore"),
   "五级制课程必须显示教务原始等级，换算分数只能参与内部计算",
+);
+assert(
+  gradesPageScript.includes("isUnsuccessfulGrade(course)") &&
+    gradeDetailScript.includes("isUnsuccessfulGrade(course)") &&
+    gradesPageStyles.includes(".score-tile--great {") &&
+    gradesPageStyles.includes(".score-tile--good {") &&
+    gradesPageStyles.includes(".score-tile--average {") &&
+    gradesPageStyles.includes(".score-tile--warning {") &&
+    gradesPageStyles.includes(".score-tile--danger {") &&
+    gradeDetailStyles.includes(".detail-hero--great {") &&
+    gradeDetailStyles.includes(".detail-hero--average {") &&
+    gradeDetailStyles.includes(".component-score--danger {") &&
+    !gradesPageStyles.includes(".score-tile--text") &&
+    !gradeDetailStyles.includes("--text"),
+  "成绩列表、详情总评和成绩组成必须使用独立的紫绿蓝黄红五档颜色",
 );
 assert(
   teachingService.includes(

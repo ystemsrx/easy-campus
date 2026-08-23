@@ -13,6 +13,7 @@ import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
   gradeComponentWidths,
   isMakeupOrDeferredGrade,
+  isUnsuccessfulGrade,
 } from "../../../utils/grades";
 
 interface ComponentView {
@@ -250,7 +251,7 @@ Page({
       course,
       detailTitle: showComponentsSection ? "课程成绩与组成" : "课程成绩",
       displayScore: formatScore(course.finalScore),
-      scoreTone: scoreTone(course.finalScore),
+      scoreTone: scoreTone(course.finalScore, isUnsuccessfulGrade(course)),
       scoreIsText: typeof course.finalScore === "string",
       creditsLabel: formatCredits(course.credits),
       gradePointLabel:

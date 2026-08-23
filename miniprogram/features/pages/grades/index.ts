@@ -32,6 +32,7 @@ import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
   gradesForSemester,
   isMakeupOrDeferredGrade,
+  isUnsuccessfulGrade,
   latestGradedSemester,
 } from "../../../utils/grades";
 import { haptic } from "../../../utils/haptics";
@@ -200,7 +201,7 @@ function toGradeView(
     animateEntry,
     animationDelay,
     displayScore,
-    scoreTone: scoreTone(course.finalScore),
+    scoreTone: scoreTone(course.finalScore, isUnsuccessfulGrade(course)),
     compactScore: isCompactScore(displayScore),
     creditsLabel: formatCredits(course.credits),
     hasGradePoint: typeof course.gradePoint === "number",

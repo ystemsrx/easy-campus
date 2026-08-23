@@ -26,22 +26,59 @@ export function formatScore(value: GradeValue): string {
   return String(value);
 }
 
-export function scoreTone(
-  value: GradeValue,
-): "great" | "good" | "warning" | "text" | "muted" {
-  if (typeof value !== "number") {
-    return value === null ? "muted" : "text";
+export type ScoreTone =
+  "great" | "good" | "average" | "warning" | "danger" | "muted";
+
+const LEVEL_GRADE_SCORES = new Map<string, number>([
+  ["A", 95],
+  ["优秀", 95],
+  ["优", 95],
+  ["B", 85],
+  ["良好", 85],
+  ["良", 85],
+  ["C", 75],
+  ["中等", 75],
+  ["中", 75],
+  ["D", 65],
+  ["及格", 65],
+  ["E", 55],
+  ["不及格", 55],
+]);
+
+function comparableScore(value: GradeValue): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
   }
-  if (value >= 90) {
+  const normalized = String(value ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  if (!normalized) return null;
+  if (/^\d+(?:\.\d+)?$/.test(normalized)) {
+    const numeric = Number(normalized);
+    return numeric >= 0 && numeric <= 100 ? numeric : null;
+  }
+  return LEVEL_GRADE_SCORES.get(normalized) ?? null;
+}
+
+export function scoreTone(value: GradeValue, forceDanger = false): ScoreTone {
+  if (forceDanger) return "danger";
+  if (value === null || value === "") return "muted";
+  const score = comparableScore(value);
+  if (score === null) return "danger";
+  if (score >= 90) {
     return "great";
   }
-  if (value >= 75) {
+  if (score >= 80) {
     return "good";
   }
-  if (value >= 60) {
+  if (score >= 70) {
+    return "average";
+  }
+  if (score >= 60) {
     return "warning";
   }
-  return "text";
+  return "danger";
 }
 
 export function formatSchedule(schedule: MessageSchedule): string {
