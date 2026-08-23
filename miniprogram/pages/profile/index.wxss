@@ -156,6 +156,7 @@
 .setting-row--pressed { background-color: var(--color-bg-subtle); transform: scale(0.99); }
 .setting-copy { flex: 1; min-width: 0; }
 .pet-setting-value,
+.course-assistant-setting-value,
 .grade-setting-value,
 .personalization-setting-value,
 .legal-setting-value { display: flex; flex: none; flex-direction: row; align-items: center; gap: 7rpx; color: var(--color-text-tertiary); font-size: 22rpx; font-weight: 650; white-space: nowrap; }

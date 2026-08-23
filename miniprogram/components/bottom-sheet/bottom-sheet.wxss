@@ -45,6 +45,7 @@
 }
 
 .sheet-layer--dark .sheet-card { background: #211f1b; }
+.sheet-card--no-safe-area { padding-bottom: 0; }
 .sheet-card--expanded { height: 86vh; }
 .sheet-card--expanded .sheet-content { height: 0; }
 .sheet-card--active { transform: translateY(0); }

@@ -16,6 +16,7 @@ Component({
     expandedHeight: { type: Number, value: 86 },
     compactHeader: { type: Boolean, value: false },
     scrollable: { type: Boolean, value: true },
+    safeArea: { type: Boolean, value: true },
     closeOnMask: { type: Boolean, value: true },
   },
   data: {

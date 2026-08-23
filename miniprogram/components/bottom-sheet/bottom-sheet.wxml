@@ -4,7 +4,7 @@
     bindtap="onMaskTap"
     catchtouchmove="noop"
   ></view>
-  <view class="sheet-card {{expanded ? 'sheet-card--expanded' : ''}} {{compactHeader ? 'sheet-card--compact-header' : ''}} {{active ? 'sheet-card--active' : ''}}" style="{{expanded ? 'height:' + expandedHeight + 'vh;' : ''}}">
+  <view class="sheet-card {{expanded ? 'sheet-card--expanded' : ''}} {{compactHeader ? 'sheet-card--compact-header' : ''}} {{safeArea ? '' : 'sheet-card--no-safe-area'}} {{active ? 'sheet-card--active' : ''}}" style="{{expanded ? 'height:' + expandedHeight + 'vh;' : ''}}">
     <view class="sheet-handle"></view>
     <view class="sheet-header">
       <view class="sheet-title-wrap">

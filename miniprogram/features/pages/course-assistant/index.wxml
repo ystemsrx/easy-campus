@@ -1,0 +1,160 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
+<view class="page assistant-page {{themeClass}} {{motionClass}}">
+  <navigation-bar back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
+
+  <view wx:if="{{statusLoading}}" class="assistant-state page-content">
+    <loading-view label="正在打开选课助手"></loading-view>
+  </view>
+
+  <view wx:elif="{{statusError}}" class="assistant-state page-content">
+    <empty-state icon="circle-alert" icon-tone="danger" title="选课助手加载失败" description="{{statusError}}" action-text="重新加载" bindaction="retryStatus"></empty-state>
+  </view>
+
+  <view wx:else class="assistant-shell">
+    <scroll-view wx:if="{{activeTab === 'browse'}}" class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="160" bindscrolltolower="loadMoreCatalog">
+        <view class="assistant-content page-enter">
+          <view class="masthead">
+            <view class="masthead-meta"><text class="kicker">COURSE GUIDE</text></view>
+            <text class="masthead-title display-title">选课助手<text class="title-dot">。</text></text>
+          </view>
+
+          <view class="guide-hero stagger-item stagger-1">
+            <view class="guide-ring guide-ring--one"></view><view class="guide-ring guide-ring--two"></view>
+            <text class="guide-kicker">通识选修 · 体育课程</text>
+            <view class="guide-title display-title"><text class="guide-title-line">前人栽树，</text><text class="guide-title-line">后来选课不踩坑。</text></view>
+            <view class="hero-stats">
+              <view class="hero-stat"><text class="hero-stat-value tnum">{{summary.courseCount}}</text><text class="hero-stat-label">收录课程</text></view>
+              <view class="hero-stat hero-stat--divided"><text class="hero-stat-value tnum">{{reviewAccess.requiresContribution ? '—' : summary.reviewCount}}</text><text class="hero-stat-label">匿名想法</text></view>
+              <view class="hero-stat hero-stat--divided"><text class="hero-stat-value tnum">{{summary.contributorCount}}</text><text class="hero-stat-label">共享同学</text></view>
+            </view>
+          </view>
+
+          <view wx:if="{{reviewAccess.requiresContribution}}" class="contribution-note" data-tab="publish" bindtap="switchTab" hover-class="contribution-note--pressed">
+            <view class="contribution-note-icon"><lucide-icon name="lock-keyhole" tone="coral" size="28"></lucide-icon></view>
+            <view class="contribution-note-copy"><text class="contribution-note-title">发布一条想法后查看课程想法</text><text class="contribution-note-detail">从“我修过的课”中任选一门匿名分享</text></view>
+            <lucide-icon name="chevron-right" tone="muted" size="25"></lucide-icon>
+          </view>
+
+          <view class="course-search {{searchQuery ? 'course-search--active' : ''}} stagger-item stagger-2">
+            <lucide-icon name="search" tone="muted" size="30"></lucide-icon>
+            <input class="course-search-input" value="{{searchQuery}}" placeholder="搜索课程名或任课老师…" placeholder-class="course-search-placeholder" bindinput="onSearchInput" confirm-type="search" maxlength="100" />
+          </view>
+
+          <view class="course-tools stagger-item stagger-2">
+            <view class="course-segment">
+              <view class="segment-indicator {{courseType === 'physical_education' ? 'segment-indicator--physical' : ''}}"></view>
+              <view class="segment-option {{courseType === 'general_elective' ? 'segment-option--active' : ''}}" data-type="general_elective" bindtap="selectCourseType" hover-class="segment-option--pressed"><text>通识选修</text></view>
+              <view class="segment-option {{courseType === 'physical_education' ? 'segment-option--active' : ''}}" data-type="physical_education" bindtap="selectCourseType" hover-class="segment-option--pressed"><text>体育课程</text></view>
+            </view>
+            <view class="circle-tool {{favoritesOnly ? 'circle-tool--active' : ''}}" bindtap="toggleFavoritesOnly" hover-class="circle-tool--pressed" aria-role="button" aria-label="只看收藏">
+              <image wx:if="{{favoritesOnly}}" class="tool-image" src="/features/assets/course-assistant/heart-coral.svg" mode="aspectFit"></image>
+              <image wx:else class="tool-image" src="/features/assets/course-assistant/heart-muted.svg" mode="aspectFit"></image>
+            </view>
+            <view wx:if="{{!reviewAccess.requiresContribution}}" class="circle-tool {{filterOpen || selectedKeyword ? 'circle-tool--active' : ''}}" bindtap="toggleFilter" hover-class="circle-tool--pressed" aria-role="button" aria-label="筛选课程">
+              <lucide-icon name="list-filter" tone="{{filterOpen || selectedKeyword ? 'coral' : 'muted'}}" size="31"></lucide-icon>
+              <view wx:if="{{selectedKeyword}}" class="filter-dot"></view>
+            </view>
+          </view>
+
+          <view class="filter-panel-shell {{filterOpen ? 'filter-panel-shell--open' : ''}}" aria-hidden="{{!filterOpen}}">
+            <view class="filter-panel">
+              <view class="filter-panel-head"><text>按正向关键词筛选</text><text class="filter-clear" bindtap="clearFilterKeyword">清除筛选</text></view>
+              <view class="filter-keywords">
+                <view wx:for="{{positiveFilterKeywords}}" wx:key="*this" class="filter-keyword {{selectedKeyword === item ? 'filter-keyword--active' : ''}}" data-keyword="{{item}}" bindtap="selectFilterKeyword"><text>{{item}}</text></view>
+              </view>
+            </view>
+          </view>
+
+          <view class="course-section-head"><text class="course-section-title display-title">{{favoritesOnly ? '我的收藏' : '课程榜'}}</text><view class="course-sort-control"><view id="course-sort-trigger" class="course-sort-trigger {{sortMenuOpen ? 'course-sort-trigger--open' : ''}}" catchtap="toggleSortMenu" hover-class="none"><text>按{{catalogSortLabel}}排序</text><image class="course-sort-icon" src="{{sortMenuOpen ? '/assets/icons/arrow-up-down-coral.svg' : '/assets/icons/arrow-up-down-muted.svg'}}" mode="aspectFit"></image></view></view></view>
+
+          <loading-view wx:if="{{catalogLoading && !courses.length}}" label="正在整理匿名成绩"></loading-view>
+          <empty-state wx:elif="{{catalogError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="课程列表加载失败" description="{{catalogError}}" action-text="重新加载" bindaction="retryCatalog"></empty-state>
+          <empty-state wx:elif="{{!courses.length}}" icon="book-open" icon-tone="amber" title="暂无匹配课程" description="{{favoritesOnly ? '收藏课程后会显示在这里' : '换个课程类型或关键词试试'}}"></empty-state>
+          <view wx:else class="course-list">
+            <view wx:for="{{courses}}" wx:key="courseKey" class="course-card pressable" data-key="{{item.courseKey}}" bindtap="openCourse" hover-class="course-card--pressed">
+              <view class="course-card-top">
+                <view class="course-card-copy">
+                  <text class="course-index tnum">NO. {{item.indexLabel}}</text>
+                  <text class="course-name display-title" overflow="ellipsis" max-lines="2">{{item.displayName}}</text>
+                  <view class="course-meta"><text class="course-type course-type--{{item.type}}">{{item.typeLabel}}</text><text class="course-meta-text" overflow="ellipsis" max-lines="1">{{item.teacherLabel}} · {{item.creditsLabel}}</text></view>
+                </view>
+                <view class="course-score"><text class="course-score-value tnum">{{item.scoreLabel}}</text><text class="course-score-label">历史均分</text></view>
+              </view>
+              <view wx:if="{{item.thoughtsLocked}}" class="course-thought-lock"><lucide-icon name="lock-keyhole" tone="muted" size="24"></lucide-icon><text>发布一条想法后查看同学评价</text></view>
+              <view wx:else class="course-rating-row">
+                <view class="stars-row">
+                  <image wx:for="{{item.stars}}" wx:for-item="star" wx:key="value" class="star-small" src="{{star.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image>
+                </view>
+                <text class="course-rating-value tnum">{{item.ratingLabel}}</text><text class="course-review-count tnum">{{item.reviewCount}} 条想法</text>
+              </view>
+              <view class="course-card-bottom">
+                <view class="course-tags"><text wx:if="{{item.thoughtsLocked}}" class="course-tag course-tag--muted">课程想法待解锁</text><block wx:else><text wx:for="{{item.keywords}}" wx:key="text" class="course-tag">{{item.text}}</text><text wx:if="{{!item.keywords.length}}" class="course-tag course-tag--muted">等待第一条想法</text></block></view>
+                <view class="favorite-button" data-key="{{item.courseKey}}" catchtap="toggleFavorite" aria-role="button" aria-label="{{item.favorite ? '取消收藏' : '收藏课程'}}">
+                  <image class="favorite-image" src="{{item.favorite ? '/features/assets/course-assistant/heart-coral.svg' : '/features/assets/course-assistant/heart-muted.svg'}}" mode="aspectFit"></image>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{catalogLoadingMore}}" class="catalog-more"><text>读取中</text></view>
+          <view class="assistant-bottom-space"></view>
+        </view>
+    </scroll-view>
+
+    <scroll-view wx:else class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="assistant-content publish-content page-enter">
+          <view class="masthead">
+            <view class="masthead-meta"><text class="kicker">WRITE A REVIEW</text><text class="semester-badge">匿名发布</text></view>
+            <text class="masthead-title display-title">写想法<text class="title-dot">。</text></text>
+            <text class="masthead-subtitle">只选择你修过的课。你的只言片语，会成为后来者的路标。</text>
+          </view>
+
+          <view class="course-section-head publish-section-head"><text class="course-section-title display-title">我修过的课</text><text class="course-section-note">{{takenCourses.length}} 门</text></view>
+          <loading-view wx:if="{{mineLoading && !takenCourses.length}}" label="正在整理可评价课程"></loading-view>
+          <empty-state wx:elif="{{mineError && !takenCourses.length}}" icon="circle-alert" icon-tone="danger" title="课程加载失败" description="{{mineError}}" action-text="重新加载" bindaction="retryMine"></empty-state>
+          <empty-state wx:elif="{{!takenCourses.length}}" icon="book-open" icon-tone="amber" title="暂无可评价课程" description="仅通识选修课和体育课会显示在这里"></empty-state>
+          <view wx:else class="taken-list">
+            <view wx:for="{{takenCourses}}" wx:key="courseKey" class="taken-item {{item.reviewed ? 'taken-item--done' : ''}}" data-key="{{item.courseKey}}" bindtap="openReview" hover-class="{{item.reviewed ? '' : 'taken-item--pressed'}}">
+              <view class="taken-copy"><view class="taken-name-row"><text class="taken-name" overflow="ellipsis" max-lines="1">{{item.displayName}}</text><text wx:if="{{item.reviewed}}" class="done-badge">已发布</text></view><text class="taken-meta tnum">{{item.metaLabel}}</text></view>
+              <lucide-icon name="{{item.reviewed ? 'check' : 'chevron-right'}}" tone="{{item.reviewed ? 'sage' : 'muted'}}" size="27"></lucide-icon>
+            </view>
+          </view>
+
+          <block wx:if="{{myReviews.length}}">
+            <view class="course-section-head my-reviews-head"><text class="course-section-title display-title">我发布过的想法</text><text class="course-section-note">已匿名</text></view>
+            <view class="my-review-list">
+              <view wx:for="{{myReviews}}" wx:key="id" class="my-review-card" data-key="{{item.courseKey}}" bindtap="openCourse">
+                <text class="my-review-name">{{item.displayName || '课程想法'}}</text>
+                <view class="my-review-meta"><view class="stars-row"><image wx:for="{{item.stars}}" wx:for-item="star" wx:key="value" class="star-small" src="{{star.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image></view><text wx:for="{{item.visibleKeywords}}" wx:key="text" class="review-keyword review-keyword--{{item.sentiment}}">{{item.text}}</text><text wx:if="{{item.remainingKeywordCount}}" class="review-keyword review-keyword--more">+{{item.remainingKeywordCount}}</text></view>
+                <text class="my-review-body" max-lines="3">“{{item.content}}”</text>
+              </view>
+            </view>
+          </block>
+          <view class="assistant-bottom-space"></view>
+        </view>
+    </scroll-view>
+
+    <view wx:if="{{!reviewVisible}}" class="assistant-tabbar">
+      <view class="assistant-tab {{activeTab === 'browse' ? 'assistant-tab--active' : ''}}" data-tab="browse" bindtap="switchTab"><lucide-icon name="search" tone="{{activeTab === 'browse' ? 'coral' : 'muted'}}" size="34"></lucide-icon><text>浏览课程</text></view>
+      <view class="assistant-tab {{activeTab === 'publish' ? 'assistant-tab--active' : ''}}" data-tab="publish" bindtap="switchTab"><image class="tab-pen" src="{{activeTab === 'publish' ? '/features/assets/course-assistant/pen-line-coral.svg' : '/features/assets/course-assistant/pen-line-muted.svg'}}" mode="aspectFit"></image><text>发布想法</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{sortMenuMounted}}" class="course-sort-layer {{sortMenuOpen ? 'course-sort-layer--open' : ''}}" catchtouchmove="noop">
+    <view class="course-sort-dismiss" catchtap="closeSortMenu"></view>
+    <view class="course-sort-popover" style="top: {{sortMenuTop}}px; right: {{sortMenuRight}}px;" catchtap="noop"><view class="course-sort-option {{catalogSort === 'average_score' ? 'course-sort-option--active' : ''}}" data-sort="average_score" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">历史均分</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{catalogSort === 'average_score'}}" name="check" tone="coral" size="23"></lucide-icon></view><view class="course-sort-option {{catalogSort === 'rating' ? 'course-sort-option--active' : ''}} {{reviewAccess.ownReviewCount === 0 ? 'course-sort-option--locked' : ''}}" data-sort="rating" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">学生评价</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{reviewAccess.ownReviewCount === 0}}" name="lock-keyhole" tone="muted" size="22"></lucide-icon><lucide-icon wx:elif="{{catalogSort === 'rating'}}" name="check" tone="coral" size="23"></lucide-icon></view></view>
+  </view>
+
+  <bottom-sheet visible="{{reviewVisible}}" title="{{selectedGrade ? selectedGrade.displayName : '发表课程想法'}}" theme="{{theme}}" expanded="{{true}}" expanded-height="86" safe-area="{{false}}" close-on-mask="{{!reviewSubmitting}}" bindclose="closeReview">
+    <view slot="subtitle" class="review-sheet-subtitle"><text wx:if="{{selectedGrade}}" class="course-type course-type--{{selectedGrade.type}}">{{selectedGrade.typeLabel}}</text><text wx:if="{{selectedGrade}}" class="review-sheet-meta">{{selectedGrade.termLabel}} · 成绩 {{selectedGrade.scoreLabel}}</text></view>
+    <view class="review-form">
+      <view class="review-block"><view class="review-label"><text class="review-label-title display-title">总体评分 <text class="required-mark">*</text></text><text class="review-label-note">5 星制</text></view><view class="rating-stars"><view wx:for="{{ratingStars}}" wx:key="value" class="rating-star-button" data-rating="{{item.value}}" bindtap="selectRating"><image class="rating-star" src="{{item.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image></view></view><text class="rating-hint">{{ratingHint}}</text></view>
+      <view class="review-block"><view class="review-label"><text class="review-label-title display-title">印象关键词</text><text class="review-label-note">可多选 · 最多 5 个</text></view>
+        <view class="keyword-group"><view class="keyword-group-head"><view class="keyword-dot keyword-dot--positive"></view><text>正向 · 想安利</text></view><view class="keyword-row"><view wx:for="{{keywordOptions}}" wx:key="text" wx:if="{{item.sentiment === 'positive'}}" class="keyword-option keyword-option--positive {{item.active ? 'keyword-option--active' : ''}}" data-keyword="{{item.text}}" bindtap="toggleReviewKeyword"><text>{{item.text}}</text></view></view></view>
+        <view class="keyword-group"><view class="keyword-group-head"><view class="keyword-dot keyword-dot--neutral"></view><text>中性 · 看个人</text></view><view class="keyword-row"><view wx:for="{{keywordOptions}}" wx:key="text" wx:if="{{item.sentiment === 'neutral'}}" class="keyword-option keyword-option--neutral {{item.active ? 'keyword-option--active' : ''}}" data-keyword="{{item.text}}" bindtap="toggleReviewKeyword"><text>{{item.text}}</text></view></view></view>
+        <view class="keyword-group"><view class="keyword-group-head"><view class="keyword-dot keyword-dot--negative"></view><text>负向 · 提个醒</text></view><view class="keyword-row"><view wx:for="{{keywordOptions}}" wx:key="text" wx:if="{{item.sentiment === 'negative'}}" class="keyword-option keyword-option--negative {{item.active ? 'keyword-option--active' : ''}}" data-keyword="{{item.text}}" bindtap="toggleReviewKeyword"><text>{{item.text}}</text></view></view></view>
+      </view>
+      <view class="review-block"><view class="review-label"><text class="review-label-title display-title">真心话 <text class="required-mark">*</text></text><text class="review-label-note">至少 8 个字</text></view><textarea class="review-textarea" value="{{reviewText}}" maxlength="200" placeholder="例：期末考核是开卷论文，老师不考勤但内容很值得听……" placeholder-class="review-placeholder" auto-height="{{false}}" bindinput="onReviewTextInput"></textarea><text class="character-count tnum">{{reviewCharacterCount}}/200</text></view>
+    </view>
+    <button slot="footer" class="review-submit {{!reviewCanSubmit || reviewSubmitting ? 'review-submit--disabled' : ''}}" disabled="{{!reviewCanSubmit || reviewSubmitting}}" loading="{{reviewSubmitting}}" bindtap="submitReview">匿名发布</button>
+  </bottom-sheet>
+</view>

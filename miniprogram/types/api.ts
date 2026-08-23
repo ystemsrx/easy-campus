@@ -325,6 +325,147 @@ export interface PassRatesData {
   statistics: PassRateStatistics | null;
 }
 
+export type CourseAssistantCourseType =
+  "general_elective" | "physical_education";
+export type CourseAssistantCatalogSort = "average_score" | "rating";
+
+export type CourseAssistantKeywordSentiment =
+  "positive" | "neutral" | "negative";
+
+export interface CourseAssistantKeyword {
+  text: string;
+  sentiment: CourseAssistantKeywordSentiment;
+  count?: number;
+}
+
+export interface CourseAssistantKeywordGroups {
+  positive: string[];
+  neutral: string[];
+  negative: string[];
+}
+
+export interface CourseAssistantReviewAccess {
+  allowed: boolean;
+  requiresContribution: boolean;
+  exempt: boolean;
+  eligibleCourseCount: number;
+  ownReviewCount: number;
+}
+
+export interface CourseAssistantDistributionItem {
+  label: "90+" | "85–89" | "80–84" | "<80";
+  count: number;
+  percentage: number;
+}
+
+export interface CourseAssistantHistoryItem {
+  academicYearStart: number | null;
+  term: number | null;
+  label: string;
+  averageScore: number | null;
+  count: number;
+}
+
+export interface CourseAssistantCourse {
+  courseKey: string;
+  type: CourseAssistantCourseType;
+  courseName: string;
+  displayName: string;
+  sportName: string | null;
+  teacherNames: string[];
+  credits: number | null;
+  averageScore: number | null;
+  rating: number | null;
+  recommendationRate: number | null;
+  gradeCount: number;
+  contributorCount: number;
+  reviewCount: number;
+  termsLabel: string | null;
+  history: CourseAssistantHistoryItem[];
+  distribution: CourseAssistantDistributionItem[];
+  keywords: CourseAssistantKeyword[];
+}
+
+export interface CourseAssistantReview {
+  id: string;
+  courseKey?: string;
+  courseName?: string;
+  displayName?: string;
+  authorLabel: "我（匿名）" | "匿名同学";
+  own: boolean;
+  termLabel: string;
+  teacherNames: string[];
+  calculationScore: number | null;
+  rating: number;
+  keywords: CourseAssistantKeyword[];
+  content: string;
+  likeCount: number;
+  liked: boolean;
+  createdAt: string | null;
+}
+
+export interface CourseAssistantGrade {
+  attemptKey: string;
+  courseKey: string;
+  type: CourseAssistantCourseType;
+  courseName: string;
+  displayName: string;
+  sportName: string | null;
+  courseNature: string | null;
+  academicYear: string | null;
+  academicYearStart: number | null;
+  term: number | null;
+  termLabel: string;
+  finalScore: GradeValue;
+  calculationScore: number | null;
+  teacherName: string | null;
+  credits: number | null;
+  sourceFetchedAt: string | null;
+  reviewed?: boolean;
+  reviewId?: string | null;
+}
+
+export interface CourseAssistantCourseDetail extends CourseAssistantCourse {
+  reviews: CourseAssistantReview[];
+  ownGrade: CourseAssistantGrade | null;
+  canReview: boolean;
+  ownReviewId: string | null;
+  reviewAccess: CourseAssistantReviewAccess;
+}
+
+export interface CourseAssistantCatalog extends Paginated<CourseAssistantCourse> {
+  summary: {
+    courseCount: number;
+    reviewCount: number;
+    contributorCount: number;
+  };
+  keywords: CourseAssistantKeywordGroups;
+  reviewAccess: CourseAssistantReviewAccess;
+}
+
+export interface CourseAssistantMine {
+  grades: CourseAssistantGrade[];
+  reviews: CourseAssistantReview[];
+  keywords: CourseAssistantKeywordGroups;
+  reviewAccess: CourseAssistantReviewAccess;
+}
+
+export interface CourseAssistantCatalogQuery {
+  page?: number;
+  pageSize?: number;
+  type?: CourseAssistantCourseType;
+  q?: string;
+  keyword?: string;
+  sort?: CourseAssistantCatalogSort;
+}
+
+export interface CourseAssistantReviewInput {
+  courseKey: string;
+  rating: number;
+  keywords: string[];
+  content: string;
+}
+
 export interface SelectOption {
   value: string;
   label: string;

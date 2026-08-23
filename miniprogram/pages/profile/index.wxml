@@ -39,6 +39,14 @@
         </view>
       </view>
 
+      <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
+      <view class="settings-card card stagger-item">
+        <view class="setting-row setting-row--action pressable" bindtap="openCourseAssistant" hover-class="setting-row--pressed" aria-role="button" aria-label="打开选课助手">
+          <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
+          <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
+      </view>
+
       <view class="section-header"><view><text class="section-title">设置</text></view></view>
       <view class="settings-card card stagger-item">
         <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openPetSetup" hover-class="setting-row--pressed" aria-role="button" aria-label="设置校园伙伴">

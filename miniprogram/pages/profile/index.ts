@@ -184,6 +184,10 @@ Page({
     haptic("light");
     void this.loadUser(true);
   },
+  openCourseAssistant() {
+    haptic("light");
+    void navigateTo("/features/pages/course-assistant/index");
+  },
   openPetSetup() {
     haptic("light");
     void navigateTo("/features/pages/pet-setup/index?source=profile");
