@@ -136,9 +136,11 @@
 .welcome-name { display: block; flex: 1; min-width: 0; color: #c4552d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .publication-bell { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 120rpx; height: 120rpx; margin-top: 0; overflow: visible; }
+.publication-bell--plain { width: 86rpx; height: 86rpx; margin-top: 6rpx; border: 1rpx solid var(--color-separator); border-radius: 50%; color: var(--color-text); background-color: var(--color-bg-elevated); box-shadow: var(--shadow-card); }
 .publication-pet-frame { position: relative; top: 10rpx; left: -10rpx; display: block; flex: none; width: 118rpx; height: 118rpx; overflow: visible; }
 .publication-bell--pressed { transform: scale(0.93); opacity: 0.82; }
 .publication-badge { position: absolute; top: 0; right: 0; display: flex; align-items: center; justify-content: center; min-width: 34rpx; height: 34rpx; padding: 0 7rpx; border: 4rpx solid var(--color-bg); border-radius: 999rpx; color: #fff; background: #c0452d; font-size: 18rpx; font-weight: 800; }
+.publication-bell--plain .publication-badge { top: -3rpx; right: -3rpx; }
 
 .timetable-open-container { display: block; margin-top: 38rpx; border-radius: 56rpx; }
 .today-card { position: relative; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(135deg, #d97757, #eba97f); box-shadow: var(--shadow-pop); transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms; }

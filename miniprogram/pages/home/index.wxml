@@ -19,7 +19,7 @@
           </view>
         </view>
         <view
-          class="publication-bell pressable"
+          class="publication-bell {{petVisible ? '' : 'publication-bell--plain'}} pressable"
           bindtap="togglePublicationPanel"
           hover-class="publication-bell--pressed"
           aria-role="button"
