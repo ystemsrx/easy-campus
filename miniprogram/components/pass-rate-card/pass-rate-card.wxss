@@ -1,7 +1,7 @@
 .pass-rate-card { width: 100%; padding: 38rpx; }
 .statistics-overview { display: flex; flex-direction: row; align-items: center; gap: 36rpx; }
 .pass-ring { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 184rpx; height: 184rpx; border-radius: 50%; }
-.pass-ring-canvas { position: absolute; top: 0; left: 0; width: 184rpx; height: 184rpx; }
+.pass-ring-image { position: absolute; top: 0; left: 0; width: 184rpx; height: 184rpx; }
 .pass-ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 150rpx; height: 150rpx; border-radius: 50%; text-align: center; }
 .pass-ring-value { display: flex; flex-direction: row; align-items: baseline; justify-content: center; color: var(--color-text); font-weight: 800; line-height: 1; }
 .pass-ring-value text:first-child { max-width: 108rpx; font-size: 37rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -26,15 +26,19 @@
 
 .exact-section { margin-top: 42rpx; padding-top: 32rpx; border-top: 1rpx solid var(--color-separator); }
 .exact-title { display: block; color: var(--color-text-tertiary); font-size: 20rpx; font-weight: 700; }
-.exact-title > text { font-weight: 500; }
-.exact-scroll { width: 100%; margin-top: 24rpx; }
-.exact-chart { display: flex; flex-direction: row; align-items: flex-end; gap: 5rpx; height: 210rpx; }
-.exact-column { display: flex; flex: none; flex-direction: column; align-items: center; gap: 7rpx; width: 33rpx; height: 100%; }
-.exact-count { flex: none; color: #b5b5bd; font-size: 14rpx; font-weight: 700; }
-.exact-track { display: flex; flex: 1; align-items: flex-end; width: 100%; min-height: 0; }
+.exact-chart-layout { display: flex; flex-direction: row; align-items: flex-start; gap: 12rpx; width: 100%; margin-top: 28rpx; }
+.exact-y-axis { display: flex; flex: none; flex-direction: column; align-items: flex-end; justify-content: space-between; width: 54rpx; height: 180rpx; }
+.exact-axis-tick { display: flex; flex: none; align-items: center; justify-content: flex-end; width: 100%; height: 1rpx; }
+.exact-axis-label { color: var(--color-text-tertiary); font-size: 14rpx; line-height: 18rpx; white-space: nowrap; }
+.exact-scroll { flex: 1; min-width: 0; height: 216rpx; }
+.exact-chart { position: relative; height: 216rpx; }
+.exact-grid { position: absolute; z-index: 0; top: 0; right: 0; left: 0; display: flex; flex-direction: column; justify-content: space-between; height: 180rpx; }
+.exact-grid-line { flex: none; width: 100%; height: 1rpx; background-color: var(--color-separator); opacity: 0.72; }
+.exact-columns { position: relative; z-index: 1; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-around; gap: 8rpx; width: 100%; height: 216rpx; }
+.exact-column { display: flex; flex: none; flex-direction: column; align-items: center; height: 216rpx; }
+.exact-track { display: flex; flex: none; align-items: flex-end; width: 100%; height: 180rpx; min-height: 0; }
 .exact-fill { width: 100%; border-radius: 8rpx 8rpx 3rpx 3rpx; background: #dfe4d9; transition: height 650ms cubic-bezier(0.22, 1, 0.36, 1); }
-.exact-label { flex: none; color: var(--color-text-tertiary); font-size: 13rpx; white-space: nowrap; }
-.exact-column--mine .exact-count,
+.exact-label { flex: none; margin-top: 9rpx; color: var(--color-text-tertiary); font-size: 13rpx; white-space: nowrap; }
 .exact-column--mine .exact-label { color: #a66f1f; font-weight: 750; }
 .exact-column--mine .exact-fill { background: linear-gradient(180deg, #c98a2d, #e5b86e); }
 .own-score-note { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10rpx; margin-top: 28rpx; color: var(--color-text-tertiary); font-size: 20rpx; }

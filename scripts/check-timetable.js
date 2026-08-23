@@ -3290,9 +3290,26 @@ assert(
     ) &&
     timetablePageTemplate.includes("<pass-rate-card") &&
     passRatePageTemplate.includes("<pass-rate-card") &&
-    passRateCardTemplate.includes('id="pass-rate-ring-canvas"') &&
-    timetablePageScript.includes("courseStatisticsKey(selectedCourse.name)") &&
-    timetablePageScript.includes("await getPassRates(courseKey)"),
+    timetablePageTemplate.includes(
+      'percentage-only="{{passRatePercentageOnly}}"',
+    ) &&
+    passRatePageTemplate.includes('percentage-only="{{percentageOnly}}"') &&
+    passRatePageTemplate.includes("statistics && !percentageOnly") &&
+    passRateCardTemplate.includes('class="pass-ring-image"') &&
+    !passRateCardTemplate.includes("<canvas") &&
+    passRateCardTemplate.includes('class="exact-y-axis"') &&
+    passRateCardTemplate.includes("{{item.label}}") &&
+    !passRateCardTemplate.includes("仅显示有人获得的分数") &&
+    !passRateCardTemplate.includes('class="exact-count') &&
+    passRateCardTemplate.includes("{{item.valueLabel}}") &&
+    !passRateCardTemplate.includes("{{statistics.passedCount}} 人") &&
+    !passRateCardTemplate.includes("{{statistics.failedCount}} 人") &&
+    !passRateCardTemplate.includes("{{item.count}}人") &&
+    timetablePageScript.includes(
+      "const semester = activeTimetable?.semester.id || this.data.semesterId",
+    ) &&
+    timetablePageScript.includes("await getPassRates({") &&
+    timetablePageScript.includes("timetableCourseId: selectedCourse.courseId"),
   "课程详情必须直接展开，并从课程卡片打开复用的当前课程通过率统计卡片",
 );
 assert(

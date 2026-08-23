@@ -309,6 +309,7 @@ export interface PassRateStatistics {
 export interface PassRatesData {
   courses: PassRateCourse[];
   selectedCourse: PassRateCourse | null;
+  percentageOnly: boolean;
   status: "ready" | "collecting";
   message: string | null;
   statistics: PassRateStatistics | null;

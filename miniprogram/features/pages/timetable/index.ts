@@ -58,7 +58,6 @@ import type {
   TimetableData,
 } from "../../../types/api";
 import { resolveAppearance } from "../../../utils/appearance";
-import { courseStatisticsKey } from "../../../utils/course-statistics";
 import { formatScore } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
 import { preloadTimetableThemeAssets } from "../../../utils/icon-preload";
@@ -1743,6 +1742,7 @@ Page({
     passRateStatus: "collecting" as "ready" | "collecting",
     passRateMessage: "统计中，请稍后查看",
     passRateCohortLabel: "",
+    passRatePercentageOnly: false,
     passRateOwnScore: -1,
     passRateDisplayScore: "—",
     hasHydrated: false,
@@ -2052,6 +2052,7 @@ Page({
         passRateStatus: "collecting",
         passRateMessage: "统计中，请稍后查看",
         passRateCohortLabel: "",
+        passRatePercentageOnly: false,
         passRateOwnScore: -1,
         passRateDisplayScore: "—",
         hasHydrated: false,
@@ -2643,8 +2644,8 @@ Page({
   async openCoursePassRate() {
     const selectedCourse = this.data.selectedCourse;
     if (!selectedCourse || this.data.passRateLoading) return;
-    const courseKey = courseStatisticsKey(selectedCourse.name);
-    if (!courseKey) return;
+    const semester = activeTimetable?.semester.id || this.data.semesterId;
+    if (!semester || !selectedCourse.courseId) return;
     const lease = captureSessionLease();
     if (!lease) return;
     const sequence = ++passRateRequestSequence;
@@ -2668,11 +2669,15 @@ Page({
       passRateStatus: "collecting",
       passRateMessage: "统计中，请稍后查看",
       passRateCohortLabel: "",
+      passRatePercentageOnly: false,
       passRateOwnScore: -1,
       passRateDisplayScore: "—",
     });
     try {
-      const result = await getPassRates(courseKey);
+      const result = await getPassRates({
+        semester,
+        timetableCourseId: selectedCourse.courseId,
+      });
       if (
         sequence !== passRateRequestSequence ||
         !isSessionLeaseCurrent(lease)
@@ -2702,10 +2707,11 @@ Page({
         passRateStatistics: statistics,
         passRateStatus: result.data.status,
         passRateMessage: message,
+        passRatePercentageOnly: result.data.percentageOnly,
         passRateCohortLabel: statistics
-          ? statistics.cohorts
-              .map((year) => `${String(year).slice(-2)}级`)
-              .join("、")
+          ? `${statistics.cohorts
+              .map((year) => String(year).slice(-2))
+              .join("、")}${statistics.cohorts.length ? "级" : ""}`
           : "",
         passRateOwnScore: ownScore,
         passRateDisplayScore: formatScore(course?.finalScore ?? null),

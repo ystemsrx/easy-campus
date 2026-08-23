@@ -14,7 +14,7 @@
             <view class="pass-heading">
               <text class="pass-eyebrow">{{course.courseNature || '课程'}} · {{course.credits === null ? '学分未提供' : course.creditsLabel + ' 学分'}}</text>
               <text class="pass-course-name display-title">{{course.courseName}}</text>
-              <text class="pass-course-meta">{{course.academicYear}} · {{course.termLabel}}{{statistics ? ' · 共 ' + statistics.totalCount + ' 份成绩' : ''}}</text>
+              <text class="pass-course-meta">{{course.academicYear}} · {{course.termLabel}}{{statistics && !percentageOnly ? ' · 共 ' + statistics.totalCount + ' 份成绩' : ''}}</text>
             </view>
             <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="white" size="{{22}}"></lucide-icon></view>
           </view>
@@ -23,7 +23,7 @@
             <view class="pass-metrics">
               <view class="pass-primary-score"><text class="pass-score-value tnum {{course.textScore ? 'pass-score-value--text' : ''}}">{{course.displayScore}}</text><text class="pass-score-label">总评成绩</text></view>
               <view class="pass-mini-stat"><text class="tnum">{{course.gradePointLabel}}</text><text>绩点</text></view>
-              <view class="pass-mini-stat"><text class="tnum">{{averageScoreLabel}}</text><text>年级平均</text></view>
+              <view class="pass-mini-stat"><text class="tnum">{{averageScoreLabel}}</text><text>{{averageScoreTitle}}</text></view>
             </view>
             <view wx:if="{{components.length}}" class="hero-composition">
               <text class="composition-title">成绩组成</text>
@@ -36,7 +36,7 @@
         <view class="section-header pass-section-header stagger-item stagger-2"><view><text class="section-title">通过率 · 得分分布</text><text wx:if="{{cohortLabel}}" class="section-caption">{{cohortLabel}}</text></view></view>
 
         <view wx:if="{{status === 'ready' && statistics}}" class="stagger-item stagger-2">
-          <pass-rate-card statistics="{{statistics}}" own-score="{{ownScore}}" display-score="{{course.displayScore}}" show-own-score="{{course.hasComparableScore}}" theme="{{theme}}"></pass-rate-card>
+          <pass-rate-card statistics="{{statistics}}" own-score="{{ownScore}}" display-score="{{course.displayScore}}" show-own-score="{{course.hasComparableScore}}" percentage-only="{{percentageOnly}}" theme="{{theme}}"></pass-rate-card>
         </view>
 
         <view wx:else class="collecting-card card stagger-item stagger-2">

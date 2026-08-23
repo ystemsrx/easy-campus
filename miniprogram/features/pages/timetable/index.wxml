@@ -352,7 +352,7 @@
             <text class="course-pass-rate-name" overflow="ellipsis" max-lines="2">{{passRateCourse.courseName || passRateCourseName}}</text>
             <text class="course-pass-rate-meta">通过率 · 得分分布{{passRateCohortLabel ? ' · ' + passRateCohortLabel : ''}}</text>
           </view>
-          <pass-rate-card wx:if="{{passRateStatus === 'ready' && passRateStatistics}}" statistics="{{passRateStatistics}}" own-score="{{passRateOwnScore}}" display-score="{{passRateDisplayScore}}" show-own-score="{{passRateCourse.hasOwnGrade && passRateOwnScore >= 0}}" theme="{{theme}}"></pass-rate-card>
+          <pass-rate-card wx:if="{{passRateStatus === 'ready' && passRateStatistics}}" statistics="{{passRateStatistics}}" own-score="{{passRateOwnScore}}" display-score="{{passRateDisplayScore}}" show-own-score="{{passRateCourse.hasOwnGrade && passRateOwnScore >= 0}}" percentage-only="{{passRatePercentageOnly}}" theme="{{theme}}"></pass-rate-card>
           <view wx:else class="course-pass-rate-collecting card">
             <view class="course-pass-rate-collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{40}}"></lucide-icon></view>
             <text>{{passRateMessage}}</text>

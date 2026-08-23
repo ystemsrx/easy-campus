@@ -90,11 +90,23 @@ export function getGrades(
   );
 }
 
+export interface PassRatesQuery {
+  courseKey?: string;
+  semester?: string;
+  timetableCourseId?: string;
+}
+
 export function getPassRates(
-  courseKey?: string,
+  selection?: string | PassRatesQuery,
 ): Promise<TeachingResult<PassRatesData>> {
+  const query =
+    typeof selection === "string" ? { courseKey: selection } : selection || {};
   return teachingRequest<PassRatesData>(
-    `/teaching/pass-rates${buildQuery({ courseKey })}`,
+    `/teaching/pass-rates${buildQuery({
+      courseKey: query.courseKey,
+      semester: query.semester,
+      timetableCourseId: query.timetableCourseId,
+    })}`,
   );
 }
 

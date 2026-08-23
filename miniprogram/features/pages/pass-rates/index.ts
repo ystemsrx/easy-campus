@@ -187,6 +187,8 @@ Page({
     status: "collecting" as "ready" | "collecting",
     message: "统计中，请稍后查看",
     averageScoreLabel: "—",
+    averageScoreTitle: "年级平均",
+    percentageOnly: false,
     cohortLabel: "",
     ownScore: -1,
   },
@@ -223,6 +225,8 @@ Page({
         status: "collecting",
         message: "统计中，请稍后查看",
         averageScoreLabel: "—",
+        averageScoreTitle: "年级平均",
+        percentageOnly: false,
         cohortLabel: "",
         ownScore: -1,
       });
@@ -281,14 +285,18 @@ Page({
       status: data.status,
       message: data.message || "统计中，请稍后查看",
       averageScoreLabel: statistics
-        ? Number.isInteger(statistics.averageScore)
-          ? String(statistics.averageScore)
-          : statistics.averageScore.toFixed(1)
+        ? `${
+            Number.isInteger(statistics.averageScore)
+              ? String(statistics.averageScore)
+              : statistics.averageScore.toFixed(1)
+          }${data.percentageOnly ? "%" : ""}`
         : "—",
+      averageScoreTitle: data.percentageOnly ? "全校平均" : "年级平均",
+      percentageOnly: data.percentageOnly,
       cohortLabel: statistics
-        ? statistics.cohorts
-            .map((year) => `${String(year).slice(-2)}级`)
-            .join("、")
+        ? `${statistics.cohorts
+            .map((year) => String(year).slice(-2))
+            .join("、")}${statistics.cohorts.length ? "级" : ""}`
         : "",
       ownScore:
         typeof course?.calculationScore === "number"
