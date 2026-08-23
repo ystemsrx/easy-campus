@@ -5,6 +5,7 @@ import type {
   ExamsData,
   ExamOptionsData,
   ExamsQuery,
+  GradeClassDistributionData,
   GradesData,
   GradesQuery,
   MessagesQuery,
@@ -87,6 +88,20 @@ export function getGrades(
     query.includeUnsuccessful === false
       ? { ...result, data: withoutUnsuccessfulGrades(result.data) }
       : result,
+  );
+}
+
+export function getGradeClassDistribution(
+  courseId: string,
+  academicYear: number,
+  term: 1 | 2 | 3,
+): Promise<TeachingResult<GradeClassDistributionData>> {
+  return teachingRequest<GradeClassDistributionData>(
+    `/teaching/grades/class-distribution${buildQuery({
+      courseId,
+      academicYear,
+      term,
+    })}`,
   );
 }
 

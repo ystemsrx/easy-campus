@@ -55,6 +55,32 @@
 .progress-fill--good { background: #acbe97; }
 .progress-fill--warning { background: #e5b86e; }
 
+.class-distribution-card { padding: 32rpx; }
+.class-distribution-state { display: flex; align-items: center; justify-content: center; gap: 14rpx; min-height: 300rpx; color: var(--color-text-tertiary); font-size: 23rpx; }
+.class-distribution-state--retry { flex-direction: column; }
+.class-distribution-state--pressed { opacity: 0.66; }
+.class-distribution-retry { color: #a66f1f; font-weight: 750; }
+.class-distribution-spinner { width: 30rpx; height: 30rpx; border: 4rpx solid var(--color-separator); border-top-color: #c98a2d; border-radius: 999rpx; animation-name: class-distribution-spin; animation-duration: 800ms; animation-timing-function: linear; animation-iteration-count: infinite; }
+.motion-reduced .class-distribution-spinner { animation-name: none; }
+.class-distribution-chart-wrap { width: 100%; }
+.class-axis-unit { display: block; height: 24rpx; color: var(--color-text-tertiary); font-size: 17rpx; font-weight: 700; line-height: 24rpx; }
+.class-chart-layout { display: flex; flex-direction: row; align-items: flex-start; gap: 12rpx; width: 100%; margin-top: 12rpx; }
+.class-y-axis { display: flex; flex: none; flex-direction: column; align-items: flex-end; justify-content: space-between; width: 48rpx; height: 220rpx; }
+.class-axis-tick { display: flex; flex: none; align-items: center; justify-content: flex-end; width: 100%; height: 1rpx; }
+.class-axis-label { color: var(--color-text-tertiary); font-size: 15rpx; line-height: 18rpx; white-space: nowrap; }
+.class-chart-scroll { flex: 1; min-width: 0; height: 260rpx; }
+.class-chart { position: relative; height: 260rpx; }
+.class-chart-grid { position: absolute; z-index: 0; top: 0; right: 0; left: 0; display: flex; flex-direction: column; justify-content: space-between; height: 220rpx; }
+.class-grid-line { flex: none; width: 100%; height: 1rpx; background-color: var(--color-separator); opacity: 0.72; }
+.class-chart-columns { position: relative; z-index: 1; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-around; gap: 8rpx; width: 100%; height: 260rpx; }
+.class-chart-column { display: flex; flex: none; flex-direction: column; align-items: center; height: 260rpx; }
+.class-chart-track { display: flex; flex: none; align-items: flex-end; width: 100%; height: 220rpx; min-height: 0; }
+.class-chart-fill { width: 100%; border-radius: 9rpx 9rpx 3rpx 3rpx; background-color: #659bca; transition: height 650ms cubic-bezier(0.22, 1, 0.36, 1); }
+.class-score-label { flex: none; min-height: 20rpx; margin-top: 9rpx; color: var(--color-text-tertiary); font-size: 14rpx; line-height: 20rpx; white-space: nowrap; }
+.class-x-axis-title { display: block; margin-top: 4rpx; margin-left: 60rpx; color: var(--color-text-tertiary); font-size: 17rpx; font-weight: 700; text-align: center; }
+
+@keyframes class-distribution-spin { to { transform: rotate(360deg); } }
+
 .detail-info-card { overflow: hidden; }
 .detail-info-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 32rpx; min-height: 92rpx; padding: 22rpx 34rpx; }
 .detail-info-row--divided { border-bottom: 1rpx solid var(--color-separator); }

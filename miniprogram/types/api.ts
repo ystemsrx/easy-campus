@@ -280,6 +280,16 @@ export interface GradesData extends Paginated<GradeCourse> {
   semesters: AcademicSemesterOption[];
 }
 
+export interface GradeClassDistributionItem {
+  score: number;
+  count: number;
+}
+
+export interface GradeClassDistributionData {
+  status: "ready" | "insufficient";
+  distribution: GradeClassDistributionItem[];
+}
+
 export interface PassRateCourse extends GradeCourse {
   statisticsKey: string;
   hasOwnGrade: boolean;

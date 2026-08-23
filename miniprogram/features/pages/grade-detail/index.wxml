@@ -27,6 +27,40 @@
           </view>
         </view>
         <empty-state wx:else compact icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无分项成绩" description="当前课程只提供总评成绩"></empty-state>
+
+        <view class="section-header"><view><text class="section-title">班级分布</text></view></view>
+        <view class="class-distribution-card card">
+          <view wx:if="{{classDistributionStatus === 'loading'}}" class="class-distribution-state">
+            <view class="class-distribution-spinner"></view>
+            <text>读取中</text>
+          </view>
+          <view wx:elif="{{classDistributionStatus === 'ready'}}" class="class-distribution-chart-wrap">
+            <text class="class-axis-unit">人数</text>
+            <view class="class-chart-layout">
+              <view class="class-y-axis">
+                <view wx:for="{{classDistributionAxisTicks}}" wx:key="value" class="class-axis-tick"><text class="class-axis-label tnum">{{item.label}}</text></view>
+              </view>
+              <scroll-view class="class-chart-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+                <view class="class-chart" style="width: {{classDistributionChartWidth}}rpx;">
+                  <view class="class-chart-grid" aria-hidden="true">
+                    <view wx:for="{{classDistributionAxisTicks}}" wx:key="value" class="class-grid-line"></view>
+                  </view>
+                  <view class="class-chart-columns">
+                    <view wx:for="{{classDistributionBars}}" wx:key="score" class="class-chart-column" style="width: {{classDistributionBarWidth}}rpx;">
+                      <view class="class-chart-track"><view class="class-chart-fill" style="height: {{item.height}}%;"></view></view>
+                      <text class="class-score-label tnum">{{item.showScoreLabel ? item.scoreLabel : ''}}</text>
+                    </view>
+                  </view>
+                </view>
+              </scroll-view>
+            </view>
+            <text class="class-x-axis-title">分数</text>
+          </view>
+          <view wx:elif="{{classDistributionStatus === 'error'}}" class="class-distribution-state class-distribution-state--retry" role="button" bindtap="retryClassDistribution" hover-class="class-distribution-state--pressed">
+            <text>加载失败</text><text class="class-distribution-retry">重试</text>
+          </view>
+          <view wx:else class="class-distribution-state"><text>数据不足</text></view>
+        </view>
       </block>
 
       <view class="section-header"><view><text class="section-title">课程信息</text></view></view>

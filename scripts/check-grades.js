@@ -379,6 +379,18 @@ const gradeDetailTemplate = fs.readFileSync(
   ),
   "utf8",
 );
+const gradeDetailStyles = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "pages",
+    "grade-detail",
+    "index.wxss",
+  ),
+  "utf8",
+);
 const gradesStore = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "store", "grades.ts"),
   "utf8",
@@ -437,6 +449,28 @@ assert(
     'sort: query.sort === "default" ? undefined : query.sort',
   ),
   "默认成绩排序不得显式发送 sort=default，以兼容尚未重启的旧服务进程",
+);
+const gradeComponentsPosition = gradeDetailTemplate.indexOf(">成绩组成<");
+const classDistributionPosition = gradeDetailTemplate.indexOf(">班级分布<");
+const gradeInfoPosition = gradeDetailTemplate.indexOf(">课程信息<");
+assert(
+  gradeComponentsPosition >= 0 &&
+    classDistributionPosition > gradeComponentsPosition &&
+    gradeInfoPosition > classDistributionPosition &&
+    gradeDetailTemplate.includes(">人数<") &&
+    gradeDetailTemplate.includes(">分数<") &&
+    gradeDetailTemplate.includes(">数据不足<") &&
+    !gradeDetailTemplate.includes("<canvas") &&
+    gradeDetailScript.includes("CLASS_DISTRIBUTION_MIN_SAMPLES = 10") &&
+    gradeDetailScript.includes(
+      "sampleCount < CLASS_DISTRIBUTION_MIN_SAMPLES",
+    ) &&
+    gradeDetailScript.includes("const desiredBarWidth =") &&
+    gradeDetailScript.includes("const labelInterval =") &&
+    gradeDetailStyles.includes(".class-y-axis") &&
+    gradeDetailStyles.includes(".class-chart-scroll") &&
+    teachingService.includes('`/teaching/grades/class-distribution'),
+  "班级分布必须位于成绩组成与课程信息之间，按人数和真实分数动态绘制且少于十人不展示图表",
 );
 assert(
   gradesPageScript.includes(
