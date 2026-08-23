@@ -42,10 +42,10 @@
       <view class="partner-summary-copy">
         <view class="partner-status-dot {{petSelected && petEnabled ? 'partner-status-dot--active' : ''}}"></view>
         <view>
-          <text class="partner-status-title">{{petSelected ? (petEnabled ? '正在陪伴' : '已关闭') : '尚未选择'}}</text>
+          <text class="partner-status-title">{{petEnabled ? '正在陪伴' : '已关闭'}}</text>
         </view>
       </view>
-      <button class="partner-adjust" bindtap="openDrawer" hover-class="partner-adjust--pressed">{{petSelected ? '调整' : '选择'}}</button>
+      <button class="partner-adjust" bindtap="openDrawer" hover-class="partner-adjust--pressed">调整</button>
     </view>
 
     <view class="partner-toggle-list card stagger-item stagger-3">
@@ -86,7 +86,7 @@
       <view class="pet-drawer-handle"></view>
       <view class="pet-drawer-header">
         <view class="pet-drawer-title-copy">
-          <text class="pet-drawer-title">{{petSelected ? '调整伙伴' : '选择伙伴'}}</text>
+          <text class="pet-drawer-title">调整伙伴</text>
         </view>
         <view
           class="pet-drawer-close pressable"

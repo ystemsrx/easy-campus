@@ -42,8 +42,8 @@
       <view class="section-header"><view><text class="section-title">设置</text></view></view>
       <view class="settings-card card stagger-item">
         <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openPetSetup" hover-class="setting-row--pressed" aria-role="button" aria-label="设置校园伙伴">
-          <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petSelected ? (petEnabled ? '已开启' : '已关闭') : '未选择'}}</text></view>
-          <view class="pet-setting-value"><view wx:if="{{petSelected}}" class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+          <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
+          <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
         <view class="appearance-setting">
           <text class="setting-title">外观</text>

@@ -174,11 +174,34 @@ assert(
 const skippedPreferences = petStoreRuntime.store.skipPetSetup("skipped");
 assert(
   skippedPreferences.completed &&
-    skippedPreferences.skipped &&
-    !skippedPreferences.selected &&
+    !skippedPreferences.skipped &&
+    skippedPreferences.selected &&
     !skippedPreferences.enabled &&
+    skippedPreferences.shape === "blob" &&
+    skippedPreferences.color === "#111214" &&
     !petStoreRuntime.store.shouldShowPet(skippedPreferences),
-  "跳过必须结束引导并保持宠物隐藏",
+  "跳过必须保留默认伙伴选择、结束引导并关闭显示",
+);
+petStoreRuntime.storage.set("easy-swu:pet:v1:legacy-skipped", {
+  completed: true,
+  selected: false,
+  skipped: true,
+  enabled: false,
+  enhanced: false,
+  shape: "blob",
+  color: "#111214",
+  updatedAt: 1,
+});
+const migratedSkippedPreferences =
+  petStoreRuntime.store.loadPetPreferences("legacy-skipped");
+assert(
+  migratedSkippedPreferences.completed &&
+    migratedSkippedPreferences.selected &&
+    !migratedSkippedPreferences.skipped &&
+    !migratedSkippedPreferences.enabled &&
+    migratedSkippedPreferences.shape === "blob" &&
+    migratedSkippedPreferences.color === "#111214",
+  "历史跳过记录必须迁移为关闭显示的默认伙伴",
 );
 const selectedPreferences = petStoreRuntime.store.savePetSelection("selected", {
   shape: "blob",
@@ -255,6 +278,25 @@ assert(
     serverPreferences.shape === "cloud" &&
     serverPreferences.color === "#f0449d",
   "本地没有记录时必须完整接收服务端伙伴状态和样式",
+);
+const migratedServerSkip = petStoreRuntime.store.storeServerPetPreferences(
+  "server-skipped",
+  {
+    selected: false,
+    skipped: true,
+    enabled: false,
+    enhanced: false,
+    shape: "blob",
+    color: "#111214",
+    updatedAt: "2026-08-20T02:00:00.000Z",
+  },
+);
+assert(
+  migratedServerSkip.completed &&
+    migratedServerSkip.selected &&
+    !migratedServerSkip.skipped &&
+    !migratedServerSkip.enabled,
+  "服务端历史跳过状态必须恢复为关闭显示的默认伙伴",
 );
 
 const component = read("components/geometric-pet/geometric-pet.ts");
@@ -487,8 +529,8 @@ assert(
 assert(
   petStore.includes('PET_PREFERENCES_KEY_PREFIX = "easy-swu:pet:v1:"') &&
     petStore.includes("completed: true") &&
-    petStore.includes("selected: false") &&
-    petStore.includes("skipped: true") &&
+    petStore.includes("selected: true") &&
+    petStore.includes("skipped: false") &&
     petStore.includes("enabled: false") &&
     petStore.includes("enhanced: false") &&
     petStore.includes("stored.enhanced === true") &&

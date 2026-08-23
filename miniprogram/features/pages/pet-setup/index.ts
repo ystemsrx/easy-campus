@@ -71,7 +71,7 @@ Page({
       canSkip: source !== "profile" && !preferences.completed,
       petSelected: preferences.selected,
       petEnabled: preferences.enabled,
-      draftEnabled: preferences.selected ? preferences.enabled : true,
+      draftEnabled: preferences.enabled,
       draftEnhanced: preferences.enhanced,
       selectedShape: preferences.shape,
       selectedColor: preferences.color,

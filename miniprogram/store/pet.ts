@@ -78,21 +78,25 @@ export function loadPetPreferences(account: string): PetPreferences {
   const color = isPetColor(stored.color)
     ? stored.color.toLowerCase()
     : DEFAULT_PET_PREFERENCES.color;
-  // 旧版本没有 selected 字段。仅迁移明显改过形状或颜色的记录，
-  // 默认黑色 blob 可能来自“跳过”，因此宁可隐藏也不代替用户做选择。
+  // 旧版本没有 selected 字段，或会把“跳过”保存成未选择。
+  // 统一迁移为已选择当前（通常为默认）样式，但保持关闭显示。
   const migratedSelection =
     stored.selected === undefined &&
     stored.completed === true &&
     (shape !== DEFAULT_PET_PREFERENCES.shape ||
       color !== DEFAULT_PET_PREFERENCES.color);
-  const selected = stored.selected === true || migratedSelection;
-  const skipped =
-    !selected && (stored.skipped === true || stored.completed === true);
+  const hiddenDefaultSelection =
+    !migratedSelection &&
+    stored.selected !== true &&
+    (stored.skipped === true || stored.completed === true);
+  const selected =
+    stored.selected === true || migratedSelection || hiddenDefaultSelection;
   return {
-    completed: selected || skipped,
+    completed: selected,
     selected,
-    skipped,
-    enabled: selected && stored.enabled !== false,
+    skipped: false,
+    enabled:
+      selected && !hiddenDefaultSelection && stored.enabled !== false,
     enhanced: stored.enhanced === true,
     shape,
     color,
@@ -140,8 +144,8 @@ export function skipPetSetup(account: string): PetPreferences {
   const next: PetPreferences = {
     ...current,
     completed: true,
-    selected: false,
-    skipped: true,
+    selected: true,
+    skipped: false,
     enabled: false,
     updatedAt: Date.now(),
   };
@@ -180,14 +184,16 @@ export function storeServerPetPreferences(
   account: string,
   preferences: CompanionPreferencesData,
 ): PetPreferences {
-  const selected = preferences.selected === true;
-  const skipped = !selected && preferences.skipped === true;
+  const hiddenDefaultSelection =
+    preferences.selected !== true && preferences.skipped === true;
+  const selected = preferences.selected === true || hiddenDefaultSelection;
   const updatedAt = Date.parse(preferences.updatedAt || "");
   const next: PetPreferences = {
-    completed: selected || skipped,
+    completed: selected,
     selected,
-    skipped,
-    enabled: selected && preferences.enabled === true,
+    skipped: false,
+    enabled:
+      selected && !hiddenDefaultSelection && preferences.enabled === true,
     enhanced: preferences.enhanced === true,
     shape: isPetShape(preferences.shape)
       ? preferences.shape
