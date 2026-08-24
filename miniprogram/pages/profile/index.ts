@@ -23,6 +23,10 @@ import {
   goToLogin,
   navigateTo,
 } from "../../utils/navigation";
+import {
+  identityCardTone,
+  type IdentityCardTone,
+} from "../../utils/profile";
 
 function classLabel(user: CurrentUserData): string {
   const grade = (user.profile.grade || "").trim().replace(/级$/, "");
@@ -75,6 +79,7 @@ Page({
     organizationName: "西南大学",
     classLabel: "",
     enrollmentDate: "",
+    identityCardTone: "neutral" as IdentityCardTone,
     reducedMotion: INITIAL_PROFILE_PREFERENCES.reducedMotion,
     petShape: "blob" as PetShapeId,
     petColor: "#111214",
@@ -114,6 +119,7 @@ Page({
         organizationName: "西南大学",
         classLabel: "",
         enrollmentDate: "",
+        identityCardTone: "neutral",
         errorMessage: "",
       });
     }
@@ -156,6 +162,7 @@ Page({
       organizationName: user.profile.organizationName || "西南大学",
       classLabel: classLabel(user),
       enrollmentDate: enrollmentDateLabel(user.profile.enrollmentDate),
+      identityCardTone: identityCardTone(user.profile.gender),
     });
   },
   loadPet(account: string) {

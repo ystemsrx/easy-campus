@@ -130,22 +130,24 @@
 .profile-eyebrow { display: block; color: var(--color-text-tertiary); font-size: 25rpx; font-weight: 550; }
 .profile-title { display: block; margin-top: 2rpx; color: var(--color-text); font-size: 68rpx; font-weight: 700; line-height: 1.15; }
 
-.identity-card { position: relative; margin-top: 38rpx; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(140deg, #d97757, #eba97f); box-shadow: var(--shadow-pop); }
-.identity-blob { background: rgba(255, 255, 255, 0.15); }
+.identity-card { --identity-ink: #45443f; --identity-secondary: rgba(69, 68, 63, 0.74); --identity-tertiary: rgba(69, 68, 63, 0.58); --identity-faint: rgba(69, 68, 63, 0.45); --identity-blob: rgba(136, 132, 120, 0.08); position: relative; margin-top: 38rpx; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: var(--identity-ink); background: linear-gradient(140deg, #fbfaf7, #f3f1eb); box-shadow: var(--shadow-pop); }
+.identity-card--male { --identity-ink: #2f485f; --identity-secondary: rgba(47, 72, 95, 0.74); --identity-tertiary: rgba(47, 72, 95, 0.58); --identity-faint: rgba(47, 72, 95, 0.45); --identity-blob: rgba(79, 117, 166, 0.09); background: linear-gradient(140deg, #f5f9fd, #e9f3fb); }
+.identity-card--female { --identity-ink: #51435f; --identity-secondary: rgba(81, 67, 95, 0.74); --identity-tertiary: rgba(81, 67, 95, 0.58); --identity-faint: rgba(81, 67, 95, 0.45); --identity-blob: rgba(126, 94, 158, 0.09); background: linear-gradient(140deg, #faf7fd, #f1ebf8); }
+.identity-blob { background: rgba(255, 255, 255, 0.5); }
 .identity-blob--one { top: -92rpx; right: -72rpx; width: 300rpx; height: 270rpx; }
-.identity-blob--two { bottom: -120rpx; left: -60rpx; width: 230rpx; height: 210rpx; background: rgba(0, 0, 0, 0.07); animation-delay: -4s; }
+.identity-blob--two { bottom: -120rpx; left: -60rpx; width: 230rpx; height: 210rpx; background-color: var(--identity-blob); animation-delay: -4s; }
 .identity-main { position: relative; display: flex; flex-direction: row; align-items: center; gap: 24rpx; }
 .identity-pet-frame { display: block; flex: none; width: 122rpx; height: 122rpx; overflow: visible; }
-.avatar { display: flex; flex: none; align-items: center; justify-content: center; width: 108rpx; height: 108rpx; border-radius: 50%; background: rgba(255, 255, 255, 0.24); backdrop-filter: blur(10px); font-family: Georgia, "Songti SC", serif; font-size: 42rpx; font-weight: 700; }
+.avatar { display: flex; flex: none; align-items: center; justify-content: center; width: 108rpx; height: 108rpx; border-radius: 50%; background: rgba(255, 255, 255, 0.62); backdrop-filter: blur(10px); font-family: Georgia, "Songti SC", serif; font-size: 42rpx; font-weight: 700; }
 .identity-copy { flex: 1; min-width: 0; }
 .identity-name { display: block; font-size: 43rpx; font-weight: 700; line-height: 1.2; }
-.identity-account { display: block; margin-top: 4rpx; color: rgba(255, 255, 255, 0.8); font-size: 23rpx; }
-.identity-school { position: relative; display: block; margin-top: 26rpx; color: rgba(255, 255, 255, 0.9); font-size: 24rpx; font-weight: 650; }
-.identity-details { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 5rpx; color: rgba(255, 255, 255, 0.72); font-size: 22rpx; }
+.identity-account { display: block; margin-top: 4rpx; color: var(--identity-secondary); font-size: 23rpx; }
+.identity-school { position: relative; display: block; margin-top: 26rpx; color: var(--identity-secondary); font-size: 24rpx; font-weight: 650; }
+.identity-details { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 5rpx; color: var(--identity-tertiary); font-size: 22rpx; }
 .identity-class { flex: 1; min-width: 0; }
 .identity-enrollment { display: flex; flex: none; flex-direction: column; align-items: flex-end; white-space: nowrap; }
-.identity-enrollment-label { color: rgba(255, 255, 255, 0.58); font-size: 17rpx; font-weight: 650; line-height: 1.15; }
-.identity-enrollment-date { margin-top: 4rpx; color: rgba(255, 255, 255, 0.78); font-size: 21rpx; line-height: 1.15; }
+.identity-enrollment-label { color: var(--identity-faint); font-size: 17rpx; font-weight: 650; line-height: 1.15; }
+.identity-enrollment-date { margin-top: 4rpx; color: var(--identity-secondary); font-size: 21rpx; line-height: 1.15; }
 
 .settings-card { overflow: hidden; }
 .setting-title { display: block; color: var(--color-text); font-size: 26rpx; font-weight: 700; }

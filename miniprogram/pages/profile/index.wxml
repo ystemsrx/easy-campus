@@ -14,7 +14,7 @@
         <text class="profile-title display-title">我的</text>
       </view>
 
-      <view class="identity-card stagger-item stagger-1">
+      <view class="identity-card identity-card--{{identityCardTone}} stagger-item stagger-1">
         <view class="ambient-blob identity-blob identity-blob--one"></view>
         <view class="ambient-blob identity-blob identity-blob--two"></view>
         <view class="identity-main">
