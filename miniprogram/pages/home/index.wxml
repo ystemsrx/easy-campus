@@ -172,7 +172,7 @@
         </open-container>
         <view class="side-actions">
           <view class="side-action card pressable" data-route="/features/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="sage" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
-          <view class="side-action card pressable" data-route="/features/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="coral" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
+          <view class="side-action card pressable" data-route="/features/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="blue" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
         </view>
       </view>
 
@@ -222,9 +222,9 @@
         </view>
         <view class="campus-group">
           <view class="campus-card-head pressable" bindtap="openNotices" hover-class="pressing">
-            <view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view>
+            <view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="blue" size="{{29}}"></lucide-icon></view>
             <text class="campus-card-title">学校通知</text>
-            <view wx:if="{{notices.length}}" class="campus-dot"></view>
+            <view wx:if="{{notices.length}}" class="campus-dot campus-dot--notice"></view>
           </view>
           <open-container class="campus-open-container" closed-color="{{theme === 'dark' ? '#2d2a24' : '#ffffff'}}" middle-color="{{theme === 'dark' ? '#39352e' : '#f1eee6'}}" open-color="{{theme === 'dark' ? '#171613' : '#f7f5ef'}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{380}}" bind:tap="openNoticesFromCard" aria-role="button" aria-label="从卡片展开学校通知">
             <view class="campus-card card pressable" hover-class="pressing">

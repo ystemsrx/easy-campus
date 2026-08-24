@@ -230,7 +230,7 @@
 .side-action { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-height: 0; padding: 14rpx 8rpx; color: var(--color-text); font-size: 19rpx; font-weight: 760; }
 .side-action-icon { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; border-radius: 20rpx; }
 .side-action-icon--pass-rate { background: #edf1e6; }
-.side-action-icon--rooms { background: #f9eae2; }
+.side-action-icon--rooms { background: #e8eef7; }
 
 .plan-card { height: 224rpx; min-height: 224rpx; overflow: hidden; transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1); }
 .plan-list { display: flex; flex-direction: column; justify-content: flex-start; width: 100%; height: 100%; min-height: 0; }
@@ -268,17 +268,18 @@
 .campus-open-container { display: block; border-radius: 44rpx; }
 .campus-card { position: relative; min-height: 198rpx; padding: 30rpx; }
 .campus-blob { width: 190rpx; height: 170rpx; opacity: 0.72; }
-.campus-blob--notice { top: -70rpx; right: -54rpx; background: #f9eae2; }
+.campus-blob--notice { top: -70rpx; right: -54rpx; background: #e8eef7; }
 .campus-blob--message { bottom: -76rpx; left: -58rpx; background: #f8eedd; }
 .campus-card-head { position: relative; display: flex; flex-direction: row; align-items: center; gap: 22rpx; min-height: 50rpx; padding: 0 8rpx; color: var(--color-text); font-size: 26rpx; font-weight: 750; }
 .campus-card-title { flex: none; }
 .campus-icon { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx; border-radius: 18rpx; }
-.campus-icon--notice { color: #b85c38; background: #f9eae2; }
+.campus-icon--notice { color: #4f75a6; background: #e8eef7; }
 .campus-icon--message { color: #a66f1f; background: #f8eedd; }
 .campus-dot { width: 14rpx; height: 14rpx; margin-left: auto; border-radius: 50%; background: #c0452d; }
+.campus-dot--notice { background: #4f75a6; }
 .campus-list { position: relative; display: flex; flex-direction: column; gap: 16rpx; }
 .campus-line { display: flex; flex-direction: row; align-items: baseline; gap: 14rpx; min-width: 0; }
-.campus-bullet { flex: none; width: 7rpx; height: 7rpx; margin-top: 8rpx; border-radius: 50%; background: #d97757; }
+.campus-bullet { flex: none; width: 7rpx; height: 7rpx; margin-top: 8rpx; border-radius: 50%; background: #4f75a6; }
 .campus-line-title { flex: 1; min-width: 0; color: var(--color-text-secondary); font-size: 23rpx; font-weight: 600; }
 .campus-line-time { flex: none; max-width: 150rpx; color: #b5b0a3; font-size: 18rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .campus-line-schedule { flex: none; color: #b5b0a3; font-size: 18rpx; white-space: nowrap; }

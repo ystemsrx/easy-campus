@@ -366,6 +366,44 @@ assert(
 );
 
 assert(
+  /side-action-icon--rooms[\s\S]*?name="door-open" tone="blue"/.test(
+    homeTemplate,
+  ) &&
+    /campus-icon--notice[\s\S]*?name="megaphone" tone="blue"/.test(
+      homeTemplate,
+    ) &&
+    /\.side-action-icon--rooms\s*\{[^}]*background:\s*#e8eef7/.test(
+      homeStyles,
+    ) &&
+    /\.campus-blob--notice\s*\{[^}]*background:\s*#e8eef7/.test(
+      homeStyles,
+    ) &&
+    /\.campus-icon--notice\s*\{[^}]*color:\s*#4f75a6;[^}]*background:\s*#e8eef7/.test(
+      homeStyles,
+    ) &&
+    /\.campus-dot--notice\s*\{[^}]*background:\s*#4f75a6/.test(
+      homeStyles,
+    ) &&
+    /\.campus-bullet\s*\{[^}]*background:\s*#4f75a6/.test(homeStyles) &&
+    ["door-open-blue.svg", "megaphone-blue.svg"].every((fileName) =>
+      fs
+        .readFileSync(
+          path.resolve(
+            __dirname,
+            "..",
+            "miniprogram",
+            "assets",
+            "icons",
+            fileName,
+          ),
+          "utf8",
+        )
+        .includes('stroke="#4f75a6"'),
+    ),
+  "首页空教室卡片和学校通知必须统一使用蓝色强调色与对应图标",
+);
+
+assert(
   /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?includeUnsuccessful,[\s\S]*?refresh: refreshStable[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\([\s\S]*?account,[\s\S]*?result,[\s\S]*?refreshStable,[\s\S]*?includeUnsuccessful,[\s\S]*?\)/.test(
     homeScript,
   ) &&
