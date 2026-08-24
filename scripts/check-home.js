@@ -374,6 +374,12 @@ assert(
     ),
   "首页必须在服务器成绩快照返回时立即缓存并渲染，不能等待其他首页请求",
 );
+assert(
+  homeScript.includes(
+    "summarizeGrades(highestGradesByCourseName(data.items))",
+  ) && !homeScript.includes("latestSemesterGrades(data).summary"),
+  "首页成绩卡必须汇总全历史成绩，并按课程名只采用最高分",
+);
 
 const publicationPopoverStyle =
   /\.publication-popover \{([^}]*)\}/.exec(homeStyles)?.[1] || "";

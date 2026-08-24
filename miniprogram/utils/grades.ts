@@ -67,6 +67,14 @@ function normalizedGradeText(value: unknown): string {
     .toUpperCase();
 }
 
+function normalizedCourseName(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("zh-CN");
+}
+
 function directNumericScore(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
@@ -167,6 +175,41 @@ export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
       ? Number((gradePointTotal / gradePointCredits).toFixed(2))
       : null,
   };
+}
+
+function comparableCourseScore(course: GradeCourse): number | null {
+  return typeof course.calculationScore === "number" &&
+    Number.isFinite(course.calculationScore)
+    ? course.calculationScore
+    : directNumericScore(course.finalScore);
+}
+
+export function highestGradesByCourseName(
+  courses: GradeCourse[],
+): GradeCourse[] {
+  const selected = new Map<string, GradeCourse>();
+
+  courses.forEach((course, index) => {
+    if (!hasPublishedGrade(course)) return;
+    const courseName = normalizedCourseName(course.courseName);
+    const key = courseName || `unnamed:${index}`;
+    const existing = selected.get(key);
+    if (!existing) {
+      selected.set(key, course);
+      return;
+    }
+
+    const score = comparableCourseScore(course);
+    const existingScore = comparableCourseScore(existing);
+    if (
+      (score !== null && existingScore === null) ||
+      (score !== null && existingScore !== null && score > existingScore)
+    ) {
+      selected.set(key, course);
+    }
+  });
+
+  return [...selected.values()];
 }
 
 export function withoutUnsuccessfulGrades(data: GradesData): GradesData {

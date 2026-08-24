@@ -26,6 +26,7 @@ new Function("module", "exports", "require", output)(
 const {
   gradeComponentWidths,
   gradePointRingValue,
+  highestGradesByCourseName,
   isMakeupOrDeferredGrade,
   isUnsuccessfulGrade,
   latestGradedSemester,
@@ -227,6 +228,56 @@ assert(
     latest.summary.weightedAverage === 86.67 &&
     latest.summary.gradePointAverage === 4.3,
   "最新学期的均分、绩点、课程与学分必须独立汇总",
+);
+const highestHistoricalGrades = highestGradesByCourseName([
+  {
+    ...latestCourses[0],
+    id: "retake-lower",
+    courseName: " 大学英语 ",
+    calculationScore: 72,
+    finalScore: 72,
+    gradePoint: 2.3,
+    credits: 2,
+  },
+  {
+    ...latestCourses[0],
+    id: "retake-higher",
+    courseName: "大学英语",
+    calculationScore: 91,
+    finalScore: 91,
+    gradePoint: 4.3,
+    credits: 2,
+  },
+  {
+    ...latestCourses[0],
+    id: "historical-math",
+    courseName: "高等数学",
+    calculationScore: 80,
+    finalScore: 80,
+    gradePoint: 3,
+    credits: 4,
+  },
+  {
+    ...latestCourses[0],
+    id: "unpublished",
+    courseName: "大学物理",
+    calculationScore: null,
+    finalScore: null,
+    gradePoint: null,
+    credits: 3,
+  },
+]);
+const highestHistoricalSummary = moduleRecord.exports.summarizeGrades(
+  highestHistoricalGrades,
+);
+assert(
+  highestHistoricalGrades.map((course) => course.id).join(",") ===
+    "retake-higher,historical-math" &&
+    highestHistoricalSummary.courseCount === 2 &&
+    highestHistoricalSummary.totalCredits === 6 &&
+    highestHistoricalSummary.weightedAverage === 83.67 &&
+    highestHistoricalSummary.gradePointAverage === 3.43,
+  "首页成绩汇总必须覆盖全部历史学期，同名课程只保留最高分且课程数只计一次",
 );
 assert(
   gradePointRingValue(4) === 80 && gradePointRingValue(5) === 100,

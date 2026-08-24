@@ -97,7 +97,11 @@ import {
   type ExamCountdownTone,
 } from "../../utils/exams";
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
-import { gradePointRingValue, latestSemesterGrades } from "../../utils/grades";
+import {
+  gradePointRingValue,
+  highestGradesByCourseName,
+  summarizeGrades,
+} from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { resolveHomeIdentity } from "../../utils/identity";
 import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
@@ -327,7 +331,7 @@ function gradePreviewPatch(
   gradePointAverageLabel: string;
   gradeCourseCount: number;
 } {
-  const summary = latestSemesterGrades(data).summary;
+  const summary = summarizeGrades(highestGradesByCourseName(data.items));
   return {
     gradeRingSource: progressRingSource(
       gradePointRingValue(summary.gradePointAverage),
