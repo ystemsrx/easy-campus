@@ -1,0 +1,65 @@
+<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
+<view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{motionClass}}">
+  <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
+
+  <view class="auto-dorm-check-content page-content page-enter">
+    <loading-view wx:if="{{loading && !loaded}}" label="正在读取"></loading-view>
+
+    <empty-state
+      wx:elif="{{errorMessage && !loaded}}"
+      icon="circle-alert"
+      icon-tone="danger"
+      title="读取失败"
+      description="{{errorMessage}}"
+      action-text="重新读取"
+      bindaction="retryStatus"
+    ></empty-state>
+
+    <view wx:else class="auto-dorm-check-sections">
+      <view class="auto-dorm-check-card card stagger-item stagger-1">
+        <view class="auto-dorm-check-row">
+          <view class="auto-dorm-check-copy">
+            <text class="auto-dorm-check-title">自动查寝打卡</text>
+            <text class="auto-dorm-check-caption">打卡时段 {{checkInWindowLabel}}</text>
+          </view>
+          <switch
+            class="auto-dorm-check-switch"
+            checked="{{effectiveEnabled}}"
+            disabled="{{saving || !available}}"
+            color="#7d8f6e"
+            bindchange="onEnabledChange"
+            aria-label="自动查寝打卡，{{statusLabel}}"
+          />
+        </view>
+        <view wx:if="{{errorMessage}}" class="auto-dorm-check-error" bindtap="retryStatus" aria-role="button">
+          <text>{{errorMessage}}</text>
+          <text>重试</text>
+        </view>
+      </view>
+
+      <view class="auto-dorm-check-detail-card card stagger-item stagger-2">
+        <text class="auto-dorm-check-detail-title">打卡状态</text>
+        <view class="auto-dorm-check-status-row">
+          <view class="auto-dorm-check-status">
+            <view class="auto-dorm-check-status-dot auto-dorm-check-status-dot--{{statusTone}}"></view>
+            <text>{{statusLabel}}</text>
+          </view>
+          <view class="auto-dorm-check-target">
+            <text class="auto-dorm-check-target-label">目标时间</text>
+            <text class="auto-dorm-check-target-value">{{targetTimeLabel}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="auto-dorm-check-detail-card card stagger-item stagger-3">
+        <text class="auto-dorm-check-detail-title">今晚打卡地点</text>
+        <view class="auto-dorm-check-location">
+          <lucide-icon name="map-pin" tone="sage" size="{{24}}"></lucide-icon>
+          <text wx:if="{{hasCheckInLocation}}" overflow="ellipsis" max-lines="2">{{checkInLocationName}}</text>
+          <text wx:else class="auto-dorm-check-location-empty">尚未记录打卡地点</text>
+        </view>
+        <text class="auto-dorm-check-location-tip">如需更换地点，请先关闭自动查寝，再手动完成一次正常打卡，下次将使用新的地点。</text>
+      </view>
+    </view>
+  </view>
+</view>

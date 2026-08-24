@@ -2,6 +2,7 @@ import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
+import { getAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 import { loadPetPreferences, shouldShowPet } from "../../store/pet";
 import {
@@ -12,7 +13,7 @@ import {
   sessionLeaseKey,
 } from "../../store/session";
 import { loadPreferences } from "../../store/preferences";
-import type { CurrentUserData } from "../../types/api";
+import type { AutoDormCheckState, CurrentUserData } from "../../types/api";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -23,10 +24,7 @@ import {
   goToLogin,
   navigateTo,
 } from "../../utils/navigation";
-import {
-  identityCardTone,
-  type IdentityCardTone,
-} from "../../utils/profile";
+import { identityCardTone, type IdentityCardTone } from "../../utils/profile";
 
 function classLabel(user: CurrentUserData): string {
   const grade = (user.profile.grade || "").trim().replace(/级$/, "");
@@ -43,6 +41,7 @@ function enrollmentDateLabel(value?: string): string {
 
 type ProfileSettingKey =
   | "course-assistant"
+  | "auto-dorm-check"
   | "pet"
   | "grades"
   | "personalization"
@@ -54,6 +53,15 @@ const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
   INITIAL_PROFILE_PREFERENCES,
 );
 const PROFILE_AUTH_EXIT_MS = 180;
+const AUTO_DORM_CHECK_STATUS: Record<
+  AutoDormCheckState,
+  { label: string; tone: "success" | "warning" | "danger" | "muted" }
+> = {
+  checked_in: { label: "已打卡", tone: "success" },
+  pending: { label: "待打卡", tone: "warning" },
+  unavailable: { label: "不可用", tone: "danger" },
+  disabled: { label: "已关闭", tone: "muted" },
+};
 
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
 let activeProfileSessionKey = "";
@@ -87,6 +95,13 @@ Page({
     petSelected: false,
     petEnabled: false,
     petVisible: false,
+    autoDormCheckVisible: false,
+    autoDormCheckStatusLabel: "已关闭",
+    autoDormCheckStatusTone: "muted" as
+      | "success"
+      | "warning"
+      | "danger"
+      | "muted",
   },
   onLoad() {
     activeProfileSessionKey = "";
@@ -120,6 +135,9 @@ Page({
         classLabel: "",
         enrollmentDate: "",
         identityCardTone: "neutral",
+        autoDormCheckVisible: false,
+        autoDormCheckStatusLabel: "已关闭",
+        autoDormCheckStatusTone: "muted",
         errorMessage: "",
       });
     }
@@ -132,7 +150,7 @@ Page({
     this.applyAppearance();
     this.loadPet(account);
     this.syncTabBarAppearance();
-    void this.loadUser();
+    void Promise.all([this.loadUser(), this.loadAutoDormCheckAvailability()]);
   },
   onUnload() {
     clearAuthenticationExitTimer();
@@ -204,6 +222,29 @@ Page({
     haptic("light");
     void this.loadUser(true);
   },
+  async loadAutoDormCheckAvailability() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    this.setData({ autoDormCheckVisible: false });
+    try {
+      const status = await getAutoDormCheckStatus();
+      if (!isSessionLeaseCurrent(lease)) return;
+      const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
+      this.setData({
+        autoDormCheckVisible: status.entryEnabled,
+        autoDormCheckStatusLabel: presentation.label,
+        autoDormCheckStatusTone: presentation.tone,
+      });
+    } catch {
+      if (isSessionLeaseCurrent(lease)) {
+        this.setData({
+          autoDormCheckVisible: false,
+          autoDormCheckStatusLabel: "已关闭",
+          autoDormCheckStatusTone: "muted",
+        });
+      }
+    }
+  },
   openProfileRoute(key: ProfileSettingKey, url: string) {
     if (this.data.openingSetting) return;
     haptic("light");
@@ -218,6 +259,12 @@ Page({
     this.openProfileRoute(
       "course-assistant",
       "/features/pages/course-assistant/index",
+    );
+  },
+  openAutoDormCheck() {
+    this.openProfileRoute(
+      "auto-dorm-check",
+      "/features/pages/auto-dorm-check/index",
     );
   },
   openPetSetup() {

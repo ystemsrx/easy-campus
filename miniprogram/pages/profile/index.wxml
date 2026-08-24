@@ -41,9 +41,13 @@
 
       <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
       <view class="settings-card card stagger-item">
-        <view class="setting-row setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
+        <view class="setting-row {{autoDormCheckVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
           <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
           <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
+        <view wx:if="{{autoDormCheckVisible}}" class="setting-row setting-row--action {{openingSetting === 'auto-dorm-check' ? 'setting-row--pressed' : ''}}" bindtap="openAutoDormCheck" aria-role="button" aria-label="打开自动查寝，当前{{autoDormCheckStatusLabel}}">
+          <view class="setting-copy"><text class="setting-title">自动查寝</text><text class="setting-caption">自动完成查寝打卡</text></view>
+          <view class="auto-dorm-check-setting-value"><view class="auto-dorm-check-setting-dot auto-dorm-check-setting-dot--{{autoDormCheckStatusTone}}"></view><text>{{autoDormCheckStatusLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
       </view>
 

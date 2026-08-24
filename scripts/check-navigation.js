@@ -28,6 +28,7 @@ const appStyles = fs.readFileSync(
 );
 const quickEntryTemplates = [
   ["选课助手", "features/pages/course-assistant/index.wxml"],
+  ["自动查寝", "features/pages/auto-dorm-check/index.wxml"],
   ["校园伙伴", "features/pages/pet-setup/index.wxml"],
   ["成绩展示设置", "features/pages/grade-settings/index.wxml"],
   ["个性化", "features/pages/personalization/index.wxml"],
@@ -115,7 +116,7 @@ async function main() {
     profileStyles.match(/\.setting-row--pressed\s*\{[^}]*\}/s)?.[0] || "";
   assert(
     !profileTemplate.includes('hover-class="setting-row--pressed"') &&
-      (profileTemplate.match(/openingSetting ===/g) || []).length === 6 &&
+      (profileTemplate.match(/openingSetting ===/g) || []).length === 7 &&
       /openProfileRoute\(key: ProfileSettingKey, url: string\)[\s\S]*?if \(this\.data\.openingSetting\) return;[\s\S]*?this\.setData\(\{ openingSetting: key \}, \(\) => \{[\s\S]*?navigateTo\(url\)\.then/.test(
         profileSource,
       ) &&

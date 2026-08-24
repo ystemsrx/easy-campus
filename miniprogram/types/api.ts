@@ -36,6 +36,40 @@ export interface Paginated<T> {
   pagination: Pagination;
 }
 
+export interface AutoDormCheckIn {
+  id: string;
+  taskId: string;
+  locationName: string;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMeters: number | null;
+  checkedAt: string | null;
+  sourceTimezone: string;
+}
+
+export interface AutoDormCheckStatus {
+  /** Compatibility alias for whether both global switches are on. */
+  featureEnabled: boolean;
+  entryEnabled: boolean;
+  functionEnabled: boolean;
+  available: boolean;
+  enabled: boolean;
+  effectiveEnabled: boolean;
+  checkInStatus: AutoDormCheckState;
+  checkInStartTime: string;
+  checkInEndTime: string;
+  plannedCheckInAt: string | null;
+  plannedCheckInDate: string | null;
+  updatedAt: string | null;
+  lastCheckIn: AutoDormCheckIn | null;
+}
+
+export type AutoDormCheckState =
+  | "checked_in"
+  | "pending"
+  | "unavailable"
+  | "disabled";
+
 export interface Session {
   token: string;
   tokenType: "Bearer";

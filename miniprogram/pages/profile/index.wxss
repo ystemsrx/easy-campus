@@ -159,10 +159,16 @@
 .setting-copy { flex: 1; min-width: 0; }
 .pet-setting-value,
 .course-assistant-setting-value,
+.auto-dorm-check-setting-value,
 .grade-setting-value,
 .personalization-setting-value,
 .legal-setting-value { display: flex; flex: none; flex-direction: row; align-items: center; gap: 7rpx; color: var(--color-text-tertiary); font-size: 22rpx; font-weight: 650; white-space: nowrap; }
 .pet-color-dot { flex: none; width: 22rpx; height: 22rpx; margin-right: 2rpx; border: 3rpx solid rgba(255, 255, 255, 0.76); border-radius: 50%; box-shadow: 0 2rpx 8rpx rgba(20, 20, 30, 0.18); }
+.auto-dorm-check-setting-dot { flex: none; width: 14rpx; height: 14rpx; border-radius: 50%; }
+.auto-dorm-check-setting-dot--success { background: #69a25c; }
+.auto-dorm-check-setting-dot--warning { background: #e5b86e; }
+.auto-dorm-check-setting-dot--danger { background: #c2767a; }
+.auto-dorm-check-setting-dot--muted { background: #b5b0a3; }
 
 .developer-card { padding: 30rpx; }
 .developer-copy { display: block; padding: 0 2rpx; color: #8b8578; font-size: 23rpx; line-height: 1.65; }

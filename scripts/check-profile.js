@@ -29,6 +29,10 @@ const { identityCardTone } = loadTypeScriptModule("utils/profile.ts");
 const profileScript = read("pages/profile/index.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
+const profilePageConfig = JSON.parse(read("app.json"));
+const autoDormCheckPage = read("features/pages/auto-dorm-check/index.wxml");
+const autoDormCheckScript = read("features/pages/auto-dorm-check/index.ts");
+const autoDormCheckService = read("services/auto-dorm-check.ts");
 
 for (const gender of ["男", "男性", "男生", "male", "M", "1"]) {
   assert(
@@ -57,9 +61,7 @@ assert(
 );
 
 assert(
-  /\.identity-card--male\s*\{[^}]*background:\s*#e3eff8/.test(
-    profileStyles,
-  ) &&
+  /\.identity-card--male\s*\{[^}]*background:\s*#e3eff8/.test(profileStyles) &&
     /\.identity-card--female\s*\{[^}]*background:\s*#ece4f5/.test(
       profileStyles,
     ) &&
@@ -73,6 +75,43 @@ assert(
       profileStyles,
     ),
   "男女身份卡必须使用纯色的浅蓝紫背景，并为浅色卡片保留清晰的深色文字",
+);
+
+const featurePages = profilePageConfig.subPackages.flatMap(
+  (subPackage) => subPackage.pages,
+);
+assert(
+  profileScript.includes("loadAutoDormCheckAvailability") &&
+    profileScript.includes("status.entryEnabled") &&
+    profileScript.includes("AUTO_DORM_CHECK_STATUS[status.checkInStatus]") &&
+    profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
+    profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
+    profileTemplate.includes(
+      "auto-dorm-check-setting-dot--{{autoDormCheckStatusTone}}",
+    ) &&
+    !profileTemplate.includes(
+      '<view class="auto-dorm-check-setting-value"><text>设置</text>',
+    ) &&
+    profileTemplate.includes("openAutoDormCheck") &&
+    featurePages.includes("pages/auto-dorm-check/index"),
+  "自动查寝入口必须只受服务端入口开关控制，并注册对应子包页面",
+);
+assert(
+  autoDormCheckPage.includes('checked="{{effectiveEnabled}}"') &&
+    autoDormCheckPage.includes('disabled="{{saving || !available}}"') &&
+    autoDormCheckPage.includes("auto-dorm-check-status-dot--{{statusTone}}") &&
+    autoDormCheckPage.includes("auto-dorm-check-detail-card") &&
+    autoDormCheckPage.includes("目标时间") &&
+    autoDormCheckPage.includes("{{targetTimeLabel}}") &&
+    autoDormCheckScript.includes("status.plannedCheckInAt") &&
+    autoDormCheckScript.includes("status.plannedCheckInDate") &&
+    autoDormCheckScript.includes("scheduleChinaDayRefresh") &&
+    autoDormCheckPage.includes("今晚打卡地点") &&
+    autoDormCheckPage.includes("再手动完成一次正常打卡") &&
+    autoDormCheckPage.includes('bindchange="onEnabledChange"') &&
+    autoDormCheckService.includes('const ROOT = "/auto-dorm-check"') &&
+    autoDormCheckService.includes('method: "PUT"'),
+  "自动查寝页面必须读取服务端状态并持久化学生个人开关",
 );
 
 console.log("Profile identity card checks passed.");
