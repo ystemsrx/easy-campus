@@ -58,6 +58,8 @@ assert.doesNotMatch(
 );
 assert.match(controller, /result\.reviewAccess/);
 assert.match(controller, /publishCourseAssistantReview\(/);
+assert.match(controller, /positive: \[[^\]]*"任务少"/s);
+assert.match(controller, /negative: \[[^\]]*"任务多"/s);
 assert.match(controller, /function reviewContentLength\(value: string\)/);
 assert.match(controller, /reviewContentLength\(content\) >= 8/);
 assert.match(controller, /review\.keywords\.slice\(0, 3\)/);

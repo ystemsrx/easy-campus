@@ -85,9 +85,9 @@ interface CatalogCacheEntry {
 }
 
 const DEFAULT_KEYWORDS: CourseAssistantKeywordGroups = {
-  positive: ["讲得好", "性格好", "不考勤", "作业少/无", "管理松"],
+  positive: ["讲得好", "性格好", "不考勤", "作业少/无", "任务少", "管理松"],
   neutral: ["随机考勤", "有作业", "会点人", "偶尔忙"],
-  negative: ["事多", "作业多", "有汇报", "管理严", "性格差"],
+  negative: ["事多", "作业多", "任务多", "有汇报", "管理严", "性格差"],
 };
 const STAR_HINTS = [
   "",
