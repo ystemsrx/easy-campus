@@ -35,9 +35,8 @@ assert(
 assert(
   profileTemplate.includes(">个性化</text>") &&
     profileTemplate.includes('bindtap="openPersonalizationSettings"') &&
-    profileScript.includes(
-      'void navigateTo("/features/pages/personalization/index")',
-    ) &&
+    profileScript.includes("this.openProfileRoute(") &&
+    profileScript.includes('"/features/pages/personalization/index",') &&
     !profileTemplate.includes('class="appearance-control"') &&
     !profileTemplate.includes('bindchange="onReducedMotionChange"') &&
     !profileTemplate.includes('bindchange="onHapticsChange"'),

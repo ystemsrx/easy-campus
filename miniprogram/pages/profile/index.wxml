@@ -41,7 +41,7 @@
 
       <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
       <view class="settings-card card stagger-item">
-        <view class="setting-row setting-row--action pressable" bindtap="openCourseAssistant" hover-class="setting-row--pressed" aria-role="button" aria-label="打开选课助手">
+        <view class="setting-row setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
           <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
           <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
@@ -49,15 +49,15 @@
 
       <view class="section-header"><view><text class="section-title">设置</text></view></view>
       <view class="settings-card card stagger-item">
-        <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openPetSetup" hover-class="setting-row--pressed" aria-role="button" aria-label="设置校园伙伴">
+        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'pet' ? 'setting-row--pressed' : ''}}" bindtap="openPetSetup" aria-role="button" aria-label="设置校园伙伴">
           <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
           <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
-        <view class="setting-row setting-row--divided setting-row--action pressable" bindtap="openGradeDisplaySettings" hover-class="setting-row--pressed" aria-role="button" aria-label="打开成绩展示设置">
+        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'grades' ? 'setting-row--pressed' : ''}}" bindtap="openGradeDisplaySettings" aria-role="button" aria-label="打开成绩展示设置">
           <view class="setting-copy"><text class="setting-title">成绩展示设置</text><text class="setting-caption">主页与成绩列表</text></view>
           <view class="grade-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
-        <view class="setting-row setting-row--action pressable" bindtap="openPersonalizationSettings" hover-class="setting-row--pressed" aria-role="button" aria-label="打开个性化设置">
+        <view class="setting-row setting-row--action {{openingSetting === 'personalization' ? 'setting-row--pressed' : ''}}" bindtap="openPersonalizationSettings" aria-role="button" aria-label="打开个性化设置">
           <view class="setting-copy"><text class="setting-title">个性化</text><text class="setting-caption">外观与交互</text></view>
           <view class="personalization-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
@@ -65,11 +65,11 @@
 
       <view class="section-header"><view><text class="section-title">协议与隐私</text></view></view>
       <view class="settings-card card stagger-item">
-        <view class="setting-row setting-row--divided setting-row--action pressable" data-document="terms" bindtap="openLegalDocument" hover-class="setting-row--pressed" aria-role="link" aria-label="查看用户协议">
+        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'terms' ? 'setting-row--pressed' : ''}}" data-document="terms" bindtap="openLegalDocument" aria-role="link" aria-label="查看用户协议">
           <view class="setting-copy"><text class="setting-title">用户协议</text><text class="setting-caption">服务规则与使用约定</text></view>
           <view class="legal-setting-value"><text>查看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>
-        <view class="setting-row setting-row--action pressable" data-document="privacy" bindtap="openLegalDocument" hover-class="setting-row--pressed" aria-role="link" aria-label="查看隐私政策">
+        <view class="setting-row setting-row--action {{openingSetting === 'privacy' ? 'setting-row--pressed' : ''}}" data-document="privacy" bindtap="openLegalDocument" aria-role="link" aria-label="查看隐私政策">
           <view class="setting-copy"><text class="setting-title">隐私政策</text><text class="setting-caption">个人信息处理与权利</text></view>
           <view class="legal-setting-value"><text>查看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
         </view>

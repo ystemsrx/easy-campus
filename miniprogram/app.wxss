@@ -129,6 +129,13 @@ page {
 .stagger-3 { animation-delay: 140ms; }
 .stagger-4 { animation-delay: 190ms; }
 
+.page--quick-entry .page-enter { animation-duration: 180ms; }
+.page--quick-entry .stagger-item { animation-duration: 220ms; }
+.page--quick-entry .stagger-1 { animation-delay: 20ms; }
+.page--quick-entry .stagger-2 { animation-delay: 50ms; }
+.page--quick-entry .stagger-3 { animation-delay: 80ms; }
+.page--quick-entry .stagger-4 { animation-delay: 110ms; }
+
 .motion-reduced .page-enter,
 .motion-reduced .stagger-item,
 .motion-reduced .inline-error,

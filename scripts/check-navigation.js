@@ -10,6 +10,35 @@ const navigationPath = path.join(
   "navigation.ts",
 );
 const navigationSource = fs.readFileSync(navigationPath, "utf8");
+const profileSource = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "pages", "profile", "index.ts"),
+  "utf8",
+);
+const profileTemplate = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxml"),
+  "utf8",
+);
+const profileStyles = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxss"),
+  "utf8",
+);
+const appStyles = fs.readFileSync(
+  path.join(projectRoot, "miniprogram", "app.wxss"),
+  "utf8",
+);
+const quickEntryTemplates = [
+  ["选课助手", "features/pages/course-assistant/index.wxml"],
+  ["校园伙伴", "features/pages/pet-setup/index.wxml"],
+  ["成绩展示设置", "features/pages/grade-settings/index.wxml"],
+  ["个性化", "features/pages/personalization/index.wxml"],
+  ["协议与隐私", "pages/legal/index.wxml"],
+].map(([label, relativePath]) => ({
+  label,
+  source: fs.readFileSync(
+    path.join(projectRoot, "miniprogram", relativePath),
+    "utf8",
+  ),
+}));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -77,6 +106,41 @@ async function main() {
     directNavigationFiles.length === 0,
     `普通页面必须统一使用防重复导航：${directNavigationFiles.join(", ")}`,
   );
+  assert(
+    !navigationSource.includes("ORDINARY_NAVIGATION_TIMEOUT_MS"),
+    "子包冷加载期间不得用短计时器提前释放导航锁并重复发起路由",
+  );
+
+  const pressedSettingRule =
+    profileStyles.match(/\.setting-row--pressed\s*\{[^}]*\}/s)?.[0] || "";
+  assert(
+    !profileTemplate.includes('hover-class="setting-row--pressed"') &&
+      (profileTemplate.match(/openingSetting ===/g) || []).length === 6 &&
+      /openProfileRoute\(key: ProfileSettingKey, url: string\)[\s\S]*?if \(this\.data\.openingSetting\) return;[\s\S]*?this\.setData\(\{ openingSetting: key \}, \(\) => \{[\s\S]*?navigateTo\(url\)\.then/.test(
+        profileSource,
+      ) &&
+      pressedSettingRule.includes(
+        "background-color: var(--color-bg-subtle);",
+      ) &&
+      !pressedSettingRule.includes("transform") &&
+      !pressedSettingRule.includes("transition"),
+    "我的页面入口必须只在真实 tap 后稳定置色，再在渲染完成后发起导航",
+  );
+  assert(
+    quickEntryTemplates.every(({ source }) =>
+      source.includes("page page--quick-entry"),
+    ) &&
+      appStyles.includes(
+        ".page--quick-entry .page-enter { animation-duration: 180ms; }",
+      ) &&
+      appStyles.includes(
+        ".page--quick-entry .stagger-item { animation-duration: 220ms; }",
+      ),
+    `我的页面关联子页必须使用快速入场：${quickEntryTemplates
+      .filter(({ source }) => !source.includes("page page--quick-entry"))
+      .map(({ label }) => label)
+      .join(", ")}`,
+  );
 
   {
     const attempts = [];
@@ -97,6 +161,13 @@ async function main() {
     );
     attempts[0].success();
     assert(await first, "普通页面导航成功后必须正确结束请求");
+    const next = navigation.navigateTo("/features/pages/exams/index");
+    assert(
+      attempts.length === 2,
+      "导航成功后必须立即解锁，不能继续吞掉新页面上的有效点击",
+    );
+    attempts[1].success();
+    assert(await next, "解锁后的下一次导航必须正常完成");
   }
 
   {

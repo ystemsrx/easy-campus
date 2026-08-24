@@ -37,6 +37,14 @@ function enrollmentDateLabel(value?: string): string {
   return /^(\d{4}-\d{2}-\d{2})/.exec((value || "").trim())?.[1] || "";
 }
 
+type ProfileSettingKey =
+  | "course-assistant"
+  | "pet"
+  | "grades"
+  | "personalization"
+  | "terms"
+  | "privacy";
+
 const INITIAL_PROFILE_PREFERENCES = loadPreferences();
 const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
   INITIAL_PROFILE_PREFERENCES,
@@ -58,6 +66,7 @@ Page({
     appName: APP_NAME,
     loading: false,
     loggingOut: false,
+    openingSetting: "" as ProfileSettingKey | "",
     authenticationExitClass: "",
     errorMessage: "",
     userName: "同学",
@@ -109,7 +118,11 @@ Page({
       });
     }
     activeProfileSessionKey = sessionKey;
-    this.setData({ loggingOut: false, authenticationExitClass: "" });
+    this.setData({
+      loggingOut: false,
+      openingSetting: "",
+      authenticationExitClass: "",
+    });
     this.applyAppearance();
     this.loadPet(account);
     this.syncTabBarAppearance();
@@ -184,29 +197,43 @@ Page({
     haptic("light");
     void this.loadUser(true);
   },
-  openCourseAssistant() {
+  openProfileRoute(key: ProfileSettingKey, url: string) {
+    if (this.data.openingSetting) return;
     haptic("light");
-    void navigateTo("/features/pages/course-assistant/index");
+    this.setData({ openingSetting: key }, () => {
+      void navigateTo(url).then((opened) => {
+        if (opened || this.data.openingSetting !== key) return;
+        this.setData({ openingSetting: "" });
+      });
+    });
+  },
+  openCourseAssistant() {
+    this.openProfileRoute(
+      "course-assistant",
+      "/features/pages/course-assistant/index",
+    );
   },
   openPetSetup() {
-    haptic("light");
-    void navigateTo("/features/pages/pet-setup/index?source=profile");
+    this.openProfileRoute(
+      "pet",
+      "/features/pages/pet-setup/index?source=profile",
+    );
   },
   openGradeDisplaySettings() {
-    haptic("light");
-    void navigateTo("/features/pages/grade-settings/index");
+    this.openProfileRoute("grades", "/features/pages/grade-settings/index");
   },
   openPersonalizationSettings() {
-    haptic("light");
-    void navigateTo("/features/pages/personalization/index");
+    this.openProfileRoute(
+      "personalization",
+      "/features/pages/personalization/index",
+    );
   },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =
       String(event.currentTarget.dataset.document) === "privacy"
         ? "privacy"
         : "terms";
-    haptic("light");
-    void navigateTo(`/pages/legal/index?document=${document}`);
+    this.openProfileRoute(document, `/pages/legal/index?document=${document}`);
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
     clearAuthenticationExitTimer();

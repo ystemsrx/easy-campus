@@ -14,25 +14,10 @@ interface SkylineNavigateToOptions extends WechatMiniprogram.NavigateToOption {
   routeOptions?: Record<string, unknown>;
 }
 
-const ORDINARY_NAVIGATION_LOCK_MS = 420;
-const ORDINARY_NAVIGATION_TIMEOUT_MS = 2000;
-
 let ordinaryNavigationOpening = false;
-let ordinaryNavigationUnlockTimer: ReturnType<typeof setTimeout> | undefined;
 
-function releaseOrdinaryNavigation(delay = 0): void {
-  if (ordinaryNavigationUnlockTimer !== undefined) {
-    clearTimeout(ordinaryNavigationUnlockTimer);
-    ordinaryNavigationUnlockTimer = undefined;
-  }
-  if (delay <= 0) {
-    ordinaryNavigationOpening = false;
-    return;
-  }
-  ordinaryNavigationUnlockTimer = setTimeout(() => {
-    ordinaryNavigationOpening = false;
-    ordinaryNavigationUnlockTimer = undefined;
-  }, delay);
+function releaseOrdinaryNavigation(): void {
+  ordinaryNavigationOpening = false;
 }
 
 function isUnsupportedRouteType(error: unknown): boolean {
@@ -53,16 +38,15 @@ export function navigateTo(
   }
 
   ordinaryNavigationOpening = true;
+  // 子包冷加载可能持续较久，只由平台回调解锁，避免超时后重复发起同一路由。
   return new Promise((resolve) => {
     let settled = false;
     let fallbackAttempted = false;
-    let watchdog: ReturnType<typeof setTimeout> | undefined;
 
     const finish = (opened: boolean) => {
       if (settled) return;
       settled = true;
-      if (watchdog !== undefined) clearTimeout(watchdog);
-      releaseOrdinaryNavigation(opened ? ORDINARY_NAVIGATION_LOCK_MS : 0);
+      releaseOrdinaryNavigation();
       resolve(opened);
     };
 
@@ -87,7 +71,6 @@ export function navigateTo(
       wx.navigateTo(options);
     };
 
-    watchdog = setTimeout(() => finish(false), ORDINARY_NAVIGATION_TIMEOUT_MS);
     try {
       open(Boolean(routeType));
     } catch (error) {

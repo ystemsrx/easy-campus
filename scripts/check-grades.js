@@ -602,9 +602,8 @@ assert(
     appTypes.includes("showGradesBelow60: true,") &&
     preferencesStore.includes("typeof stored.showGradesBelow60") &&
     profileTemplate.includes("成绩展示设置") &&
-    profileScript.includes(
-      'void navigateTo("/features/pages/grade-settings/index")',
-    ) &&
+    profileScript.includes("this.openProfileRoute(") &&
+    profileScript.includes('"/features/pages/grade-settings/index"') &&
     !profileTemplate.includes('bindchange="onShowGradesOnHomeChange"') &&
     gradeSettingsTemplate.includes('checked="{{showGradesOnHome}}"') &&
     gradeSettingsTemplate.includes('checked="{{showGradesBelow60}}"') &&
