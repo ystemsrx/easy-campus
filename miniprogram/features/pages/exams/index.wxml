@@ -29,19 +29,21 @@
 
       <view class="result-heading"><text class="result-title">考试日程</text></view>
       <loading-view wx:if="{{loading}}" label="正在读取考试安排"></loading-view>
-      <view wx:elif="{{examItems.length}}" class="exam-list">
-        <view wx:for="{{examItems}}" wx:key="id" class="exam-card card pressable stagger-item" style="animation-delay: {{index < 8 ? index * 45 : 0}}ms;" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">
-          <view class="exam-countdown exam-countdown--{{item.countdownTone}}">
-            <view wx:if="{{item.countdownTone === 'current'}}" class="exam-countdown-current" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
-            <text wx:else class="exam-countdown-value tnum">{{item.countdownLabel}}</text>
+      <view wx:elif="{{examItems.length}}" class="exam-list-viewport">
+        <view class="exam-list {{examListSlideClass}}">
+          <view wx:for="{{examItems}}" wx:key="id" class="exam-card card pressable" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">
+            <view class="exam-countdown exam-countdown--{{item.countdownTone}}">
+              <view wx:if="{{item.countdownTone === 'current'}}" class="exam-countdown-current" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
+              <text wx:else class="exam-countdown-value tnum">{{item.countdownLabel}}</text>
+            </view>
+            <view class="exam-copy">
+              <text class="exam-name" overflow="ellipsis" max-lines="2">{{item.course.name}}<text wx:if="{{item.retakeMarker}}" class="exam-course-marker">（重修）</text><text wx:if="{{item.makeupDeferredMarker}}" class="exam-course-marker">（补缓考）</text></text>
+              <view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.locationLabel}}</text></view>
+            </view>
+            <view class="exam-schedule"><text class="exam-date-label tnum">{{item.dateLabel}}</text><text class="exam-time-label tnum">{{item.timeLabel}}</text></view>
           </view>
-          <view class="exam-copy">
-            <text class="exam-name" overflow="ellipsis" max-lines="2">{{item.course.name}}<text wx:if="{{item.retakeMarker}}" class="exam-course-marker">（重修）</text><text wx:if="{{item.makeupDeferredMarker}}" class="exam-course-marker">（补缓考）</text></text>
-            <view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.locationLabel}}</text></view>
-          </view>
-          <view class="exam-schedule"><text class="exam-date-label tnum">{{item.dateLabel}}</text><text class="exam-time-label tnum">{{item.timeLabel}}</text></view>
+          <view wx:if="{{loadingMore}}" class="exam-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="exam-end">以上是全部考试安排</text>
         </view>
-        <view wx:if="{{loadingMore}}" class="exam-load-more"><text>正在载入更多…</text></view><text wx:elif="{{page >= totalPages}}" class="exam-end">以上是全部考试安排</text>
       </view>
       <empty-state wx:elif="{{!errorMessage}}" icon="clipboard-check" icon-tone="rose" title="本学期暂无考试" description="可切换其他学期查看"></empty-state>
       <empty-state wx:else icon="circle-alert" icon-tone="danger" title="考试信息加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="onRefresh"></empty-state>

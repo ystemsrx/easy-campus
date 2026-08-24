@@ -82,9 +82,21 @@ interface ExamsRefreshOutcome {
   errorMessage: string;
 }
 
+type ExamListSlideDirection = "from-left" | "from-right" | "";
+
 const PAGE_SIZE = 50;
 let examsSequence = 0;
 let hydratedExamsAccount = "";
+let pendingExamListSlideDirection: ExamListSlideDirection = "";
+let examListSlideSequence = 0;
+
+function nextExamListSlideClass(
+  direction: Exclude<ExamListSlideDirection, "">,
+): string {
+  examListSlideSequence += 1;
+  const phase = examListSlideSequence % 2 ? "a" : "b";
+  return `exam-list--${direction}-${phase}`;
+}
 
 function examsRefreshFlightKey(lease: SessionLease): string {
   return `exams:${sessionLeaseKey(lease)}`;
@@ -214,6 +226,7 @@ Page({
     page: 1,
     totalPages: 0,
     total: 0,
+    examListSlideClass: "",
     filterLabel: "最新学期",
     selectedExamVisible: false,
     selectedExamTitle: "考试详情",
@@ -224,6 +237,8 @@ Page({
   },
   onLoad() {
     hydratedExamsAccount = "";
+    pendingExamListSlideDirection = "";
+    examListSlideSequence = 0;
     examsSequence += 1;
     const refreshPageToken = createRefreshPageToken();
     markRefreshPageVisible(refreshPageToken);
@@ -265,6 +280,7 @@ Page({
         page: 1,
         totalPages: 0,
         total: 0,
+        examListSlideClass: "",
         filterLabel: "最新学期",
         selectedExamVisible: false,
         selectedExamTitle: "考试详情",
@@ -339,6 +355,16 @@ Page({
   applyExamsData(data: ExamsData) {
     const semesterId = data.semester?.id || "";
     const examItems = data.items.map(toExamView);
+    let examListSlideClass = this.data.examListSlideClass;
+    if (
+      pendingExamListSlideDirection &&
+      semesterId === this.data.semesterId
+    ) {
+      examListSlideClass = nextExamListSlideClass(
+        pendingExamListSlideDirection,
+      );
+      pendingExamListSlideDirection = "";
+    }
     this.setData({
       examItems,
       semesters: buildSemesterChips(data.semesters),
@@ -347,6 +373,7 @@ Page({
       page: data.pagination.page,
       totalPages: data.pagination.totalPages,
       total: data.pagination.total,
+      examListSlideClass,
       loaded: true,
       loading: false,
       filterLabel: data.semester
@@ -489,6 +516,16 @@ Page({
     if (!semesterId || semesterId === this.data.semesterId) return;
     const semester = this.data.semesters.find((item) => item.id === semesterId);
     if (!semester) return;
+    const currentIndex = this.data.semesters.findIndex(
+      (item) => item.id === this.data.semesterId,
+    );
+    const targetIndex = this.data.semesters.findIndex(
+      (item) => item.id === semesterId,
+    );
+    pendingExamListSlideDirection =
+      currentIndex >= 0 && targetIndex < currentIndex
+        ? "from-left"
+        : "from-right";
     haptic("medium");
     this.setData({
       semesterId,
@@ -496,10 +533,7 @@ Page({
     });
     if (!this.hydrateExams(semesterId)) {
       this.setData({
-        examItems: [],
-        statusSummary: { total: 0, pending: 0, past: 0 },
-        loaded: false,
-        loading: true,
+        loading: false,
         errorMessage: "",
       });
     }

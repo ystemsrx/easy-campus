@@ -341,6 +341,36 @@ assert(
     examsPage.includes("exam-schedule"),
   "考试条目必须使用左侧倒计时和右侧时间布局",
 );
+const selectSemesterSource = examsScript.slice(
+  examsScript.indexOf("selectSemesterQuick("),
+  examsScript.indexOf(
+    "openExam(",
+    examsScript.indexOf("selectSemesterQuick("),
+  ),
+);
+const examListAnimationSource = examsStyles.slice(
+  examsStyles.indexOf("@keyframes exam-list-from-left-a"),
+);
+assert(
+  examsPage.includes('class="exam-list-viewport"') &&
+    examsPage.includes('class="exam-list {{examListSlideClass}}"') &&
+    examsPage.includes('class="exam-card card pressable"') &&
+    !examsPage.includes("exam-card-motion") &&
+    examsStyles.includes("overflow: hidden") &&
+    examsStyles.includes("exam-list-from-left-a") &&
+    examsStyles.includes("exam-list-from-right-a") &&
+    examListAnimationSource.includes("translateX(-64rpx)") &&
+    examListAnimationSource.includes("translateX(64rpx)") &&
+    !examListAnimationSource.includes("opacity") &&
+    examsScript.includes(
+      'type ExamListSlideDirection = "from-left" | "from-right" | ""',
+    ) &&
+    examsScript.includes("nextExamListSlideClass") &&
+    !selectSemesterSource.includes("examItems: []") &&
+    !selectSemesterSource.includes("loaded: false") &&
+    !selectSemesterSource.includes("loading: true"),
+  "切换考试学期必须整组左右滑入，不得保留逐项动效、改变透明度、清空列表或替换为骨架加载态",
+);
 assert(
   examsStyles.includes("width: 104rpx; height: 104rpx") &&
     examsStyles.includes("exam-countdown--urgent") &&

@@ -25,8 +25,17 @@
 
 .result-heading { display: flex; flex-direction: row; align-items: center; margin: 48rpx 2rpx 22rpx; }
 .result-title { display: block; color: var(--color-text); font-size: 38rpx; font-weight: 750; }
+.exam-list-viewport { width: 100%; overflow: hidden; }
 .exam-list { display: flex; flex-direction: column; gap: 18rpx; }
-.exam-card { display: flex; flex-direction: row; align-items: center; gap: 18rpx; min-height: 104rpx; padding: 24rpx; }
+.exam-list--from-left-a,
+.exam-list--from-left-b,
+.exam-list--from-right-a,
+.exam-list--from-right-b { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); animation-fill-mode: both; }
+.exam-list--from-left-a { animation-name: exam-list-from-left-a; }
+.exam-list--from-left-b { animation-name: exam-list-from-left-b; }
+.exam-list--from-right-a { animation-name: exam-list-from-right-a; }
+.exam-list--from-right-b { animation-name: exam-list-from-right-b; }
+.exam-card { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 18rpx; width: 100%; min-height: 104rpx; padding: 24rpx; }
 .exam-countdown { box-sizing: border-box; display: flex; flex: none; align-items: center; justify-content: center; width: 104rpx; height: 104rpx; border-radius: 32rpx; color: #a55357; background: #f7e9e8; text-align: center; }
 .exam-countdown--current,
 .exam-countdown--urgent { color: #a55357; background: #f7e9e8; }
@@ -65,5 +74,10 @@
 .theme-dark .nav-refresh,
 .theme-dark .semester-chip { background: #2d2a24; }
 .motion-reduced .nav-refresh-spinner { animation-name: none; }
+.motion-reduced .exam-list { animation-duration: 1ms; }
 
 @keyframes exam-refresh-spin { to { transform: rotate(360deg); } }
+@keyframes exam-list-from-left-a { from { transform: translateX(-64rpx); } to { transform: translateX(0); } }
+@keyframes exam-list-from-left-b { from { transform: translateX(-64rpx); } to { transform: translateX(0); } }
+@keyframes exam-list-from-right-a { from { transform: translateX(64rpx); } to { transform: translateX(0); } }
+@keyframes exam-list-from-right-b { from { transform: translateX(64rpx); } to { transform: translateX(0); } }
