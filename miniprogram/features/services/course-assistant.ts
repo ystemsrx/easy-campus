@@ -5,9 +5,9 @@ import type {
   CourseAssistantMine,
   CourseAssistantReview,
   CourseAssistantReviewInput,
-} from "../types/api";
-import { buildQuery, type QueryValue } from "../utils/query";
-import { apiRequest } from "./request";
+} from "../../types/api";
+import { buildQuery, type QueryValue } from "../../utils/query";
+import { apiRequest } from "../../services/request";
 
 const ROOT = "/course-assistant";
 

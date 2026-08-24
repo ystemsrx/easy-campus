@@ -1,6 +1,6 @@
 import { ApiClientError, getErrorMessage } from "../../../services/request";
 import { downloadCalendarImage, getCalendar } from "../../../services/teaching";
-import { getCachedCalendarImage } from "../../../store/calendar";
+import { getCachedCalendarImage } from "../../store/calendar";
 import type {
   CalendarAcademicYearOption,
   CalendarData,
@@ -8,7 +8,7 @@ import type {
 import { resolveAppearance } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
-import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -23,7 +23,7 @@ import {
   markRefreshPageVisible,
   startRefreshFlight,
   type RefreshFlight,
-} from "../../../utils/refresh-flight";
+} from "../../utils/refresh-flight";
 
 interface YearOption {
   value: number;

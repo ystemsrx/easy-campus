@@ -46,14 +46,14 @@ import {
   markRefreshPageVisible,
   startRefreshFlight,
   type RefreshFlight,
-} from "../../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+} from "../../utils/refresh-flight";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import { numberedAcademicSemesterLabel } from "../../../utils/semester";
 import {
   canActivateTap,
   movementExceedsTapThreshold,
   type TapPoint,
-} from "../../../utils/tap-guard";
+} from "../../utils/tap-guard";
 
 interface GradeComponentPreview {
   name: string;

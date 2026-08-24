@@ -1,4 +1,4 @@
-import type { CalendarData } from "../types/api";
+import type { CalendarData } from "../../types/api";
 
 const CACHE_KEY = "easy-swu:calendar-image:latest";
 const LEGACY_CACHE_KEY = /^easy-swu:calendar-image:\d+:\d+$/;

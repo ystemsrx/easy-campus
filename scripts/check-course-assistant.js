@@ -79,7 +79,7 @@ assert.doesNotMatch(
   "authorization must remain server-owned",
 );
 
-const service = read("miniprogram/services/course-assistant.ts");
+const service = read("miniprogram/features/services/course-assistant.ts");
 assert.match(service, /const ROOT = "\/course-assistant"/);
 assert.match(service, /method: "POST", data: \{\}, retry: false/);
 assert.doesNotMatch(service, /\/status|\/authorize|CourseAssistantStatus/);
@@ -152,7 +152,9 @@ assert.match(
 );
 assert.doesNotMatch(detailController, /教师信息待补充/);
 
-const courseAssistantFormat = read("miniprogram/utils/course-assistant.ts");
+const courseAssistantFormat = read(
+  "miniprogram/features/utils/course-assistant.ts",
+);
 assert.match(courseAssistantFormat, /teachers\.length <= 3/);
 assert.match(courseAssistantFormat, /"多名教师"/);
 assert.match(courseAssistantFormat, /formatReviewTeacherNames/);

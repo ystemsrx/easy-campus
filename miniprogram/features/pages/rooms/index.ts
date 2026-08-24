@@ -14,11 +14,11 @@ import { ensureAuthenticated } from "../../../utils/navigation";
 import {
   formatRoomResultDate,
   resolveInitialRoomDate,
-} from "../../../utils/room-date";
+} from "../../utils/room-date";
 import {
   groupRoomsByFloor,
   type FloorRoomGroup,
-} from "../../../utils/room-floor";
+} from "../../utils/room-floor";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,

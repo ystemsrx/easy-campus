@@ -123,6 +123,27 @@ for (const file of allFiles.filter((candidate) =>
 }
 
 const featureRoot = path.join(root, "features");
+const featureOnlyModules = [
+  ["services", "course-assistant.ts"],
+  ["services", "utilities.ts"],
+  ["store", "calendar.ts"],
+  ["store", "course-assistant.ts"],
+  ["utils", "course-assistant.ts"],
+  ["utils", "refresh-feedback.ts"],
+  ["utils", "refresh-flight.ts"],
+  ["utils", "room-date.ts"],
+  ["utils", "room-floor.ts"],
+  ["utils", "tap-guard.ts"],
+];
+for (const segments of featureOnlyModules) {
+  const relativePath = segments.join("/");
+  if (
+    fs.existsSync(path.join(root, ...segments)) ||
+    !fs.existsSync(path.join(featureRoot, ...segments))
+  ) {
+    failures.push(`分包专用模块必须位于 features：${relativePath}`);
+  }
+}
 const mainFiles = allFiles.filter(
   (file) =>
     file !== featureRoot && !file.startsWith(`${featureRoot}${path.sep}`),

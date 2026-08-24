@@ -7,6 +7,7 @@ function loadCalendarStore() {
     __dirname,
     "..",
     "miniprogram",
+    "features",
     "store",
     "calendar.ts",
   );

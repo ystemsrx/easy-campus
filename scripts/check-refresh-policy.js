@@ -123,7 +123,11 @@ assert(
 );
 
 async function checkRefreshFlights() {
-  const refreshFlightSource = source("utils", "refresh-flight.ts");
+  const refreshFlightSource = source(
+    "features",
+    "utils",
+    "refresh-flight.ts",
+  );
   const refreshFlightOutput = ts.transpileModule(refreshFlightSource, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,

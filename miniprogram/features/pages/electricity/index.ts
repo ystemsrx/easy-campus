@@ -3,7 +3,7 @@ import {
   getElectricityAccount,
   getElectricityBuildings,
   queryElectricity,
-} from "../../../services/utilities";
+} from "../../services/utilities";
 import {
   claimAutomaticRefresh,
   isCacheStale,
@@ -39,8 +39,8 @@ import {
   markRefreshPageVisible,
   startRefreshFlight,
   type RefreshFlight,
-} from "../../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+} from "../../utils/refresh-flight";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 
 interface ElectricityView {
   billedElectricityLabel: string;

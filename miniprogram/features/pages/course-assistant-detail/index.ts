@@ -1,12 +1,12 @@
 import {
   getCourseAssistantCourse,
   toggleCourseAssistantReviewLike,
-} from "../../../services/course-assistant";
+} from "../../services/course-assistant";
 import { getErrorMessage } from "../../../services/request";
 import {
   loadCourseAssistantFavorites,
   toggleCourseAssistantFavorite,
-} from "../../../store/course-assistant";
+} from "../../store/course-assistant";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -24,7 +24,7 @@ import {
 import {
   formatCourseTeacherNames,
   formatReviewTeacherNames,
-} from "../../../utils/course-assistant";
+} from "../../utils/course-assistant";
 import { formatDateTime } from "../../../utils/date";
 import { formatCredits } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";

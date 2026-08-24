@@ -37,8 +37,8 @@ import {
   markRefreshPageVisible,
   startRefreshFlight,
   type RefreshFlight,
-} from "../../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../../utils/refresh-feedback";
+} from "../../utils/refresh-flight";
+import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   examBatchLabel,
   examCountdown,

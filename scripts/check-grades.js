@@ -107,7 +107,14 @@ assert(
 );
 
 const tapGuardSource = fs.readFileSync(
-  path.resolve(__dirname, "..", "miniprogram", "utils", "tap-guard.ts"),
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "features",
+    "utils",
+    "tap-guard.ts",
+  ),
   "utf8",
 );
 const tapGuardOutput = ts.transpileModule(tapGuardSource, {

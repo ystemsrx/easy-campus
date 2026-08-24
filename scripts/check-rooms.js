@@ -54,8 +54,10 @@ function loadTypeScriptModule(relativePath) {
 }
 
 const { resolveInitialRoomDate, formatRoomResultDate } =
-  loadTypeScriptModule("utils/room-date.ts");
-const { groupRoomsByFloor } = loadTypeScriptModule("utils/room-floor.ts");
+  loadTypeScriptModule("features/utils/room-date.ts");
+const { groupRoomsByFloor } = loadTypeScriptModule(
+  "features/utils/room-floor.ts",
+);
 
 assert(
   !template.includes("refresher-") &&

@@ -100,10 +100,10 @@ const stubs = {
       return true;
     },
   },
-  "../../../utils/refresh-feedback": {
+  "../../utils/refresh-feedback": {
     showRefreshConfirmation: () => undefined,
   },
-  "../../../utils/refresh-flight": {
+  "../../utils/refresh-flight": {
     createRefreshPageToken: () => 1,
     findRefreshFlight: () => null,
     isRefreshPageVisible: () => true,
