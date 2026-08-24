@@ -412,7 +412,7 @@ if (
   !gradesTemplate.includes('class="grade-card card pressable"') ||
   gradesTemplate.includes('class="grade-card card pressable stagger-item"') ||
   !gradesScript.includes("let gradeRenderBatch = 0;") ||
-  !gradesScript.includes("`${gradeRenderBatch}:${course.id}`") ||
+  !gradesScript.includes("`${gradeRenderBatch}:${course.id}:${index}`") ||
   !gradesScript.includes("let gradeListAnimationRequested = true;") ||
   !gradesScript.includes("animateEntries || animatedIds.has(course.id)") ||
   gradesScript.includes("gradeAnimationTimer") ||

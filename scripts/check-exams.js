@@ -229,6 +229,12 @@ const homeStyles = fs.readFileSync(
 );
 
 assert(
+  !apiTypes.includes("classComposition: string[];") &&
+    !examsScript.includes("exam.classComposition") &&
+    examsScript.includes('classLabel: exam.teachingClass || "—"'),
+  "考试数据不得读取只属于课表的 jxbzc 教学班组成",
+);
+assert(
   examsPage.includes('slot="after-left"') &&
     !examsPage.includes("按学期实时查询"),
   "考试页刷新按钮必须紧邻返回按钮且不显示顶部说明",

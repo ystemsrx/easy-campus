@@ -24,15 +24,92 @@ new Function("module", "exports", "require", output)(
 );
 
 const {
+  formatTeachingClassName,
   gradeComponentWidths,
   gradePointRingValue,
+  gradeTimetableSemester,
   highestGradesByCourseName,
   isMakeupOrDeferredGrade,
   isUnsuccessfulGrade,
   latestGradedSemester,
   latestSemesterGrades,
+  timetableTeachingClassName,
   withoutUnsuccessfulGrades,
 } = moduleRecord.exports;
+
+assert(
+  formatTeachingClassName([
+    "2025汉语言文学(师范)01班; 2025汉语言文学（师范）02班",
+    "2025汉语言文学(师范)03班，2025新闻学01班",
+  ]) === "2025汉语言文学(师范)01、02、03班；2025新闻学01班" &&
+    formatTeachingClassName([]) === "",
+  "课表教学班组成必须兼容中英文标点、去重及合并重复班级前后缀",
+);
+const matchingTimetable = {
+  semester: { academicYear: 2025, term: 2 },
+  courses: [
+    {
+      courseName: "数据结构",
+      teachingClass: "不得使用 jxbmc",
+      teachingClassComposition: ["2025软件工程01班;2025软件工程02班"],
+    },
+  ],
+};
+const previousTimetable = {
+  semester: { academicYear: 2025, term: 1 },
+  courses: [
+    {
+      courseName: "数据结构",
+      teachingClass: "不得使用 jxbmc",
+      teachingClassComposition: ["2024软件工程01班；2024软件工程02班"],
+    },
+  ],
+};
+const regularTimetableGrade = {
+  academicYear: "2025-2026",
+  term: 2,
+  courseName: " 数据结构 ",
+  gradeNatureCode: "01",
+  gradeNature: "正常考试",
+  finalScore: 88,
+  gradeRemark: null,
+};
+const makeupTimetableGrade = {
+  ...regularTimetableGrade,
+  gradeNatureCode: "11",
+  gradeNature: "补考",
+};
+assert(
+  timetableTeachingClassName(regularTimetableGrade, matchingTimetable) ===
+    "2025软件工程01、02班" &&
+    timetableTeachingClassName(
+      {
+        ...regularTimetableGrade,
+        gradeNature: "重修",
+      },
+      matchingTimetable,
+    ) === "2025软件工程01、02班" &&
+    timetableTeachingClassName(makeupTimetableGrade, matchingTimetable) ===
+      "" &&
+    timetableTeachingClassName(makeupTimetableGrade, previousTimetable) ===
+      "2024软件工程01、02班" &&
+    timetableTeachingClassName(
+      { ...makeupTimetableGrade, gradeNatureCode: "12", gradeNature: "缓考" },
+      previousTimetable,
+    ) === "2024软件工程01、02班" &&
+    gradeTimetableSemester(makeupTimetableGrade)?.id === "2025-1" &&
+    gradeTimetableSemester({
+      ...makeupTimetableGrade,
+      academicYear: "2025-2026",
+      term: 1,
+    })?.id === "2024-2" &&
+    gradeTimetableSemester({
+      ...makeupTimetableGrade,
+      academicYear: "2025-2026",
+      term: 3,
+    })?.id === "2025-2",
+  "班级分布名称必须按成绩性质从本学期或上一学期课表的同名课程获取",
+);
 
 const formatSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "utils", "format.ts"),
@@ -570,10 +647,16 @@ assert(
   "默认成绩排序不得显式发送 sort=default，以兼容尚未重启的旧服务进程",
 );
 const gradeComponentsPosition = gradeDetailTemplate.indexOf(">成绩组成<");
+const gradeComponentsBlockEndPosition = gradeDetailTemplate.indexOf(
+  "</block>",
+  gradeComponentsPosition,
+);
 const classDistributionPosition = gradeDetailTemplate.indexOf(">班级分布<");
 const gradeInfoPosition = gradeDetailTemplate.indexOf(">课程信息<");
 assert(
   gradeComponentsPosition >= 0 &&
+    gradeComponentsBlockEndPosition > gradeComponentsPosition &&
+    classDistributionPosition > gradeComponentsBlockEndPosition &&
     classDistributionPosition > gradeComponentsPosition &&
     gradeInfoPosition > classDistributionPosition &&
     gradeDetailTemplate.includes(">人数<") &&
@@ -586,10 +669,27 @@ assert(
     ) &&
     gradeDetailScript.includes("const desiredBarWidth =") &&
     gradeDetailScript.includes("const labelInterval =") &&
+    gradeDetailScript.includes("loadTeachingClassName(course)") &&
+    gradeDetailScript.includes("getTimetable({ semester: semesterId })") &&
+    gradeDetailScript.includes("loadTimetableSnapshot") &&
+    gradeDetailScript.includes("timetableTeachingClassName(") &&
+    gradeDetailScript.includes("gradeTimetableSemester(course)") &&
+    gradeDetailScript.includes("void this.loadClassDistribution(course);") &&
+    !gradeDetailScript.includes("if (!isMakeupOrDeferredGrade(course)) {") &&
+    gradeDetailTemplate.includes("{{classDistributionClassName}}") &&
+    gradeDetailTemplate.includes('max-lines="1"') &&
     gradeDetailStyles.includes(".class-y-axis") &&
     gradeDetailStyles.includes(".class-chart-scroll") &&
-    teachingService.includes('`/teaching/grades/class-distribution'),
-  "班级分布必须位于成绩组成与课程信息之间，按人数和真实分数动态绘制且少于十人不展示图表",
+    gradeDetailStyles.includes(".class-distribution-class-name") &&
+    gradeDetailStyles.includes("text-overflow: ellipsis") &&
+    teachingService.includes("`/teaching/grades/class-distribution"),
+  "班级分布必须独立于成绩组成展示在课程信息前，按人数和真实分数动态绘制且少于十人不展示图表",
+);
+assert(
+  gradesPageTemplate.includes('data-key="{{item.renderKey}}"') &&
+    gradesPageScript.includes("item.renderKey === key") &&
+    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}:${index}`"),
+  "同一学期的同名或同教学班成绩必须分别渲染并能打开各自详情",
 );
 assert(
   gradesPageScript.includes(
@@ -629,7 +729,7 @@ assert(
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
     gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
-    gradesStore.includes("const SCHEMA_VERSION = 7;"),
+    gradesStore.includes("const SCHEMA_VERSION = 10;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
 );
 assert(
@@ -698,7 +798,7 @@ assert(
     gradesPageScript.includes(
       "const animateEntries = gradeListAnimationRequested;",
     ) &&
-    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}`") &&
+    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}:${index}`") &&
     gradesPageScript.includes("animateEntries || animatedIds.has(course.id)") &&
     (gradesPageScript.match(/^\s+gradeListAnimationRequested = true;/gm) || [])
       .length === 2 &&

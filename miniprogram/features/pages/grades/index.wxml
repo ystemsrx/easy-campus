@@ -38,7 +38,7 @@
       <loading-view wx:if="{{loading}}" label="正在整理成绩与分项"></loading-view>
       <view wx:elif="{{gradeItems.length}}" class="grade-list">
         <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}" style="animation-delay: {{item.animationDelay}}ms;">
-          <view class="grade-card card pressable" data-id="{{item.id}}" bindtouchstart="onGradeTouchStart" bindtouchmove="onGradeTouchMove" bindtouchend="onGradeTouchEnd" bindtouchcancel="onGradeTouchCancel" bindtap="openGrade" hover-class="pressing">
+          <view class="grade-card card pressable" data-key="{{item.renderKey}}" bindtouchstart="onGradeTouchStart" bindtouchmove="onGradeTouchMove" bindtouchend="onGradeTouchEnd" bindtouchcancel="onGradeTouchCancel" bindtap="openGrade" hover-class="pressing">
             <view class="score-tile score-tile--{{item.scoreTone}} {{item.compactScore ? 'score-tile--compact' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
             <view class="course-copy">
               <text class="course-name" overflow="ellipsis" max-lines="2">{{item.courseName}}</text>

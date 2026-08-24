@@ -573,6 +573,12 @@ Page({
       this.resumeMascotAfterSubmit();
       return;
     }
+    if (!/^\d{15}$/.test(account)) {
+      haptic("heavy");
+      this.showErrorToast("账号或密码错误");
+      this.resumeMascotAfterSubmit();
+      return;
+    }
     if (!this.data.agreementAccepted) {
       haptic("heavy");
       this.showErrorToast("请先同意用户协议和隐私政策。");

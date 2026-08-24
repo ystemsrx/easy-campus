@@ -1,8 +1,15 @@
-import { getGradeClassDistribution } from "../../../services/teaching";
+import {
+  getGradeClassDistribution,
+  getTimetable,
+} from "../../../services/teaching";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
 } from "../../../store/session";
+import {
+  loadTimetableSnapshot,
+  saveTimetableSnapshot,
+} from "../../../store/timetable";
 import type {
   GradeClassDistributionItem,
   GradeCourse,
@@ -12,8 +19,10 @@ import { academicTermLabel } from "../../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
   gradeComponentWidths,
+  gradeTimetableSemester,
   isMakeupOrDeferredGrade,
   isUnsuccessfulGrade,
+  timetableTeachingClassName,
 } from "../../../utils/grades";
 
 interface ComponentView {
@@ -58,6 +67,7 @@ const CLASS_BAR_MAX_WIDTH = 68;
 const CLASS_AXIS_TARGET_SEGMENTS = 4;
 const CLASS_X_AXIS_MAX_LABELS = 8;
 let classDistributionRequestSequence = 0;
+let teachingClassNameRequestSequence = 0;
 
 function scoreProgress(score: number | string | null): number {
   if (typeof score !== "number") return 0;
@@ -120,9 +130,7 @@ function classDistributionChart(
   if (sampleCount < CLASS_DISTRIBUTION_MIN_SAMPLES) return null;
 
   const maximumCount = Math.max(...distribution.map((item) => item.count));
-  const axisStep = niceCountStep(
-    maximumCount / CLASS_AXIS_TARGET_SEGMENTS,
-  );
+  const axisStep = niceCountStep(maximumCount / CLASS_AXIS_TARGET_SEGMENTS);
   const axisMaximum = Math.max(
     axisStep,
     Math.ceil(maximumCount / axisStep) * axisStep,
@@ -149,19 +157,14 @@ function classDistributionChart(
       height: Math.max(3, (item.count / axisMaximum) * 100),
       scoreLabel: classScoreLabel(item.score),
       showScoreLabel:
-        index === 0 ||
-        index === scoreCount - 1 ||
-        index % labelInterval === 0,
+        index === 0 || index === scoreCount - 1 || index % labelInterval === 0,
     })),
     ticks: Array.from({ length: axisSegments + 1 }, (_item, index) => {
       const value = axisMaximum - axisStep * index;
       return { value, label: String(value) };
     }),
     barWidth: Number(barWidth.toFixed(2)),
-    chartWidth: Math.max(
-      CLASS_CHART_VIEWPORT_WIDTH,
-      Math.ceil(occupiedWidth),
-    ),
+    chartWidth: Math.max(CLASS_CHART_VIEWPORT_WIDTH, Math.ceil(occupiedWidth)),
   };
 }
 
@@ -182,14 +185,12 @@ Page({
     components: [] as ComponentView[],
     detailRows: [] as DetailRow[],
     classDistributionStatus: "loading" as
-      | "loading"
-      | "ready"
-      | "insufficient"
-      | "error",
+      "loading" | "ready" | "insufficient" | "error",
     classDistributionBars: [] as ClassDistributionBar[],
     classDistributionAxisTicks: [] as ClassDistributionAxisTick[],
     classDistributionBarWidth: CLASS_BAR_MAX_WIDTH,
     classDistributionChartWidth: CLASS_CHART_VIEWPORT_WIDTH,
+    classDistributionClassName: "",
   },
   onLoad() {
     this.setData(resolveAppearance());
@@ -200,15 +201,15 @@ Page({
       return;
     }
     this.applyCourse(course);
-    if (!isMakeupOrDeferredGrade(course)) {
-      void this.loadClassDistribution(course);
-    }
+    void this.loadClassDistribution(course);
+    void this.loadTeachingClassName(course);
   },
   onShow() {
     this.setData(resolveAppearance());
   },
   onUnload() {
     classDistributionRequestSequence += 1;
+    teachingClassNameRequestSequence += 1;
   },
   applyCourse(course: GradeCourse) {
     const showComponentsSection = !isMakeupOrDeferredGrade(course);
@@ -262,18 +263,59 @@ Page({
       showComponentsSection,
       components,
       detailRows: rows,
+      classDistributionClassName: "",
     });
+  },
+  async loadTeachingClassName(course: GradeCourse) {
+    const targetSemester = gradeTimetableSemester(course);
+    const lease = captureSessionLease();
+    if (!targetSemester || !lease) {
+      this.setData({ classDistributionClassName: "" });
+      return;
+    }
+    const semesterId = targetSemester.id;
+    const sequence = ++teachingClassNameRequestSequence;
+    const cached = [
+      loadTimetableSnapshot(lease.account, semesterId),
+      loadTimetableSnapshot(lease.account),
+    ].find((snapshot) => snapshot?.data.semester.id === semesterId);
+    const cachedName = timetableTeachingClassName(course, cached?.data || null);
+    if (cachedName) {
+      this.setData({ classDistributionClassName: cachedName });
+      return;
+    }
+    try {
+      const result = await getTimetable({ semester: semesterId });
+      if (
+        sequence !== teachingClassNameRequestSequence ||
+        !isSessionLeaseCurrent(lease)
+      ) {
+        return;
+      }
+      saveTimetableSnapshot(lease.account, result.data, {
+        semesterId,
+        serverFetchedAt: result.meta.fetchedAt,
+      });
+      this.setData({
+        classDistributionClassName: timetableTeachingClassName(
+          course,
+          result.data,
+        ),
+      });
+    } catch {
+      if (
+        sequence === teachingClassNameRequestSequence &&
+        isSessionLeaseCurrent(lease)
+      ) {
+        this.setData({ classDistributionClassName: "" });
+      }
+    }
   },
   async loadClassDistribution(course: GradeCourse) {
     const academicYear = gradeAcademicYearStart(course);
     const term = Number(course.term);
     const lease = captureSessionLease();
-    if (
-      !course.id ||
-      !academicYear ||
-      ![1, 2, 3].includes(term) ||
-      !lease
-    ) {
+    if (!course.id || !academicYear || ![1, 2, 3].includes(term) || !lease) {
       this.setData({
         classDistributionStatus: lease ? "insufficient" : "error",
         classDistributionBars: [],

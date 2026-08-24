@@ -178,7 +178,7 @@ function toExamView(exam: Exam): ExamView {
       [exam.location.campus, exam.location.room].filter(Boolean).join(" · ") ||
       "考场待定",
     teachersLabel: exam.teacherNames.join("、") || "—",
-    classLabel: exam.classComposition.join("、") || exam.teachingClass || "—",
+    classLabel: exam.teachingClass || "—",
     creditsLabel:
       exam.course.credits === undefined ? "—" : `${exam.course.credits}`,
     methodLabel: exam.method || "未说明",

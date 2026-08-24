@@ -499,7 +499,7 @@ Page({
     const incoming = data.items.map((course, index) =>
       toGradeView(
         course,
-        `${gradeRenderBatch}:${course.id}`,
+        `${gradeRenderBatch}:${course.id}:${index}`,
         animateEntries || animatedIds.has(course.id),
         index < 8 ? index * 45 : 0,
       ),
@@ -779,13 +779,13 @@ Page({
     gradeTouchStart = null;
     gradeTouchMoved = false;
     if (!canOpen) return;
-    const id = String(event.currentTarget.dataset.id || "");
-    const grade = this.data.gradeItems.find((item) => item.id === id);
+    const key = String(event.currentTarget.dataset.key || "");
+    const grade = this.data.gradeItems.find((item) => item.renderKey === key);
     if (!grade) return;
     haptic("light");
     getApp<IAppOption>().globalData.selectedGrade = grade;
     void navigateTo(
-      `/features/pages/grade-detail/index?id=${encodeURIComponent(id)}`,
+      `/features/pages/grade-detail/index?id=${encodeURIComponent(grade.id)}`,
       "wx://cupertino-modal",
     );
   },

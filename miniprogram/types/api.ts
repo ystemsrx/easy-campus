@@ -620,7 +620,6 @@ export interface Exam {
   method?: string;
   retake?: boolean;
   teachingClass: string;
-  classComposition: string[];
   department: string;
   teacherNames: string[];
   note?: string;

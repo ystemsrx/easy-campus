@@ -63,6 +63,10 @@
 .progress-fill--danger { background: #c2767a; }
 
 .class-distribution-card { padding: 32rpx; }
+.class-distribution-header { min-width: 0; }
+.class-distribution-heading { display: flex; flex: 1; flex-direction: row; align-items: baseline; min-width: 0; white-space: nowrap; }
+.class-distribution-heading .section-title { flex: none; }
+.class-distribution-class-name { flex: 1; min-width: 0; margin-left: 8rpx; overflow: hidden; color: var(--color-text-tertiary); font-size: 19rpx; font-weight: 500; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .class-distribution-state { display: flex; align-items: center; justify-content: center; gap: 14rpx; min-height: 300rpx; color: var(--color-text-tertiary); font-size: 23rpx; }
 .class-distribution-state--retry { flex-direction: column; }
 .class-distribution-state--pressed { opacity: 0.66; }
