@@ -57,10 +57,13 @@ assert(
 );
 
 assert(
-  /\.identity-card--male\s*\{[^}]*background:\s*linear-gradient\(140deg,\s*#f5f9fd,\s*#e9f3fb\)/.test(
+  /\.identity-card--male\s*\{[^}]*background:\s*#e3eff8/.test(
     profileStyles,
   ) &&
-    /\.identity-card--female\s*\{[^}]*background:\s*linear-gradient\(140deg,\s*#faf7fd,\s*#f1ebf8\)/.test(
+    /\.identity-card--female\s*\{[^}]*background:\s*#ece4f5/.test(
+      profileStyles,
+    ) &&
+    !/\.identity-card--(?:male|female)\s*\{[^}]*linear-gradient/.test(
       profileStyles,
     ) &&
     /\.identity-card\s*\{[^}]*color:\s*var\(--identity-ink\)/.test(
@@ -69,7 +72,7 @@ assert(
     !/\.identity-account\s*\{[^}]*color:\s*rgba\(255,\s*255,\s*255/.test(
       profileStyles,
     ),
-  "男女身份卡必须使用非常淡的蓝紫背景，并为浅色卡片保留清晰的深色文字",
+  "男女身份卡必须使用纯色的浅蓝紫背景，并为浅色卡片保留清晰的深色文字",
 );
 
 console.log("Profile identity card checks passed.");

@@ -131,8 +131,8 @@
 .profile-title { display: block; margin-top: 2rpx; color: var(--color-text); font-size: 68rpx; font-weight: 700; line-height: 1.15; }
 
 .identity-card { --identity-ink: #45443f; --identity-secondary: rgba(69, 68, 63, 0.74); --identity-tertiary: rgba(69, 68, 63, 0.58); --identity-faint: rgba(69, 68, 63, 0.45); --identity-blob: rgba(136, 132, 120, 0.08); position: relative; margin-top: 38rpx; padding: 38rpx; overflow: hidden; border-radius: 56rpx; color: var(--identity-ink); background: linear-gradient(140deg, #fbfaf7, #f3f1eb); box-shadow: var(--shadow-pop); }
-.identity-card--male { --identity-ink: #2f485f; --identity-secondary: rgba(47, 72, 95, 0.74); --identity-tertiary: rgba(47, 72, 95, 0.58); --identity-faint: rgba(47, 72, 95, 0.45); --identity-blob: rgba(79, 117, 166, 0.09); background: linear-gradient(140deg, #f5f9fd, #e9f3fb); }
-.identity-card--female { --identity-ink: #51435f; --identity-secondary: rgba(81, 67, 95, 0.74); --identity-tertiary: rgba(81, 67, 95, 0.58); --identity-faint: rgba(81, 67, 95, 0.45); --identity-blob: rgba(126, 94, 158, 0.09); background: linear-gradient(140deg, #faf7fd, #f1ebf8); }
+.identity-card--male { --identity-ink: #2f485f; --identity-secondary: rgba(47, 72, 95, 0.74); --identity-tertiary: rgba(47, 72, 95, 0.58); --identity-faint: rgba(47, 72, 95, 0.45); --identity-blob: rgba(79, 117, 166, 0.09); background: #e3eff8; }
+.identity-card--female { --identity-ink: #51435f; --identity-secondary: rgba(81, 67, 95, 0.74); --identity-tertiary: rgba(81, 67, 95, 0.58); --identity-faint: rgba(81, 67, 95, 0.45); --identity-blob: rgba(126, 94, 158, 0.09); background: #ece4f5; }
 .identity-blob { background: rgba(255, 255, 255, 0.5); }
 .identity-blob--one { top: -92rpx; right: -72rpx; width: 300rpx; height: 270rpx; }
 .identity-blob--two { bottom: -120rpx; left: -60rpx; width: 230rpx; height: 210rpx; background-color: var(--identity-blob); animation-delay: -4s; }
