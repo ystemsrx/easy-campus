@@ -27,7 +27,9 @@ function loadTypeScriptModule(relativePath) {
 }
 
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
-const { renderMarkdown } = loadTypeScriptModule("utils/markdown.ts");
+const { renderMarkdown, renderMarkdownBlocks } = loadTypeScriptModule(
+  "utils/markdown.ts",
+);
 const { sortPublicationsNewestFirst } = loadTypeScriptModule(
   "utils/publications.ts",
 );
@@ -554,6 +556,16 @@ assert(
 );
 
 const darkAnnouncement = renderMarkdown("# 公告\n\n正文", { theme: "dark" });
+const labeledCodeBlocks = renderMarkdownBlocks(
+  "正文\n\n```typescript\nconst ready = true;\n  return ready;\n```\n\n结尾",
+);
+const plainCodeBlocks = renderMarkdownBlocks("```\nplain text\n```");
+const labeledCodeBlock = labeledCodeBlocks.find(
+  (block) => block.type === "code",
+);
+const plainCodeBlock = plainCodeBlocks.find(
+  (block) => block.type === "code",
+);
 const announcementModalStyle =
   /\.announcement-modal \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const announcementPresenter =
@@ -565,6 +577,47 @@ assert(
     darkAnnouncement.includes("color:#ddd5c7") &&
     darkAnnouncement.includes("color:#f7f3e9"),
   "深色模式公告正文和标题必须使用可读的亮色",
+);
+assert(
+  labeledCodeBlocks.map((block) => block.type).join(",") ===
+    "rich,code,rich" &&
+    labeledCodeBlock?.language === "typescript" &&
+    labeledCodeBlock?.code === "const ready = true;\n  return ready;" &&
+    labeledCodeBlock?.lines[1]?.text.startsWith("\u00a0\u00a0") &&
+    labeledCodeBlock?.contentHeightRpx === 122 &&
+    labeledCodeBlock?.compactContentHeightRpx === 102 &&
+    plainCodeBlock?.language === "plaintext" &&
+    homeScript.includes("renderMarkdownBlocks") &&
+    homeScript.includes("contentBlocks: MarkdownBlock[]") &&
+    homeScript.includes("copyCodeBlock(event: WechatMiniprogram.TouchEvent)") &&
+    homeScript.includes("wx.setClipboardData({") &&
+    homeTemplate.includes('class="markdown-code-language"') &&
+    homeTemplate.includes('class="markdown-code-copy"') &&
+    homeTemplate.includes('data-code="{{block.code}}"') &&
+    homeTemplate.includes(
+      'data-copy-key="{{activeAnnouncement.id + \':\' + block.key}}"',
+    ) &&
+    homeTemplate.includes('catchtap="copyCodeBlock"') &&
+    /class="markdown-code-scroll"[^>]*style="height: \{\{block\.contentHeightRpx\}\}rpx;"[^>]*type="list"[^>]*scroll-x[^>]*enable-flex/.test(
+      homeTemplate,
+    ) &&
+    /class="markdown-code-scroll"[^>]*style="height: \{\{block\.compactContentHeightRpx\}\}rpx;"[^>]*type="list"[^>]*scroll-x[^>]*enable-flex/.test(
+      homeTemplate,
+    ) &&
+    homeTemplate.includes(
+      'wx:if="{{copiedCodeKey === activeAnnouncement.id + \':\' + block.key}}"',
+    ) &&
+    homeTemplate.includes('name="check"') &&
+    homeScript.includes("const CODE_COPY_FEEDBACK_MS = 1_600;") &&
+    homeScript.includes("this.setData({ copiedCodeKey: copyKey });") &&
+    homeScript.includes("clearCodeCopyFeedbackTimer();") &&
+    /copyCodeBlock\(event: WechatMiniprogram\.TouchEvent\)[\s\S]*?this\.setData\(\{ copiedCodeKey: copyKey \}\);[\s\S]*?wx\.nextTick\(\(\) => \{[\s\S]*?wx\.setClipboardData\(\{[\s\S]*?fail: \(\) => \{/.test(
+      homeScript,
+    ) &&
+    homeStyles.includes(".markdown-code-copy-square--back") &&
+    homeStyles.includes(".markdown-code-copy-square--front") &&
+    homeStyles.includes(".announcement-modal-layer--dark .markdown-code-block"),
+  "公告代码块必须显示完整正文，保留缩进并在复制调用前立即切换为勾",
 );
 const plainDelimitedText = renderMarkdown("*星号包裹* 与 _下划线包裹_");
 const plainDelimitedLatin = renderMarkdown("normal *plain words* normal");

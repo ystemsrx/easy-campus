@@ -5,6 +5,18 @@ interface MarkdownOptions {
   theme?: "light" | "dark";
 }
 
+export type MarkdownBlock =
+  | { key: string; type: "rich"; html: string }
+  | {
+      key: string;
+      type: "code";
+      code: string;
+      language: string;
+      lines: Array<{ key: string; text: string }>;
+      contentHeightRpx: number;
+      compactContentHeightRpx: number;
+    };
+
 const MEDIA_PATTERN =
   /^media:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 function escapeHtml(value: string): string {
@@ -74,6 +86,22 @@ export function renderMarkdown(
   markdown: string,
   options: MarkdownOptions = {},
 ): string {
+  const dark = options.theme === "dark";
+  const textColor = dark ? "#ddd5c7" : "#263247";
+  const codeBackground = dark ? "#39352e" : "#f0ede7";
+  const codeBorder = dark ? "#4a453d" : "#e2ddd3";
+  return renderMarkdownBlocks(markdown, options)
+    .map((block) => {
+      if (block.type === "rich") return block.html;
+      return `<div style="margin:0 0 14px;overflow:hidden;border:1px solid ${codeBorder};border-radius:12px;background:${codeBackground};"><div style="padding:9px 14px;border-bottom:1px solid ${codeBorder};color:${dark ? "#b8ae9e" : "#7b7368"};font-family:monospace;font-size:12px;font-weight:700;">${escapeHtml(block.language)}</div><pre style="margin:0;padding:14px;overflow:auto;color:${textColor};font-family:monospace;white-space:pre;">${escapeHtml(block.code)}</pre></div>`;
+    })
+    .join("");
+}
+
+export function renderMarkdownBlocks(
+  markdown: string,
+  options: MarkdownOptions = {},
+): MarkdownBlock[] {
   const accent = safeAccent(options.accentColor);
   const mediaUrls = options.mediaUrls || {};
   const dark = options.theme === "dark";
@@ -81,17 +109,45 @@ export function renderMarkdown(
   const headingColor = dark ? "#f7f3e9" : "#172033";
   const mutedColor = dark ? "#b8ae9e" : "#657086";
   const mutedBackground = dark ? "#39352e" : "#f4f6fa";
-  const codeBackground = dark ? "#35312b" : "#f0f3f7";
   const bodyFontSize = options.compact ? 14 : 15;
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
-  const blocks: string[] = [];
+  const blocks: MarkdownBlock[] = [];
+  let richBlocks: string[] = [];
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
-  let code: string[] | null = null;
+  let code: { language: string; lines: string[] } | null = null;
+
+  const flushRichBlocks = () => {
+    if (!richBlocks.length) return;
+    blocks.push({
+      key: `block-${blocks.length}`,
+      type: "rich",
+      html: `<div style="color:${textColor};font-size:${bodyFontSize}px;line-height:1.72;overflow-wrap:anywhere;">${richBlocks.join("")}</div>`,
+    });
+    richBlocks = [];
+  };
+  const flushCode = () => {
+    if (!code) return;
+    flushRichBlocks();
+    const codeValue = code.lines.join("\n");
+    blocks.push({
+      key: `block-${blocks.length}`,
+      type: "code",
+      code: codeValue,
+      language: code.language,
+      lines: code.lines.map((line, index) => ({
+        key: `line-${index}`,
+        text: line.replace(/\t/g, "    ").replace(/ /g, "\u00a0") || "\u00a0",
+      })),
+      contentHeightRpx: 48 + Math.max(1, code.lines.length) * 37,
+      compactContentHeightRpx: 36 + Math.max(1, code.lines.length) * 33,
+    });
+    code = null;
+  };
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    blocks.push(
+    richBlocks.push(
       `<p style="margin:0 0 14px;line-height:1.72;">${paragraph
         .map((line) => inlineMarkdown(line, accent, mediaUrls))
         .join("<br />")}</p>`,
@@ -101,7 +157,7 @@ export function renderMarkdown(
   const flushList = () => {
     if (!list) return;
     const tag = list.ordered ? "ol" : "ul";
-    blocks.push(
+    richBlocks.push(
       `<${tag} style="margin:0 0 14px;padding-left:22px;line-height:1.72;">${list.items
         .map((item) => `<li>${inlineMarkdown(item, accent, mediaUrls)}</li>`)
         .join("")}</${tag}>`,
@@ -110,21 +166,20 @@ export function renderMarkdown(
   };
 
   for (const line of lines) {
-    if (/^```/.test(line)) {
-      flushParagraph();
-      flushList();
-      if (code) {
-        blocks.push(
-          `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;overflow:auto;color:${textColor};background:${codeBackground};font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
-        );
-        code = null;
-      } else {
-        code = [];
-      }
+    if (code && line.trim().startsWith("```")) {
+      flushCode();
       continue;
     }
     if (code) {
-      code.push(line);
+      code.lines.push(line);
+      continue;
+    }
+    const fence = line.trim().match(/^```\s*([^\s`]*)/);
+    if (fence) {
+      flushParagraph();
+      flushList();
+      flushRichBlocks();
+      code = { language: fence[1] || "plaintext", lines: [] };
       continue;
     }
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
@@ -133,7 +188,7 @@ export function renderMarkdown(
       flushList();
       const level = heading[1].length;
       const size = [0, 24, 21, 18, 16][level];
-      blocks.push(
+      richBlocks.push(
         `<h${level} style="margin:${level === 1 ? 0 : 8}px 0 12px;color:${headingColor};font-size:${size}px;line-height:1.35;">${inlineMarkdown(heading[2], accent, mediaUrls)}</h${level}>`,
       );
       continue;
@@ -142,7 +197,7 @@ export function renderMarkdown(
     if (quote) {
       flushParagraph();
       flushList();
-      blocks.push(
+      richBlocks.push(
         `<blockquote style="margin:0 0 14px;padding:10px 14px;border-left:3px solid ${accent};border-radius:0 10px 10px 0;color:${mutedColor};background:${mutedBackground};line-height:1.65;">${inlineMarkdown(quote[1], accent, mediaUrls)}</blockquote>`,
       );
       continue;
@@ -165,21 +220,18 @@ export function renderMarkdown(
     flushList();
     paragraph.push(line);
   }
-  if (code) {
-    blocks.push(
-      `<pre style="margin:0 0 14px;padding:14px;border-radius:12px;color:${textColor};background:${codeBackground};font-family:monospace;white-space:pre-wrap;">${escapeHtml(code.join("\n"))}</pre>`,
-    );
-  }
+  flushCode();
   flushParagraph();
   flushList();
-  return `<div style="color:${textColor};font-size:${bodyFontSize}px;line-height:1.72;overflow-wrap:anywhere;">${blocks.join("")}</div>`;
+  flushRichBlocks();
+  return blocks;
 }
 
 export function stripMarkdown(markdown: string): string {
   return markdown
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/```[\s\S]*?```/g, (value) => value.replace(/```\w*/g, ""))
+    .replace(/```[\s\S]*?```/g, (value) => value.replace(/```[^\n]*/g, ""))
     .replace(/^[#>*+\-\d.)\s]+/gm, "")
     .replace(/[*_`~]/g, "")
     .replace(/\s+/g, " ")

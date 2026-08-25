@@ -104,7 +104,11 @@ import {
 } from "../../utils/grades";
 import { haptic } from "../../utils/haptics";
 import { resolveHomeIdentity } from "../../utils/identity";
-import { renderMarkdown, stripMarkdown } from "../../utils/markdown";
+import {
+  renderMarkdownBlocks,
+  stripMarkdown,
+  type MarkdownBlock,
+} from "../../utils/markdown";
 import {
   ensureAuthenticated,
   navigateTo,
@@ -150,7 +154,7 @@ interface PlanPreview extends LocalSchedulePlan {
 }
 
 interface PublicationPreview extends Publication {
-  contentHtml: string;
+  contentBlocks: MarkdownBlock[];
   previewText: string;
   timeLabel: string;
   isLong: boolean;
@@ -197,6 +201,7 @@ interface ShortcutCachePatch {
 let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
 let announcementModalTimer: number | undefined;
+let codeCopyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let publicationRequestLease: SessionLease | null = null;
 let lastPublicationRequestAt = 0;
 let lastPublicationRequestSessionKey = "";
@@ -223,6 +228,13 @@ let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
 let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
 let planEntryTimer: ReturnType<typeof setTimeout> | undefined;
 let activeTimetable: TimetableData | null = null;
+const CODE_COPY_FEEDBACK_MS = 1_600;
+
+function clearCodeCopyFeedbackTimer() {
+  if (codeCopyFeedbackTimer === undefined) return;
+  clearTimeout(codeCopyFeedbackTimer);
+  codeCopyFeedbackTimer = undefined;
+}
 
 function cancelPendingAnnouncementPresentation(): void {
   announcementPresentationGeneration += 1;
@@ -354,7 +366,7 @@ function publicationPreview(
   const plainText = stripMarkdown(publication.contentMarkdown);
   return {
     ...publication,
-    contentHtml: renderMarkdown(publication.contentMarkdown, {
+    contentBlocks: renderMarkdownBlocks(publication.contentMarkdown, {
       accentColor: publication.accentColor,
       compact: publication.kind === "notification",
       theme,
@@ -601,6 +613,7 @@ Page({
     publications: [] as PublicationPreview[],
     publicationUnreadCount: 0,
     publicationUnreadLabel: "",
+    copiedCodeKey: "",
     petShape: "blob" as PetShapeId,
     petColor: "#111214",
     petEnhanced: false,
@@ -1311,6 +1324,7 @@ Page({
   },
   resetPublicationLayers() {
     cancelPendingAnnouncementPresentation();
+    clearCodeCopyFeedbackTimer();
     if (publicationPanelTimer !== undefined) {
       clearTimeout(publicationPanelTimer);
       publicationPanelTimer = undefined;
@@ -1329,6 +1343,7 @@ Page({
       announcementModalOpen: false,
       announcementScrollHeight: 0,
       activeAnnouncement: null,
+      copiedCodeKey: "",
     });
   },
   setTabBarHidden(hidden: boolean) {
@@ -1336,6 +1351,31 @@ Page({
     if (tabBar) tabBar.setData({ hidden });
   },
   stopPropagation() {},
+  copyCodeBlock(event: WechatMiniprogram.TouchEvent) {
+    const value = event.currentTarget.dataset.code;
+    const copyKey = String(event.currentTarget.dataset.copyKey || "");
+    const code = typeof value === "string" ? value : String(value || "");
+    clearCodeCopyFeedbackTimer();
+    this.setData({ copiedCodeKey: copyKey });
+    haptic("light");
+    codeCopyFeedbackTimer = setTimeout(() => {
+      if (this.data.copiedCodeKey === copyKey) {
+        this.setData({ copiedCodeKey: "" });
+      }
+      codeCopyFeedbackTimer = undefined;
+    }, CODE_COPY_FEEDBACK_MS);
+    wx.nextTick(() => {
+      wx.setClipboardData({
+        data: code,
+        fail: () => {
+          clearCodeCopyFeedbackTimer();
+          if (this.data.copiedCodeKey === copyKey) {
+            this.setData({ copiedCodeKey: "" });
+          }
+        },
+      });
+    });
+  },
   onPublicationTap(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
     const publication = this.data.publications.find((item) => item.id === id);
@@ -1409,7 +1449,7 @@ Page({
         }
         preview = {
           ...preview,
-          contentHtml: renderMarkdown(preview.contentMarkdown, {
+          contentBlocks: renderMarkdownBlocks(preview.contentMarkdown, {
             accentColor: preview.accentColor,
             mediaUrls,
             theme: this.data.theme,
