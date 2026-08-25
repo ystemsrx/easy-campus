@@ -269,7 +269,7 @@ const data = {
     courseCount: 4,
     totalCredits: 11,
     weightedAverage: 80.91,
-    gradePointAverage: 3.31,
+    gradePointAverage: 3.24,
   },
   semesters: [
     {
@@ -310,7 +310,7 @@ assert(
   latest.summary.courseCount === 2 &&
     latest.summary.totalCredits === 6 &&
     latest.summary.weightedAverage === 86.67 &&
-    latest.summary.gradePointAverage === 4.3,
+    latest.summary.gradePointAverage === 3.87,
   "最新学期的均分、绩点、课程与学分必须独立汇总",
 );
 const highestHistoricalGrades = highestGradesByCourseName([
@@ -729,7 +729,7 @@ assert(
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
     gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
-    gradesStore.includes("const SCHEMA_VERSION = 10;"),
+    gradesStore.includes("const SCHEMA_VERSION = 11;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
 );
 assert(

@@ -293,9 +293,7 @@ export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
     0,
   );
   const gradePointCourses = scoredCourses.filter(
-    (course) =>
-      course.countsTowardGradePointAverage &&
-      typeof course.gradePoint === "number",
+    (course) => typeof course.gradePoint === "number",
   );
   const gradePointCredits = gradePointCourses.reduce(
     (total, course) => total + (course.credits || 0),
