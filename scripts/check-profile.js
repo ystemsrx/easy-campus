@@ -33,6 +33,8 @@ const profilePageConfig = JSON.parse(read("app.json"));
 const autoDormCheckPage = read("features/pages/auto-dorm-check/index.wxml");
 const autoDormCheckScript = read("features/pages/auto-dorm-check/index.ts");
 const autoDormCheckService = read("services/auto-dorm-check.ts");
+const autoDormCheckStore = read("store/auto-dorm-check.ts");
+const homeScript = read("pages/home/index.ts");
 
 for (const gender of ["男", "男性", "男生", "male", "M", "1"]) {
   assert(
@@ -81,8 +83,15 @@ const featurePages = profilePageConfig.subPackages.flatMap(
   (subPackage) => subPackage.pages,
 );
 assert(
-  profileScript.includes("loadAutoDormCheckAvailability") &&
-    profileScript.includes("status.entryEnabled") &&
+  homeScript.includes("preloadAutoDormCheckStatus()") &&
+    profileScript.includes("hydrateAutoDormCheckAvailability") &&
+    profileScript.includes("loadAutoDormCheckSnapshot(account)") &&
+    profileScript.includes("getPendingAutoDormCheckStatus()") &&
+    !profileScript.includes("getAutoDormCheckStatus()") &&
+    autoDormCheckStore.includes(
+      "encodeURIComponent(account.trim().toLowerCase())",
+    ) &&
+    autoDormCheckService.includes("saveAutoDormCheckSnapshot") &&
     profileScript.includes("AUTO_DORM_CHECK_STATUS[status.checkInStatus]") &&
     profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
     profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
@@ -94,7 +103,7 @@ assert(
     ) &&
     profileTemplate.includes("openAutoDormCheck") &&
     featurePages.includes("pages/auto-dorm-check/index"),
-  "自动查寝入口必须只受服务端入口开关控制，并注册对应子包页面",
+  "自动查寝入口必须由主页按账号预取并缓存服务端状态，个人页不得重复请求",
 );
 assert(
   autoDormCheckPage.includes('checked="{{effectiveEnabled}}"') &&

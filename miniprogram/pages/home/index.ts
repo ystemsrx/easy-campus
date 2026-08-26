@@ -1,5 +1,6 @@
 import { APP_NAME } from "../../config/app";
 import { getCredentialStatus } from "../../services/auth";
+import { preloadAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import {
   getPreloadedCurrentUser,
   getPreloadedTimetable,
@@ -674,6 +675,7 @@ Page({
       return;
     }
     homeVisible = true;
+    void preloadAutoDormCheckStatus().catch(() => undefined);
     if (this.data.authenticated) {
       this.applyAppearance();
       this.hydrateIdentity();

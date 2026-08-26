@@ -1,10 +1,14 @@
 import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
+import { getPendingAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import { getErrorMessage } from "../../services/request";
-import { getAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 import { loadPetPreferences, shouldShowPet } from "../../store/pet";
+import {
+  loadAutoDormCheckSnapshot,
+  type AutoDormCheckSnapshot,
+} from "../../store/auto-dorm-check";
 import {
   captureSessionLease,
   getSession,
@@ -98,10 +102,7 @@ Page({
     autoDormCheckVisible: false,
     autoDormCheckStatusLabel: "已关闭",
     autoDormCheckStatusTone: "muted" as
-      | "success"
-      | "warning"
-      | "danger"
-      | "muted",
+      "success" | "warning" | "danger" | "muted",
   },
   onLoad() {
     activeProfileSessionKey = "";
@@ -112,6 +113,7 @@ Page({
       this.applyUser(cached);
       this.loadPet(cached.account);
     }
+    this.hydrateAutoDormCheckAvailability(sessionAccount);
   },
   onShow() {
     if (!ensureAuthenticated()) {
@@ -149,8 +151,9 @@ Page({
     });
     this.applyAppearance();
     this.loadPet(account);
+    this.hydrateAutoDormCheckAvailability(account);
     this.syncTabBarAppearance();
-    void Promise.all([this.loadUser(), this.loadAutoDormCheckAvailability()]);
+    void this.loadUser();
   },
   onUnload() {
     clearAuthenticationExitTimer();
@@ -222,28 +225,30 @@ Page({
     haptic("light");
     void this.loadUser(true);
   },
-  async loadAutoDormCheckAvailability() {
+  applyAutoDormCheckAvailability(
+    status: Pick<AutoDormCheckSnapshot, "entryEnabled" | "checkInStatus">,
+  ) {
+    const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
+    this.setData({
+      autoDormCheckVisible: status.entryEnabled,
+      autoDormCheckStatusLabel: presentation.label,
+      autoDormCheckStatusTone: presentation.tone,
+    });
+  },
+  hydrateAutoDormCheckAvailability(account: string) {
+    const cached = loadAutoDormCheckSnapshot(account);
+    if (cached) this.applyAutoDormCheckAvailability(cached);
     const lease = captureSessionLease();
     if (!lease) return;
-    this.setData({ autoDormCheckVisible: false });
-    try {
-      const status = await getAutoDormCheckStatus();
-      if (!isSessionLeaseCurrent(lease)) return;
-      const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
-      this.setData({
-        autoDormCheckVisible: status.entryEnabled,
-        autoDormCheckStatusLabel: presentation.label,
-        autoDormCheckStatusTone: presentation.tone,
-      });
-    } catch {
-      if (isSessionLeaseCurrent(lease)) {
-        this.setData({
-          autoDormCheckVisible: false,
-          autoDormCheckStatusLabel: "已关闭",
-          autoDormCheckStatusTone: "muted",
-        });
-      }
-    }
+    const pending = getPendingAutoDormCheckStatus();
+    if (!pending) return;
+    void pending
+      .then((status) => {
+        if (isSessionLeaseCurrent(lease)) {
+          this.applyAutoDormCheckAvailability(status);
+        }
+      })
+      .catch(() => undefined);
   },
   openProfileRoute(key: ProfileSettingKey, url: string) {
     if (this.data.openingSetting) return;
