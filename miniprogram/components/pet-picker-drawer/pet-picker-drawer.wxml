@@ -49,7 +49,7 @@
           <view
             wx:for="{{shapeOptions}}"
             wx:key="id"
-            class="pet-picker-shape {{selectedShape === item.id ? 'pet-picker-shape--selected' : ''}}"
+            class="pet-picker-shape {{selected && selectedShape === item.id ? 'pet-picker-shape--selected' : ''}}"
             data-shape="{{item.id}}"
             bindtap="selectShape"
             hover-class="pet-picker-shape--pressed"
@@ -60,10 +60,10 @@
               <geometric-pet
                 shape="{{item.id}}"
                 color="{{selectedColor}}"
-                state="{{selectedShape === item.id ? 'happy' : 'idle'}}"
+                state="{{selected && selectedShape === item.id ? 'happy' : 'idle'}}"
                 enhanced="{{enhanced}}"
-                reduced-motion="{{reducedMotion || selectedShape !== item.id}}"
-                auto-cycle="{{selectedShape === item.id}}"
+                reduced-motion="{{reducedMotion || !selected || selectedShape !== item.id}}"
+                auto-cycle="{{selected && selectedShape === item.id}}"
                 preview-offset-x="{{0.1}}"
                 preview-offset-y="{{0.1}}"
                 label="{{item.accessibleLabel}}"

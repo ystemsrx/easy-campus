@@ -1023,6 +1023,10 @@ Page({
     event: WechatMiniprogram.CustomEvent<{ color: string }>,
   ) {
     haptic("light");
+    if (!this.data.petSelected) {
+      this.setData({ petColor: event.detail.color });
+      return;
+    }
     this.persistPendingPetSelection({ color: event.detail.color });
   },
   persistPendingPetSelection(patch: { shape?: PetShapeId; color?: string }) {

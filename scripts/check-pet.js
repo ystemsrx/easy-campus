@@ -566,6 +566,8 @@ assert(
     homeScript.includes("petSetupDrawerMounted: true") &&
     homeScript.includes("savePetSelection(account") &&
     homeScript.includes("skipPetSetup(account)") &&
+    homeScript.includes("if (!this.data.petSelected) {") &&
+    homeScript.includes("this.setData({ petColor: event.detail.color });") &&
     homeScript.includes("uploadLocalCompanionPreferences(account)") &&
     setupScript.includes("uploadLocalCompanionPreferences(account)") &&
     homeTemplate.includes("<pet-picker-drawer") &&
@@ -575,13 +577,23 @@ assert(
     !homeTemplate.includes('class="home-pet-setup-action') &&
     homeTemplate.includes('scroll-y="{{!petSetupDrawerOpen}}"') &&
     pickerScript.includes("shapeOptions: SHAPE_OPTIONS") &&
+    pickerScript.includes('selectedShape: { type: String, value: "blob" }') &&
+    pickerScript.includes(
+      'selectedColor: { type: String, value: "#111214" }',
+    ) &&
     pickerScript.includes('this.triggerEvent("finish")') &&
     pickerTemplate.includes('wx:for="{{shapeOptions}}"') &&
     pickerTemplate.includes('wx:for="{{colorOptions}}"') &&
     pickerTemplate.includes("选择一个伙伴") &&
     pickerTemplate.includes("{{selected ? '完成' : '跳过'}}") &&
     pickerTemplate.includes(
-      'reduced-motion="{{reducedMotion || selectedShape !== item.id}}"',
+      "class=\"pet-picker-shape {{selected && selectedShape === item.id ? 'pet-picker-shape--selected' : ''}}\"",
+    ) &&
+    pickerTemplate.includes(
+      'reduced-motion="{{reducedMotion || !selected || selectedShape !== item.id}}"',
+    ) &&
+    pickerTemplate.includes(
+      'auto-cycle="{{selected && selectedShape === item.id}}"',
     ) &&
     pickerStyles.includes("width: 202rpx; height: 202rpx") &&
     pickerStyles.includes(".pet-picker-layer scroll-view") &&
@@ -595,7 +607,7 @@ assert(
     !homeScript.includes("wx.reLaunch({") &&
     !homeScript.includes("wx.showModal({") &&
     !homeScript.includes("promptLegacyPetSetup"),
-  "首次选择必须在首页抽屉中即时保存并允许跳过，独立设置页只能由设置入口使用",
+  "首次选择必须用黑色圆球预览但不选中形状，并在首页抽屉中选择形状后即时保存或允许跳过",
 );
 assert(
   !homeTemplate.includes("preview-scale") &&
