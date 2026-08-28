@@ -69,7 +69,6 @@ assert(
     ),
   "考试自动刷新必须仅在距上次成功自动刷新超过 24 小时后触发",
 );
-
 const countdownCases = [
   ["2026-08-17", "past", "过"],
   ["2026-08-18", "current", "逢考必过"],
@@ -181,6 +180,15 @@ const examsStore = fs.readFileSync(
 const cacheRefreshScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "services", "cache-refresh.ts"),
   "utf8",
+);
+assert(
+  cacheRefreshScript.includes("missingExamSemesters(account, current)") &&
+    cacheRefreshScript.includes("automatic: true") &&
+    cacheRefreshScript.includes("semester: semester.id") &&
+    cacheRefreshScript.includes(
+      "stored.data.items.length < stored.data.pagination.total",
+    ),
+  "考试自动刷新必须校验并补齐本机缺失或未完整保存的历史学期",
 );
 const appScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
@@ -352,10 +360,7 @@ assert(
 );
 const selectSemesterSource = examsScript.slice(
   examsScript.indexOf("selectSemesterQuick("),
-  examsScript.indexOf(
-    "openExam(",
-    examsScript.indexOf("selectSemesterQuick("),
-  ),
+  examsScript.indexOf("openExam(", examsScript.indexOf("selectSemesterQuick(")),
 );
 const examListAnimationSource = examsStyles.slice(
   examsStyles.indexOf("@keyframes exam-list-from-left-a"),

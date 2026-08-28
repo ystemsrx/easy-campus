@@ -20,7 +20,7 @@ import {
 import type { Session } from "../types/api";
 import { getExams } from "./teaching";
 
-const EXAM_PAGE_SIZE = 50;
+const EXAM_PAGE_SIZE = 200;
 export const EXAMS_AUTO_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const examRefreshes = new Map<
   string,
@@ -124,7 +124,11 @@ export function refreshExamsOnForeground(
   if (!lease) return Promise.resolve(null);
   const account = session.user.account;
   const current = loadExamsSnapshot(account);
-  if (!isExamAutomaticRefreshDue(current?.lastAutomaticRefreshAt || 0)) {
+  const refreshDue = isExamAutomaticRefreshDue(
+    current?.lastAutomaticRefreshAt || 0,
+  );
+  const missingHistory = missingExamSemesters(account, current);
+  if (!refreshDue && !missingHistory.length) {
     return Promise.resolve(current);
   }
 
@@ -132,20 +136,97 @@ export function refreshExamsOnForeground(
   const active = examRefreshes.get(key);
   if (active) return active;
 
-  const pending = getExams({ page: 1, pageSize: EXAM_PAGE_SIZE, refresh: true })
-    .then((result) => {
-      if (!isSessionLeaseCurrent(lease)) {
-        return null;
+  const pending = (async () => {
+    let latest = current;
+    if (refreshDue) {
+      try {
+        const result = await loadCompleteExams({
+          page: 1,
+          pageSize: EXAM_PAGE_SIZE,
+          refresh: true,
+          automatic: true,
+        });
+        if (!isSessionLeaseCurrent(lease)) return null;
+        latest = saveExamsSnapshot(account, result.data, {
+          serverFetchedAt: result.meta.fetchedAt,
+          lastAutomaticRefreshAt: Date.now(),
+        });
+      } catch {
+        if (!isSessionLeaseCurrent(lease)) return null;
       }
-      return saveExamsSnapshot(account, result.data, {
-        serverFetchedAt: result.meta.fetchedAt,
-        lastAutomaticRefreshAt: Date.now(),
-      });
-    })
-    .catch(() =>
-      isSessionLeaseCurrent(lease) ? loadExamsSnapshot(account) : null,
-    )
-    .finally(() => examRefreshes.delete(key));
+    }
+
+    for (const semester of missingExamSemesters(account, latest)) {
+      if (!isSessionLeaseCurrent(lease)) return null;
+      try {
+        const result = await loadCompleteExams({
+          semester: semester.id,
+          page: 1,
+          pageSize: EXAM_PAGE_SIZE,
+        });
+        if (!isSessionLeaseCurrent(lease)) return null;
+        const isLatest = latest?.data.semester?.id === semester.id;
+        const stored = loadExamsSnapshot(account, semester.id);
+        const updated = saveExamsSnapshot(account, result.data, {
+          semesterId: isLatest ? "default" : semester.id,
+          serverFetchedAt: result.meta.fetchedAt,
+          lastAutomaticRefreshAt: isLatest
+            ? latest?.lastAutomaticRefreshAt || 0
+            : stored?.lastAutomaticRefreshAt || 0,
+        });
+        if (isLatest) latest = updated;
+      } catch {
+        // 已有学期继续保留；缺失学期会在下次进入前台时再次补齐。
+      }
+    }
+    return isSessionLeaseCurrent(lease)
+      ? loadExamsSnapshot(account) || latest
+      : null;
+  })().finally(() => examRefreshes.delete(key));
   examRefreshes.set(key, pending);
   return pending;
+}
+
+function missingExamSemesters(
+  account: string,
+  snapshot: ReturnType<typeof loadExamsSnapshot>,
+) {
+  return (snapshot?.data.semesters || []).filter((semester) => {
+    const stored = loadExamsSnapshot(account, semester.id);
+    return !stored || stored.data.items.length < stored.data.pagination.total;
+  });
+}
+
+async function loadCompleteExams(
+  query: Parameters<typeof getExams>[0],
+): Promise<Awaited<ReturnType<typeof getExams>>> {
+  const first = await getExams(query);
+  const totalPages = first.data.pagination.totalPages;
+  if (totalPages <= 1) return first;
+  const items = [...first.data.items];
+  const semester = query.semester || first.data.semester?.id || undefined;
+  for (let page = 2; page <= totalPages; page += 1) {
+    const result = await getExams({
+      semester,
+      page,
+      pageSize: EXAM_PAGE_SIZE,
+    });
+    items.push(...result.data.items);
+  }
+  const uniqueItems = [
+    ...new Map(items.map((item) => [item.id, item])).values(),
+  ];
+  return {
+    ...first,
+    data: {
+      ...first.data,
+      items: uniqueItems,
+      pagination: {
+        page: 1,
+        pageSize: uniqueItems.length,
+        total: first.data.pagination.total,
+        totalPages: 1,
+      },
+    },
+  };
 }

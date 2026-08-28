@@ -109,7 +109,7 @@ interface GradesRefreshOutcome {
   errorMessage: string;
 }
 
-const PAGE_SIZE = 200;
+const PAGE_SIZE = 5000;
 const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
   default: { sort: "default", order: "desc", label: "默认" },
   "score-desc": {
@@ -562,17 +562,21 @@ Page({
 
     let shouldRefreshAfterward = false;
     let loadInitializedSemester = false;
+    let reloadAfterAutomaticRefresh = false;
     try {
       const result = await getGrades({
         page,
         pageSize: PAGE_SIZE,
-        academicYear: academicYear || undefined,
-        term: (term || undefined) as 1 | 2 | 3 | undefined,
-        q: queryText || undefined,
-        sort,
-        order,
+        academicYear: refresh ? undefined : academicYear || undefined,
+        term: refresh
+          ? undefined
+          : ((term || undefined) as 1 | 2 | 3 | undefined),
+        q: refresh ? undefined : queryText || undefined,
+        sort: refresh ? "default" : sort,
+        order: refresh ? "desc" : order,
         includeUnsuccessful: this.data.includeUnsuccessful,
         refresh,
+        automatic: refresh,
       });
       if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) {
         return false;
@@ -581,11 +585,12 @@ Page({
       const account = lease.account;
       const canonical =
         page === 1 &&
-        !academicYear &&
-        !term &&
-        !queryText &&
-        sort === "default" &&
-        order === "desc";
+        (refresh ||
+          (!academicYear &&
+            !term &&
+            !queryText &&
+            sort === "default" &&
+            order === "desc"));
       const local = loadGradesSnapshotForPreference(
         account,
         this.data.includeUnsuccessful,
@@ -602,6 +607,10 @@ Page({
           result.meta.fetchedAt,
           this.data.includeUnsuccessful,
         );
+      }
+      if (refresh) {
+        reloadAfterAutomaticRefresh = true;
+        return true;
       }
 
       const initializedSemester = this.initializeLatestSemester(result.data);
@@ -634,7 +643,13 @@ Page({
     } finally {
       if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
-        if (loadInitializedSemester) {
+        if (reloadAfterAutomaticRefresh) {
+          setTimeout(() => {
+            if (isSessionLeaseCurrent(lease)) {
+              void this.loadGrades(true, false);
+            }
+          }, 0);
+        } else if (loadInitializedSemester) {
           setTimeout(() => {
             if (isSessionLeaseCurrent(lease)) {
               void this.loadGrades(true, shouldRefreshAfterward);

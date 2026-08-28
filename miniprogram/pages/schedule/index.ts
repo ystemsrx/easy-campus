@@ -199,7 +199,7 @@ Page({
     }
     timetableRequestLease = lease;
     try {
-      const result = await getTimetable({ refresh: true });
+      const result = await getTimetable({ refresh: true, automatic: true });
       if (!isSessionLeaseCurrent(lease) || activeAccount !== lease.account) {
         return;
       }

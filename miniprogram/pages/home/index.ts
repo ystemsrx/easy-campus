@@ -1829,9 +1829,10 @@ Page({
     const gradeRequest = includeStableData
       ? getGrades({
           page: 1,
-          pageSize: 200,
+          pageSize: 5000,
           includeUnsuccessful,
           refresh: refreshStable,
+          automatic: refreshStable,
         }).then((result) => {
           if (isSessionLeaseCurrent(lease)) {
             this.hydrateServerGrade(
@@ -1846,7 +1847,7 @@ Page({
       : Promise.resolve(null);
     const timetableRequest = includeStableData
       ? (refreshStable
-          ? getTimetable({ refresh: true })
+          ? getTimetable({ refresh: true, automatic: true })
           : getPreloadedTimetable()
         ).then((result) => {
           if (result && homeVisible && isSessionLeaseCurrent(lease)) {

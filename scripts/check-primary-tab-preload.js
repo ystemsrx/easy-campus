@@ -124,6 +124,13 @@ assert(
   "预加载器必须先准备本地首屏，再并行加载资料、课表和用户日程",
 );
 assert(
+  preload.includes("getTimetable({ automatic: true })") &&
+    preload.includes("backfillMissingTimetableSemesters(state, timetable)") &&
+    preload.includes("loadTimetableSnapshot(state.account, semester.id)") &&
+    preload.includes("getTimetable({ semester: semester.id })"),
+  "课表预加载必须只补本机缺失的历史学期，并把自动请求标记给服务端",
+);
+assert(
   scheduleRender.includes("prewarmScheduleFirstScreen(") &&
     scheduleRender.includes("buildScheduleWeekView(") &&
     schedulePage.includes("getPrewarmedScheduleFirstScreen(account)") &&

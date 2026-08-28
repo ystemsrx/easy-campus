@@ -729,7 +729,7 @@ assert(
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
     gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
-    gradesStore.includes("const SCHEMA_VERSION = 11;"),
+    gradesStore.includes("const SCHEMA_VERSION = 12;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
 );
 assert(
@@ -772,6 +772,16 @@ assert(
     teachingService.includes("withoutUnsuccessfulGrades(result.data)") &&
     gradesStore.includes("loadGradesSnapshotForPreference"),
   "成绩展示选项必须位于独立设置页，默认展示低分，并在网络与缓存两条路径本地兜底过滤",
+);
+assert(
+    gradesStore.includes("const SCHEMA_VERSION = 12;") &&
+    gradesPageScript.includes("const PAGE_SIZE = 5000;") &&
+    gradesPageScript.includes("automatic: refresh") &&
+    gradesPageScript.includes("academicYear: refresh ? undefined") &&
+    gradesPageScript.includes("reloadAfterAutomaticRefresh = true") &&
+    teachingService.includes("getGrades(") &&
+    teachingService.includes("buildQuery(asQuery(requestQuery))"),
+  "成绩新版缓存必须完整保存全部记录，并将静默刷新标记为只更新最新学期",
 );
 assert(
   gradesPageTemplate.includes('bindscroll="onGradeScroll"') &&

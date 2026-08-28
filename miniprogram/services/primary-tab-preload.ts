@@ -87,7 +87,7 @@ function warmSchedule(
 async function preloadTimetable(
   state: PrimaryTabPreloadState,
 ): Promise<TeachingResult<TimetableData>> {
-  const result = await getTimetable();
+  const result = await getTimetable({ automatic: true });
   if (!isActive(state)) return result;
   const local = loadTimetableSnapshot(state.account);
   let current = local;
@@ -97,10 +97,42 @@ async function preloadTimetable(
         serverFetchedAt: result.meta.fetchedAt,
       }) || local;
   }
-  state.timetable = current?.data || result.data;
+  const timetable = current?.data || result.data;
+  state.timetable = timetable;
   state.timetableStoredAt = current?.localStoredAt || 0;
   warmSchedule(state);
+  const semesterId = result.data.semester?.id;
+  if (semesterId) {
+    const semesterLocal = loadTimetableSnapshot(state.account, semesterId);
+    if (shouldUseServerSnapshot(semesterLocal, result.meta.fetchedAt)) {
+      saveTimetableSnapshot(state.account, result.data, {
+        semesterId,
+        serverFetchedAt: result.meta.fetchedAt,
+      });
+    }
+  }
+  void backfillMissingTimetableSemesters(state, timetable);
   return result;
+}
+
+async function backfillMissingTimetableSemesters(
+  state: PrimaryTabPreloadState,
+  timetable: TimetableData,
+): Promise<void> {
+  for (const semester of timetable.semesters || []) {
+    if (!isActive(state)) return;
+    if (loadTimetableSnapshot(state.account, semester.id)) continue;
+    try {
+      const result = await getTimetable({ semester: semester.id });
+      if (!isActive(state)) return;
+      saveTimetableSnapshot(state.account, result.data, {
+        semesterId: semester.id,
+        serverFetchedAt: result.meta.fetchedAt,
+      });
+    } catch {
+      // 已有学期继续保留；缺失学期会在下次进入前台时再次补齐。
+    }
+  }
 }
 
 async function preloadSchedule(

@@ -2135,6 +2135,7 @@ Page({
       void this.loadTimetable(false, semester, !activeTimetable);
       return;
     }
+    if (semester) return;
     const needsRefresh =
       isCacheStale(snapshot, FIFTEEN_DAYS_MS) ||
       !hasSelectedSemesterCalendar(snapshot.data);
@@ -2174,7 +2175,11 @@ Page({
     let shouldRefreshAfterward = false;
     let succeeded = false;
     try {
-      const result = await getTimetable({ semester, refresh });
+      const result = await getTimetable({
+        semester,
+        refresh,
+        automatic: refresh,
+      });
       if (!isSessionLeaseCurrent(lease)) return false;
       const local = loadTimetableSnapshot(requestAccount, semester);
       const shouldStore =
@@ -2214,6 +2219,7 @@ Page({
         (activeAccount === requestAccount ? activeSnapshot : null);
       shouldRefreshAfterward =
         !refresh &&
+        !semester &&
         current !== null &&
         (result.meta.stale === true ||
           result.meta.refreshing === true ||

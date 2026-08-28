@@ -821,6 +821,7 @@ export interface GradesQuery {
   order?: "asc" | "desc";
   includeUnsuccessful?: boolean;
   refresh?: boolean;
+  automatic?: boolean;
 }
 
 export interface RoomsQuery {
@@ -838,9 +839,11 @@ export interface ExamsQuery {
   page?: number;
   pageSize?: number;
   refresh?: boolean;
+  automatic?: boolean;
 }
 
 export interface TimetableQuery {
   semester?: string;
   refresh?: boolean;
+  automatic?: boolean;
 }
