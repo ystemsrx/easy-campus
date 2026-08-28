@@ -1,3 +1,18 @@
+import {
+  getElectricityAccount,
+  queryElectricity,
+} from "../features/services/utilities";
+import {
+  claimAutomaticRefresh,
+  isCacheStale,
+  shouldUseServerSnapshot,
+  THREE_DAYS_MS,
+} from "../store/cache-policy";
+import {
+  loadElectricitySnapshot,
+  saveElectricitySnapshot,
+  type ElectricitySnapshot,
+} from "../store/electricity";
 import { loadExamsSnapshot, saveExamsSnapshot } from "../store/exams";
 import {
   captureSessionLease,
@@ -14,6 +29,77 @@ const examRefreshes = new Map<
   string,
   Promise<ReturnType<typeof loadExamsSnapshot>>
 >();
+const electricityRefreshes = new Map<
+  string,
+  Promise<ElectricitySnapshot | null>
+>();
+
+/**
+ * 首页进入前台时先保留本地余额，再同步服务端绑定；快照满三天后才查询校园能源。
+ */
+export function refreshElectricityOnForeground(
+  session: Session | null = getSession(),
+): Promise<ElectricitySnapshot | null> {
+  if (!session) return Promise.resolve(null);
+  const lease = captureSessionLease(session);
+  if (!lease) return Promise.resolve(null);
+
+  const key = sessionLeaseKey(lease);
+  const active = electricityRefreshes.get(key);
+  if (active) return active;
+  if (!claimAutomaticRefresh("electricity", lease.account)) {
+    return Promise.resolve(loadElectricitySnapshot(lease.account));
+  }
+
+  const pending = (async () => {
+    let current = loadElectricitySnapshot(lease.account);
+    try {
+      const result = await getElectricityAccount();
+      if (!isSessionLeaseCurrent(lease)) return null;
+      const serverBindingCleared = !result.data.binding && !result.data.account;
+      if (
+        serverBindingCleared ||
+        shouldUseServerSnapshot(current, result.meta.fetchedAt)
+      ) {
+        current = saveElectricitySnapshot(
+          lease.account,
+          result.data,
+          result.meta.fetchedAt,
+        );
+      }
+    } catch {
+      if (!isSessionLeaseCurrent(lease)) return null;
+      // 服务端快照读取失败时仍可按本地绑定尝试到期刷新。
+    }
+
+    if (!current?.data.binding || !isCacheStale(current, THREE_DAYS_MS)) {
+      return current;
+    }
+    const binding = current.data.binding;
+    const roomNumber = /^\d{3}$/.test(binding.roomNumber)
+      ? `0${binding.roomNumber}`
+      : binding.roomNumber;
+    try {
+      const result = await queryElectricity({
+        buildingId: binding.buildingId,
+        buildingName: binding.buildingName,
+        roomNumber,
+      });
+      if (!isSessionLeaseCurrent(lease)) return null;
+      return saveElectricitySnapshot(
+        lease.account,
+        result.data,
+        result.meta.fetchedAt,
+      );
+    } catch {
+      return isSessionLeaseCurrent(lease)
+        ? loadElectricitySnapshot(lease.account)
+        : null;
+    }
+  })().finally(() => electricityRefreshes.delete(key));
+  electricityRefreshes.set(key, pending);
+  return pending;
+}
 
 /**
  * 判断考试自动刷新是否已超过 24 小时间隔。没有成功记录时立即刷新。

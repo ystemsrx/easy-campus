@@ -1,15 +1,9 @@
 import { ApiClientError, getErrorMessage } from "../../../services/request";
 import {
-  getElectricityAccount,
   getElectricityBuildings,
   queryElectricity,
 } from "../../services/utilities";
-import {
-  claimAutomaticRefresh,
-  isCacheStale,
-  shouldUseServerSnapshot,
-  THREE_DAYS_MS,
-} from "../../../store/cache-policy";
+import { refreshElectricityOnForeground } from "../../../services/cache-refresh";
 import {
   loadElectricitySnapshot,
   saveElectricitySnapshot,
@@ -388,9 +382,8 @@ Page({
     const lease = captureSessionLease();
     if (!lease) return;
     const sequence = ++accountRequestSequence;
-    let shouldRefreshAfterward = false;
     try {
-      const result = await getElectricityAccount();
+      const snapshot = await refreshElectricityOnForeground();
       if (
         sequence !== accountRequestSequence ||
         !isSessionLeaseCurrent(lease) ||
@@ -398,38 +391,12 @@ Page({
       ) {
         return;
       }
-      const serverBindingCleared = !result.data.binding && !result.data.account;
-      if (
-        serverBindingCleared ||
-        shouldUseServerSnapshot(activeSnapshot, result.meta.fetchedAt)
-      ) {
-        activeSnapshot = saveElectricitySnapshot(
-          activeAccount,
-          result.data,
-          result.meta.fetchedAt,
-        );
-        this.applyElectricityData(result.data);
+      if (snapshot) {
+        activeSnapshot = snapshot;
+        this.applyElectricityData(snapshot.data);
       }
-      const current = loadElectricitySnapshot(activeAccount);
-      shouldRefreshAfterward =
-        Boolean(current?.data.binding) &&
-        isCacheStale(current, THREE_DAYS_MS) &&
-        claimAutomaticRefresh("electricity", activeAccount);
     } catch {
       // 服务端快照不可用时继续展示本地保存的数据。
-    } finally {
-      if (
-        sequence === accountRequestSequence &&
-        isSessionLeaseCurrent(lease) &&
-        activeAccount === lease.account &&
-        shouldRefreshAfterward
-      ) {
-        setTimeout(() => {
-          if (isSessionLeaseCurrent(lease) && activeAccount === lease.account) {
-            void this.refreshBoundAccount();
-          }
-        }, 0);
-      }
     }
   },
   async loadBuildings() {

@@ -329,6 +329,10 @@ const electricityScript = fs.readFileSync(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.ts"),
   "utf8",
 );
+const cacheRefreshScript = fs.readFileSync(
+  path.join(miniprogramRoot, "services", "cache-refresh.ts"),
+  "utf8",
+);
 const passRateTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxml"),
   "utf8",
@@ -470,7 +474,7 @@ if (
   !electricityTemplate.includes("{{boundRoomNumber}}") ||
   electricityTemplate.includes("refresher-") ||
   !electricityScript.includes("isBindingCooldownActive(") ||
-  !electricityScript.includes("serverBindingCleared") ||
+  !cacheRefreshScript.includes("serverBindingCleared") ||
   !electricityScript.includes("this.data.boundBuildingId")
 ) {
   failures.push(

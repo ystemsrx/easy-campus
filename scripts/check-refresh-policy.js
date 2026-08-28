@@ -25,7 +25,8 @@ new Function("module", "exports", output)(
   cachePolicyModule,
   cachePolicyModule.exports,
 );
-const { DAY_MS, FIFTEEN_DAYS_MS, isCacheStale } = cachePolicyModule.exports;
+const { DAY_MS, THREE_DAYS_MS, FIFTEEN_DAYS_MS, isCacheStale } =
+  cachePolicyModule.exports;
 
 assert(
   FIFTEEN_DAYS_MS === 15 * DAY_MS &&
@@ -57,6 +58,15 @@ for (const [label, pageSource] of stableDataConsumers) {
 
 const homeSource = stableDataConsumers[0][1];
 const inboxSource = source("features", "pages", "inbox", "index.ts");
+const cacheRefreshSource = source("services", "cache-refresh.ts");
+assert(
+  THREE_DAYS_MS === 3 * DAY_MS &&
+    homeSource.includes("refreshElectricityOnForeground()") &&
+    cacheRefreshSource.includes("getElectricityAccount()") &&
+    cacheRefreshSource.includes("queryElectricity({") &&
+    cacheRefreshSource.includes("isCacheStale(current, THREE_DAYS_MS)"),
+  "首页进入前台时必须读取电费绑定，并在快照满三天后静默刷新余额",
+);
 assert(
   homeSource.includes("refresh: refreshTeaching") &&
     homeSource.includes("refresh: refreshStable") &&

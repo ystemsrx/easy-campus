@@ -18,7 +18,10 @@ import {
   getTimetable,
   putLocalSchedule,
 } from "../../services/teaching";
-import { refreshExamsOnForeground } from "../../services/cache-refresh";
+import {
+  refreshElectricityOnForeground,
+  refreshExamsOnForeground,
+} from "../../services/cache-refresh";
 import {
   getErrorMessage,
   handleCredentialInvalidation,
@@ -888,7 +891,10 @@ Page({
     void this.loadDashboard(false);
     void this.loadPublicationFeed();
     const lease = captureSessionLease();
-    void refreshExamsOnForeground().then(() => {
+    void Promise.all([
+      refreshExamsOnForeground(),
+      refreshElectricityOnForeground(),
+    ]).then(() => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
         this.hydrateShortcutCaches();
       }
