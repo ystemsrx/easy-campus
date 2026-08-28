@@ -71,6 +71,32 @@ function loadTimetableUtilities() {
   return moduleRecord.exports;
 }
 
+function loadTimetableRender(timetable) {
+  const sourcePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "timetable-render.ts",
+  );
+  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const moduleRecord = { exports: {} };
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    (request) => {
+      if (request === "./timetable") return timetable;
+      return require(request);
+    },
+  );
+  return moduleRecord.exports;
+}
+
 function timetableFixture() {
   const semester = {
     id: "2026-1",
@@ -147,6 +173,7 @@ if (process.argv[2] === "child") {
   const expected = scenarios[process.env.TZ];
   const date = loadDateUtilities();
   const timetable = loadTimetableUtilities();
+  const timetableRender = loadTimetableRender(timetable);
   assertEqual(
     date.formatDateTime("2026-08-13 06:08:54"),
     expected.schoolTimestamp,
@@ -177,6 +204,38 @@ if (process.argv[2] === "child") {
     localCourse.startTime,
     expected.timetableTime,
     "timetable local time",
+  );
+  assertEqual(
+    localCourse.sourceDate,
+    "2026-08-10",
+    "timetable campus date",
+  );
+  const weekPage = timetableRender.buildTimetableWeekPage(
+    timetableFixture(),
+    1,
+    12,
+    {
+      rowHeightPx: 48,
+      courseTopInsetPx: 2,
+      courseHeightExtensionPx: 1,
+      nameFontSizePx: 15,
+      locationFontSizePx: 14,
+      teacherFontSizePx: 12,
+      contentWidthPx: 42,
+      contentInsetPx: 8,
+      scale: 1,
+      viewportKey: "test",
+    },
+  );
+  assertEqual(
+    weekPage.gridDays.flatMap((day) => day.courses).length,
+    1,
+    "timetable course remains in campus week grid",
+  );
+  assertEqual(
+    weekPage.gridDays[0].courses[0]?.id,
+    "arrangement:w1",
+    "timetable course uses campus occurrence date for its column",
   );
   process.exit(0);
 }

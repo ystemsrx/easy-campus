@@ -119,7 +119,9 @@ function courseOccursOnDay(
   course: TimetableCourse,
   day: TimetableDayOption,
 ): boolean {
-  return day.date ? course.date === day.date : course.weekday === day.weekday;
+  return day.date
+    ? course.sourceDate === day.date
+    : course.sourceWeekday === day.weekday;
 }
 
 export function timetableMaxPeriod(timetable: TimetableData): number {

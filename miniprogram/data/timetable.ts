@@ -20,6 +20,7 @@ export interface TimetableCourse {
   arrangementId: string;
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   sourceWeekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  sourceDate: string | null;
   date: string | null;
   startAt: string | null;
   endAt: string | null;
@@ -502,6 +503,7 @@ function toCourse(
     arrangementId: arrangement.id,
     weekday: validStart ? isoWeekday(validStart) : arrangement.weekday,
     sourceWeekday: arrangement.weekday,
+    sourceDate,
     date: validStart ? toDateString(validStart) : null,
     startAt: validStart ? validStart.toISOString() : null,
     endAt: validEnd ? validEnd.toISOString() : null,
