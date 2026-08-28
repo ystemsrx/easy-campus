@@ -24,7 +24,6 @@ export function resolveHomeIdentity(
   const user =
     currentUser?.account === session.user.account ? currentUser : null;
   const candidates = [
-    identityText(user?.profile.name),
     identityText(user?.name),
     identityText(session.user.name),
   ];

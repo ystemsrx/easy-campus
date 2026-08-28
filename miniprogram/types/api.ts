@@ -109,16 +109,10 @@ export interface CurrentUserData {
   credential: CredentialState;
   companion: CompanionPreferencesData | null;
   profile: {
-    name?: string;
-    accountId?: string;
     gender?: string;
     grade?: string;
     organizationName?: string;
-    majorName?: string;
     className?: string;
-    programLength?: string;
-    studentType?: string;
-    studentStatus?: string;
     enrollmentDate?: string;
   };
 }

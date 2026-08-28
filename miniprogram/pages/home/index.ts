@@ -189,6 +189,7 @@ const PLAN_ROW_HEIGHT_RPX = 104;
 const PLAN_COMPLETION_ACK_MS = 140;
 const PLAN_REMOVAL_TRANSITION_MS = 360;
 const PLAN_ENTRY_TRANSITION_MS = 280;
+const CREDENTIAL_POLL_DELAYS_MS = [1_800, 3_000, 5_000, 8_000, 12_000];
 const MODAL_QUICK_ACTION_ROUTES = new Set([
   "/features/pages/pass-rates/index",
   "/features/pages/rooms/index",
@@ -212,6 +213,7 @@ let codeCopyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let publicationRequestLease: SessionLease | null = null;
 let lastPublicationRequestAt = 0;
 let lastPublicationRequestSessionKey = "";
+let publicationRefreshQueued = false;
 let homeVisible = false;
 let homeReady = false;
 let homeActivationTimer: ReturnType<typeof setTimeout> | undefined;
@@ -228,7 +230,9 @@ let dashboardTeachingRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
 let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 let credentialPollTimer: number | undefined;
+let credentialPollAttempt = 0;
 let credentialExitLease: SessionLease | null = null;
+let credentialProfileRefreshPending = false;
 let hydratedAccount = "";
 let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
 let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
@@ -672,7 +676,10 @@ Page({
       petSetupDrawerTimer = undefined;
     }
     credentialExitLease = null;
+    credentialPollAttempt = 0;
+    credentialProfileRefreshPending = false;
     lastPublicationRequestAt = 0;
+    publicationRefreshQueued = false;
     dashboardTeachingRefreshQueued = false;
     dashboardStableRefreshQueued = false;
     clearDashboardTeachingFollowupTimer();
@@ -732,6 +739,8 @@ Page({
     hydratedAccount = "";
     activeTimetable = null;
     queuedAnnouncements = [];
+    publicationRefreshQueued = false;
+    credentialProfileRefreshPending = false;
     automaticPopupsThisEntry = new Set<string>();
     automaticPopupEntryKey = "";
     cancelPendingAnnouncementPresentation();
@@ -888,6 +897,8 @@ Page({
       () => this.updateTodayCourses(),
       30000,
     ) as unknown as number;
+    const credential = getSession()?.credential;
+    if (credential) this.handleCredentialState(credential);
     void this.loadDashboard(false);
     void this.loadPublicationFeed();
     const lease = captureSessionLease();
@@ -1164,11 +1175,34 @@ Page({
       );
     }
   },
+  hydrateServerTimetable(
+    account: string,
+    result: Awaited<ReturnType<typeof getTimetable>>,
+    refresh: boolean,
+  ) {
+    const local = loadTimetableSnapshot(account);
+    if (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+      activeTimetable = result.data;
+      saveTimetableSnapshot(account, result.data, {
+        serverFetchedAt: result.meta.fetchedAt,
+      });
+    }
+    activeTimetable = loadTimetableSnapshot(account)?.data || result.data;
+    const now = new Date();
+    const courses = todayCoursePreview(now);
+    this.setData({
+      currentTime: formatClock(now),
+      todayCourses: courses,
+      remainingCourseCount: remainingCourses(activeTimetable, now).length,
+      ...shortcutCachePatch(account, activeTimetable),
+    });
+  },
   stopCredentialPoll() {
     if (credentialPollTimer !== undefined) {
       clearTimeout(credentialPollTimer);
       credentialPollTimer = undefined;
     }
+    credentialPollAttempt = 0;
   },
   handleCredentialState(credential: CredentialState) {
     if (credential.status === "invalid") {
@@ -1176,10 +1210,15 @@ Page({
       return;
     }
     if (credential.status === "pending") {
+      credentialProfileRefreshPending = true;
       this.scheduleCredentialPoll();
       return;
     }
     this.stopCredentialPoll();
+    const refreshProfile =
+      credential.status === "verified" && credentialProfileRefreshPending;
+    credentialProfileRefreshPending = false;
+    if (refreshProfile) void this.refreshProfileAfterVerification();
     if (credential.status === "unavailable") {
       this.setData({
         serviceHealthy: false,
@@ -1187,8 +1226,26 @@ Page({
       });
     }
   },
+  async refreshProfileAfterVerification() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    try {
+      const user = await getPreloadedCurrentUser(true);
+      if (!user || !homeVisible || !isSessionLeaseCurrent(lease)) return;
+      this.hydrateIdentity(user);
+      this.hydratePet(lease.account);
+      void this.loadPublicationFeed(true);
+    } catch {
+      // 继续显示已有资料；下一次进入前台时会再次读取服务器版本。
+    }
+  },
   scheduleCredentialPoll() {
     if (credentialPollTimer !== undefined || !homeVisible) return;
+    const delay =
+      CREDENTIAL_POLL_DELAYS_MS[
+        Math.min(credentialPollAttempt, CREDENTIAL_POLL_DELAYS_MS.length - 1)
+      ];
+    credentialPollAttempt += 1;
     credentialPollTimer = setTimeout(async () => {
       credentialPollTimer = undefined;
       if (!homeVisible) return;
@@ -1202,7 +1259,7 @@ Page({
       } catch {
         // 普通网络失败不应清除仍然有效的本地会话。
       }
-    }, 1800) as unknown as number;
+    }, delay) as unknown as number;
   },
   exitInvalidCredential() {
     const lease = captureSessionLease();
@@ -1214,16 +1271,26 @@ Page({
     this.stopCredentialPoll();
     handleCredentialInvalidation(lease);
   },
-  async loadPublicationFeed() {
+  async loadPublicationFeed(force = false) {
     const lease = captureSessionLease();
     if (!lease) return;
     const sessionKey = sessionLeaseKey(lease);
     const now = Date.now();
     if (
-      (publicationRequestLease &&
-        isSessionLeaseCurrent(publicationRequestLease)) ||
-      (lastPublicationRequestSessionKey === sessionKey &&
-        now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS)
+      publicationRequestLease &&
+      isSessionLeaseCurrent(publicationRequestLease)
+    ) {
+      if (force) publicationRefreshQueued = true;
+      return;
+    }
+    if (publicationRefreshQueued) {
+      force = true;
+      publicationRefreshQueued = false;
+    }
+    if (
+      !force &&
+      lastPublicationRequestSessionKey === sessionKey &&
+      now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS
     ) {
       return;
     }
@@ -1267,6 +1334,11 @@ Page({
       // 平台公告是附加信息。刷新失败时保留当前内容，不打断主页使用。
     } finally {
       if (publicationRequestLease === lease) publicationRequestLease = null;
+      const refreshQueued = publicationRefreshQueued;
+      if (refreshQueued && homeVisible && isSessionLeaseCurrent(lease)) {
+        publicationRefreshQueued = false;
+        void this.loadPublicationFeed(true);
+      }
     }
   },
   togglePublicationPanel() {
@@ -1685,11 +1757,29 @@ Page({
 
     const account = lease.account;
     const includeUnsuccessful = loadPreferences().showGradesBelow60;
+    const profileInitializationPending =
+      getSession()?.credential.status === "pending";
     const userRequest = includeStableData
       ? getPreloadedCurrentUser(refreshTeaching).then((user) => {
+          if (
+            user &&
+            isSessionLeaseCurrent(lease) &&
+            profileInitializationPending &&
+            user.credential.status === "verified"
+          ) {
+            if (homeVisible) void this.loadPublicationFeed(true);
+            else publicationRefreshQueued = true;
+          }
           if (user && homeVisible && isSessionLeaseCurrent(lease)) {
             this.hydrateIdentity(user);
             this.hydratePet(account);
+            if (
+              profileInitializationPending &&
+              user.credential.status === "verified"
+            ) {
+              credentialProfileRefreshPending = false;
+            }
+            this.handleCredentialState(user.credential);
             const preferences = loadPetPreferences(account);
             if (preferences.completed && this.data.petSetupDrawerMounted) {
               this.setData({
@@ -1702,6 +1792,40 @@ Page({
           return user;
         })
       : Promise.resolve(null);
+    const messageRequest = getMessages({
+      page: 1,
+      pageSize: 15,
+      refresh: refreshTeaching,
+    }).then((result) => {
+      if (homeVisible && isSessionLeaseCurrent(lease)) {
+        saveTeachingPreview(account, { messages: result.data.items });
+        this.setData({
+          messages: mergeMessagePreviews(
+            result.data.items.map(toMessagePreview),
+            this.data.messages,
+            startedCurrentSemester(activeTimetable),
+          ),
+        });
+      }
+      return result;
+    });
+    const noticeRequest = getNotices({
+      page: 1,
+      pageSize: 50,
+      refresh: refreshTeaching,
+    }).then((result) => {
+      if (homeVisible && isSessionLeaseCurrent(lease)) {
+        saveTeachingPreview(account, { notices: result.data.items });
+        this.setData({
+          notices: mergeNoticePreviews(
+            result.data.items.map(toNoticePreview),
+            this.data.notices,
+            startedCurrentSemester(activeTimetable),
+          ),
+        });
+      }
+      return result;
+    });
     const gradeRequest = includeStableData
       ? getGrades({
           page: 1,
@@ -1720,6 +1844,17 @@ Page({
           return result;
         })
       : Promise.resolve(null);
+    const timetableRequest = includeStableData
+      ? (refreshStable
+          ? getTimetable({ refresh: true })
+          : getPreloadedTimetable()
+        ).then((result) => {
+          if (result && homeVisible && isSessionLeaseCurrent(lease)) {
+            this.hydrateServerTimetable(account, result, refreshStable);
+          }
+          return result;
+        })
+      : Promise.resolve(null);
     const [
       userResult,
       messageResult,
@@ -1728,14 +1863,10 @@ Page({
       timetableResult,
     ] = await Promise.allSettled([
       userRequest,
-      getMessages({ page: 1, pageSize: 15, refresh: refreshTeaching }),
-      getNotices({ page: 1, pageSize: 50, refresh: refreshTeaching }),
+      messageRequest,
+      noticeRequest,
       gradeRequest,
-      includeStableData
-        ? refreshStable
-          ? getTimetable({ refresh: true })
-          : getPreloadedTimetable()
-        : Promise.resolve(null),
+      timetableRequest,
     ]);
 
     if (!homeVisible || !isSessionLeaseCurrent(lease)) {
@@ -1762,29 +1893,6 @@ Page({
     if (userResult.status === "fulfilled" && userResult.value) {
       Object.assign(patch, resolveHomeIdentity(getSession(), userResult.value));
       this.handleCredentialState(userResult.value.credential);
-    }
-    if (timetableResult.status === "fulfilled" && timetableResult.value) {
-      const local = loadTimetableSnapshot(account);
-      if (
-        refreshStable ||
-        shouldUseServerSnapshot(local, timetableResult.value.meta.fetchedAt)
-      ) {
-        activeTimetable = timetableResult.value.data;
-        saveTimetableSnapshot(account, timetableResult.value.data, {
-          serverFetchedAt: timetableResult.value.meta.fetchedAt,
-        });
-      }
-      activeTimetable =
-        loadTimetableSnapshot(account)?.data || timetableResult.value.data;
-      const now = new Date();
-      const courses = todayCoursePreview(now);
-      patch.currentTime = formatClock(now);
-      patch.todayCourses = courses;
-      patch.remainingCourseCount = remainingCourses(
-        activeTimetable,
-        now,
-      ).length;
-      Object.assign(patch, shortcutCachePatch(account, activeTimetable));
     }
     const semesterBoundary = startedCurrentSemester(activeTimetable);
     patch.messages = this.data.messages.filter((item) =>

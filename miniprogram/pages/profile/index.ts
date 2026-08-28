@@ -175,7 +175,7 @@ Page({
     });
   },
   applyUser(user: CurrentUserData) {
-    const name = user.name || user.profile.name || "同学";
+    const name = user.name || "同学";
     this.setData({
       userName: name,
       avatarText: name.slice(0, 1),

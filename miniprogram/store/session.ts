@@ -5,6 +5,13 @@ const USER_KEY = "easy-swu:user";
 const SESSION_INVALID_NOTICE_KEY = "easy-swu:session-invalid-notice";
 const ACCOUNT_DEACTIVATED_NOTICE_KEY = "easy-swu:account-deactivated-notice";
 const SESSION_INVALID_NOTICE_TTL_MS = 15_000;
+const CURRENT_USER_PROFILE_FIELDS = [
+  "gender",
+  "grade",
+  "organizationName",
+  "className",
+  "enrollmentDate",
+] as const;
 
 export interface SessionLease {
   token: string;
@@ -137,13 +144,34 @@ export function assertSessionLeaseCurrent(
 }
 
 export function saveCurrentUser(user: CurrentUserData): void {
-  wx.setStorageSync(USER_KEY, user);
-  getApp<IAppOption>().globalData.user = user;
+  const sanitized = sanitizeCurrentUser(user);
+  wx.setStorageSync(USER_KEY, sanitized);
+  getApp<IAppOption>().globalData.user = sanitized;
 }
 
 export function loadCurrentUser(): CurrentUserData | null {
   const user = wx.getStorageSync(USER_KEY) as CurrentUserData | undefined;
-  return user && typeof user.id === "string" ? user : null;
+  if (!user || typeof user.id !== "string") return null;
+  const sanitized = sanitizeCurrentUser(user);
+  wx.setStorageSync(USER_KEY, sanitized);
+  return sanitized;
+}
+
+function sanitizeCurrentUser(user: CurrentUserData): CurrentUserData {
+  const source = user.profile || {};
+  const profile: CurrentUserData["profile"] = {};
+  for (const field of CURRENT_USER_PROFILE_FIELDS) {
+    const value = source[field];
+    if (typeof value === "string" && value) profile[field] = value;
+  }
+  return {
+    id: user.id,
+    account: user.account,
+    name: user.name,
+    credential: user.credential,
+    companion: user.companion ?? null,
+    profile,
+  };
 }
 
 export function clearSession(): void {

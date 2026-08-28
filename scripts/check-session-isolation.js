@@ -60,6 +60,46 @@ assert(
   "请求去重键必须区分同账号同毫秒产生的新 token",
 );
 
+const previousWx = global.wx;
+const localStorage = new Map([
+  [
+    "easy-swu:user",
+    {
+      id: "user-a",
+      account: "20260001",
+      name: "A",
+      credential: { status: "verified", checkedAt: null, errorCode: null },
+      companion: null,
+      profile: {
+        gender: "男",
+        grade: "2026级",
+        organizationName: "测试学院",
+        className: "测试1班",
+        enrollmentDate: "2026-09-01",
+        majorName: "不应保留在客户端",
+        registeredPhone: "13000000000",
+      },
+    },
+  ],
+]);
+global.wx = {
+  getStorageSync(key) {
+    return localStorage.get(key);
+  },
+  setStorageSync(key, value) {
+    localStorage.set(key, value);
+  },
+};
+const sanitizedUser = sessionModule.exports.loadCurrentUser();
+assert(
+  sanitizedUser?.profile.gender === "男" &&
+    !("majorName" in sanitizedUser.profile) &&
+    !("registeredPhone" in sanitizedUser.profile) &&
+    !("majorName" in localStorage.get("easy-swu:user").profile),
+  "旧版用户缓存必须在读取时裁剪为资料卡实际使用的字段",
+);
+global.wx = previousWx;
+
 const requestSource = source("services", "request.ts");
 assert(
   requestSource.includes("const context = createRequestContext(options)") &&

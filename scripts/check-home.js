@@ -50,16 +50,16 @@ assert(
 assert(
   resolveHomeIdentity(session, {
     account: "22200000",
-    name: "林一",
-    profile: { name: "林一一", organizationName: "西南大学计算机学院" },
+    name: "林一一",
+    profile: { organizationName: "西南大学计算机学院" },
   }).userName === "林一一",
-  "首页必须优先使用同一账号的完整用户资料姓名",
+  "首页必须优先使用同一账号的当前用户姓名",
 );
 assert(
   resolveHomeIdentity(session, {
     account: "33300000",
     name: "其他用户",
-    profile: { name: "其他用户" },
+    profile: {},
   }).userName === "林一",
   "首页不得串用其他账号的本地用户资料",
 );
@@ -261,9 +261,11 @@ assert(
     /activateHomeAfterFirstFrame\(\)[\s\S]*?void this\.loadPublicationFeed\(\)/.test(
       homeScript,
     ) &&
-    /async loadPublicationFeed\(\) \{[\s\S]*?now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS[\s\S]*?lastPublicationRequestAt = now;[\s\S]*?getPublicationFeed\(\)/.test(
+    /async loadPublicationFeed\(force = false\) \{[\s\S]*?now - lastPublicationRequestAt < PUBLICATION_REFRESH_THROTTLE_MS[\s\S]*?lastPublicationRequestAt = now;[\s\S]*?getPublicationFeed\(\)/.test(
       homeScript,
     ) &&
+    homeScript.includes("publicationRefreshQueued = true") &&
+    homeScript.includes("void this.loadPublicationFeed(true)") &&
     /onLoad\(\)[\s\S]*?lastPublicationRequestAt = 0;/.test(homeScript) &&
     !homeScript.includes("setInterval(() => this.loadPublicationFeed"),
   "主页重新显示时必须静默同步公告与通知，以八秒间隔限制重复请求且不得定时轮询",
@@ -437,6 +439,18 @@ assert(
       homeScript,
     ),
   "首页必须在服务器成绩快照返回时立即缓存并渲染，不能等待其他首页请求",
+);
+assert(
+  /const messageRequest = getMessages\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(account, \{ messages:[\s\S]*?this\.setData\(\{[\s\S]*?messages: mergeMessagePreviews/.test(
+    homeScript,
+  ) &&
+    /const noticeRequest = getNotices\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(account, \{ notices:[\s\S]*?this\.setData\(\{[\s\S]*?notices: mergeNoticePreviews/.test(
+      homeScript,
+    ) &&
+    /const timetableRequest = includeStableData[\s\S]*?\.then\(\(result\) => \{[\s\S]*?this\.hydrateServerTimetable\(account, result, refreshStable\)/.test(
+      homeScript,
+    ),
+  "初次登录没有本地快照时，消息、通知和课表必须各自返回后立即显示，不能等待最慢请求",
 );
 assert(
   homeScript.includes(

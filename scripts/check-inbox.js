@@ -145,8 +145,8 @@ assert(pageDefinition, "消息页应当成功注册 Page 定义");
 assert(
   source.includes("const MESSAGE_PAGE_SIZE = 15;") &&
     source.includes("const NOTICE_PAGE_SIZE = 50;") &&
-    homeSource.includes(
-      "getNotices({ page: 1, pageSize: 50, refresh: refreshTeaching })",
+    /getNotices\(\{[\s\S]*?page:\s*1,[\s\S]*?pageSize:\s*50,[\s\S]*?refresh:\s*refreshTeaching/.test(
+      homeSource,
     ) &&
     teachingPreviewSource.includes("const MESSAGE_ITEM_LIMIT = 15;") &&
     teachingPreviewSource.includes("const NOTICE_ITEM_LIMIT = 50;") &&
