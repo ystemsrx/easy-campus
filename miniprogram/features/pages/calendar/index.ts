@@ -42,10 +42,16 @@ function buildYearOptions(
   selected: number,
   selectedLabel: string,
   available?: CalendarAcademicYearOption[],
+  availableAcademicYears?: number[],
 ): YearOption[] {
   const entries = available?.length
     ? available
-    : [{ startYear: selected, academicYear: selectedLabel }];
+    : availableAcademicYears?.length
+      ? availableAcademicYears.map((startYear) => ({
+          startYear,
+          academicYear: `${startYear}-${startYear + 1}`,
+        }))
+      : [{ startYear: selected, academicYear: selectedLabel }];
   const options = new Map<number, YearOption>();
   for (const entry of entries) {
     if (!Number.isInteger(entry.startYear) || entry.startYear <= 0) continue;
@@ -218,6 +224,7 @@ Page({
           calendar.startYear,
           calendar.academicYear,
           calendar.availableCalendars,
+          calendar.availableAcademicYears,
         ),
         imagePath: outcome.imagePath,
         errorMessage: "",
@@ -271,6 +278,7 @@ Page({
           calendar.startYear,
           calendar.academicYear,
           calendar.availableCalendars,
+          calendar.availableAcademicYears,
         ),
         imagePath,
       });

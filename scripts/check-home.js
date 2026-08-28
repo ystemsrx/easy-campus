@@ -27,15 +27,16 @@ function loadTypeScriptModule(relativePath) {
 }
 
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
-const { renderMarkdown, renderMarkdownBlocks } = loadTypeScriptModule(
-  "utils/markdown.ts",
-);
+const { renderMarkdown, renderMarkdownBlocks } =
+  loadTypeScriptModule("utils/markdown.ts");
 const { sortPublicationsNewestFirst } = loadTypeScriptModule(
   "utils/publications.ts",
 );
 const {
   isCurrentSemesterId,
   isCurrentSemesterTimestamp,
+  isLatestSchoolNoticeSemesterAssignment,
+  latestSchoolNoticeSemesterId,
   startedCurrentSemester,
 } = loadTypeScriptModule("utils/semester.ts");
 const session = {
@@ -83,16 +84,12 @@ const homeStyles = fs.readFileSync(
   "utf8",
 );
 const contentServiceScript = fs.readFileSync(
-  path.resolve(
-    __dirname,
-    "..",
-    "miniprogram",
-    "services",
-    "content.ts",
-  ),
+  path.resolve(__dirname, "..", "miniprogram", "services", "content.ts"),
   "utf8",
 );
-const homeNoticeHandler = homeScript.slice(homeScript.lastIndexOf("  openNotice("));
+const homeNoticeHandler = homeScript.slice(
+  homeScript.lastIndexOf("  openNotice("),
+);
 const appScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
@@ -283,7 +280,7 @@ assert(
     /const messages = \(cached\?\.messages \|\| \[\]\)[\s\S]*?\.slice\(0, HOME_PREVIEW_ITEM_LIMIT\)[\s\S]*?\.map\(toMessagePreview\)/.test(
       homeScript,
     ) &&
-    /const notices = \(cached\?\.notices \|\| \[\]\)[\s\S]*?\.slice\(0, HOME_PREVIEW_ITEM_LIMIT\)[\s\S]*?\.map\(toNoticePreview\)/.test(
+    /const notices = latestSchoolNoticeItems\([\s\S]*?\(cached\?\.notices \|\| \[\]\)\.map\(toNoticePreview\)[\s\S]*?\.slice\(0, HOME_PREVIEW_ITEM_LIMIT\)/.test(
       homeScript,
     ),
   "首页从本地教学缓存恢复时，消息和通知预览都必须限制为 3 条",
@@ -338,12 +335,43 @@ assert(
     !isCurrentSemesterTimestamp("2026-08-30 23:59:59", startedSemester) &&
     isCurrentSemesterId("2026-1", startedSemester) &&
     !isCurrentSemesterId("2025-2", startedSemester),
-  "开学当天起必须按当前学期过滤主页考试、教务消息和学校通知预览",
+  "开学当天起必须按当前学期过滤主页考试和教务消息预览",
+);
+const noticeSegments = [
+  { semesterId: "2026-1", publishedAt: "2026-07-10" },
+  { semesterId: "2025-3", publishedAt: "2026-06-25" },
+  { semesterId: "2025-2", publishedAt: "2026-05-18" },
+];
+const latestNoticeSemesterId = latestSchoolNoticeSemesterId(noticeSegments);
+assert(
+  latestNoticeSemesterId === "2026-1" &&
+    isLatestSchoolNoticeSemesterAssignment(
+      "2026-1",
+      latestNoticeSemesterId,
+      "2026-07-10",
+      startedSemester,
+    ) &&
+    !isLatestSchoolNoticeSemesterAssignment(
+      "2025-3",
+      latestNoticeSemesterId,
+      "2026-06-25",
+      startedSemester,
+    ),
+  "学校通知必须只展示标题边界确定的最新一段",
+);
+assert(
+  latestSchoolNoticeSemesterId([
+    { semesterId: "2025-3" },
+    { semesterId: "2025-2" },
+  ]) === "2025-3",
+  "夏季学期边界出现后必须立即成为学校通知的最新一段",
 );
 assert(
   homeScript.includes("startedCurrentSemester(activeTimetable)") &&
     homeScript.includes("isCurrentSemesterTimestamp(message.createdAt") &&
-    homeScript.includes("isCurrentSemesterTimestamp(notice.publishedAt") &&
+    homeScript.includes("latestSchoolNoticeSemesterId(items)") &&
+    homeScript.includes("isLatestSchoolNoticeSemesterAssignment(") &&
+    homeScript.includes("notice.semesterId") &&
     homeScript.includes("isCurrentSemesterId(examData?.semester?.id") &&
     /\.campus-card\s*\{[^}]*min-height:\s*198rpx/s.test(homeStyles) &&
     /\.exam-card\s*\{[^}]*min-height:\s*294rpx/s.test(homeStyles) &&
@@ -355,7 +383,7 @@ assert(
     ) &&
     (homeTemplate.match(/<view wx:else class="campus-empty-copy">/g) || [])
       .length === 2,
-  "主页必须过滤旧学期预览，同时保持考试和校园消息卡片的既有高度",
+  "主页必须按各自规则过滤旧教务消息和旧学校通知，同时保持既有卡片高度",
 );
 
 assert(
@@ -377,15 +405,11 @@ assert(
     /\.side-action-icon--rooms\s*\{[^}]*background:\s*#e8eef7/.test(
       homeStyles,
     ) &&
-    /\.campus-blob--notice\s*\{[^}]*background:\s*#e8eef7/.test(
-      homeStyles,
-    ) &&
+    /\.campus-blob--notice\s*\{[^}]*background:\s*#e8eef7/.test(homeStyles) &&
     /\.campus-icon--notice\s*\{[^}]*color:\s*#4f75a6;[^}]*background:\s*#e8eef7/.test(
       homeStyles,
     ) &&
-    /\.campus-dot--notice\s*\{[^}]*background:\s*#4f75a6/.test(
-      homeStyles,
-    ) &&
+    /\.campus-dot--notice\s*\{[^}]*background:\s*#4f75a6/.test(homeStyles) &&
     /\.campus-bullet\s*\{[^}]*background:\s*#4f75a6/.test(homeStyles) &&
     ["door-open-blue.svg", "megaphone-blue.svg"].every((fileName) =>
       fs
@@ -563,9 +587,7 @@ const plainCodeBlocks = renderMarkdownBlocks("```\nplain text\n```");
 const labeledCodeBlock = labeledCodeBlocks.find(
   (block) => block.type === "code",
 );
-const plainCodeBlock = plainCodeBlocks.find(
-  (block) => block.type === "code",
-);
+const plainCodeBlock = plainCodeBlocks.find((block) => block.type === "code");
 const announcementModalStyle =
   /\.announcement-modal \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const announcementPresenter =
@@ -579,8 +601,7 @@ assert(
   "深色模式公告正文和标题必须使用可读的亮色",
 );
 assert(
-  labeledCodeBlocks.map((block) => block.type).join(",") ===
-    "rich,code,rich" &&
+  labeledCodeBlocks.map((block) => block.type).join(",") === "rich,code,rich" &&
     labeledCodeBlock?.language === "typescript" &&
     labeledCodeBlock?.code === "const ready = true;\n  return ready;" &&
     labeledCodeBlock?.lines[1]?.text.startsWith("\u00a0\u00a0") &&
@@ -595,7 +616,7 @@ assert(
     homeTemplate.includes('class="markdown-code-copy"') &&
     homeTemplate.includes('data-code="{{block.code}}"') &&
     homeTemplate.includes(
-      'data-copy-key="{{activeAnnouncement.id + \':\' + block.key}}"',
+      "data-copy-key=\"{{activeAnnouncement.id + ':' + block.key}}\"",
     ) &&
     homeTemplate.includes('catchtap="copyCodeBlock"') &&
     /class="markdown-code-scroll"[^>]*style="height: \{\{block\.contentHeightRpx\}\}rpx;"[^>]*type="list"[^>]*scroll-x[^>]*enable-flex/.test(
@@ -605,7 +626,7 @@ assert(
       homeTemplate,
     ) &&
     homeTemplate.includes(
-      'wx:if="{{copiedCodeKey === activeAnnouncement.id + \':\' + block.key}}"',
+      "wx:if=\"{{copiedCodeKey === activeAnnouncement.id + ':' + block.key}}\"",
     ) &&
     homeTemplate.includes('name="check"') &&
     homeScript.includes("const CODE_COPY_FEEDBACK_MS = 1_600;") &&

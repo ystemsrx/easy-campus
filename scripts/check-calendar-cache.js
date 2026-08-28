@@ -145,6 +145,25 @@ async function main() {
       calendarScript.includes("showRefreshConfirmation(this)"),
     "校历刷新期间必须用固定圆形按钮与真实圆形 SVG 加载环替换刷新图标",
   );
+  assert(
+    calendarScript.includes("calendar.availableAcademicYears") &&
+      calendarScript.includes("availableAcademicYears.map((startYear)") &&
+      calendarTemplate.includes('<view class="calendar-year-scroll">') &&
+      calendarTemplate.includes('<view class="calendar-year-list">') &&
+      calendarTemplate.includes(
+        'class="calendar-year-options" type="custom"',
+      ) &&
+      /\.year-picker-menu\s*\{[^}]*height:\s*72vh;[^}]*max-height:\s*720rpx;/s.test(
+        calendarStyles,
+      ) &&
+      /\.calendar-year-scroll\s*\{[^}]*flex:\s*1;[^}]*min-height:\s*0;[^}]*width:\s*100%;/s.test(
+        calendarStyles,
+      ) &&
+      /\.calendar-year-options\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/s.test(
+        calendarStyles,
+      ),
+    "学年选择器必须兼容学年数组兜底，并提供完整的 Skyline 滚动高度链",
+  );
 
   const { getCachedCalendarImage } = loadCalendarStore();
   let downloads = 0;

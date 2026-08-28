@@ -121,6 +121,8 @@ import { sortPublicationsNewestFirst } from "../../utils/publications";
 import {
   isCurrentSemesterId,
   isCurrentSemesterTimestamp,
+  isLatestSchoolNoticeSemesterAssignment,
+  latestSchoolNoticeSemesterId,
   startedCurrentSemester,
   type StartedSemesterBoundary,
 } from "../../utils/semester";
@@ -142,6 +144,7 @@ interface NoticePreview {
   time: string;
   link: string;
   publishedAt: string;
+  semesterId?: string | null;
 }
 
 interface TodayCoursePreview extends TimetableCourse {
@@ -452,17 +455,21 @@ function toNoticePreview(notice: Notice): NoticePreview {
     time: formatDateTime(notice.publishedAt),
     link: notice.link,
     publishedAt: notice.publishedAt,
+    semesterId: notice.semesterId,
   };
 }
 
 function noticeSourceIdFromLink(link: string): string {
   const matched = /[?&]xwbh=([^&]+)/.exec(link);
-  if (!matched) return "";
-  try {
-    return decodeURIComponent(matched[1]);
-  } catch {
-    return matched[1];
+  if (matched) {
+    try {
+      return decodeURIComponent(matched[1]);
+    } catch {
+      return matched[1];
+    }
   }
+  const publicArticle = /\/info\/(\d+)\/(\d+)\.htm(?:[?#]|$)/i.exec(link);
+  return publicArticle ? `ugs:${publicArticle[1]}:${publicArticle[2]}` : "";
 }
 
 function loadPlanPreviews(account: string): PlanPreview[] {
@@ -535,17 +542,31 @@ function mergeNoticePreviews(
   semesterBoundary: StartedSemesterBoundary | null,
 ): NoticePreview[] {
   const seen = new Set<string>();
-  return [...incoming, ...existing]
-    .filter((item) =>
-      isCurrentSemesterTimestamp(item.publishedAt, semesterBoundary),
-    )
-    .filter((item) => {
-      const identity = item.id || item.link;
-      if (seen.has(identity)) return false;
-      seen.add(identity);
-      return true;
-    })
-    .slice(0, HOME_PREVIEW_ITEM_LIMIT);
+  const merged = [...incoming, ...existing].filter((item) => {
+    const identity = item.id || item.link;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+  return latestSchoolNoticeItems(merged, semesterBoundary).slice(
+    0,
+    HOME_PREVIEW_ITEM_LIMIT,
+  );
+}
+
+function latestSchoolNoticeItems<T extends NoticePreview>(
+  items: T[],
+  semesterBoundary: StartedSemesterBoundary | null,
+): T[] {
+  const latestSemesterId = latestSchoolNoticeSemesterId(items);
+  return items.filter((item) =>
+    isLatestSchoolNoticeSemesterAssignment(
+      item.semesterId,
+      latestSemesterId,
+      item.publishedAt,
+      semesterBoundary,
+    ),
+  );
 }
 
 function preloadNextPrimaryTabFramework(): void {
@@ -1072,12 +1093,10 @@ Page({
       )
       .slice(0, HOME_PREVIEW_ITEM_LIMIT)
       .map(toMessagePreview);
-    const notices = (cached?.notices || [])
-      .filter((notice) =>
-        isCurrentSemesterTimestamp(notice.publishedAt, semesterBoundary),
-      )
-      .slice(0, HOME_PREVIEW_ITEM_LIMIT)
-      .map(toNoticePreview);
+    const notices = latestSchoolNoticeItems(
+      (cached?.notices || []).map(toNoticePreview),
+      semesterBoundary,
+    ).slice(0, HOME_PREVIEW_ITEM_LIMIT);
     this.setData({
       messages,
       notices,
@@ -1700,7 +1719,7 @@ Page({
     ] = await Promise.allSettled([
       userRequest,
       getMessages({ page: 1, pageSize: 15, refresh: refreshTeaching }),
-      getNotices({ page: 1, pageSize: 15, refresh: refreshTeaching }),
+      getNotices({ page: 1, pageSize: 50, refresh: refreshTeaching }),
       gradeRequest,
       includeStableData
         ? refreshStable
@@ -1761,8 +1780,9 @@ Page({
     patch.messages = this.data.messages.filter((item) =>
       isCurrentSemesterTimestamp(item.sourceCreatedAt, semesterBoundary),
     );
-    patch.notices = this.data.notices.filter((item) =>
-      isCurrentSemesterTimestamp(item.publishedAt, semesterBoundary),
+    patch.notices = latestSchoolNoticeItems(
+      this.data.notices,
+      semesterBoundary,
     );
     if (messageResult.status === "fulfilled") {
       saveTeachingPreview(account, {
@@ -1972,7 +1992,7 @@ Page({
   openNotice(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
     const link = String(event.currentTarget.dataset.link || "");
-    const title = String(event.currentTarget.dataset.title || "教务通知");
+    const title = String(event.currentTarget.dataset.title || "学校通知");
     const publishedAt = String(event.currentTarget.dataset.publishedAt || "");
     if (!id && !link) return;
     haptic("light");

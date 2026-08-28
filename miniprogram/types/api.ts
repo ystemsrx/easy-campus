@@ -65,10 +65,7 @@ export interface AutoDormCheckStatus {
 }
 
 export type AutoDormCheckState =
-  | "checked_in"
-  | "pending"
-  | "unavailable"
-  | "disabled";
+  "checked_in" | "pending" | "unavailable" | "disabled";
 
 export interface Session {
   token: string;
@@ -218,12 +215,36 @@ export interface Notice {
   title: string;
   link: string;
   publishedAt: string;
+  semesterId?: string | null;
 }
 
 export interface NoticeDetail extends Notice {
   publisher: string | null;
   contentHtml: string;
+  contentBlocks?: NoticeContentBlock[];
 }
+
+export interface NoticeHtmlContentBlock {
+  key: string;
+  type: "html";
+  contentHtml: string;
+}
+
+export interface NoticeListContentItem {
+  key: string;
+  marker: string;
+  contentHtml: string;
+}
+
+export interface NoticeListContentBlock {
+  key: string;
+  type: "list";
+  markerWidthEm: number;
+  items: NoticeListContentItem[];
+}
+
+export type NoticeContentBlock =
+  NoticeHtmlContentBlock | NoticeListContentBlock;
 
 export type PublicationKind = "announcement" | "notification";
 export type PublicationIconTone = "default" | "warning" | "success" | "info";

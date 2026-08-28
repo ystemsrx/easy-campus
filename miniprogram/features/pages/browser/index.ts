@@ -4,6 +4,7 @@ import { resolveAppearance } from "../../../utils/appearance";
 import { formatDateTime } from "../../../utils/date";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+import type { NoticeContentBlock, NoticeDetail } from "../../../types/api";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -20,13 +21,27 @@ function safeDecode(value: string | undefined, fallback: string): string {
 
 function domainFromUrl(url: string): string {
   const match = /^https?:\/\/([^/]+)/i.exec(url);
-  return match?.[1] || "学校教务系统";
+  return match?.[1] || "西南大学本科生院";
 }
 
 function sourceIdFromUrl(url: string): string {
   const matched = /[?&]xwbh=([^&]+)/.exec(url);
-  if (!matched) return "";
-  return safeDecode(matched[1], matched[1]);
+  if (matched) return safeDecode(matched[1], matched[1]);
+  const publicArticle = /\/info\/(\d+)\/(\d+)\.htm(?:[?#]|$)/i.exec(url);
+  return publicArticle ? `ugs:${publicArticle[1]}:${publicArticle[2]}` : "";
+}
+
+function resolveContentBlocks(detail: NoticeDetail): NoticeContentBlock[] {
+  if (detail.contentBlocks?.length) return detail.contentBlocks;
+  return detail.contentHtml
+    ? [
+        {
+          key: "html-fallback",
+          type: "html",
+          contentHtml: detail.contentHtml,
+        },
+      ]
+    : [];
 }
 
 Page({
@@ -35,13 +50,14 @@ Page({
     themeClass: "theme-light",
     motionClass: "motion-normal",
     id: "",
-    title: "教务通知",
+    title: "学校通知",
     publisher: "",
     publishedAt: "",
     displayTime: "",
     contentHtml: "",
+    contentBlocks: [] as NoticeContentBlock[],
     url: "",
-    domain: "学校教务系统",
+    domain: "西南大学本科生院",
     loading: false,
     loaded: false,
     errorMessage: "",
@@ -50,7 +66,7 @@ Page({
     if (!ensureAuthenticated()) return;
     const url = safeDecode(options.url, "");
     const id = safeDecode(options.id, "") || sourceIdFromUrl(url);
-    const title = safeDecode(options.title, "教务通知");
+    const title = safeDecode(options.title, "学校通知");
     const publishedAt = safeDecode(options.publishedAt, "");
     this.setData({
       ...resolveAppearance(),
@@ -92,6 +108,7 @@ Page({
         publishedAt,
         displayTime: publishedAt ? formatDateTime(publishedAt) : "",
         contentHtml: detail.contentHtml,
+        contentBlocks: resolveContentBlocks(detail),
         url,
         domain: domainFromUrl(url),
         loaded: true,

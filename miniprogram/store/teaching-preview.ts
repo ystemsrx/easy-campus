@@ -1,12 +1,15 @@
 import type { Notice, TeachingMessage } from "../types/api";
 
 const PREFIX = "easy-swu:teaching-preview:";
-const ITEM_LIMIT = 15;
+const MESSAGE_ITEM_LIMIT = 15;
+const NOTICE_ITEM_LIMIT = 50;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const MESSAGE_SCHEMA_VERSION = 4;
+const NOTICE_SCHEMA_VERSION = 3;
 
 export interface TeachingPreview {
   messageSchemaVersion: number;
+  noticeSchemaVersion: number;
   messages: TeachingMessage[];
   notices: Notice[];
   updatedAt: number;
@@ -24,9 +27,12 @@ export function loadTeachingPreview(account: string): TeachingPreview | null {
   if (!value || typeof value !== "object") return null;
   const schemaMatches =
     Number(value.messageSchemaVersion) === MESSAGE_SCHEMA_VERSION;
+  const noticeSchemaMatches =
+    Number(value.noticeSchemaVersion) === NOTICE_SCHEMA_VERSION;
   const legacyMessages = Array.isArray(value.messages) ? value.messages : [];
   return {
     messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
+    noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
     messages: (schemaMatches
       ? legacyMessages
       : legacyMessages.filter(
@@ -41,10 +47,11 @@ export function loadTeachingPreview(account: string): TeachingPreview | null {
                 ))
             ),
         )
-    ).slice(0, ITEM_LIMIT),
-    notices: Array.isArray(value.notices)
-      ? value.notices.slice(0, ITEM_LIMIT)
-      : [],
+    ).slice(0, MESSAGE_ITEM_LIMIT),
+    notices:
+      noticeSchemaMatches && Array.isArray(value.notices)
+        ? value.notices.slice(0, NOTICE_ITEM_LIMIT)
+        : [],
     updatedAt: Number(value.updatedAt) || 0,
     lastCleanupAt: Number(value.lastCleanupAt) || 0,
   };
@@ -57,6 +64,7 @@ export function saveTeachingPreview(
   if (!account.trim()) return;
   const current = loadTeachingPreview(account) || {
     messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
+    noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
     messages: [],
     notices: [],
     updatedAt: 0,
@@ -65,8 +73,12 @@ export function saveTeachingPreview(
   try {
     wx.setStorageSync(storageKey(account), {
       messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
-      messages: (patch.messages || current.messages).slice(0, ITEM_LIMIT),
-      notices: (patch.notices || current.notices).slice(0, ITEM_LIMIT),
+      noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
+      messages: (patch.messages || current.messages).slice(
+        0,
+        MESSAGE_ITEM_LIMIT,
+      ),
+      notices: (patch.notices || current.notices).slice(0, NOTICE_ITEM_LIMIT),
       updatedAt: Date.now(),
       lastCleanupAt: current.lastCleanupAt,
     } satisfies TeachingPreview);
@@ -83,8 +95,9 @@ export function cleanupTeachingPreview(
   if (!current || now - current.lastCleanupAt < WEEK_MS) return current;
   const cleaned: TeachingPreview = {
     messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
-    messages: current.messages.slice(0, ITEM_LIMIT),
-    notices: current.notices.slice(0, ITEM_LIMIT),
+    noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
+    messages: current.messages.slice(0, MESSAGE_ITEM_LIMIT),
+    notices: current.notices.slice(0, NOTICE_ITEM_LIMIT),
     updatedAt: current.updatedAt,
     lastCleanupAt: now,
   };
@@ -96,4 +109,7 @@ export function cleanupTeachingPreview(
   return cleaned;
 }
 
-export { ITEM_LIMIT as TEACHING_PREVIEW_ITEM_LIMIT };
+export {
+  MESSAGE_ITEM_LIMIT as TEACHING_MESSAGE_PREVIEW_ITEM_LIMIT,
+  NOTICE_ITEM_LIMIT as SCHOOL_NOTICE_PREVIEW_ITEM_LIMIT,
+};

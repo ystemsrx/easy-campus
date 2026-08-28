@@ -66,21 +66,25 @@
           <lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon>
         </view>
       </view>
-      <scroll-view class="calendar-year-options" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-        <view
-          wx:for="{{yearOptions}}"
-          wx:key="value"
-          class="calendar-year-option pressable {{academicYear === item.value ? 'calendar-year-option--active' : ''}}"
-          data-value="{{item.value}}"
-          bindtap="selectYear"
-          hover-class="calendar-year-option--pressed"
-          aria-role="button"
-          aria-label="切换至 {{item.label}} 学年"
-        >
-          <text>{{item.label}} 学年</text>
-          <lucide-icon wx:if="{{academicYear === item.value}}" name="check" tone="sage" size="{{23}}"></lucide-icon>
-        </view>
-      </scroll-view>
+      <view class="calendar-year-scroll">
+        <scroll-view class="calendar-year-options" type="custom" scroll-y enhanced show-scrollbar="{{false}}">
+          <view class="calendar-year-list">
+            <view
+              wx:for="{{yearOptions}}"
+              wx:key="value"
+              class="calendar-year-option pressable {{academicYear === item.value ? 'calendar-year-option--active' : ''}}"
+              data-value="{{item.value}}"
+              bindtap="selectYear"
+              hover-class="calendar-year-option--pressed"
+              aria-role="button"
+              aria-label="切换至 {{item.label}} 学年"
+            >
+              <text>{{item.label}} 学年</text>
+              <lucide-icon wx:if="{{academicYear === item.value}}" name="check" tone="sage" size="{{23}}"></lucide-icon>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
     </view>
   </view>
 

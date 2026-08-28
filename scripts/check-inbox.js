@@ -42,6 +42,10 @@ const semesterSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "utils", "semester.ts"),
   "utf8",
 );
+const teachingPreviewSource = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "store", "teaching-preview.ts"),
+  "utf8",
+);
 const semesterOutput = ts.transpileModule(semesterSource, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -54,6 +58,8 @@ new Function("module", "exports", "require", semesterOutput)(
   semesterModule.exports,
   require,
 );
+const { isLatestSchoolNoticeSemesterAssignment, latestSchoolNoticeSemesterId } =
+  semesterModule.exports;
 const output = ts.transpileModule(source, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -136,6 +142,17 @@ new Function("module", "exports", "require", "Page", output)(
 );
 
 assert(pageDefinition, "消息页应当成功注册 Page 定义");
+assert(
+  source.includes("const MESSAGE_PAGE_SIZE = 15;") &&
+    source.includes("const NOTICE_PAGE_SIZE = 50;") &&
+    homeSource.includes(
+      "getNotices({ page: 1, pageSize: 50, refresh: refreshTeaching })",
+    ) &&
+    teachingPreviewSource.includes("const MESSAGE_ITEM_LIMIT = 15;") &&
+    teachingPreviewSource.includes("const NOTICE_ITEM_LIMIT = 50;") &&
+    teachingPreviewSource.includes("const NOTICE_SCHEMA_VERSION = 3;"),
+  "教务消息必须继续保留十五条，学校通知列表和本地缓存必须保留最多五十条",
+);
 let loadCount = 0;
 const page = {
   ...pageDefinition,
@@ -252,6 +269,35 @@ assert(
   "没有本学期数据时，校园消息页必须保留两类旧数据并只在首条前标记历史分界",
 );
 
+const schoolNoticeSegments = [
+  { semesterId: "2026-1", publishedAt: "2026-07-10" },
+  { semesterId: "2025-3", publishedAt: "2026-06-25" },
+  { semesterId: "2025-3", publishedAt: "2026-06-24" },
+  { semesterId: "2025-2", publishedAt: "2026-06-20" },
+];
+const latestSchoolNoticeSemester =
+  latestSchoolNoticeSemesterId(schoolNoticeSegments);
+assert(
+  latestSchoolNoticeSemester === "2026-1" &&
+    isLatestSchoolNoticeSemesterAssignment(
+      schoolNoticeSegments[0].semesterId,
+      latestSchoolNoticeSemester,
+      schoolNoticeSegments[0].publishedAt,
+      null,
+    ) &&
+    !isLatestSchoolNoticeSemesterAssignment(
+      schoolNoticeSegments[1].semesterId,
+      latestSchoolNoticeSemester,
+      schoolNoticeSegments[1].publishedAt,
+      null,
+    ) &&
+    source.includes(
+      "const showHistoryDivider = historical && !historyStarted",
+    ) &&
+    source.includes("latestSchoolNoticeSemesterId(items)"),
+  "学校通知必须在夏季学期及下一学年首条有效通知处依次切换历史分界",
+);
+
 assert(
   /case "other":[\s\S]*?dateLabel: formatDateTime\(message\.createdAt\),[\s\S]*?label: "消息"/.test(
     homeSource,
@@ -289,6 +335,25 @@ assert(
     !noticeDetailStyles.includes(".cache-label") &&
     !noticeDetailSource.includes("cached: result.meta.cached"),
   "通知详情不得展示正文处理或共享缓存等内部实现标签",
+);
+assert(
+  noticeDetailTemplate.includes('class="notice-native-list-row"') &&
+    noticeDetailTemplate.includes('class="notice-native-list-marker"') &&
+    noticeDetailTemplate.includes('class="notice-native-list-spacer"') &&
+    noticeDetailTemplate.includes('class="notice-native-list-body"') &&
+    /\.notice-native-list-row\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*nowrap;/s.test(
+      noticeDetailStyles,
+    ) &&
+    /\.notice-native-list-marker\s*\{[^}]*flex:\s*none;/s.test(
+      noticeDetailStyles,
+    ) &&
+    /\.notice-native-list-spacer\s*\{[^}]*flex:\s*none;[^}]*width:\s*0\.5em;/s.test(
+      noticeDetailStyles,
+    ) &&
+    /\.notice-native-list-body\s*\{[^}]*flex:\s*1;[^}]*min-width:\s*0;/s.test(
+      noticeDetailStyles,
+    ),
+  "通知详情序号列表必须使用独立原生行、固定序号列和可换行正文列",
 );
 assert(
   source.includes('return value.trim().replace(/老师/g, "").trim();') &&

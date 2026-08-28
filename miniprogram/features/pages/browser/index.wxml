@@ -4,12 +4,23 @@
     <navigation-bar title="通知详情" back transparent theme="{{theme}}"></navigation-bar>
     <view class="notice-detail-content page-content page-enter">
       <view class="notice-heading">
-        <view class="notice-kind"><view class="notice-kind-icon"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view><text>教务通知</text></view>
+        <view class="notice-kind"><view class="notice-kind-icon"><lucide-icon name="megaphone" tone="coral" size="{{29}}"></lucide-icon></view><text>学校通知</text></view>
         <text class="notice-heading-title display-title" selectable user-select>{{title}}</text>
         <view wx:if="{{displayTime || publisher}}" class="notice-meta"><text wx:if="{{displayTime}}">{{displayTime}}</text><view wx:if="{{displayTime && publisher}}"></view><text wx:if="{{publisher}}">{{publisher}}</text></view>
       </view>
 
-      <view wx:if="{{contentHtml}}" class="notice-article card"><rich-text class="notice-rich-text" nodes="{{contentHtml}}"></rich-text></view>
+      <view wx:if="{{contentHtml}}" class="notice-article card">
+        <block wx:for="{{contentBlocks}}" wx:key="key" wx:for-item="contentBlock">
+          <rich-text wx:if="{{contentBlock.type === 'html'}}" class="notice-rich-text" nodes="{{contentBlock.contentHtml}}"></rich-text>
+          <view wx:else class="notice-native-list">
+            <view wx:for="{{contentBlock.items}}" wx:key="key" wx:for-item="listItem" class="notice-native-list-row">
+              <view class="notice-native-list-marker" style="width: {{contentBlock.markerWidthEm}}em;"><text>{{listItem.marker}}</text></view>
+              <view class="notice-native-list-spacer"></view>
+              <view class="notice-native-list-body"><rich-text class="notice-native-list-body-rich-text" nodes="{{listItem.contentHtml}}"></rich-text></view>
+            </view>
+          </view>
+        </block>
+      </view>
       <view wx:elif="{{loading}}" class="notice-article notice-skeleton card" aria-label="正在整理通知正文"><view class="skeleton-line skeleton-line--wide"></view><view class="skeleton-line"></view><view class="skeleton-line skeleton-line--short"></view><view class="skeleton-section"></view><view class="skeleton-line"></view><view class="skeleton-line skeleton-line--medium"></view><view class="skeleton-section skeleton-section--small"></view><view class="skeleton-line"></view></view>
       <view wx:elif="{{loaded && errorMessage}}" class="notice-error card"><view class="notice-error-glyph"><lucide-icon name="circle-alert" tone="danger" size="{{38}}"></lucide-icon></view><text class="notice-error-title">正文暂时无法显示</text><text class="notice-error-copy">{{errorMessage}}</text><button class="secondary-button notice-retry" hover-class="button-pressed" bindtap="retry">重新加载</button></view>
       <view wx:if="{{contentHtml && errorMessage}}" class="inline-refresh-error pressable" bindtap="retry" hover-class="pressing"><text>{{errorMessage}}</text><text>重试</text></view>

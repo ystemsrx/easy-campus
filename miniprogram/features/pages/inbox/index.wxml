@@ -92,7 +92,7 @@
               <view class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
               <view class="notice-icon"><lucide-icon name="megaphone" tone="coral" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
-                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">教务通知</text></view></view>
+                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">学校通知</text></view></view>
               </view>
               </view>
             </view>

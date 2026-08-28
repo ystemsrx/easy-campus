@@ -31,6 +31,8 @@ import {
 import { showRefreshConfirmation } from "../../utils/refresh-feedback";
 import {
   isCurrentSemesterTimestamp,
+  isLatestSchoolNoticeSemesterAssignment,
+  latestSchoolNoticeSemesterId,
   startedCurrentSemester,
   type StartedSemesterBoundary,
 } from "../../../utils/semester";
@@ -80,7 +82,8 @@ interface NoticeRefreshOutcome {
   errorMessage: string;
 }
 
-const PAGE_SIZE = 15;
+const MESSAGE_PAGE_SIZE = 15;
+const NOTICE_PAGE_SIZE = 50;
 const BACKGROUND_REFRESH_FOLLOWUP_MS = 1_500;
 const MESSAGE_TYPE_OPTIONS: ReadonlyArray<
   Pick<MessageTypeOption, "value" | "label">
@@ -109,7 +112,7 @@ async function refreshInboxMessages(
   try {
     const result = await getMessages({
       page: 1,
-      pageSize: PAGE_SIZE,
+      pageSize: MESSAGE_PAGE_SIZE,
       types: messageTypes.length ? messageTypes : undefined,
       refresh: true,
     });
@@ -142,7 +145,7 @@ async function refreshInboxNotices(
   try {
     const result = await getNotices({
       page: 1,
-      pageSize: PAGE_SIZE,
+      pageSize: NOTICE_PAGE_SIZE,
       q: query || undefined,
       refresh: true,
     });
@@ -308,8 +311,23 @@ function decorateMessages(items: MessageView[]): MessageView[] {
   return withHistoryDivider(items, (item) => item.sourceCreatedAt);
 }
 
-function decorateNotices(items: NoticeView[]): NoticeView[] {
-  return withHistoryDivider(items, (item) => item.publishedAt);
+function decorateNotices(
+  items: NoticeView[],
+  latestSemesterId = latestSchoolNoticeSemesterId(items),
+): NoticeView[] {
+  const boundary = semesterBoundary();
+  let historyStarted = false;
+  return items.map((item) => {
+    const historical = !isLatestSchoolNoticeSemesterAssignment(
+      item.semesterId,
+      latestSemesterId,
+      item.publishedAt,
+      boundary,
+    );
+    const showHistoryDivider = historical && !historyStarted;
+    if (historical) historyStarted = true;
+    return { ...item, showHistoryDivider };
+  });
 }
 
 function mergeMessages(
@@ -323,7 +341,7 @@ function mergeMessages(
       seen.add(item.id);
       return true;
     })
-    .slice(0, PAGE_SIZE);
+    .slice(0, MESSAGE_PAGE_SIZE);
 }
 
 function mergeNotices(
@@ -338,17 +356,20 @@ function mergeNotices(
       seen.add(identity);
       return true;
     })
-    .slice(0, PAGE_SIZE);
+    .slice(0, NOTICE_PAGE_SIZE);
 }
 
 function noticeSourceIdFromLink(link: string): string {
   const matched = /[?&]xwbh=([^&]+)/.exec(link);
-  if (!matched) return "";
-  try {
-    return decodeURIComponent(matched[1]);
-  } catch {
-    return matched[1];
+  if (matched) {
+    try {
+      return decodeURIComponent(matched[1]);
+    } catch {
+      return matched[1];
+    }
   }
+  const publicArticle = /\/info\/(\d+)\/(\d+)\.htm(?:[?#]|$)/i.exec(link);
+  return publicArticle ? `ugs:${publicArticle[1]}:${publicArticle[2]}` : "";
 }
 
 Page({
@@ -367,6 +388,7 @@ Page({
     noticeRefreshing: false,
     messageError: "",
     noticeError: "",
+    latestNoticeSemesterId: "",
     messageFilterMounted: false,
     messageFilterOpen: false,
     messageTypes: [] as MessageType[],
@@ -566,9 +588,13 @@ Page({
         outcome.result.data.items.map(toNoticeView),
         this.data.noticeItems,
       );
+      const latestNoticeSemesterId =
+        latestSchoolNoticeSemesterId(noticeItems) ||
+        this.data.latestNoticeSemesterId;
       this.setData({
         noticeQuery: outcome.query,
-        noticeItems: decorateNotices(noticeItems),
+        latestNoticeSemesterId,
+        noticeItems: decorateNotices(noticeItems, latestNoticeSemesterId),
         noticeLoaded: true,
         noticeError: "",
       });
@@ -581,7 +607,10 @@ Page({
     if (hydratedInboxAccount === account) {
       this.setData({
         messageItems: decorateMessages(this.data.messageItems),
-        noticeItems: decorateNotices(this.data.noticeItems),
+        noticeItems: decorateNotices(
+          this.data.noticeItems,
+          this.data.latestNoticeSemesterId || undefined,
+        ),
       });
       return;
     }
@@ -604,6 +633,7 @@ Page({
         messageTypeOptions: messageTypeOptions([]),
         noticeQuery: "",
         noticeSearchFocused: false,
+        latestNoticeSemesterId: "",
       });
     }
     hydratedInboxAccount = account;
@@ -612,12 +642,17 @@ Page({
     const messageItems = decorateMessages(
       (cached?.messages || []).map(toMessageView),
     );
+    const cachedNotices = (cached?.notices || []).map(toNoticeView);
+    const latestNoticeSemesterId =
+      latestSchoolNoticeSemesterId(cachedNotices) || "";
     const noticeItems = decorateNotices(
-      (cached?.notices || []).map(toNoticeView),
+      cachedNotices,
+      latestNoticeSemesterId || undefined,
     );
     this.setData({
       messageItems,
       noticeItems,
+      latestNoticeSemesterId,
       messageLoaded: messageItems.length > 0,
       noticeLoaded: noticeItems.length > 0,
     });
@@ -670,7 +705,7 @@ Page({
     try {
       const result = await getMessages({
         page: 1,
-        pageSize: PAGE_SIZE,
+        pageSize: MESSAGE_PAGE_SIZE,
         types: this.data.messageTypes.length
           ? this.data.messageTypes
           : undefined,
@@ -690,7 +725,7 @@ Page({
       }
       const messageItems = mergeFresh
         ? mergeMessages(incoming, this.data.messageItems)
-        : incoming.slice(0, PAGE_SIZE);
+        : incoming.slice(0, MESSAGE_PAGE_SIZE);
       this.setData({
         messageItems: decorateMessages(messageItems),
         messageLoaded: true,
@@ -742,7 +777,7 @@ Page({
     try {
       const result = await getNotices({
         page: 1,
-        pageSize: PAGE_SIZE,
+        pageSize: NOTICE_PAGE_SIZE,
         q: this.data.noticeQuery.trim() || undefined,
         refresh,
       });
@@ -757,9 +792,18 @@ Page({
       }
       const noticeItems = mergeFresh
         ? mergeNotices(incoming, this.data.noticeItems)
-        : incoming.slice(0, PAGE_SIZE);
+        : incoming.slice(0, NOTICE_PAGE_SIZE);
+      const latestNoticeSemesterId = this.data.noticeQuery.trim()
+        ? this.data.latestNoticeSemesterId ||
+          latestSchoolNoticeSemesterId(noticeItems) ||
+          ""
+        : latestSchoolNoticeSemesterId(noticeItems) || "";
       this.setData({
-        noticeItems: decorateNotices(noticeItems),
+        latestNoticeSemesterId,
+        noticeItems: decorateNotices(
+          noticeItems,
+          latestNoticeSemesterId || undefined,
+        ),
         noticeLoaded: true,
       });
       if (
@@ -891,7 +935,7 @@ Page({
   openNotice(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
     const link = String(event.currentTarget.dataset.link || "");
-    const title = String(event.currentTarget.dataset.title || "教务通知");
+    const title = String(event.currentTarget.dataset.title || "学校通知");
     const publishedAt = String(event.currentTarget.dataset.publishedAt || "");
     if (!id && !link) {
       return;

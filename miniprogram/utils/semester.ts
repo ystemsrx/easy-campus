@@ -58,6 +58,41 @@ export function isCurrentSemesterId(
   return !boundary || semesterId === boundary.semesterId;
 }
 
+export function latestSchoolNoticeSemesterId(
+  items: ReadonlyArray<{ semesterId?: string | null }>,
+): string | null {
+  let latestSemesterId: string | null = null;
+  let latestRank: number | null = null;
+  for (const item of items) {
+    const rank = semesterRank(item.semesterId);
+    if (rank !== null && (latestRank === null || rank > latestRank)) {
+      latestSemesterId = String(item.semesterId);
+      latestRank = rank;
+    }
+  }
+  return latestSemesterId;
+}
+
+export function isLatestSchoolNoticeSemesterAssignment(
+  semesterId: string | null | undefined,
+  latestSemesterId: string | null | undefined,
+  fallbackTimestamp: string,
+  boundary: StartedSemesterBoundary | null,
+): boolean {
+  const assignedRank = semesterRank(semesterId);
+  const latestRank = semesterRank(latestSemesterId);
+  if (assignedRank !== null && latestRank !== null) {
+    return assignedRank === latestRank;
+  }
+  return isCurrentSemesterTimestamp(fallbackTimestamp, boundary);
+}
+
+function semesterRank(value: string | null | undefined): number | null {
+  const matched = /^(\d{4})-([123])$/.exec(String(value || ""));
+  if (!matched) return null;
+  return Number(matched[1]) * 3 + Number(matched[2]) - 1;
+}
+
 export function semesterSeasonLabel(term: number): string {
   if (term === 1) return "秋";
   if (term === 2) return "春";
