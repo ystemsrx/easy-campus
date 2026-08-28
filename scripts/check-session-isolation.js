@@ -84,6 +84,12 @@ assert(
   "认证失败的延迟导航不得把刚登录的新会话送回登录页",
 );
 assert(
+  /const AUTH_ERROR_CODES = new Set\(\[[\s\S]*?"SWU_SESSION_INVALIDATED"[\s\S]*?\]\)/.test(
+    requestSource,
+  ),
+  "普通请求收到 SWU_SESSION_INVALIDATED 时必须清理当前会话并返回登录页",
+);
+assert(
   sessionSource.includes("wx.removeStorageSync(SESSION_INVALID_NOTICE_KEY)") &&
     sessionSource.includes(
       "wx.removeStorageSync(ACCOUNT_DEACTIVATED_NOTICE_KEY)",
