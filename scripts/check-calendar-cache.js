@@ -66,6 +66,16 @@ const calendarScript = fs.readFileSync(
   ),
   "utf8",
 );
+const teachingService = fs.readFileSync(
+  path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "services",
+    "teaching.ts",
+  ),
+  "utf8",
+);
 
 const storage = new Map([
   ["easy-swu:calendar-image:2025:123", "/saved/legacy"],
@@ -163,6 +173,14 @@ async function main() {
         calendarStyles,
       ),
     "学年选择器必须兼容学年数组兜底，并提供完整的 Skyline 滚动高度链",
+  );
+  assert(
+    teachingService.includes("version: calendar.version || undefined") &&
+      calendarScript.includes("downloadCalendarImage(calendar, true)") &&
+      calendarScript.includes(
+        "downloadCalendarImage(calendar, forceDownload)",
+      ),
+    "校历图片下载必须携带元数据版本，手动刷新还必须绕过网络缓存",
   );
 
   const { getCachedCalendarImage } = loadCalendarStore();

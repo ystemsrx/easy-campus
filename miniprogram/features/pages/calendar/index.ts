@@ -87,7 +87,7 @@ async function refreshCalendar(
     }
     const imagePath = await getCachedCalendarImage(
       calendar,
-      () => downloadCalendarImage(calendar.startYear),
+      () => downloadCalendarImage(calendar, true),
       true,
     );
     return {
@@ -241,7 +241,7 @@ Page({
   ): Promise<string> {
     return getCachedCalendarImage(
       calendar,
-      () => downloadCalendarImage(calendar.startYear),
+      () => downloadCalendarImage(calendar, forceDownload),
       forceDownload,
     );
   },

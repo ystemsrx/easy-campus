@@ -176,7 +176,7 @@ export function putLocalSchedule(
 }
 
 export function downloadCalendarImage(
-  academicYear: number,
+  calendar: Pick<CalendarData, "startYear" | "version">,
   refresh = false,
 ): Promise<string> {
   const lease = captureSessionLease();
@@ -190,7 +190,11 @@ export function downloadCalendarImage(
     );
   }
 
-  const query = buildQuery({ academicYear, refresh: refresh || undefined });
+  const query = buildQuery({
+    academicYear: calendar.startYear,
+    version: calendar.version || undefined,
+    refresh: refresh || undefined,
+  });
   return new Promise((resolve, reject) => {
     wx.downloadFile({
       url: `${getApiBaseUrl()}/teaching/calendar/image${query}`,
