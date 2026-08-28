@@ -254,6 +254,7 @@ new Function("module", "exports", motionOutput)(
 );
 const {
   CRABWALKING_LEG_MS,
+  MAX_LOGIN_HANDOFF_DELAY_MS,
   resolveLoginHandoffDelay,
   resolveWalkingPositionRpx,
 } = motionModule.exports;
@@ -508,7 +509,8 @@ if (
   Math.abs(resolveWalkingPositionRpx(-380, midpointElapsed) + 190) > 0.001 ||
   Math.abs(resolveWalkingPositionRpx(-380, CRABWALKING_LEG_MS)) > 0.001 ||
   Math.abs(resolveWalkingPositionRpx(0, CRABWALKING_LEG_MS) - 380) > 0.001 ||
-  fastHandoffDelay !== 1210 ||
+  MAX_LOGIN_HANDOFF_DELAY_MS !== 120 ||
+  fastHandoffDelay !== MAX_LOGIN_HANDOFF_DELAY_MS ||
   slowHandoffDelay !== 0 ||
   reducedHandoffDelay !== 0 ||
   !startSubmitBody.includes('currentMascot === "crabwalking"') ||
@@ -524,6 +526,7 @@ if (
 
 if (
   !motionScript.includes("export const LOGIN_ROUTE_LEAD_MS = 100;") ||
+  !motionScript.includes("export const MAX_LOGIN_HANDOFF_DELAY_MS = 120;") ||
   !script.includes("async beginHomeTransition(): Promise<boolean>") ||
   !script.includes("routingToHome = true;") ||
   !script.includes("if (pageActive && !routingToHome)") ||

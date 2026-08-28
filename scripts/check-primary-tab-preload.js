@@ -64,6 +64,41 @@ assert(
   "App 尚未注册时必须能够从本地存储恢复会话",
 );
 
+const retainedStorage = new Map([
+  ["easy-swu:session", storedSession],
+  ["easy-swu:user", { id: "user", account: "account", name: "测试用户" }],
+  ["easy-swu:timetable:account:default", { data: { courses: [] } }],
+  ["easy-swu:grades:account", { data: { items: [] } }],
+  ["easy-swu:teaching-preview:account", { messages: [], notices: [] }],
+]);
+const appState = {
+  globalData: {
+    session: storedSession,
+    user: { id: "user", account: "account", name: "测试用户" },
+    selectedGrade: null,
+  },
+};
+const retainedSessionModule = loadSessionStore(
+  {
+    getStorageSync: (key) => retainedStorage.get(key),
+    setStorageSync: (key, value) => retainedStorage.set(key, value),
+    removeStorageSync: (key) => retainedStorage.delete(key),
+  },
+  () => appState,
+);
+retainedSessionModule.clearSession();
+assert(
+  !retainedStorage.has("easy-swu:session") &&
+    !retainedStorage.has("easy-swu:user"),
+  "退出登录必须清理令牌和精简用户资料",
+);
+assert(
+  retainedStorage.has("easy-swu:timetable:account:default") &&
+    retainedStorage.has("easy-swu:grades:account") &&
+    retainedStorage.has("easy-swu:teaching-preview:account"),
+  "退出登录必须保留账号隔离的课表、成绩和首页消息缓存供下次快速首屏使用",
+);
+
 assert(
   /onShow\(\)\s*\{[\s\S]*foregroundEntryId \+= 1;[\s\S]*beginAutomaticRefreshCycle\(\);[\s\S]*const session = this\.globalData\.session;[\s\S]*setTimeout\(\(\) => preloadPrimaryTabs\(session\), 0\);/.test(
     app,
