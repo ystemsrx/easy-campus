@@ -1,8 +1,6 @@
 import { ApiClientError, getErrorMessage } from "../../../services/request";
-import {
-  getElectricityBuildings,
-  queryElectricity,
-} from "../../services/utilities";
+import { queryElectricity } from "../../../services/electricity";
+import { getElectricityBuildings } from "../../services/utilities";
 import { refreshElectricityOnForeground } from "../../../services/cache-refresh";
 import {
   loadElectricitySnapshot,

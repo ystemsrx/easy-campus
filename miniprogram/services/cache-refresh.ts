@@ -1,12 +1,9 @@
-import {
-  getElectricityAccount,
-  queryElectricity,
-} from "../features/services/utilities";
+import { getElectricityAccount, queryElectricity } from "./electricity";
 import {
   claimAutomaticRefresh,
+  DAY_MS,
   isCacheStale,
   shouldUseServerSnapshot,
-  THREE_DAYS_MS,
 } from "../store/cache-policy";
 import {
   loadElectricitySnapshot,
@@ -35,7 +32,7 @@ const electricityRefreshes = new Map<
 >();
 
 /**
- * 首页进入前台时先保留本地余额，再同步服务端绑定；快照满三天后才查询校园能源。
+ * 首页进入前台时先保留本地余额，再同步服务端绑定；快照满一天后才查询校园能源。
  */
 export function refreshElectricityOnForeground(
   session: Session | null = getSession(),
@@ -72,7 +69,7 @@ export function refreshElectricityOnForeground(
       // 服务端快照读取失败时仍可按本地绑定尝试到期刷新。
     }
 
-    if (!current?.data.binding || !isCacheStale(current, THREE_DAYS_MS)) {
+    if (!current?.data.binding || !isCacheStale(current, DAY_MS)) {
       return current;
     }
     const binding = current.data.binding;

@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const ts = require("typescript");
 
 const root = path.resolve(__dirname, "..", "miniprogram");
 const appConfig = JSON.parse(
@@ -148,6 +149,26 @@ const mainFiles = allFiles.filter(
   (file) =>
     file !== featureRoot && !file.startsWith(`${featureRoot}${path.sep}`),
 );
+for (const file of mainFiles.filter((candidate) => candidate.endsWith(".ts"))) {
+  const source = fs.readFileSync(file, "utf8");
+  const imports = ts.preProcessFile(source, true, true).importedFiles;
+  for (const imported of imports) {
+    const request = imported.fileName.replaceAll("\\", "/");
+    const target = request.startsWith(".")
+      ? path.resolve(path.dirname(file), request)
+      : request.startsWith("/features/") || request.startsWith("features/")
+        ? path.join(root, request.replace(/^\//, ""))
+        : "";
+    if (
+      target &&
+      (target === featureRoot || target.startsWith(`${featureRoot}${path.sep}`))
+    ) {
+      failures.push(
+        `主包模块 ${path.relative(root, file)} 不得依赖 features 分包：${imported.fileName}`,
+      );
+    }
+  }
+}
 const mainBytes = byteSize(mainFiles);
 if (mainBytes >= TWO_MIB) {
   failures.push(`主包原始文件 ${mainBytes} 字节，必须低于 2 MiB`);

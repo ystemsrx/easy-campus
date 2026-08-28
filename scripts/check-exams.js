@@ -45,11 +45,11 @@ const examUtilities = loadTypeScriptModule("utils/exams.ts", {
 });
 const semesterUtilities = loadTypeScriptModule("utils/semester.ts");
 const examRefreshPolicy = loadTypeScriptModule("services/cache-refresh.ts", {
-  "../features/services/utilities": {},
   "../store/cache-policy": {},
   "../store/electricity": {},
   "../store/exams": {},
   "../store/session": {},
+  "./electricity": {},
   "./teaching": {},
 });
 const referenceDate = "2026-08-18";
