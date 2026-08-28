@@ -1,7 +1,7 @@
 .detail-page {
   display: flex;
   flex-direction: column;
-  --guide-paper: #faf9f5;
+  --guide-paper: #f7f5ef;
   --guide-paper-2: #f0eee6;
   --guide-card: #ffffff;
   --guide-ink: #141413;

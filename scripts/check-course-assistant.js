@@ -86,6 +86,40 @@ assert.doesNotMatch(service, /\/status|\/authorize|CourseAssistantStatus/);
 assert.doesNotMatch(service, /\/api\/v1\/api\/v1\//);
 
 const styles = read("miniprogram/features/pages/course-assistant/index.wxss");
+const detailStyles = read(
+  "miniprogram/features/pages/course-assistant-detail/index.wxss",
+);
+const navigationStyles = read(
+  "miniprogram/components/navigation-bar/navigation-bar.wxss",
+);
+const navigationSurface = navigationStyles.match(
+  /\.nav-cover\s*\{[^}]*background-color:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+const navigationDarkSurface = navigationStyles.match(
+  /\.nav-cover--dark\s*\{[^}]*background-color:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+const assistantSurface = styles.match(
+  /\.assistant-page\s*\{[^}]*--guide-paper:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+const assistantDarkSurface = styles.match(
+  /\.assistant-page\.theme-dark\s*\{[^}]*--guide-paper:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+const detailSurface = detailStyles.match(
+  /\.detail-page\s*\{[^}]*--guide-paper:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+const detailDarkSurface = detailStyles.match(
+  /\.detail-page\.theme-dark\s*\{[^}]*--guide-paper:\s*(#[0-9a-f]{6})/s,
+)?.[1];
+assert.ok(navigationSurface);
+assert.ok(navigationDarkSurface);
+assert.equal(assistantSurface, navigationSurface);
+assert.equal(detailSurface, navigationSurface);
+assert.equal(assistantDarkSurface, navigationDarkSurface);
+assert.equal(detailDarkSurface, navigationDarkSurface);
+assert.match(
+  styles,
+  /\.assistant-tabbar\s*\{[^}]*background-color:\s*rgba\(247, 245, 239, 0\.94\)/s,
+);
 assert.match(styles, /\.filter-panel-shell\s*\{[^}]*max-height:\s*0/s);
 assert.match(
   styles,

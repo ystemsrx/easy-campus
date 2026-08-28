@@ -1,7 +1,7 @@
 .assistant-page {
   display: flex;
   flex-direction: column;
-  --guide-paper: #faf9f5;
+  --guide-paper: #f7f5ef;
   --guide-paper-2: #f0eee6;
   --guide-card: #ffffff;
   --guide-ink: #141413;
@@ -897,7 +897,7 @@
   height: 100rpx;
   padding: 0 30rpx 16rpx;
   border-top: 2rpx solid var(--guide-line);
-  background-color: rgba(250, 249, 245, 0.94);
+  background-color: rgba(247, 245, 239, 0.94);
   backdrop-filter: blur(26rpx) saturate(1.4);
 }
 
