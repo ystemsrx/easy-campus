@@ -15,6 +15,7 @@ import type {
   Session,
 } from "../types/api";
 import { synchronizeCompanionPreferences } from "./companion";
+import { syncHeartbeatSession } from "./heartbeat";
 
 let loginRequestRevision = 0;
 
@@ -42,6 +43,7 @@ export async function login(
     });
   }
   const session = saveSession(data);
+  syncHeartbeatSession();
   void synchronizeCompanionPreferences(
     data.user.account,
     data.user.companion,
@@ -87,5 +89,6 @@ export async function logout(): Promise<void> {
     } else {
       clearSession();
     }
+    syncHeartbeatSession();
   }
 }

@@ -117,6 +117,10 @@ export interface CurrentUserData {
   };
 }
 
+export interface HeartbeatData {
+  alive: true;
+}
+
 export interface CompanionPreferencesData {
   selected: boolean;
   skipped: boolean;
