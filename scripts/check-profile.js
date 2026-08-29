@@ -25,7 +25,9 @@ function loadTypeScriptModule(relativePath) {
   return moduleRecord.exports;
 }
 
-const { identityCardTone } = loadTypeScriptModule("utils/profile.ts");
+const { identityCardTone, singleSelectionOptions } = loadTypeScriptModule(
+  "utils/profile.ts",
+);
 const profileScript = read("pages/profile/index.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
@@ -34,6 +36,7 @@ const autoDormCheckPage = read("features/pages/auto-dorm-check/index.wxml");
 const autoDormCheckScript = read("features/pages/auto-dorm-check/index.ts");
 const autoDormCheckService = read("services/auto-dorm-check.ts");
 const autoDormCheckStore = read("store/auto-dorm-check.ts");
+const feedbackService = read("services/feedback.ts");
 const homeScript = read("pages/home/index.ts");
 
 for (const gender of ["男", "男性", "男生", "male", "M", "1"]) {
@@ -52,6 +55,21 @@ assert(
   identityCardTone("") === "neutral" && identityCardTone("未知") === "neutral",
   "缺失或未知性别必须使用中性卡片，不能猜测用户性别",
 );
+
+const feedbackOptions = [
+  { value: "bug" },
+  { value: "feature" },
+  { value: "experience" },
+  { value: "other" },
+];
+for (const selected of feedbackOptions.map((option) => option.value)) {
+  const options = singleSelectionOptions(feedbackOptions, selected);
+  assert(
+    options.filter((option) => option.selected).length === 1 &&
+      options.find((option) => option.value === selected)?.selected === true,
+    `连续切换到 ${selected} 时必须只保留当前反馈类型的选中态`,
+  );
+}
 
 assert(
   profileScript.includes("identityCardTone(user.profile.gender)") &&
@@ -121,6 +139,34 @@ assert(
     autoDormCheckService.includes('const ROOT = "/auto-dorm-check"') &&
     autoDormCheckService.includes('method: "PUT"'),
   "自动查寝页面必须读取服务端状态并持久化学生个人开关",
+);
+
+assert(
+  profileTemplate.includes('bindtap="openFeedback"') &&
+    profileTemplate.includes('visible="{{feedbackVisible}}"') &&
+    profileTemplate.includes('bindinput="onFeedbackContentInput"') &&
+    profileTemplate.includes('bindtap="submitFeedback"') &&
+    profileTemplate.includes("{{feedbackCharacterCount}}/500") &&
+    profileScript.includes("FEEDBACK_TYPES") &&
+    profileScript.includes("captureSessionLease()") &&
+    profileScript.includes("isSessionLeaseCurrent(lease)") &&
+    profileScript.includes("this.setFeedbackTabBarHidden(true)") &&
+    profileScript.includes(
+      'const feedbackType = this.data.feedbackType === type ? "" : type',
+    ) &&
+    profileScript.includes("feedbackTypes: feedbackTypeOptions(feedbackType)") &&
+    profileTemplate.includes(
+      "{{item.selected ? 'feedback-type-option--active' : 'feedback-type-option--inactive'}}",
+    ) &&
+    profileStyles.includes(".feedback-type-option--inactive") &&
+    !profileStyles.includes("var(--color-surface)") &&
+    !profileTemplate.includes('hover-class="feedback-type-option--pressed"') &&
+    (profileTemplate.match(/class="feedback-required"/g) || []).length === 2 &&
+    profileStyles.includes(".feedback-required") &&
+    profileScript.includes("isFeedbackDailyLimitError(error)") &&
+    feedbackService.includes('apiRequest<FeedbackSubmission>("/feedback"') &&
+    feedbackService.includes('method: "POST"'),
+  "我的页面反馈弹层必须收集类型和具体内容，并通过认证接口安全提交",
 );
 
 console.log("Profile identity card checks passed.");

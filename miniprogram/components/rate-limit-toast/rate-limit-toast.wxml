@@ -3,5 +3,5 @@
   class="rate-limit-toast {{visible ? 'rate-limit-toast--visible' : ''}}"
   aria-role="status"
 >
-  <text>访问速度太快了</text>
+  <text>{{message}}</text>
 </view>

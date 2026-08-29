@@ -847,3 +847,12 @@ export interface TimetableQuery {
   refresh?: boolean;
   automatic?: boolean;
 }
+
+export type FeedbackType = "bug" | "feature" | "experience" | "other";
+
+export interface FeedbackSubmission {
+  id: string;
+  type: FeedbackType;
+  content: string;
+  createdAt: string | null;
+}

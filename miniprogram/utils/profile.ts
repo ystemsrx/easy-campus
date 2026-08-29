@@ -17,3 +17,13 @@ export function identityCardTone(gender?: string): IdentityCardTone {
   if (FEMALE_GENDERS.has(normalized)) return "female";
   return "neutral";
 }
+
+export function singleSelectionOptions<Option extends { value: string }>(
+  options: readonly Option[],
+  selected: string,
+): Array<Option & { selected: boolean }> {
+  return options.map((option) => ({
+    ...option,
+    selected: option.value === selected,
+  }));
+}

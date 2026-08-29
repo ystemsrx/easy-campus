@@ -24,6 +24,7 @@ Component({
   data: {
     mounted: false,
     visible: false,
+    message: "访问速度太快了",
   },
   lifetimes: {
     detached() {
@@ -31,9 +32,13 @@ Component({
     },
   },
   methods: {
-    show() {
+    show(message = "访问速度太快了") {
       const instance = this as unknown as object;
       clearTimers(instance);
+      const nextMessage = message.trim() || "访问速度太快了";
+      if (this.data.message !== nextMessage) {
+        this.setData({ message: nextMessage });
+      }
 
       const scheduleHide = (delay: number) => {
         const active = timers.get(instance) || {};

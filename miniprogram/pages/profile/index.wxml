@@ -88,6 +88,14 @@
         </view>
       </view>
 
+      <view class="section-header"><view><text class="section-title">帮助</text></view></view>
+      <view class="settings-card card stagger-item">
+        <view class="setting-row setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
+          <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
+          <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
+      </view>
+
       <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="retryLoadUser" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
       <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout" disabled="{{loggingOut}}" aria-busy="{{loggingOut}}"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>{{loggingOut ? '退出中' : '退出登录'}}</text></button>
     </view>
@@ -107,4 +115,21 @@
       </view>
     </view>
   </view>
+
+  <bottom-sheet visible="{{feedbackVisible}}" scrollable="{{false}}" title="反馈" theme="{{theme}}" close-on-mask="{{!feedbackSubmitting}}" bindclose="closeFeedback">
+    <view class="feedback-form">
+      <view class="feedback-label-line"><text class="feedback-label">类型</text><text class="feedback-required" aria-hidden="true">*</text></view>
+      <view class="feedback-type-grid" aria-label="选择反馈类型">
+        <view wx:for="{{feedbackTypes}}" wx:key="value" class="feedback-type-option {{item.selected ? 'feedback-type-option--active' : 'feedback-type-option--inactive'}}" data-type="{{item.value}}" bindtap="selectFeedbackType" aria-role="button" aria-label="{{item.label}}" aria-pressed="{{item.selected}}">
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+      <view class="feedback-content-head"><view class="feedback-label-line"><text class="feedback-label">具体内容</text><text class="feedback-required" aria-hidden="true">*</text></view><text class="feedback-character-count tnum">{{feedbackCharacterCount}}/500</text></view>
+      <textarea class="feedback-textarea" value="{{feedbackContent}}" maxlength="500" placeholder="请描述你遇到的问题或建议" placeholder-class="feedback-placeholder" auto-height="{{false}}" disabled="{{feedbackSubmitting}}" bindinput="onFeedbackContentInput" aria-label="反馈具体内容"></textarea>
+      <text wx:if="{{feedbackErrorMessage}}" class="feedback-error">{{feedbackErrorMessage}}</text>
+    </view>
+    <view slot="footer" class="feedback-footer">
+      <button class="primary-button feedback-submit {{feedbackCanSubmit ? '' : 'feedback-submit--disabled'}}" hover-class="button-pressed" bindtap="submitFeedback" disabled="{{!feedbackCanSubmit || feedbackSubmitting}}" aria-busy="{{feedbackSubmitting}}">{{feedbackSubmitting ? '提交中' : '提交反馈'}}</button>
+    </view>
+  </bottom-sheet>
 </view>

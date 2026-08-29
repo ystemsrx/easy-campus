@@ -40,8 +40,11 @@ const failures = [];
 if (!/const VISIBLE_DURATION_MS = 3000;/.test(componentScript)) {
   failures.push("429 胶囊必须在渐入完成后完整显示 3 秒");
 }
-if (!/访问速度太快了/.test(componentTemplate)) {
-  failures.push("429 胶囊文案必须为“访问速度太快了”");
+if (
+  !/message:\s*"访问速度太快了"/.test(componentScript) ||
+  !/\{\{message\}\}/.test(componentTemplate)
+) {
+  failures.push("429 胶囊必须支持传入文案，并保留默认提示");
 }
 
 if (
@@ -67,7 +70,8 @@ if (
 }
 if (
   !/isRateLimitError\(apiError\)/.test(requestScript) ||
-  !/showRateLimitToast\(\)/.test(requestScript) ||
+  !/showRateLimitToast\(/.test(requestScript) ||
+  !/FEEDBACK_DAILY_LIMITED_MESSAGE/.test(requestScript) ||
   !/if \(isRateLimitError\(error\)\) return "";/.test(requestScript)
 ) {
   failures.push("429 必须统一触发胶囊并阻止服务端英文文案进入页面错误态");

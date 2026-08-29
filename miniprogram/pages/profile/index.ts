@@ -1,8 +1,12 @@
 import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
 import { getPendingAutoDormCheckStatus } from "../../services/auto-dorm-check";
+import { submitFeedback } from "../../services/feedback";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
-import { getErrorMessage } from "../../services/request";
+import {
+  getErrorMessage,
+  isFeedbackDailyLimitError,
+} from "../../services/request";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
 import { loadPetPreferences, shouldShowPet } from "../../store/pet";
 import {
@@ -17,7 +21,11 @@ import {
   sessionLeaseKey,
 } from "../../store/session";
 import { loadPreferences } from "../../store/preferences";
-import type { AutoDormCheckState, CurrentUserData } from "../../types/api";
+import type {
+  AutoDormCheckState,
+  CurrentUserData,
+  FeedbackType,
+} from "../../types/api";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -28,7 +36,11 @@ import {
   goToLogin,
   navigateTo,
 } from "../../utils/navigation";
-import { identityCardTone, type IdentityCardTone } from "../../utils/profile";
+import {
+  identityCardTone,
+  singleSelectionOptions,
+  type IdentityCardTone,
+} from "../../utils/profile";
 
 function classLabel(user: CurrentUserData): string {
   const grade = (user.profile.grade || "").trim().replace(/级$/, "");
@@ -57,6 +69,17 @@ const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
   INITIAL_PROFILE_PREFERENCES,
 );
 const PROFILE_AUTH_EXIT_MS = 180;
+const FEEDBACK_TYPES: Array<{ value: FeedbackType; label: string }> = [
+  { value: "bug", label: "问题反馈" },
+  { value: "feature", label: "功能建议" },
+  { value: "experience", label: "使用体验" },
+  { value: "other", label: "其他" },
+];
+
+function feedbackTypeOptions(selected: FeedbackType | "" = "") {
+  return singleSelectionOptions(FEEDBACK_TYPES, selected);
+}
+
 const AUTO_DORM_CHECK_STATUS: Record<
   AutoDormCheckState,
   { label: string; tone: "success" | "warning" | "danger" | "muted" }
@@ -103,6 +126,14 @@ Page({
     autoDormCheckStatusLabel: "已关闭",
     autoDormCheckStatusTone: "muted" as
       "success" | "warning" | "danger" | "muted",
+    feedbackVisible: false,
+    feedbackTypes: feedbackTypeOptions(),
+    feedbackType: "" as FeedbackType | "",
+    feedbackContent: "",
+    feedbackCharacterCount: 0,
+    feedbackCanSubmit: false,
+    feedbackSubmitting: false,
+    feedbackErrorMessage: "",
   },
   onLoad() {
     activeProfileSessionKey = "";
@@ -170,6 +201,7 @@ Page({
   syncTabBarAppearance() {
     this.getTabBar().setData({
       selected: 2,
+      hidden: this.data.feedbackVisible,
       themeClass: this.data.themeClass,
       motionClass: this.data.motionClass,
     });
@@ -293,6 +325,110 @@ Page({
         ? "privacy"
         : "terms";
     this.openProfileRoute(document, `/pages/legal/index?document=${document}`);
+  },
+  openFeedback() {
+    if (this.data.feedbackVisible) return;
+    haptic("light");
+    this.setFeedbackTabBarHidden(true);
+    this.setData({
+      feedbackVisible: true,
+      feedbackTypes: feedbackTypeOptions(this.data.feedbackType),
+      feedbackErrorMessage: "",
+    });
+  },
+  closeFeedback() {
+    if (this.data.feedbackSubmitting) return;
+    this.setData({
+      feedbackVisible: false,
+      feedbackTypes: feedbackTypeOptions(),
+      feedbackType: "",
+      feedbackContent: "",
+      feedbackCharacterCount: 0,
+      feedbackCanSubmit: false,
+      feedbackErrorMessage: "",
+    });
+    this.setFeedbackTabBarHidden(false);
+  },
+  selectFeedbackType(event: WechatMiniprogram.TouchEvent) {
+    const type = String(event.currentTarget.dataset.type || "") as FeedbackType;
+    if (!FEEDBACK_TYPES.some((item) => item.value === type)) return;
+    haptic("light");
+    const feedbackType = this.data.feedbackType === type ? "" : type;
+    this.setData({
+      feedbackTypes: feedbackTypeOptions(feedbackType),
+      feedbackType,
+      feedbackCanSubmit: Boolean(
+        feedbackType && this.data.feedbackContent.trim(),
+      ),
+      feedbackErrorMessage: "",
+    });
+  },
+  onFeedbackContentInput(event: WechatMiniprogram.Input) {
+    const feedbackContent = event.detail.value.slice(0, 500);
+    this.setData({
+      feedbackContent,
+      feedbackCharacterCount: feedbackContent.length,
+      feedbackCanSubmit: Boolean(
+        this.data.feedbackType && feedbackContent.trim(),
+      ),
+      feedbackErrorMessage: "",
+    });
+  },
+  async submitFeedback() {
+    if (this.data.feedbackSubmitting) return;
+    const lease = captureSessionLease();
+    const type = this.data.feedbackType;
+    const content = this.data.feedbackContent.trim();
+    if (!lease) return;
+    if (!type) {
+      this.setData({ feedbackErrorMessage: "请选择类型" });
+      return;
+    }
+    if (!content) {
+      this.setData({ feedbackErrorMessage: "请填写具体内容" });
+      return;
+    }
+    haptic("heavy");
+    this.setData({ feedbackSubmitting: true, feedbackErrorMessage: "" });
+    try {
+      await submitFeedback({ type, content });
+      if (!isSessionLeaseCurrent(lease)) return;
+      this.setData({
+        feedbackVisible: false,
+        feedbackTypes: feedbackTypeOptions(),
+        feedbackType: "",
+        feedbackContent: "",
+        feedbackCharacterCount: 0,
+        feedbackCanSubmit: false,
+        feedbackSubmitting: false,
+      });
+      this.setFeedbackTabBarHidden(false);
+      wx.showToast({ title: "感谢你的反馈", icon: "success" });
+    } catch (error) {
+      if (!isSessionLeaseCurrent(lease)) return;
+      if (isFeedbackDailyLimitError(error)) {
+        this.setData({
+          feedbackVisible: false,
+          feedbackTypes: feedbackTypeOptions(),
+          feedbackType: "",
+          feedbackContent: "",
+          feedbackCharacterCount: 0,
+          feedbackCanSubmit: false,
+          feedbackSubmitting: false,
+          feedbackErrorMessage: "",
+        });
+        this.setFeedbackTabBarHidden(false);
+        return;
+      }
+      this.setData({
+        feedbackSubmitting: false,
+        feedbackErrorMessage: getErrorMessage(error, "提交失败，请稍后重试。"),
+      });
+    }
+  },
+  setFeedbackTabBarHidden(hidden: boolean) {
+    const tabBar = this.getTabBar();
+    if (tabBar) tabBar.setData({ hidden });
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
     clearAuthenticationExitTimer();

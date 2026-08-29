@@ -47,6 +47,8 @@ const RETRYABLE_STATUS_CODES = new Set([503]);
 const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
 const STALE_SESSION_ERROR_CODE = "STALE_SESSION";
 export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";
+export const FEEDBACK_DAILY_LIMITED_CODE = "FEEDBACK_DAILY_LIMITED";
+export const FEEDBACK_DAILY_LIMITED_MESSAGE = "反馈已收到，明天再来吧";
 let redirectingToLogin = false;
 
 export class ApiClientError extends Error {
@@ -76,20 +78,20 @@ function wait(milliseconds: number): Promise<void> {
 }
 
 interface RateLimitToastController {
-  show(): void;
+  show(message?: string): void;
 }
 
-function showRateLimitToast(): void {
+function showRateLimitToast(message = "访问速度太快了"): void {
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
   const toast = currentPage?.selectComponent?.(
     "#rate-limit-toast",
   ) as unknown as RateLimitToastController | undefined;
   if (toast && typeof toast.show === "function") {
-    toast.show();
+    toast.show(message);
     return;
   }
-  wx.showToast({ title: "访问速度太快了", icon: "none", duration: 3000 });
+  wx.showToast({ title: message, icon: "none", duration: 3000 });
 }
 
 function redirectAfterAuthFailure(
@@ -268,7 +270,11 @@ async function requestEnvelope<T>(
   } catch (error) {
     const apiError = error as ApiClientError;
     if (isRateLimitError(apiError)) {
-      showRateLimitToast();
+      showRateLimitToast(
+        isFeedbackDailyLimitError(apiError)
+          ? FEEDBACK_DAILY_LIMITED_MESSAGE
+          : "访问速度太快了",
+      );
       throw error;
     }
     const retryable =
@@ -354,4 +360,11 @@ export function getErrorMessage(
 
 export function isRateLimitError(error: unknown): boolean {
   return error instanceof ApiClientError && error.statusCode === 429;
+}
+
+export function isFeedbackDailyLimitError(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError &&
+    error.code === FEEDBACK_DAILY_LIMITED_CODE
+  );
 }
