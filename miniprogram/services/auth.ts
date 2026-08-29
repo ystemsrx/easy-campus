@@ -16,6 +16,7 @@ import type {
 } from "../types/api";
 import { synchronizeCompanionPreferences } from "./companion";
 import { syncHeartbeatSession } from "./heartbeat";
+import { getDevicePublicKey } from "./device-proof";
 
 let loginRequestRevision = 0;
 
@@ -28,9 +29,10 @@ export async function login(
   password: string,
 ): Promise<Session> {
   const revision = ++loginRequestRevision;
+  const devicePublicKey = await getDevicePublicKey();
   const data = await apiRequest<LoginData>("/auth/login", {
     method: "POST",
-    data: { account: account.trim(), password },
+    data: { account: account.trim(), password, devicePublicKey },
     authenticated: false,
     retry: false,
     timeout: 70000,

@@ -7,7 +7,9 @@ import {
   isSessionLeaseCurrent,
   queueAccountDeactivatedNotice,
   queueSessionInvalidNotice,
+  sessionLeaseKey,
   type SessionLease,
+  updateSessionDevice,
 } from "../store/session";
 import type {
   ApiErrorPayload,
@@ -16,6 +18,13 @@ import type {
   TeachingSuccess,
 } from "../types/api";
 import { goToLogin } from "../utils/navigation";
+import {
+  canonicalRequestTarget,
+  createDeviceProofHeaders,
+  getDevicePublicKey,
+  hashRequestData,
+} from "./device-proof";
+import type { DeviceBinding } from "../types/api";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -37,6 +46,11 @@ const AUTH_ERROR_CODES = new Set([
   "SWU_AUTH_FAILED",
   "SWU_CREDENTIAL_INVALID",
   "SWU_SESSION_INVALIDATED",
+  "DEVICE_ENROLLMENT_REQUIRED",
+  "DEVICE_PROOF_REQUIRED",
+  "DEVICE_KEY_MISMATCH",
+  "DEVICE_KEY_REVOKED",
+  "DEVICE_SIGNATURE_INVALID",
 ]);
 const CREDENTIAL_INVALIDATION_CODES = new Set([
   "SWU_AUTH_FAILED",
@@ -50,6 +64,10 @@ export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";
 export const FEEDBACK_DAILY_LIMITED_CODE = "FEEDBACK_DAILY_LIMITED";
 export const FEEDBACK_DAILY_LIMITED_MESSAGE = "反馈已收到，明天再来吧";
 let redirectingToLogin = false;
+let deviceEnrollmentFlight: {
+  leaseKey: string;
+  promise: Promise<void>;
+} | null = null;
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -190,7 +208,135 @@ function createRequestContext(options: RequestOptions): RequestContext {
   };
 }
 
-function requestOnce<T>(
+interface DeviceEnrollmentData {
+  device: DeviceBinding;
+  token: string;
+  tokenType: "Bearer";
+}
+
+async function ensureDeviceEnrollment(): Promise<void> {
+  const session = getSession();
+  if (!session || session.device) return;
+  const lease = captureSessionLease(session);
+  if (!lease) return;
+  const leaseKey = sessionLeaseKey(lease);
+  if (deviceEnrollmentFlight?.leaseKey === leaseKey) {
+    await deviceEnrollmentFlight.promise;
+    return;
+  }
+  const promise = enrollCurrentDevice(lease);
+  deviceEnrollmentFlight = { leaseKey, promise };
+  try {
+    await promise;
+  } finally {
+    if (deviceEnrollmentFlight?.promise === promise) {
+      deviceEnrollmentFlight = null;
+    }
+  }
+}
+
+async function enrollCurrentDevice(lease: SessionLease): Promise<void> {
+  const publicKey = await getDevicePublicKey();
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  const data = await requestProofBootstrap<DeviceEnrollmentData>(
+    "/auth/device",
+    lease,
+    { publicKey },
+  );
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  updateSessionDevice(data.device, data.token);
+}
+
+function requestProofBootstrap<T>(
+  path: string,
+  lease: SessionLease,
+  data: WechatMiniprogram.IAnyObject,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: getApiUrl(path),
+      method: "POST",
+      data,
+      timeout: 15000,
+      header: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${lease.token}`,
+      },
+      success: (response) => {
+        if (!isSessionLeaseCurrent(lease)) {
+          reject(staleSessionError());
+          return;
+        }
+        if (
+          response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          isSuccessEnvelope<T>(response.data)
+        ) {
+          resolve(response.data.data);
+          return;
+        }
+        const error = toApiError(response.data, response.statusCode);
+        handleAuthenticatedRequestError(error, lease);
+        reject(error);
+      },
+      fail: () => {
+        if (!isSessionLeaseCurrent(lease)) {
+          reject(staleSessionError());
+          return;
+        }
+        reject(toApiError(undefined, 0));
+      },
+    });
+  });
+}
+
+async function createRequestProof(
+  path: string,
+  options: RequestOptions,
+  lease: SessionLease,
+): Promise<Record<string, string>> {
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  const session = getSession();
+  const device = session?.device;
+  if (!device) {
+    throw new ApiClientError({
+      code: "DEVICE_ENROLLMENT_REQUIRED",
+      message: "当前会话需要绑定设备。",
+      statusCode: 401,
+    });
+  }
+  const method = options.method || "GET";
+  const requestTarget = canonicalRequestTarget(path);
+  const bodyHash = hashRequestData(options.data);
+  const headers = await createDeviceProofHeaders({
+    deviceKeyId: device.id,
+    sessionToken: lease.token,
+    method,
+    requestTarget,
+    bodyHash,
+  });
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  return headers;
+}
+
+function handleAuthenticatedRequestError(
+  error: ApiClientError,
+  lease: SessionLease | null,
+): void {
+  if (error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
+    redirectAfterAccountDeactivation(lease);
+    return;
+  }
+  if (AUTH_ERROR_CODES.has(error.code)) {
+    redirectAfterAuthFailure(
+      CREDENTIAL_INVALIDATION_CODES.has(error.code),
+      lease,
+    );
+  }
+}
+
+async function requestOnce<T>(
   path: string,
   options: RequestOptions,
   context: RequestContext,
@@ -206,6 +352,11 @@ function requestOnce<T>(
     return Promise.reject(error);
   }
 
+  const deviceProofHeaders =
+    authenticated && lease
+      ? await createRequestProof(path, options, lease)
+      : ({} as Record<string, string>);
+
   return new Promise((resolve, reject) => {
     wx.request({
       url: getApiUrl(path),
@@ -218,6 +369,7 @@ function requestOnce<T>(
           ? { "Content-Type": "application/json" }
           : {}),
         ...(lease ? { Authorization: `Bearer ${lease.token}` } : {}),
+        ...deviceProofHeaders,
       },
       success: (response) => {
         if (authenticated && !isSessionLeaseCurrent(lease)) {
@@ -234,18 +386,11 @@ function requestOnce<T>(
         }
 
         const error = toApiError(response.data, response.statusCode);
-        if (authenticated && error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
-          redirectAfterAccountDeactivation(lease);
-        }
-        if (
-          authenticated &&
-          (AUTH_ERROR_CODES.has(error.code) ||
-            (error.code === "SWU_SESSION_EXPIRED" && options.retry === false))
-        ) {
-          redirectAfterAuthFailure(
-            CREDENTIAL_INVALIDATION_CODES.has(error.code),
-            lease,
-          );
+        if (authenticated) {
+          handleAuthenticatedRequestError(error, lease);
+          if (error.code === "SWU_SESSION_EXPIRED" && options.retry === false) {
+            redirectAfterAuthFailure(false, lease);
+          }
         }
         reject(error);
       },
@@ -264,11 +409,32 @@ async function requestEnvelope<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<SuccessEnvelope<T>> {
+  if (options.authenticated !== false) {
+    try {
+      await ensureDeviceEnrollment();
+    } catch (error) {
+      const apiError = error as ApiClientError;
+      if (isRateLimitError(apiError)) showRateLimitToast();
+      if (
+        options.retry !== false &&
+        (apiError.code === "NETWORK_ERROR" ||
+          RETRYABLE_STATUS_CODES.has(apiError.statusCode))
+      ) {
+        await wait(360);
+        await ensureDeviceEnrollment();
+      } else {
+        throw error;
+      }
+    }
+  }
   const context = createRequestContext(options);
   try {
     return await requestOnce<T>(path, options, context);
   } catch (error) {
     const apiError = error as ApiClientError;
+    if (context.authenticated && AUTH_ERROR_CODES.has(apiError.code)) {
+      handleAuthenticatedRequestError(apiError, context.lease);
+    }
     if (isRateLimitError(apiError)) {
       showRateLimitToast(
         isFeedbackDailyLimitError(apiError)

@@ -50,6 +50,12 @@ export function loadSession(): Session | null {
   const normalized: Session = {
     ...stored,
     loginMode: stored.loginMode === "local" ? "local" : "campus",
+    device:
+      stored.device?.algorithm === "Ed25519" &&
+      typeof stored.device.id === "string" &&
+      typeof stored.device.fingerprint === "string"
+        ? stored.device
+        : null,
     credential:
       credential &&
       ["verified", "pending", "invalid", "unavailable"].includes(
@@ -90,6 +96,18 @@ export function updateSessionCredential(
   const updated = { ...session, credential };
   wx.setStorageSync(SESSION_KEY, updated);
   getApp<IAppOption>().globalData.session = updated;
+}
+
+export function updateSessionDevice(
+  device: Session["device"],
+  token: string,
+): Session | null {
+  const session = getSession();
+  if (!session) return null;
+  const updated = { ...session, device, token };
+  wx.setStorageSync(SESSION_KEY, updated);
+  getApp<IAppOption>().globalData.session = updated;
+  return updated;
 }
 
 export function getSession(): Session | null {

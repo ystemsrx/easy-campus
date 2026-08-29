@@ -74,6 +74,7 @@ export interface Session {
   sliding: true;
   loginMode: "local" | "campus";
   credential: CredentialState;
+  device: DeviceBinding | null;
   user: {
     id: string;
     account: string;
@@ -90,7 +91,14 @@ export interface LoginData {
   sliding: true;
   loginMode: "local" | "campus";
   credential: CredentialState;
+  device: DeviceBinding | null;
   user: Session["user"];
+}
+
+export interface DeviceBinding {
+  id: string;
+  algorithm: "Ed25519";
+  fingerprint: string;
 }
 
 export type CredentialStatus =

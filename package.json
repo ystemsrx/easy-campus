@@ -32,10 +32,11 @@
     "check:personalization": "node scripts/check-personalization.js",
     "check:course-assistant": "node scripts/check-course-assistant.js",
     "check:heartbeat": "node scripts/check-heartbeat.js",
+    "check:device-proof": "node scripts/check-device-proof.js",
     "check:session": "node scripts/check-session-isolation.js",
     "check:packages": "node scripts/check-package-boundaries.js",
     "check:lf": "node scripts/check-lf.js",
-    "check": "npm run typecheck && npm run check:api-config && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:profile && npm run check:tab-preload && npm run check:refresh-policy && npm run check:rooms && npm run check:navigation && npm run check:login && npm run check:legal && npm run check:rate-limit && npm run check:pet && npm run check:personalization && npm run check:course-assistant && npm run check:heartbeat && npm run check:session && npm run check:packages && npm run check:lf && npm run check:wxss",
+    "check": "npm run typecheck && npm run check:api-config && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:profile && npm run check:tab-preload && npm run check:refresh-policy && npm run check:rooms && npm run check:navigation && npm run check:login && npm run check:legal && npm run check:rate-limit && npm run check:pet && npm run check:personalization && npm run check:course-assistant && npm run check:heartbeat && npm run check:device-proof && npm run check:session && npm run check:packages && npm run check:lf && npm run check:wxss",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
