@@ -341,6 +341,12 @@ assert(
   "考试课程名后必须使用浅色小字显示教务重修和补缓考标记",
 );
 assert(
+  /\.exams-page\.theme-style-minimal \.exam-countdown,[\s\S]*?border:\s*var\(--border-control\);[\s\S]*?border-color:\s*var\(--color-text\);[\s\S]*?background:\s*transparent;/.test(
+    examsStyles,
+  ),
+  "极简模式考试日程左侧倒计时必须使用黑白框线且不保留彩色底色",
+);
+assert(
   examsPage.includes('scrollable="{{false}}"') &&
     examsPage.includes('class="exam-detail-scroll"') &&
     examsPage.includes('type="custom"') &&
@@ -384,6 +390,25 @@ assert(
     !selectSemesterSource.includes("loaded: false") &&
     !selectSemesterSource.includes("loading: true"),
   "切换考试学期必须整组左右滑入，不得保留逐项动效、改变透明度、清空列表或替换为骨架加载态",
+);
+assert(
+  examsPage.includes('bindscroll="onExamScroll"') &&
+    examsPage.includes('bindtouchstart="onExamTouchStart"') &&
+    examsPage.includes('bindtouchmove="onExamTouchMove"') &&
+    examsPage.includes('bindtouchend="onExamTouchEnd"') &&
+    examsPage.includes('bindtouchcancel="onExamTouchCancel"') &&
+    !/class="exam-card card pressable"[^>]*hover-class=/.test(examsPage) &&
+    examsScript.includes('from "../../utils/tap-guard"') &&
+    examsScript.includes(
+      "movementExceedsTapThreshold(examTouchStart, current)",
+    ) &&
+    examsScript.includes(
+      "canActivateTap(examTouchMoved, lastExamScrollAt)",
+    ) &&
+    /onExamScroll\(\)\s*\{[\s\S]*?lastExamScrollAt = Date\.now\(\);[\s\S]*?examTouchMoved = true;/.test(
+      examsScript,
+    ),
+  "考试日程必须区分轻点与滚动，滑动时不得触发缩小反馈或误开详情",
 );
 assert(
   examsStyles.includes("width: 104rpx; height: 104rpx") &&

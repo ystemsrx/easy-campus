@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page inbox-page {{themeClass}} {{motionClass}}" bindtap="onPageTap">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page inbox-page {{themeClass}} {{visualThemeClass}} {{motionClass}}" bindtap="onPageTap">
   <navigation-bar title="校园通知" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="inbox-toolbar page-enter">
@@ -48,21 +48,21 @@
                   <text class="schedule-comparison-time tnum">{{item.original.primary}}</text>
                 </view>
                 <view class="reschedule-connector">
-                  <view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="amber" size="{{19}}"></lucide-icon></view>
+                  <view class="reschedule-arrow"><lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{19}}"></lucide-icon></view>
                 </view>
                 <view class="schedule-panel schedule-panel--new">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="amber" size="{{18}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--new">新安排</text><view class="schedule-location schedule-location--new"><lucide-icon name="map-pin" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{18}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view></view>
                   <text class="schedule-comparison-time schedule-comparison-time--new tnum">{{item.current.primary}}</text>
                 </view>
               </view>
               <view wx:elif="{{item.type === 'makeup_class'}}" class="schedule-flow">
                 <view class="schedule-panel schedule-panel--makeup">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--makeup">补课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="sage" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view><text class="schedule-time-label">{{item.current.primary}}</text></view></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--makeup">补课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.current.location}}</text></view><text class="schedule-time-label">{{item.current.primary}}</text></view></view>
                 </view>
               </view>
               <view wx:elif="{{item.type === 'course_cancelled'}}" class="schedule-flow">
                 <view class="schedule-panel schedule-panel--cancelled">
-                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--cancelled">停课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="coral" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view><text class="schedule-time-label">{{item.original.primary}}</text></view></view>
+                  <view class="schedule-panel-head"><text class="schedule-state schedule-state--cancelled">停课安排</text><view class="schedule-inline"><view class="schedule-location"><lucide-icon name="map-pin" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{19}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.original.location}}</text></view><text class="schedule-time-label">{{item.original.primary}}</text></view></view>
                 </view>
               </view>
               <text wx:else class="message-content">{{item.content}}</text>
@@ -90,7 +90,7 @@
             <view wx:for="{{noticeItems}}" wx:key="link" class="notice-list-item">
               <view wx:if="{{item.showHistoryDivider}}" class="history-divider" aria-label="以下为历史消息"><view class="history-divider-line"></view><text>以下为历史消息</text><view class="history-divider-line"></view></view>
               <view class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
-              <view class="notice-icon"><lucide-icon name="megaphone" tone="coral" size="{{34}}"></lucide-icon></view>
+              <view class="notice-icon"><lucide-icon name="megaphone" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
                 <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">学校通知</text></view></view>
               </view>
@@ -106,5 +106,5 @@
     </swiper-item>
   </swiper>
 
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

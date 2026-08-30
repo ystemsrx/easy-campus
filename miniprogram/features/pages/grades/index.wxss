@@ -5,9 +5,10 @@
 .nav-refresh-spinner { display: block; flex: none; width: 34rpx; min-width: 34rpx; height: 34rpx; min-height: 34rpx; border-radius: 999rpx; animation-name: grade-refresh-spin; animation-duration: 720ms; animation-timing-function: linear; animation-iteration-count: infinite; }
 .semester-scroll { position: relative; z-index: 2; display: block; flex: none; width: calc(100% + 80rpx); height: 96rpx; margin-left: -40rpx; }
 .semester-row { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; gap: 14rpx; height: 96rpx; padding: 8rpx 40rpx 18rpx; }
-.semester-chip { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; height: 60rpx; padding: 0 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; line-height: 1; white-space: nowrap; }
+.semester-chip { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; height: 60rpx; padding: 0 25rpx; border-radius: 999rpx; color: #8b8b94; background: #fff; box-shadow: var(--shadow-card); font-size: 22rpx; font-weight: 700; line-height: 1; white-space: nowrap; transition: transform 120ms ease-out; }
 .semester-chip > text { display: block; line-height: 30rpx; }
 .semester-chip--active { color: #fff; background: linear-gradient(135deg, #c98a2d, #e5b86e); }
+.semester-chip--pressed { opacity: 1; transform: scale(0.97); }
 
 .grade-overview { position: relative; margin-top: 18rpx; padding: 38rpx 38rpx 30rpx; overflow: hidden; border-radius: 56rpx; color: #fff; background: linear-gradient(140deg, #c98a2d, #e5b86e); box-shadow: var(--shadow-pop); }
 .grade-blob { background: rgba(255, 255, 255, 0.15); }

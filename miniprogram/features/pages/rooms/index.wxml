@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page rooms-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="rooms-content page-content page-enter {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
@@ -29,12 +29,12 @@
           </view>
         </view>
         <picker mode="date" value="{{date}}" start="{{minDate}}" end="{{maxDate}}" bindchange="onDateChange">
-          <view class="date-choice pressable" hover-class="pressing"><view class="date-icon"><lucide-icon name="calendar-days" tone="coral" size="{{35}}"></lucide-icon></view><text class="date-value">{{dateLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
+          <view class="date-choice pressable" hover-class="pressing"><view class="date-icon"><lucide-icon name="calendar-days" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{35}}"></lucide-icon></view><text class="date-value">{{dateLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
         </picker>
 
         <text class="query-label query-label--spaced">节次 <text class="query-hint">· 可多选</text></text>
         <view class="period-choice pressable" bindtap="openPeriodPicker" hover-class="pressing" aria-role="button" aria-label="选择节次">
-          <view class="period-choice-icon"><lucide-icon name="clock-3" tone="coral" size="{{34}}"></lucide-icon></view>
+          <view class="period-choice-icon"><lucide-icon name="clock-3" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{34}}"></lucide-icon></view>
           <view class="period-choice-copy"><text>{{periodLabel}}</text><text>{{selectedPeriods.length ? '已选 ' + selectedPeriods.length + ' 节' : '上午 · 中午 · 下午 · 晚上'}}</text></view>
           <lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
         </view>

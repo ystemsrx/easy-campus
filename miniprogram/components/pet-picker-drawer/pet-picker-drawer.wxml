@@ -1,5 +1,5 @@
 <view
-  class="pet-picker-layer {{themeClass}} {{motionClass}} {{open ? 'pet-picker-layer--open' : ''}}"
+  class="pet-picker-layer {{themeClass}} {{visualThemeClass}} {{motionClass}} {{open ? 'pet-picker-layer--open' : ''}}"
 >
   <view class="pet-picker-scrim" catchtap="noop" catchtouchmove="noop"></view>
   <view class="pet-picker-card">

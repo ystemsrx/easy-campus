@@ -325,6 +325,10 @@ const electricityTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.wxml"),
   "utf8",
 );
+const electricityStyles = fs.readFileSync(
+  path.join(miniprogramRoot, "features", "pages", "electricity", "index.wxss"),
+  "utf8",
+);
 const electricityScript = fs.readFileSync(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.ts"),
   "utf8",
@@ -343,6 +347,10 @@ const passRateScript = fs.readFileSync(
 );
 const passRateStyles = fs.readFileSync(
   path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxss"),
+  "utf8",
+);
+const passRateCardTemplate = fs.readFileSync(
+  path.join(miniprogramRoot, "components", "pass-rate-card", "pass-rate-card.wxml"),
   "utf8",
 );
 if (
@@ -528,6 +536,38 @@ if (
 ) {
   failures.push(
     "features/pages/pass-rates: 顶部卡片的成绩组成标题和个人成绩明细必须保持放大后的字号",
+  );
+}
+
+if (
+  (passRateTemplate.match(/visualTheme === 'minimal'/g) || []).length < 6 ||
+  !passRateCardTemplate.includes("visualTheme === 'minimal'") ||
+  !/\.pass-rate-page\.theme-style-minimal \.course-switch\s*\{[^}]*border:\s*var\(--border-control\);[^}]*background:\s*transparent;/.test(
+    passRateStyles,
+  ) ||
+  !/\.pass-rate-page\.theme-style-minimal \.collecting-icon,[\s\S]*?background:\s*transparent;/.test(
+    passRateStyles,
+  )
+) {
+  failures.push(
+    "features/pages/pass-rates: 极简模式图标必须去除彩色底色并改为黑白，切换课程按钮必须显示框线",
+  );
+}
+
+if (
+  (electricityTemplate.match(/visualTheme === 'minimal'/g) || []).length < 12 ||
+  !/\.electricity-page\.theme-style-minimal \.field-icon,[\s\S]*?background:\s*transparent;/.test(
+    electricityStyles,
+  ) ||
+  !/\.electricity-page\.theme-style-minimal \.balance-icon\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/.test(
+    electricityStyles,
+  ) ||
+  !/\.electricity-page\.theme-style-minimal \.result-action\s*\{[^}]*border-color:\s*var\(--color-text\);[^}]*background:\s*transparent;/.test(
+    electricityStyles,
+  )
+) {
+  failures.push(
+    "features/pages/electricity: 极简模式所有电费图标必须使用黑白资源并移除彩色底色",
   );
 }
 

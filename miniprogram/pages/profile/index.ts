@@ -192,7 +192,7 @@ Page({
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData({
       ...appearance,
       reducedMotion: preferences.reducedMotion,
@@ -203,6 +203,7 @@ Page({
       selected: 2,
       hidden: this.data.feedbackVisible,
       themeClass: this.data.themeClass,
+      visualThemeClass: this.data.visualThemeClass,
       motionClass: this.data.motionClass,
     });
   },

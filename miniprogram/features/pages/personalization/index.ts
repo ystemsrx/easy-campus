@@ -1,5 +1,5 @@
 import { loadPreferences, updatePreferences } from "../../../store/preferences";
-import type { ThemePreference } from "../../../types/app";
+import type { ThemePreference, VisualTheme } from "../../../types/app";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -7,7 +7,7 @@ import {
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
 
-const THEME_OPTIONS: ReadonlyArray<{
+const APPEARANCE_OPTIONS: ReadonlyArray<{
   value: ThemePreference;
   label: string;
 }> = [
@@ -16,19 +16,35 @@ const THEME_OPTIONS: ReadonlyArray<{
   { value: "system", label: "跟随系统" },
 ];
 
+const VISUAL_THEME_OPTIONS: ReadonlyArray<{
+  value: VisualTheme;
+  label: string;
+}> = [
+  { value: "default", label: "默认" },
+  { value: "soft", label: "淡色" },
+  { value: "minimal", label: "极简" },
+];
+
 function isThemePreference(value: string): value is ThemePreference {
-  return THEME_OPTIONS.some((option) => option.value === value);
+  return APPEARANCE_OPTIONS.some((option) => option.value === value);
+}
+
+function isVisualTheme(value: string): value is VisualTheme {
+  return VISUAL_THEME_OPTIONS.some((option) => option.value === value);
 }
 
 Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default" as VisualTheme,
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     themePreference: "light" as ThemePreference,
     reducedMotion: false,
     haptics: false,
-    themeOptions: THEME_OPTIONS,
+    appearanceOptions: APPEARANCE_OPTIONS,
+    visualThemeOptions: VISUAL_THEME_OPTIONS,
   },
   onLoad() {
     this.applyPreferences();
@@ -40,10 +56,11 @@ Page({
   applyPreferences() {
     const preferences = loadPreferences();
     const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData({
       ...appearance,
       themePreference: preferences.theme,
+      visualTheme: preferences.visualTheme,
       reducedMotion: preferences.reducedMotion,
       haptics: preferences.haptics,
     });
@@ -52,6 +69,13 @@ Page({
     const theme = String(event.currentTarget.dataset.value || "");
     if (!isThemePreference(theme)) return;
     updatePreferences({ theme });
+    haptic("medium");
+    this.applyPreferences();
+  },
+  selectVisualTheme(event: WechatMiniprogram.TouchEvent) {
+    const visualTheme = String(event.currentTarget.dataset.value || "");
+    if (!isVisualTheme(visualTheme)) return;
+    updatePreferences({ visualTheme });
     haptic("medium");
     this.applyPreferences();
   },

@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page calendar-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page calendar-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view
     class="page-scroll"
     type="list"
@@ -88,5 +88,5 @@
     </view>
   </view>
 
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

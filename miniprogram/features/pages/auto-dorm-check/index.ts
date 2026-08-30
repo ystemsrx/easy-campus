@@ -116,6 +116,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     loading: true,
     loaded: false,
@@ -152,7 +154,7 @@ Page({
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData(appearance);
   },
   async loadStatus() {

@@ -167,7 +167,7 @@ assert(
       "const INITIAL_PROFILE_PREFERENCES = loadPreferences();",
     ) &&
     profilePage.includes("...INITIAL_PROFILE_APPEARANCE") &&
-    profilePage.includes("syncWindowBackground(appearance.theme);") &&
+    profilePage.includes("syncWindowBackground(appearance);") &&
     profileStyles.includes("animation-name: profile-page-settle;") &&
     profileStyles.includes("animation-name: profile-item-settle;") &&
     profilePageSettle.length > 0 &&

@@ -96,6 +96,11 @@
 .week-day--active .week-day-date { color: #fff; }
 .week-day-dot { position: absolute; bottom: 1rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #d97757; }
 
+.schedule-page.theme-style-minimal .week-day-today-ring {
+  border-color: var(--color-text);
+  border-radius: 0;
+}
+
 .motion-reduced .week-selection,
 .motion-reduced .week-day-date { transition-duration: 1ms; }
 
@@ -308,6 +313,21 @@
 .legend-square { flex: none; width: 19rpx; height: 19rpx; border-radius: 6rpx; }
 .legend-square--course { background: #f0cabb; }
 .legend-square--plan { border: 2rpx dashed #c2767a; background: #f7e9e8; }
+
+.schedule-page.theme-style-minimal .legend-square {
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+}
+
+.schedule-page.theme-style-minimal .legend-square--course {
+  border: 2rpx solid var(--color-text);
+  background-color: var(--color-text);
+}
+
+.schedule-page.theme-style-minimal .legend-square--plan {
+  border-color: var(--color-text);
+  background-color: var(--color-bg);
+}
 
 .schedule-empty { display: flex; flex-direction: column; align-items: center; margin-top: 8rpx; padding: 72rpx 34rpx; text-align: center; }
 .empty-orbit { display: flex; align-items: center; justify-content: center; width: 96rpx; height: 96rpx; border-radius: 36rpx; color: #a55357; background: #f7e9e8; font-size: 34rpx; }

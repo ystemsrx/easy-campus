@@ -1,6 +1,6 @@
 <view
   wx:if="{{mounted}}"
-  class="rate-limit-toast {{visible ? 'rate-limit-toast--visible' : ''}}"
+  class="rate-limit-toast rate-limit-toast--{{theme}} rate-limit-toast--{{visualTheme}} {{visible ? 'rate-limit-toast--visible' : ''}}"
   aria-role="status"
 >
   <text>{{message}}</text>

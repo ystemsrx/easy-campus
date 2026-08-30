@@ -1,54 +1,54 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page electricity-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page electricity-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="宿舍用电与余额" back transparent theme="{{theme}}"></navigation-bar>
     <view class="electricity-content page-content page-enter">
-      <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="danger" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
+      <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
 
       <block wx:else>
         <view wx:if="{{bindingEditing || !account}}" class="query-card card stagger-item stagger-2">
           <text class="query-title">绑定寝室以查询水电信息</text>
           <text class="field-label">宿舍楼</text>
           <view class="selector-field pressable {{optionsLoading ? 'selector-field--disabled' : ''}}" bindtap="openBuildingPicker" hover-class="pressing">
-            <view class="field-icon field-icon--building"><lucide-icon name="building-2" tone="coral" size="{{31}}"></lucide-icon></view>
+            <view class="field-icon field-icon--building"><lucide-icon name="building-2" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{31}}"></lucide-icon></view>
             <view class="selector-copy">
               <text class="selector-value {{buildingName ? '' : 'selector-placeholder'}}" overflow="ellipsis" max-lines="1">{{buildingName || (optionsLoading ? '正在同步宿舍楼…' : '请选择宿舍楼')}}</text>
             </view>
-            <lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
+            <lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{27}}"></lucide-icon>
           </view>
 
           <text class="field-label field-label--spaced">寝室号</text>
           <view class="room-field">
-            <view class="field-icon field-icon--room"><lucide-icon name="home" tone="amber" size="{{30}}"></lucide-icon></view>
+            <view class="field-icon field-icon--room"><lucide-icon name="home" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{30}}"></lucide-icon></view>
             <input class="room-input tnum" type="text" value="{{roomNumber}}" maxlength="4" placeholder="例如 0305" placeholder-class="room-placeholder" bindinput="onRoomInput" confirm-type="done" bindconfirm="onQuery" />
             <text class="room-limit">最多 4 位</text>
           </view>
           <button class="electricity-query-button {{optionsLoading || querying || !buildingId || !roomNumber ? 'electricity-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying || !buildingId || !roomNumber}}" hover-class="electricity-query-button--pressed" bindtap="onQuery">
-            <lucide-icon name="zap" tone="white" size="{{27}}"></lucide-icon>
+            <lucide-icon name="zap" tone="{{visualTheme === 'minimal' && theme === 'dark' ? 'ink' : 'white'}}" size="{{27}}"></lucide-icon>
             <text>{{querying ? '读取中' : '绑定'}}</text>
           </button>
           <button wx:if="{{account && bindingEditing}}" class="binding-cancel" bindtap="cancelRebind">取消换绑</button>
-          <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="danger" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
+          <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
         </view>
 
         <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
           <view class="section-header result-heading">
             <view class="result-copy"><text class="section-title">寝室电费</text><text class="section-caption" overflow="ellipsis" max-lines="1">{{boundBuildingName}} · {{boundRoomNumber}} · {{cacheLabel}}</text></view>
-            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="muted" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="onRefreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="{{querying ? '正在刷新电费' : '刷新电费'}}" aria-disabled="{{querying}}"><image wx:if="{{querying}}" class="result-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image><lucide-icon wx:else name="refresh-cw" tone="amber" size="{{22}}"></lucide-icon></view></view>
+            <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="onRefreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="{{querying ? '正在刷新电费' : '刷新电费'}}" aria-disabled="{{querying}}"><image wx:if="{{querying}}" class="result-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image><lucide-icon wx:else name="refresh-cw" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{22}}"></lucide-icon></view></view>
           </view>
-          <view wx:if="{{serviceUnavailable}}" class="service-warning"><lucide-icon name="circle-alert" tone="danger" size="{{22}}"></lucide-icon><text>校园电费服务暂不可用，当前仍显示上次保存的数据。</text></view>
+          <view wx:if="{{serviceUnavailable}}" class="service-warning"><lucide-icon name="circle-alert" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" size="{{22}}"></lucide-icon><text>校园电费服务暂不可用，当前仍显示上次保存的数据。</text></view>
           <view class="balance-card {{account.balanceNegative ? 'balance-card--negative' : ''}}">
             <view class="balance-copy"><text>目前剩余金额</text><view><text class="balance-value tnum">{{account.remainingAmountLabel}}</text><text class="balance-unit">元</text></view></view>
-            <view class="balance-icon"><lucide-icon name="zap" tone="white" size="{{42}}"></lucide-icon></view>
+            <view class="balance-icon"><lucide-icon name="zap" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{42}}"></lucide-icon></view>
           </view>
           <view class="usage-grid">
-            <view class="usage-card card"><view class="usage-icon usage-icon--power"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{30}}"></lucide-icon></view><text class="usage-label">计费电量</text><view><text class="usage-value tnum">{{account.billedElectricityLabel}}</text><text class="usage-unit">度</text></view></view>
-            <view class="usage-card card"><view class="usage-icon usage-icon--fee"><lucide-icon name="zap" tone="coral" size="{{30}}"></lucide-icon></view><text class="usage-label">电费</text><view><text class="usage-value tnum">{{account.electricityFeeLabel}}</text><text class="usage-unit">元</text></view></view>
+            <view class="usage-card card"><view class="usage-icon usage-icon--power"><lucide-icon name="chart-no-axes-column-increasing" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{30}}"></lucide-icon></view><text class="usage-label">计费电量</text><view><text class="usage-value tnum">{{account.billedElectricityLabel}}</text><text class="usage-unit">度</text></view></view>
+            <view class="usage-card card"><view class="usage-icon usage-icon--fee"><lucide-icon name="zap" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{30}}"></lucide-icon></view><text class="usage-label">电费</text><view><text class="usage-value tnum">{{account.electricityFeeLabel}}</text><text class="usage-unit">元</text></view></view>
           </view>
           <view class="date-card card">
-            <view class="date-row"><view class="date-icon"><lucide-icon name="calendar-check" tone="sage" size="{{29}}"></lucide-icon></view><view><text>上次缴费日期</text><text class="tnum">{{account.lastPaymentDateLabel}}</text></view></view>
+            <view class="date-row"><view class="date-icon"><lucide-icon name="calendar-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{29}}"></lucide-icon></view><view><text>上次缴费日期</text><text class="tnum">{{account.lastPaymentDateLabel}}</text></view></view>
             <view class="date-divider"></view>
-            <view class="date-row"><view class="date-icon date-icon--settled"><lucide-icon name="calendar-clock" tone="amber" size="{{29}}"></lucide-icon></view><view><text>最后结算日期</text><text class="tnum">{{account.lastSettlementDateLabel}}</text></view></view>
+            <view class="date-row"><view class="date-icon date-icon--settled"><lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view><view><text>最后结算日期</text><text class="tnum">{{account.lastSettlementDateLabel}}</text></view></view>
           </view>
         </view>
 
@@ -57,12 +57,12 @@
   </scroll-view>
 
   <bottom-sheet visible="{{buildingPickerVisible}}" expanded="{{true}}" scrollable="{{false}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker">
-    <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="muted" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
+    <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
     <scroll-view class="building-picker-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
       <view wx:for="{{buildingRows}}" wx:key="id" wx:for-item="row" class="building-row">
         <view wx:for="{{row.items}}" wx:key="id" wx:for-item="building" class="building-option {{draftBuildingId === building.id ? 'building-option--active' : ''}}" data-id="{{building.id}}" bindtap="selectBuilding" hover-class="building-option--pressed">
           <text>{{building.name}}</text>
-          <lucide-icon wx:if="{{draftBuildingId === building.id}}" name="check" tone="coral" size="{{24}}"></lucide-icon>
+          <lucide-icon wx:if="{{draftBuildingId === building.id}}" name="check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{24}}"></lucide-icon>
         </view>
       </view>
       <view wx:if="{{!buildings.length}}" class="building-empty"><text>没有匹配的宿舍楼</text></view>
@@ -73,5 +73,5 @@
     <text>一个月仅能绑定一次</text>
   </view>
 
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

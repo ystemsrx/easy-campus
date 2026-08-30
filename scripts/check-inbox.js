@@ -411,5 +411,23 @@ assert(
     ),
   "教务消息和学校通知的历史分界必须使用居中文字与两侧灰线",
 );
+assert(
+  template.includes("{{visualThemeClass}}") &&
+    template.includes('visual-theme="{{visualTheme}}"') &&
+    !template.includes("inbox-scroll-frame") &&
+    !styles.includes("inbox-scroll-frame") &&
+    (template.match(/<swiper-item>\s*<scroll-view class="inbox-list"/g) || [])
+      .length === 2 &&
+    /\.inbox-page\.theme-style-minimal \.segmented-control\s*\{[^}]*border:\s*2rpx solid var\(--color-text\);/s.test(
+      styles,
+    ) &&
+    /\.inbox-page\.theme-style-minimal \.segment-indicator\s*\{[^}]*border-radius:\s*999rpx;[^}]*background-color:\s*var\(--color-primary\);/s.test(
+      styles,
+    ) &&
+    /\.inbox-page\.theme-style-minimal \.message-card,[\s\S]*?\.inbox-page\.theme-style-minimal \.notice-item\s*\{[^}]*border:\s*0;[^}]*border-bottom:\s*1rpx solid var\(--color-separator\);/s.test(
+      styles,
+    ),
+  "校园通知页必须保留原始滚动结构，并仅在极简主题下使用带点睛色的极简视觉",
+);
 
 console.log("Inbox interaction checks passed.");

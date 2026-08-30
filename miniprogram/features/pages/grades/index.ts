@@ -255,6 +255,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     loading: true,
     refreshing: false,
@@ -699,9 +701,8 @@ Page({
       academicYear: chip.academicYear,
       term: chip.term,
       activeSemesterId: chip.id,
-    });
-    wx.nextTick(() => {
-      this.setData({ filterLabel: this.buildFilterLabel() });
+      filterLabel: chip.label,
+    }, () => {
       void this.loadGrades(true, false);
     });
   },

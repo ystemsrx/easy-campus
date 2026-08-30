@@ -10,6 +10,10 @@ const source = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "utils", "progress-ring.ts"),
   "utf8",
 );
+const appStyles = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "app.wxss"),
+  "utf8",
+);
 const output = ts.transpileModule(source, {
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -67,6 +71,16 @@ assert(
 assert(
   decodeSource(progressRingSource(null)).includes('stroke-opacity="0"'),
   "无平均分时只能显示空轨道",
+);
+
+assert(
+  /\.page\.theme-light\.theme-style-minimal \.score-ring-image,[\s\S]*?\.page\.theme-light\.theme-style-minimal \.average-ring-image \{[\s\S]*?filter:\s*brightness\(0\);/.test(
+    appStyles,
+  ) &&
+    /\.page\.theme-dark\.theme-style-minimal \.score-ring-image,[\s\S]*?\.page\.theme-dark\.theme-style-minimal \.average-ring-image \{[\s\S]*?filter:\s*none;/.test(
+      appStyles,
+    ),
+  "极简模式必须完整保留主页与成绩页圆环，并在浅色下显示黑色、深色下显示白色",
 );
 
 console.log("Progress ring checks passed.");

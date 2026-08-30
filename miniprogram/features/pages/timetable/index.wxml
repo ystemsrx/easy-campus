@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
 <view
   class="page timetable-page timetable-theme--{{timetableThemeId}} {{companionBackgroundClass}} {{themeClass}} {{motionClass}}"
   style="background-color: {{backgroundColor}}; {{themeStyle}}"
@@ -352,7 +352,7 @@
             <text class="course-pass-rate-name" overflow="ellipsis" max-lines="2">{{passRateCourse.courseName || passRateCourseName}}</text>
             <text class="course-pass-rate-meta">通过率 · 得分分布{{passRateCohortLabel ? ' · ' + passRateCohortLabel : ''}}</text>
           </view>
-          <pass-rate-card wx:if="{{passRateStatus === 'ready' && passRateStatistics}}" statistics="{{passRateStatistics}}" own-score="{{passRateOwnScore}}" display-score="{{passRateDisplayScore}}" show-own-score="{{passRateCourse.hasOwnGrade && passRateOwnScore >= 0}}" percentage-only="{{passRatePercentageOnly}}" theme="{{theme}}"></pass-rate-card>
+          <pass-rate-card wx:if="{{passRateStatus === 'ready' && passRateStatistics}}" statistics="{{passRateStatistics}}" own-score="{{passRateOwnScore}}" display-score="{{passRateDisplayScore}}" show-own-score="{{passRateCourse.hasOwnGrade && passRateOwnScore >= 0}}" percentage-only="{{passRatePercentageOnly}}" theme="{{theme}}" visual-theme="default"></pass-rate-card>
           <view wx:else class="course-pass-rate-collecting card">
             <view class="course-pass-rate-collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{40}}"></lucide-icon></view>
             <text>{{passRateMessage}}</text>
@@ -362,5 +362,5 @@
       <view class="course-pass-rate-bottom-space"></view>
     </scroll-view>
   </bottom-sheet>
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

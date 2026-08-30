@@ -50,6 +50,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     currentTime: "",
     monthLabel: "",
@@ -97,6 +99,7 @@ Page({
       tabBar.setData({
         selected: 1,
         themeClass: this.data.themeClass,
+        visualThemeClass: this.data.visualThemeClass,
         motionClass: this.data.motionClass,
         hidden: false,
       });

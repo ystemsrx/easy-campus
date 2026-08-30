@@ -17,7 +17,6 @@
 
 .appearance-setting {
   padding: 28rpx 34rpx 30rpx;
-  border-bottom: 1rpx solid var(--color-separator);
 }
 
 .personalization-title {
@@ -76,6 +75,294 @@
   color: #16161a;
 }
 
+.theme-setting-card {
+  margin-top: 20rpx;
+  padding: 28rpx 24rpx 26rpx;
+}
+
+.theme-setting-card > .personalization-title {
+  padding: 0 10rpx;
+}
+
+.visual-theme-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+  width: 100%;
+  margin-top: 20rpx;
+}
+
+.visual-theme-option {
+  display: flex;
+  flex: 1;
+  flex-basis: 0;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8rpx 8rpx 14rpx;
+  border: 3rpx solid transparent;
+  border-radius: 30rpx;
+  background-color: var(--color-bg-subtle);
+  transition: transform 140ms ease, background-color 180ms ease;
+}
+
+.visual-theme-option--active {
+  border-color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+}
+
+.theme-style-soft .visual-theme-option--active {
+  border-color: var(--color-success);
+}
+
+.visual-theme-option--pressed {
+  transform: scale(0.96);
+}
+
+.theme-preview {
+  position: relative;
+  width: 100%;
+  height: 132rpx;
+  padding: 17rpx 14rpx;
+  overflow: hidden;
+  border-radius: 22rpx;
+}
+
+.theme-preview-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 12rpx;
+}
+
+.theme-preview-top view:first-child {
+  width: 44rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+}
+
+.theme-preview-top view:last-child {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.theme-preview-body {
+  display: flex;
+  flex-direction: row;
+  gap: 9rpx;
+  height: 72rpx;
+  margin-top: 13rpx;
+}
+
+.theme-preview-feature {
+  position: relative;
+  flex: 1.15;
+  overflow: hidden;
+  border-radius: 15rpx;
+}
+
+.theme-preview-feature-mark {
+  position: absolute;
+  right: -10rpx;
+  bottom: -10rpx;
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 50%;
+}
+
+.theme-preview-stack {
+  display: flex;
+  flex: 0.85;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.theme-preview-stack view {
+  flex: 1;
+  border-radius: 11rpx;
+}
+
+.theme-preview-detail {
+  position: absolute;
+  top: 53rpx;
+  left: 26rpx;
+  display: flex;
+  flex-direction: row;
+  gap: 5rpx;
+}
+
+.theme-preview-detail view {
+  width: 7rpx;
+  height: 7rpx;
+  border-radius: 50%;
+}
+
+.theme-preview--default {
+  background-color: #f7f5ef;
+}
+
+.theme-preview--default .theme-preview-top view {
+  background-color: #8b8578;
+}
+
+.theme-preview--default .theme-preview-feature {
+  background: linear-gradient(145deg, #d97757, #eba97f);
+}
+
+.theme-preview--default .theme-preview-feature-mark {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+.theme-preview--default .theme-preview-stack view:first-child {
+  background-color: #f8eedd;
+}
+
+.theme-preview--default .theme-preview-stack view:last-child {
+  background-color: #edf1e6;
+}
+
+.theme-preview-detail--default view {
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.theme-preview--soft {
+  background-color: #f7fcf8;
+}
+
+.theme-preview--soft .theme-preview-top view {
+  background-color: #5f7f6d;
+}
+
+.theme-preview--soft .theme-preview-feature {
+  background-color: #f7cabc;
+}
+
+.theme-preview--soft .theme-preview-feature-mark {
+  background-color: #fbe7ba;
+}
+
+.theme-preview--soft .theme-preview-stack view:first-child {
+  background-color: #e6d7f2;
+}
+
+.theme-preview--soft .theme-preview-stack view:last-child {
+  background-color: #cde8d5;
+}
+
+.theme-preview-detail--soft view {
+  background-color: #8fbaa0;
+}
+
+.theme-preview--minimal {
+  border: 2rpx solid #111;
+  border-radius: 8rpx;
+  background-color: #fff;
+}
+
+.theme-preview--minimal .theme-preview-top view {
+  border-radius: 0;
+  background-color: #111;
+}
+
+.theme-preview--minimal .theme-preview-top view:last-child {
+  background-color: #b6543e;
+}
+
+.theme-preview--minimal .theme-preview-feature {
+  border-radius: 0;
+  background-color: #f7e9e4;
+  box-shadow: inset 0 0 0 2rpx #111;
+}
+
+.theme-preview--minimal .theme-preview-feature-mark {
+  right: 9rpx;
+  bottom: 9rpx;
+  width: 28rpx;
+  height: 7rpx;
+  border-radius: 0;
+  background-color: #b6543e;
+}
+
+.theme-preview--minimal .theme-preview-stack view {
+  border: 2rpx solid #111;
+  border-radius: 0;
+  background-color: #fff;
+}
+
+.theme-preview--minimal .theme-preview-stack view:last-child {
+  border-color: #4f755e;
+  background-color: #eaf2ed;
+}
+
+.theme-preview-detail--minimal view {
+  border-radius: 0;
+  background-color: #111;
+}
+
+.theme-preview-detail--minimal view:first-child {
+  background-color: #b6543e;
+}
+
+.visual-theme-label-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5rpx;
+  min-width: 0;
+  margin-top: 12rpx;
+  padding: 0 5rpx;
+}
+
+.visual-theme-label {
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 23rpx;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.visual-theme-selection {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20rpx;
+  height: 20rpx;
+  border: 2rpx solid var(--color-text-tertiary);
+  border-radius: 50%;
+}
+
+.visual-theme-selection view {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.visual-theme-option--active .visual-theme-selection {
+  border-color: var(--color-text);
+}
+
+.visual-theme-option--active .visual-theme-selection view {
+  background-color: var(--color-text);
+}
+
+.theme-style-minimal .visual-theme-option--active,
+.theme-style-minimal .visual-theme-option--active .visual-theme-selection {
+  border-color: var(--color-primary);
+}
+
+.theme-style-minimal .visual-theme-option--active .visual-theme-selection view {
+  background-color: var(--color-primary);
+}
+
+.interaction-setting-card {
+  margin-top: 20rpx;
+}
+
 .personalization-row {
   display: flex;
   flex-direction: row;
@@ -119,4 +406,8 @@
 
 .theme-dark .appearance-option--active {
   color: #f7f3e9;
+}
+
+.theme-style-minimal .appearance-option--active {
+  color: var(--color-on-accent);
 }

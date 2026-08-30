@@ -21,6 +21,10 @@ function clearTimers(instance: object): void {
 }
 
 Component({
+  properties: {
+    theme: { type: String, value: "light" },
+    visualTheme: { type: String, value: "default" },
+  },
   data: {
     mounted: false,
     visible: false,

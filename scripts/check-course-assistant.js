@@ -93,10 +93,10 @@ const navigationStyles = read(
   "miniprogram/components/navigation-bar/navigation-bar.wxss",
 );
 const navigationSurface = navigationStyles.match(
-  /\.nav-cover\s*\{[^}]*background-color:\s*(#[0-9a-f]{6})/s,
+  /\.nav-cover\s*\{[^}]*background-color:\s*(?:var\(\s*--[^,]+,\s*)?(#[0-9a-f]{6})/s,
 )?.[1];
 const navigationDarkSurface = navigationStyles.match(
-  /\.nav-cover--dark\s*\{[^}]*background-color:\s*(#[0-9a-f]{6})/s,
+  /\.nav-cover--dark\s*\{[^}]*background-color:\s*(?:var\(\s*--[^,]+,\s*)?(#[0-9a-f]{6})/s,
 )?.[1];
 const assistantSurface = styles.match(
   /\.assistant-page\s*\{[^}]*--guide-paper:\s*(#[0-9a-f]{6})/s,

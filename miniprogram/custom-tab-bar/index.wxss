@@ -22,6 +22,34 @@
   --tab-pill: #f7f3e9;
 }
 
+.tabbar-shell.theme-style-soft {
+  --tab-bg: rgba(255, 255, 255, 0.9);
+  --tab-text: #6f8679;
+  --tab-active: #ffffff;
+  --tab-pill: #649278;
+}
+
+.tabbar-shell.theme-dark.theme-style-soft {
+  --tab-bg: rgba(31, 44, 37, 0.92);
+  --tab-text: #9fb8a9;
+  --tab-active: #16201b;
+  --tab-pill: #b8ddc4;
+}
+
+.tabbar-shell.theme-style-minimal {
+  --tab-bg: #ffffff;
+  --tab-text: #151515;
+  --tab-active: #ffffff;
+  --tab-pill: #b6543e;
+}
+
+.tabbar-shell.theme-dark.theme-style-minimal {
+  --tab-bg: #171817;
+  --tab-text: #f5f5f0;
+  --tab-active: #151515;
+  --tab-pill: #e0927e;
+}
+
 .tabbar-material {
   position: relative;
   display: flex;
@@ -37,6 +65,23 @@
     0 30rpx 80rpx -16rpx rgba(20, 20, 30, 0.22);
   backdrop-filter: blur(22px) saturate(1.6);
   pointer-events: auto;
+}
+
+.theme-style-soft .tabbar-material {
+  border-color: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 24rpx 64rpx -24rpx rgba(62, 110, 82, 0.24);
+  backdrop-filter: blur(22px) saturate(1.05);
+}
+
+.theme-style-minimal .tabbar-material {
+  border: 2rpx solid var(--tab-text);
+  border-radius: 6rpx;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.theme-style-minimal .tabbar-indicator {
+  border-radius: 2rpx;
 }
 
 .tabbar-indicator {

@@ -21,6 +21,8 @@ function clearRefreshConfirmationTimers(instance: object): void {
 Component({
   properties: {
     reducedMotion: { type: Boolean, value: false },
+    theme: { type: String, value: "light" },
+    visualTheme: { type: String, value: "default" },
   },
   data: {
     mounted: false,

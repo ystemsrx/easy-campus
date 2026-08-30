@@ -172,6 +172,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     detailTitle: "课程成绩与组成",
     course: null as GradeCourse | null,

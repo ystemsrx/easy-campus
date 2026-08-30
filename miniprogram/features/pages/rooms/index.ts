@@ -15,10 +15,7 @@ import {
   formatRoomResultDate,
   resolveInitialRoomDate,
 } from "../../utils/room-date";
-import {
-  groupRoomsByFloor,
-  type FloorRoomGroup,
-} from "../../utils/room-floor";
+import { groupRoomsByFloor, type FloorRoomGroup } from "../../utils/room-floor";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -88,7 +85,7 @@ function quickDateIndicatorStyle(options: QuickDateView[]): string {
   if (!options.length) return "";
   const selectedIndex = options.findIndex((item) => item.selected);
   const index = Math.max(0, selectedIndex);
-  return `width: ${100 / options.length}%; transform: translateX(${index * 100}%); opacity: ${selectedIndex < 0 ? 0 : 1};`;
+  return `left: 10rpx; width: calc((100% - 20rpx) / ${options.length}); transform: translateX(${index * 100}%); opacity: ${selectedIndex < 0 ? 0 : 1};`;
 }
 
 function selectQuickDate(
@@ -160,6 +157,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     optionsLoading: true,
     querying: false,

@@ -534,7 +534,7 @@ if (
   !script.includes(
     "const INITIAL_LOGIN_APPEARANCE = resolveAppearance(loadPreferences());",
   ) ||
-  !script.includes("syncWindowBackground(appearance.theme);") ||
+  !script.includes("syncWindowBackground(appearance);") ||
   !script.includes("function dismissLoginKeyboard(): void") ||
   !script.includes("dismissLoginKeyboard();") ||
   !script.includes('loginScrollAnchor: "login-stage"') ||

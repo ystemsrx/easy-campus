@@ -816,4 +816,25 @@ assert(
   "成绩卡片只应在首次进入和切换排序时整批播放逐步进入动效",
 );
 
+const semesterSelectionBlock =
+  gradesPageScript.match(
+    /selectSemesterQuick\([\s\S]*?\n\s*},\n\s*loadMore\(/,
+  )?.[0] || "";
+assert(
+  gradesPageTemplate.includes(
+    'hover-class="semester-chip--pressed" hover-stay-time="0"',
+  ) &&
+    !/semester-chip[^>]*hover-class="pressing"/.test(gradesPageTemplate) &&
+    /\.semester-chip\s*\{[^}]*transition:\s*transform 120ms ease-out;/.test(
+      gradesPageStyles,
+    ) &&
+    /\.semester-chip--pressed\s*\{[^}]*opacity:\s*1;[^}]*transform:\s*scale\(0\.97\);/.test(
+      gradesPageStyles,
+    ) &&
+    semesterSelectionBlock.includes("filterLabel: chip.label,") &&
+    semesterSelectionBlock.includes("}, () => {") &&
+    !semesterSelectionBlock.includes("wx.nextTick"),
+  "切换学期必须一次性更新选中状态，并使用不改变透明度的按压反馈以避免闪烁",
+);
+
 console.log("Grade preview checks passed.");

@@ -88,8 +88,12 @@ for (const page of declaredPages) {
     path.join(miniprogramRoot, `${page}.wxml`),
     "utf8",
   );
-  if (!/<rate-limit-toast id="rate-limit-toast">/.test(template)) {
-    failures.push(`${page}.wxml: 缺少全局 429 胶囊`);
+  if (
+    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s*>/.test(
+      template,
+    )
+  ) {
+    failures.push(`${page}.wxml: 缺少带主题参数的全局 429 胶囊`);
   }
 }
 

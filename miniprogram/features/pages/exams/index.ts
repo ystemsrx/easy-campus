@@ -46,6 +46,11 @@ import {
   type ExamCountdownTone,
 } from "../../../utils/exams";
 import { numberedAcademicSemesterLabel } from "../../../utils/semester";
+import {
+  canActivateTap,
+  movementExceedsTapThreshold,
+  type TapPoint,
+} from "../../utils/tap-guard";
 
 interface ExamView extends Exam {
   dateLabel: string;
@@ -89,6 +94,19 @@ let examsSequence = 0;
 let hydratedExamsAccount = "";
 let pendingExamListSlideDirection: ExamListSlideDirection = "";
 let examListSlideSequence = 0;
+let examTouchStart: TapPoint | null = null;
+let examTouchMoved = false;
+let lastExamScrollAt = 0;
+
+function touchPoint(
+  event: WechatMiniprogram.TouchEvent,
+  changed = false,
+): TapPoint | null {
+  const touches = changed ? event.changedTouches : event.touches;
+  const touch = touches[0];
+  if (!touch) return null;
+  return { x: Number(touch.clientX), y: Number(touch.clientY) };
+}
 
 function nextExamListSlideClass(
   direction: Exclude<ExamListSlideDirection, "">,
@@ -213,6 +231,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     loading: true,
     refreshing: false,
@@ -239,6 +259,9 @@ Page({
     hydratedExamsAccount = "";
     pendingExamListSlideDirection = "";
     examListSlideSequence = 0;
+    examTouchStart = null;
+    examTouchMoved = false;
+    lastExamScrollAt = 0;
     examsSequence += 1;
     const refreshPageToken = createRefreshPageToken();
     markRefreshPageVisible(refreshPageToken);
@@ -256,9 +279,13 @@ Page({
     }
   },
   onHide() {
+    examTouchStart = null;
+    examTouchMoved = true;
     markRefreshPageHidden(this.data.refreshPageToken);
   },
   onUnload() {
+    examTouchStart = null;
+    examTouchMoved = true;
     markRefreshPageHidden(this.data.refreshPageToken);
   },
   applyAppearance() {
@@ -356,10 +383,7 @@ Page({
     const semesterId = data.semester?.id || "";
     const examItems = data.items.map(toExamView);
     let examListSlideClass = this.data.examListSlideClass;
-    if (
-      pendingExamListSlideDirection &&
-      semesterId === this.data.semesterId
-    ) {
+    if (pendingExamListSlideDirection && semesterId === this.data.semesterId) {
       examListSlideClass = nextExamListSlideClass(
         pendingExamListSlideDirection,
       );
@@ -539,7 +563,44 @@ Page({
     }
     void this.loadExams(true, false);
   },
+  onExamTouchStart(event: WechatMiniprogram.TouchEvent) {
+    examTouchStart = touchPoint(event);
+    examTouchMoved = false;
+  },
+  onExamTouchMove(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event);
+    if (
+      examTouchStart &&
+      current &&
+      movementExceedsTapThreshold(examTouchStart, current)
+    ) {
+      examTouchMoved = true;
+    }
+  },
+  onExamTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event, true);
+    if (
+      examTouchStart &&
+      current &&
+      movementExceedsTapThreshold(examTouchStart, current)
+    ) {
+      examTouchMoved = true;
+    }
+    examTouchStart = null;
+  },
+  onExamTouchCancel() {
+    examTouchStart = null;
+    examTouchMoved = true;
+  },
+  onExamScroll() {
+    lastExamScrollAt = Date.now();
+    if (examTouchStart) examTouchMoved = true;
+  },
   openExam(event: WechatMiniprogram.TouchEvent) {
+    const canOpen = canActivateTap(examTouchMoved, lastExamScrollAt);
+    examTouchStart = null;
+    examTouchMoved = false;
+    if (!canOpen) return;
     const id = String(event.currentTarget.dataset.id || "");
     const exam = this.data.examItems.find((item) => item.id === id);
     if (!exam) return;

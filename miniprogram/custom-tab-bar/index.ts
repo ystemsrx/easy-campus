@@ -17,6 +17,7 @@ Component({
     selected: 0,
     hidden: INITIAL_TAB_HIDDEN,
     themeClass: INITIAL_TAB_APPEARANCE.themeClass,
+    visualThemeClass: INITIAL_TAB_APPEARANCE.visualThemeClass,
     motionClass: INITIAL_TAB_APPEARANCE.motionClass,
     items: [
       { pagePath: "/pages/home/index", text: "概览", icon: "home" },
@@ -34,6 +35,7 @@ Component({
       this.setData({
         hidden: !Boolean(getSession()?.token),
         themeClass: appearance.themeClass,
+        visualThemeClass: appearance.visualThemeClass,
         motionClass: appearance.motionClass,
       });
     },
@@ -44,6 +46,7 @@ Component({
       this.setData({
         selected: index,
         themeClass: appearance.themeClass,
+        visualThemeClass: appearance.visualThemeClass,
         motionClass: appearance.motionClass,
       });
     },

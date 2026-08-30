@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page page--quick-entry personalization-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry personalization-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar title="个性化" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="personalization-content page-content page-enter">
@@ -9,7 +9,7 @@
         <view class="appearance-control">
           <view class="appearance-indicator appearance-indicator--{{themePreference}}"></view>
           <view
-            wx:for="{{themeOptions}}"
+            wx:for="{{appearanceOptions}}"
             wx:key="value"
             class="appearance-option {{themePreference === item.value ? 'appearance-option--active' : ''}}"
             data-value="{{item.value}}"
@@ -21,19 +21,52 @@
           </view>
         </view>
       </view>
+    </view>
+
+    <view class="theme-setting-card card stagger-item stagger-2">
+      <text class="personalization-title">主题</text>
+      <view class="visual-theme-options" aria-label="主题样式">
+        <view
+          wx:for="{{visualThemeOptions}}"
+          wx:key="value"
+          class="visual-theme-option pressable {{visualTheme === item.value ? 'visual-theme-option--active' : ''}}"
+          data-value="{{item.value}}"
+          bindtap="selectVisualTheme"
+          hover-class="visual-theme-option--pressed"
+          aria-role="button"
+          aria-label="{{item.label}}主题"
+          aria-pressed="{{visualTheme === item.value}}"
+        >
+          <view class="theme-preview theme-preview--{{item.value}}" aria-hidden="true">
+            <view class="theme-preview-top"><view></view><view></view></view>
+            <view class="theme-preview-body">
+              <view class="theme-preview-feature"><view class="theme-preview-feature-mark"></view></view>
+              <view class="theme-preview-stack"><view></view><view></view></view>
+            </view>
+            <view class="theme-preview-detail theme-preview-detail--{{item.value}}"><view></view><view></view><view></view></view>
+          </view>
+          <view class="visual-theme-label-row">
+            <text class="visual-theme-label">{{item.label}}</text>
+            <view class="visual-theme-selection"><view></view></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="personalization-card interaction-setting-card card stagger-item stagger-3">
       <view class="personalization-row personalization-row--divided">
         <view class="personalization-copy">
           <text class="personalization-title">减少动态效果</text>
           <text class="personalization-caption">降低页面过渡与漂浮动画</text>
         </view>
-        <switch class="personalization-switch" checked="{{reducedMotion}}" color="#7d8f6e" bindchange="onReducedMotionChange" aria-label="减少动态效果" />
+        <switch class="personalization-switch" checked="{{reducedMotion}}" color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#ffffff' : '#000000') : '#7d8f6e'}}" bindchange="onReducedMotionChange" aria-label="减少动态效果" />
       </view>
       <view class="personalization-row">
         <view class="personalization-copy">
           <text class="personalization-title">触感反馈</text>
           <text class="personalization-caption">开关切换与操作时轻微震动</text>
         </view>
-        <switch class="personalization-switch" checked="{{haptics}}" color="#7d8f6e" bindchange="onHapticsChange" aria-label="触感反馈" />
+        <switch class="personalization-switch" checked="{{haptics}}" color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#ffffff' : '#000000') : '#7d8f6e'}}" bindchange="onHapticsChange" aria-label="触感反馈" />
       </view>
     </view>
   </view>

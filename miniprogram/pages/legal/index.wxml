@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page page--quick-entry legal-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry legal-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view
     class="page-scroll"
     type="list"

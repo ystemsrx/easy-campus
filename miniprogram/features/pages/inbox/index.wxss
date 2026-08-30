@@ -100,5 +100,96 @@
 .theme-dark .message-filter-popover { border-color: rgba(255, 255, 255, 0.07); background: rgba(45, 42, 36, 0.98); box-shadow: 0 28rpx 82rpx rgba(0, 0, 0, 0.42); }
 .theme-dark .message-type-separator { background: rgba(255, 255, 255, 0.14); }
 
+.inbox-page.theme-style-minimal .inbox-toolbar {
+  padding-bottom: 18rpx;
+}
+
+.inbox-page.theme-style-minimal .segmented-control {
+  border: 2rpx solid var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.inbox-page.theme-style-minimal .segment-indicator {
+  border: 0;
+  border-radius: 999rpx;
+  background-color: var(--color-primary);
+}
+
+.inbox-page.theme-style-minimal .segment-item {
+  color: var(--color-text);
+}
+
+.inbox-page.theme-style-minimal .segment-item--active {
+  color: var(--color-on-accent);
+}
+
+.inbox-page.theme-style-minimal .message-list,
+.inbox-page.theme-style-minimal .notice-list,
+.inbox-page.theme-style-minimal .message-list-item,
+.inbox-page.theme-style-minimal .notice-list-item {
+  gap: 0;
+}
+
+.inbox-page.theme-style-minimal .message-card,
+.inbox-page.theme-style-minimal .notice-item {
+  border: 0;
+  border-bottom: 1rpx solid var(--color-separator);
+  border-radius: 0;
+}
+
+.inbox-page.theme-style-minimal .message-badge,
+.inbox-page.theme-style-minimal .schedule-panel,
+.inbox-page.theme-style-minimal .schedule-time-label,
+.inbox-page.theme-style-minimal .reschedule-arrow,
+.inbox-page.theme-style-minimal .notice-icon,
+.inbox-page.theme-style-minimal .notice-tag,
+.inbox-page.theme-style-minimal .search-clear {
+  border: 1rpx solid var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.inbox-page.theme-style-minimal .message-badge--blue,
+.inbox-page.theme-style-minimal .notice-icon,
+.inbox-page.theme-style-minimal .notice-tag {
+  border-color: var(--color-accent-blue);
+  color: var(--color-accent-blue);
+  background-color: var(--color-accent-blue-soft);
+}
+
+.inbox-page.theme-style-minimal .message-badge--green,
+.inbox-page.theme-style-minimal .schedule-panel--makeup {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+.inbox-page.theme-style-minimal .message-badge--orange,
+.inbox-page.theme-style-minimal .schedule-panel--new,
+.inbox-page.theme-style-minimal .reschedule-arrow {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+.inbox-page.theme-style-minimal .schedule-state,
+.inbox-page.theme-style-minimal .schedule-location,
+.inbox-page.theme-style-minimal .schedule-comparison-time,
+.inbox-page.theme-style-minimal .schedule-comparison-time--new {
+  color: var(--color-text);
+}
+
+.inbox-page.theme-style-minimal .filter-count {
+  border-color: var(--color-bg);
+  color: var(--color-on-accent);
+  background-color: var(--color-danger);
+}
+
+.inbox-page.theme-style-minimal .message-list-item:last-child .message-card,
+.inbox-page.theme-style-minimal .notice-list-item:last-child .notice-item {
+  border-bottom: 0;
+}
+
 .motion-reduced .message-filter-popover,
 .motion-reduced .message-type-option { transition-duration: 1ms; }

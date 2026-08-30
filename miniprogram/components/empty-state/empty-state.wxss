@@ -17,8 +17,8 @@
   width: 92rpx;
   height: 92rpx;
   border-radius: 32rpx;
-  color: #b85c38;
-  background: #f9eae2;
+  color: var(--visual-component-primary, #b85c38);
+  background-color: var(--visual-component-primary-soft, #f9eae2);
   font-family: Georgia, "Songti SC", serif;
   font-size: 34rpx;
   font-weight: 700;
@@ -43,8 +43,8 @@
   margin-top: 24rpx;
   padding: 14rpx 28rpx;
   border-radius: 999rpx;
-  color: #b85c38;
-  background: #f9eae2;
+  color: var(--visual-component-primary, #b85c38);
+  background-color: var(--visual-component-primary-soft, #f9eae2);
   font-size: 24rpx;
   font-weight: 700;
   transition: transform 120ms ease-out, opacity 120ms ease-out;

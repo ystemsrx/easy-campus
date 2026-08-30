@@ -12,8 +12,8 @@
 .loading-orb {
   width: 34rpx;
   height: 34rpx;
-  border: 4rpx solid #f1d4c5;
-  border-top-color: #d97757;
+  border: 4rpx solid var(--visual-component-primary-soft, #f1d4c5);
+  border-top-color: var(--visual-component-primary, #d97757);
   border-radius: 50%;
   animation-name: loading-spin;
   animation-duration: 760ms;
@@ -35,7 +35,12 @@
   margin-top: 14rpx;
   overflow: hidden;
   border-radius: 999rpx;
-  background: linear-gradient(90deg, #ede9df, #f8f5ee, #ede9df);
+  background-image: linear-gradient(
+    90deg,
+    var(--visual-component-subtle, #ede9df),
+    var(--visual-component-elevated, #f8f5ee),
+    var(--visual-component-subtle, #ede9df)
+  );
   background-size: 200% 100%;
 }
 

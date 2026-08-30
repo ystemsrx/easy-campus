@@ -73,6 +73,22 @@
 
 .theme-dark .nav-refresh,
 .theme-dark .semester-chip { background: #2d2a24; }
+
+.exams-page.theme-style-minimal .exam-countdown,
+.exams-page.theme-style-minimal .exam-countdown--current,
+.exams-page.theme-style-minimal .exam-countdown--urgent,
+.exams-page.theme-style-minimal .exam-countdown--soon,
+.exams-page.theme-style-minimal .exam-countdown--week,
+.exams-page.theme-style-minimal .exam-countdown--later,
+.exams-page.theme-style-minimal .exam-countdown--past,
+.exams-page.theme-style-minimal .exam-countdown--pending {
+  border: var(--border-control);
+  border-color: var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: transparent;
+}
+
 .motion-reduced .nav-refresh-spinner { animation-name: none; }
 .motion-reduced .exam-list { animation-duration: 1ms; }
 

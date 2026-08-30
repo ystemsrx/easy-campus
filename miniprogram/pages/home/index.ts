@@ -82,6 +82,7 @@ import type {
   TeachingMessage,
   TimetableData,
 } from "../../types/api";
+import type { VisualTheme } from "../../types/app";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -316,28 +317,24 @@ function shortcutCachePatch(
   };
 }
 
-function getTimetableCardRadius(): number {
+function scaledRadius(rpx: number, fallback: number): number {
   try {
-    return (wx.getWindowInfo().windowWidth * 56) / 750;
+    return (wx.getWindowInfo().windowWidth * rpx) / 750;
   } catch {
-    return 28;
+    return fallback;
   }
 }
 
-function getCampusCardRadius(): number {
-  try {
-    return (wx.getWindowInfo().windowWidth * 44) / 750;
-  } catch {
-    return 22;
-  }
+function getTimetableCardRadius(visualTheme: VisualTheme = "default"): number {
+  return visualTheme === "minimal" ? scaledRadius(8, 4) : scaledRadius(56, 28);
 }
 
-function getFeatureCardRadius(): number {
-  try {
-    return (wx.getWindowInfo().windowWidth * 48) / 750;
-  } catch {
-    return 24;
-  }
+function getCampusCardRadius(visualTheme: VisualTheme = "default"): number {
+  return visualTheme === "minimal" ? scaledRadius(8, 4) : scaledRadius(44, 22);
+}
+
+function getFeatureCardRadius(visualTheme: VisualTheme = "default"): number {
+  return visualTheme === "minimal" ? scaledRadius(8, 4) : scaledRadius(48, 24);
 }
 
 function displayGradeAverage(value: number | null, digits: number): string {
@@ -616,11 +613,15 @@ Page({
     currentTime: formatClock(),
     todayCourses: [] as TodayCoursePreview[],
     remainingCourseCount: 0,
-    timetableCardRadius: getTimetableCardRadius(),
-    campusCardRadius: getCampusCardRadius(),
-    examCardRadius: getCampusCardRadius(),
-    gradeCardRadius: getFeatureCardRadius(),
-    electricityCardRadius: getFeatureCardRadius(),
+    timetableCardRadius: getTimetableCardRadius(
+      INITIAL_HOME_APPEARANCE.visualTheme,
+    ),
+    campusCardRadius: getCampusCardRadius(INITIAL_HOME_APPEARANCE.visualTheme),
+    examCardRadius: getCampusCardRadius(INITIAL_HOME_APPEARANCE.visualTheme),
+    gradeCardRadius: getFeatureCardRadius(INITIAL_HOME_APPEARANCE.visualTheme),
+    electricityCardRadius: getFeatureCardRadius(
+      INITIAL_HOME_APPEARANCE.visualTheme,
+    ),
     gradeRingSource: progressRingSource(null),
     gradeAverageLabel: "—",
     gradePointAverageLabel: "—",
@@ -716,6 +717,7 @@ Page({
     this.getTabBar().setData({
       selected: 0,
       themeClass: this.data.themeClass,
+      visualThemeClass: this.data.visualThemeClass,
       motionClass: this.data.motionClass,
       hidden: this.data.petSetupDrawerMounted,
     });
@@ -823,13 +825,18 @@ Page({
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
     const identity = resolveHomeIdentity(session, loadCurrentUser());
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     authenticationRevealPrepared = true;
     this.setData(
       {
         authenticated: true,
         ...appearance,
         ...identity,
+        timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
+        campusCardRadius: getCampusCardRadius(appearance.visualTheme),
+        examCardRadius: getCampusCardRadius(appearance.visualTheme),
+        gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
+        electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
         showGradesOnHome: preferences.showGradesOnHome,
         petReducedMotion: appearance.motionClass === "motion-reduced",
       },
@@ -854,6 +861,7 @@ Page({
             {
               selected: 0,
               themeClass: appearance.themeClass,
+              visualThemeClass: appearance.visualThemeClass,
               motionClass: appearance.motionClass,
               hidden: false,
             },
@@ -887,6 +895,7 @@ Page({
     this.getTabBar().setData({
       selected: 0,
       themeClass: this.data.themeClass,
+      visualThemeClass: this.data.visualThemeClass,
       motionClass: this.data.motionClass,
       hidden: petSetupPending,
     });
@@ -977,9 +986,14 @@ Page({
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData({
       ...appearance,
+      timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
+      campusCardRadius: getCampusCardRadius(appearance.visualTheme),
+      examCardRadius: getCampusCardRadius(appearance.visualTheme),
+      gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
+      electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
       showGradesOnHome: preferences.showGradesOnHome,
       petReducedMotion: appearance.motionClass === "motion-reduced",
     });

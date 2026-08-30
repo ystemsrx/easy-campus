@@ -82,5 +82,28 @@
 .theme-dark .building-search--focused { background: rgba(255, 255, 255, 0.1); }
 .theme-dark .building-option { background: rgba(255, 255, 255, 0.055); }
 .theme-dark .building-option--active { background: #3e2b23; }
+
+.electricity-page.theme-style-minimal .field-icon,
+.electricity-page.theme-style-minimal .usage-icon,
+.electricity-page.theme-style-minimal .date-icon {
+  border-radius: var(--radius-icon);
+  color: var(--color-text);
+  background: transparent;
+}
+
+.electricity-page.theme-style-minimal .balance-icon {
+  border: 0;
+  border-radius: var(--radius-icon);
+  color: var(--color-text);
+  background: transparent;
+}
+
+.electricity-page.theme-style-minimal .result-action {
+  border-color: var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: transparent;
+}
+
 .motion-reduced .binding-limit-toast { transform: translate(-50%, -50%); transition: opacity 160ms ease; }
 .motion-reduced .binding-limit-toast--visible { transform: translate(-50%, -50%); }

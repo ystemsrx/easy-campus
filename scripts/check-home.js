@@ -83,6 +83,10 @@ const homeStyles = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
+const appStyles = fs.readFileSync(
+  path.resolve(__dirname, "..", "miniprogram", "app.wxss"),
+  "utf8",
+);
 const contentServiceScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "services", "content.ts"),
   "utf8",
@@ -158,10 +162,12 @@ assert(
     "const INITIAL_HOME_APPEARANCE = resolveAppearance(INITIAL_HOME_PREFERENCES);",
   ) &&
     homeScript.includes("...INITIAL_HOME_APPEARANCE") &&
-    homeScript.includes("syncWindowBackground(appearance.theme);") &&
+    homeScript.includes("syncWindowBackground(appearance);") &&
     appearanceScript.includes("export function syncWindowBackground(") &&
     appearanceScript.includes("wx.setBackgroundColor({") &&
-    appearanceScript.includes('theme === "dark" ? "#171613" : "#f7f5ef"') &&
+    appearanceScript.includes(
+      'default: { light: "#f7f5ef", dark: "#171613" }',
+    ) &&
     tabBarScript.includes(
       "const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());",
     ) &&
@@ -170,6 +176,9 @@ assert(
     ) &&
     tabBarScript.includes("hidden: INITIAL_TAB_HIDDEN") &&
     tabBarScript.includes("themeClass: INITIAL_TAB_APPEARANCE.themeClass") &&
+    tabBarScript.includes(
+      "visualThemeClass: INITIAL_TAB_APPEARANCE.visualThemeClass",
+    ) &&
     homeStyles.includes(".home-page .page-enter {") &&
     homeStyles.includes("animation-name: home-page-settle;") &&
     homeStyles.includes(".home-page .stagger-item {") &&
@@ -398,10 +407,10 @@ assert(
 );
 
 assert(
-  /side-action-icon--rooms[\s\S]*?name="door-open" tone="blue"/.test(
+  /side-action-icon--rooms[\s\S]*?name="door-open" tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'blue'\}\}"/.test(
     homeTemplate,
   ) &&
-    /campus-icon--notice[\s\S]*?name="megaphone" tone="blue"/.test(
+    /campus-icon--notice[\s\S]*?name="megaphone" tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'blue'\}\}"/.test(
       homeTemplate,
     ) &&
     /\.side-action-icon--rooms\s*\{[^}]*background:\s*#e8eef7/.test(
@@ -411,7 +420,6 @@ assert(
     /\.campus-icon--notice\s*\{[^}]*color:\s*#4f75a6;[^}]*background:\s*#e8eef7/.test(
       homeStyles,
     ) &&
-    /\.campus-dot--notice\s*\{[^}]*background:\s*#4f75a6/.test(homeStyles) &&
     /\.campus-bullet\s*\{[^}]*background:\s*#4f75a6/.test(homeStyles) &&
     ["door-open-blue.svg", "megaphone-blue.svg"].every((fileName) =>
       fs
@@ -429,6 +437,29 @@ assert(
         .includes('stroke="#4f75a6"'),
     ),
   "首页空教室卡片和学校通知必须统一使用蓝色强调色与对应图标",
+);
+assert(
+  /campus-icon--message[\s\S]*?name="calendar-clock" tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'amber'\}\}"/.test(
+    homeTemplate,
+  ) &&
+    /\.home-page\.theme-style-minimal \.campus-icon\s*\{[^}]*color:\s*var\(--color-text\);[^}]*background:\s*transparent;/s.test(
+      homeStyles,
+    ) &&
+    !homeTemplate.includes("campus-dot") &&
+    !homeStyles.includes(".campus-dot"),
+  "极简校园消息图标必须为无底色黑白图标，标题行不得保留状态点",
+);
+assert(
+  /publication-icon--\{\{item\.kind\}\}[\s\S]*?tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\)/.test(
+    homeTemplate,
+  ) &&
+    /publication-empty-bell[\s\S]*?tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'muted'\}\}"/.test(
+      homeTemplate,
+    ) &&
+    /\.home-page\.theme-style-minimal \.publication-bell--plain,[\s\S]*?\.home-page\.theme-style-minimal \.publication-icon,[\s\S]*?\.home-page\.theme-style-minimal \.publication-empty-bell\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/s.test(
+      homeStyles,
+    ),
+  "极简模式右上角消息入口及消息列表图标必须为无框线、无底色的黑白图标",
 );
 
 assert(
@@ -461,6 +492,8 @@ assert(
 
 const publicationPopoverStyle =
   /\.publication-popover \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
+const publicationPopoverFrameStyle =
+  /\.publication-popover-frame \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const publicationPopoverScrollStyle =
   /\.publication-popover-scroll \{([^}]*)\}/.exec(homeStyles)?.[1] || "";
 const publicationRowStyle =
@@ -495,13 +528,14 @@ assert(
     publicationPopoverStyle.includes("flex-direction: column;") &&
     publicationPopoverStyle.includes("height: 680rpx;") &&
     publicationPopoverStyle.includes("max-height: 62vh;") &&
-    publicationPopoverScrollStyle.includes("flex: none;") &&
+    publicationPopoverFrameStyle.includes("flex: none;") &&
+    publicationPopoverFrameStyle.includes("min-height: 0;") &&
     publicationPopoverScrollStyle.includes("min-height: 0;") &&
+    publicationPopoverScrollStyle.includes("height: 100%;") &&
     !publicationPopoverScrollStyle.includes("transition: height") &&
-    !/(?:^|;)\s*height:/.test(publicationPopoverScrollStyle) &&
     homeTemplate.includes('class="publication-popover-content"') &&
-    homeTemplate.includes(
-      'style="height: {{publicationPanelScrollHeight}}px;"',
+    /class="publication-popover-frame"[^>]*style="height: \{\{publicationPanelScrollHeight\}\}px;"/.test(
+      homeTemplate,
     ) &&
     /class="publication-popover-scroll"[^>]*type="custom"/.test(homeTemplate) &&
     publicationPanelMeasure.includes(
@@ -514,6 +548,24 @@ assert(
     !publicationPanelMeasure.includes('selectAll(".publication-row")') &&
     !publicationPanelMeasure.includes('select(".publication-empty")'),
   "首页消息弹窗必须始终保持四条消息高度，展开正文时不得改变外层高度",
+);
+assert(
+  /class="publication-popover-frame"[^>]*>[\s\S]*?class="publication-popover-viewport"[^>]*>[\s\S]*?class="publication-popover-scroll"[\s\S]*?class="publication-popover-outline"/s.test(
+    homeTemplate,
+  ) &&
+    /\.home-page\.theme-style-minimal \.publication-popover-frame\s*\{[^}]*position:\s*relative;[^}]*flex:\s*1;[^}]*min-height:\s*0;/s.test(
+      homeStyles,
+    ) &&
+    /\.home-page\.theme-style-minimal \.publication-popover-viewport\s*\{[^}]*position:\s*absolute;[^}]*top:\s*16rpx;[^}]*right:\s*20rpx;[^}]*bottom:\s*28rpx;[^}]*left:\s*20rpx;[^}]*overflow:\s*hidden;/s.test(
+      homeStyles,
+    ) &&
+    /\.home-page\.theme-style-minimal \.publication-popover-outline\s*\{[^}]*position:\s*absolute;[^}]*z-index:\s*5;[^}]*border:\s*2rpx solid var\(--color-text\);[^}]*pointer-events:\s*none;/s.test(
+      homeStyles,
+    ) &&
+    /\.home-page\.theme-style-minimal \.publication-list-card\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;/s.test(
+      homeStyles,
+    ),
+  "极简首页消息必须在固定内框中滚动，列表自身不得携带会随内容滚走的外框",
 );
 assert(
   /wx:for="\{\{publications\}\}"[^>]*class="publication-row"[^>]*catchtap="onPublicationTap"/.test(
@@ -714,6 +766,16 @@ assert(
     !announcementPresenter.includes("downloadPublicationMedia") &&
     homeScript.includes("cancelPendingAnnouncementPresentation();"),
   "含图公告必须先下载并解码全部图片，再挂载、测高和弹出",
+);
+
+assert(
+  homeTemplate.includes(
+    "tone=\"{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}\"",
+  ) &&
+    /\.page\.theme-style-minimal \.side-action-icon--pass-rate,[\s\S]*?\.page\.theme-style-minimal \.side-action-icon--rooms\s*\{[^}]*border:\s*0;[^}]*background-color:\s*transparent;/.test(
+      appStyles,
+    ),
+  "首页通过率和空教室图标在极简模式下必须为纯黑白图标且不保留框线或彩色底色",
 );
 
 console.log("Home cache and identity checks passed.");

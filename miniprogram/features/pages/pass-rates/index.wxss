@@ -69,5 +69,22 @@
 .theme-dark .pass-picker-title { color: #f7f3e9; }
 .theme-dark .pass-picker-close { background: rgba(255, 255, 255, 0.08); }
 
+.pass-rate-page.theme-style-minimal .course-switch {
+  border: var(--border-control);
+  border-color: var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.pass-rate-page.theme-style-minimal .collecting-icon,
+.pass-rate-page.theme-style-minimal .pass-picker-close {
+  border-radius: var(--radius-icon);
+  color: var(--color-text);
+  background: transparent;
+}
+
 .motion-reduced .pass-picker-scrim,
 .motion-reduced .pass-picker-card { transition-duration: 1ms; }

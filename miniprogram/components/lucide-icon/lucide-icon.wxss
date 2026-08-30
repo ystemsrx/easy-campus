@@ -1,4 +1,5 @@
 .lucide-icon {
   display: block;
   flex: none;
+  filter: var(--visual-component-art-filter, none);
 }

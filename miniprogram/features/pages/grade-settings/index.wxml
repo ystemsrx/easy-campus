@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page page--quick-entry grade-settings-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry grade-settings-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar title="成绩展示设置" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="grade-settings-content page-content page-enter">

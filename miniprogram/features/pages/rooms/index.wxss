@@ -148,6 +148,7 @@
 }
 
 .quick-date-track {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: row;
@@ -156,6 +157,7 @@
   height: 100rpx;
   margin-top: 14rpx;
   overflow: hidden;
+  padding: 0 10rpx;
   border: 2rpx solid rgba(185, 92, 56, 0.06);
   border-radius: 999rpx;
   background: #f4f3f0;
@@ -773,6 +775,14 @@
 .theme-dark .period-picker-footer { background: rgba(33, 31, 27, 0.94); }
 .theme-dark .period-picker-title { color: #f7f3e9; }
 .theme-dark .period-picker-close { background: rgba(255, 255, 255, 0.08); }
+
+.rooms-page.theme-style-minimal .date-icon,
+.rooms-page.theme-style-minimal .period-choice-icon {
+  border-color: var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: transparent;
+}
 
 .motion-reduced .campus-indicator,
 .motion-reduced .quick-date-indicator-slot,

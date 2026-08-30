@@ -1,11 +1,11 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page pass-rate-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page pass-rate-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="通过率" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="pass-rate-content page-content page-enter">
       <loading-view wx:if="{{loading && !course}}" label="正在整理课程统计"></loading-view>
-      <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="danger" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>
-      <empty-state wx:elif="{{loaded && !course}}" icon="chart-no-axes-column-increasing" icon-tone="amber" title="暂无可查看课程" description="暂无成绩或课表课程"></empty-state>
+      <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>
+      <empty-state wx:elif="{{loaded && !course}}" icon="chart-no-axes-column-increasing" icon-tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" title="暂无可查看课程" description="暂无成绩或课表课程"></empty-state>
 
       <block wx:elif="{{course}}">
         <view class="pass-hero stagger-item stagger-1">
@@ -16,7 +16,7 @@
               <text class="pass-course-name display-title">{{course.courseName}}</text>
               <text class="pass-course-meta">{{course.academicYear}} · {{course.termLabel}}{{statistics && !percentageOnly ? ' · 共 ' + statistics.totalCount + ' 份成绩' : ''}}</text>
             </view>
-            <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="white" size="{{22}}"></lucide-icon></view>
+            <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{22}}"></lucide-icon></view>
           </view>
 
           <view class="pass-hero-lower">
@@ -36,11 +36,11 @@
         <view class="section-header pass-section-header stagger-item stagger-2"><view><text class="section-title">通过率 · 得分分布</text><text wx:if="{{cohortLabel}}" class="section-caption">{{cohortLabel}}</text></view></view>
 
         <view wx:if="{{status === 'ready' && statistics}}" class="stagger-item stagger-2">
-          <pass-rate-card statistics="{{statistics}}" own-score="{{ownScore}}" display-score="{{course.displayScore}}" show-own-score="{{course.hasComparableScore}}" percentage-only="{{percentageOnly}}" theme="{{theme}}"></pass-rate-card>
+          <pass-rate-card statistics="{{statistics}}" own-score="{{ownScore}}" display-score="{{course.displayScore}}" show-own-score="{{course.hasComparableScore}}" percentage-only="{{percentageOnly}}" theme="{{theme}}" visual-theme="{{visualTheme}}"></pass-rate-card>
         </view>
 
         <view wx:else class="collecting-card card stagger-item stagger-2">
-          <view class="collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="amber" size="{{40}}"></lucide-icon></view>
+          <view class="collecting-icon"><lucide-icon name="chart-no-axes-column-increasing" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{40}}"></lucide-icon></view>
           <text class="collecting-title">{{message}}</text>
         </view>
         <text wx:if="{{updating}}" class="updating-label">正在切换课程…</text>
@@ -55,7 +55,7 @@
       <view class="pass-picker-header">
         <text class="pass-picker-title">切换课程</text>
         <view class="pass-picker-close" bindtap="closePicker" hover-class="pass-picker-close--pressed" hover-stay-time="90" aria-role="button" aria-label="关闭">
-          <lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon>
+          <lucide-icon name="x" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{30}}" label="关闭"></lucide-icon>
         </view>
       </view>
       <view class="pass-picker-semesters">
@@ -72,8 +72,8 @@
             <view wx:for="{{courseRows}}" wx:key="id" wx:for-item="row" class="course-picker-list-row">
               <view wx:for="{{row.items}}" wx:key="statisticsKey" wx:for-item="courseItem" class="course-picker-row pressable {{course.statisticsKey === courseItem.statisticsKey ? 'course-picker-row--active' : ''}}" data-key="{{courseItem.statisticsKey}}" bindtap="selectCourse" hover-class="pressing">
                 <text class="picker-name" overflow="ellipsis" max-lines="1">{{courseItem.courseName}}</text>
-                <lucide-icon wx:if="{{course.statisticsKey === courseItem.statisticsKey}}" name="check" tone="amber" size="{{24}}"></lucide-icon>
-                <lucide-icon wx:else name="chevron-right" tone="muted" size="{{23}}"></lucide-icon>
+                <lucide-icon wx:if="{{course.statisticsKey === courseItem.statisticsKey}}" name="check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{24}}"></lucide-icon>
+                <lucide-icon wx:else name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{23}}"></lucide-icon>
               </view>
             </view>
           </view>

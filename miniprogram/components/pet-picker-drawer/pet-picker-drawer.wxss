@@ -96,6 +96,46 @@
 .theme-dark .pet-picker-color--selected { border-color: #f7f3e9; }
 .theme-dark .pet-picker-shape { background-color: #2d2a24; box-shadow: 0 10rpx 34rpx rgba(0, 0, 0, 0.16); }
 .theme-dark .pet-picker-shape--selected { border-color: #f7f3e9; background-color: #38342c; }
+.theme-style-soft {
+  --theme-art-filter: saturate(0.9);
+}
+.theme-style-soft .pet-picker-card { background-color: #f7fcf8; box-shadow: 0 -20rpx 72rpx rgba(62, 110, 82, 0.18); }
+.theme-style-soft .pet-picker-header { background: rgba(247, 252, 248, 0.96); backdrop-filter: blur(18px) saturate(1.05); }
+.theme-style-soft .pet-picker-title { color: #20312a; }
+.theme-style-soft .pet-picker-action { border-color: rgba(51, 100, 75, 0.1); color: #60756a; background-color: #e0f3e6; }
+.theme-style-soft .pet-picker-section-title { color: #7c9687; }
+.theme-style-soft .pet-picker-color--selected { border-color: #5e9a73; }
+.theme-style-soft .pet-picker-shape { background-color: #fff; box-shadow: 0 8rpx 28rpx rgba(62, 110, 82, 0.1); }
+.theme-style-soft .pet-picker-shape--selected { border-color: #5e9a73; background-color: #e0f3e6; }
+
+.theme-style-minimal {
+  --theme-art-filter: grayscale(1) contrast(1.12);
+  --minimal-accent: #b6543e;
+  --minimal-accent-soft: #f7e9e4;
+}
+.theme-style-minimal .pet-picker-card { border: 2rpx solid #000; border-bottom: 0; border-radius: 0; background-color: #fff; box-shadow: none; }
+.theme-style-minimal .pet-picker-header { border-bottom: 2rpx solid #000; background: #fff; backdrop-filter: none; }
+.theme-style-minimal .pet-picker-handle { background: #000; }
+.theme-style-minimal .pet-picker-title,
+.theme-style-minimal .pet-picker-section-title { color: #000; }
+.theme-style-minimal .pet-picker-action { border: 2rpx solid #000; border-radius: 4rpx; color: #000; background-color: #fff; }
+.theme-style-minimal .pet-picker-color { border-radius: 0; }
+.theme-style-minimal .pet-picker-color--selected { border-color: var(--minimal-accent); }
+.theme-style-minimal .pet-picker-swatch { border-radius: 0; box-shadow: none; }
+.theme-style-minimal .pet-picker-shape,
+.theme-style-minimal .pet-picker-shape--selected { border: 2rpx solid #000; border-radius: 4rpx; background-color: #fff; box-shadow: none; }
+.theme-style-minimal .pet-picker-shape--selected { border-color: var(--minimal-accent); background-color: var(--minimal-accent-soft); }
+.theme-dark.theme-style-minimal { --minimal-accent: #e0927e; --minimal-accent-soft: #32201c; }
+.theme-dark.theme-style-minimal .pet-picker-card,
+.theme-dark.theme-style-minimal .pet-picker-header { border-color: #f5f5f0; background-color: #0f1010; }
+.theme-dark.theme-style-minimal .pet-picker-handle { background: #f5f5f0; }
+.theme-dark.theme-style-minimal .pet-picker-title,
+.theme-dark.theme-style-minimal .pet-picker-section-title { color: #f5f5f0; }
+.theme-dark.theme-style-minimal .pet-picker-action { border-color: #f5f5f0; color: #f5f5f0; background-color: #171817; }
+.theme-dark.theme-style-minimal .pet-picker-color--selected { border-color: var(--minimal-accent); }
+.theme-dark.theme-style-minimal .pet-picker-shape,
+.theme-dark.theme-style-minimal .pet-picker-shape--selected { border-color: #f5f5f0; background-color: #171817; }
+.theme-dark.theme-style-minimal .pet-picker-shape--selected { border-color: var(--minimal-accent); background-color: var(--minimal-accent-soft); }
 .motion-reduced .pet-picker-scrim,
 .motion-reduced .pet-picker-card,
 .motion-reduced .pet-picker-color,

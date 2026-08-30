@@ -86,6 +86,260 @@ page {
   --shadow-pop: 0 32rpx 96rpx rgba(0, 0, 0, 0.38);
 }
 
+.page.theme-style-soft {
+  --color-bg: #f7fcf8;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f3faf6;
+  --color-material: rgba(255, 255, 255, 0.84);
+  --color-material-heavy: rgba(255, 255, 255, 0.96);
+  --color-text: #20312a;
+  --color-text-secondary: #60756a;
+  --color-text-tertiary: #8aa096;
+  --color-separator: rgba(51, 100, 75, 0.1);
+  --color-primary: #cf806d;
+  --color-primary-soft: #fff0eb;
+  --color-success: #5e9a73;
+  --color-success-soft: #ecf8f0;
+  --color-warning: #b4823f;
+  --color-warning-soft: #fff7e2;
+  --color-danger: #c76f69;
+  --color-danger-soft: #fff0ee;
+  --color-on-accent: #ffffff;
+  --color-pastel-coral: #ffede7;
+  --color-pastel-amber: #fff5dc;
+  --color-pastel-sage: #eaf7ee;
+  --color-pastel-rose: #faebf4;
+  --color-pastel-blue: #ebf5fa;
+  --color-pastel-lilac: #f4edfb;
+  --world-coral-from: #f7beae;
+  --world-coral-to: #fbd8cc;
+  --world-amber-from: #f4d995;
+  --world-amber-to: #fbe9bb;
+  --world-sage-from: #b5dbc0;
+  --world-sage-to: #d4ecd9;
+  --world-rose-from: #dcc8ed;
+  --world-rose-to: #ece0f5;
+  --shadow-card: 0 18rpx 52rpx -26rpx rgba(62, 110, 82, 0.18);
+  --shadow-pop: 0 28rpx 76rpx -30rpx rgba(62, 110, 82, 0.24);
+  --theme-art-filter: saturate(0.9);
+  --theme-decoration-opacity: 0.14;
+  --visual-component-bg: #f7fcf8;
+  --visual-component-elevated: #ffffff;
+  --visual-component-subtle: #f3faf6;
+  --visual-component-material-heavy: rgba(255, 255, 255, 0.96);
+  --visual-component-text: #20312a;
+  --visual-component-text-secondary: #60756a;
+  --visual-component-text-tertiary: #8aa096;
+  --visual-component-separator: rgba(51, 100, 75, 0.1);
+  --visual-component-primary: #cf806d;
+  --visual-component-primary-soft: #fff0eb;
+  --visual-component-success: #5e9a73;
+  --visual-component-success-soft: #ecf8f0;
+  --visual-component-warning: #b4823f;
+  --visual-component-warning-soft: #fff7e2;
+  --visual-component-danger: #c76f69;
+  --visual-component-danger-soft: #fff0ee;
+  --visual-component-card-border: 0 solid transparent;
+  --visual-component-control-border: 0 solid transparent;
+  --visual-component-card-radius: 44rpx;
+  --visual-component-hero-radius: 56rpx;
+  --visual-component-control-radius: 999rpx;
+  --visual-component-icon-radius: 50%;
+  --visual-component-card-shadow: 0 18rpx 52rpx -26rpx rgba(62, 110, 82, 0.18);
+  --visual-component-pop-shadow: 0 28rpx 76rpx -30rpx rgba(62, 110, 82, 0.24);
+  --visual-component-font-display: Georgia, "Times New Roman", "Songti SC",
+    "Noto Serif SC", SimSun, serif;
+  --visual-component-art-filter: saturate(0.9);
+}
+
+.page.theme-dark.theme-style-soft {
+  --color-bg: #16201b;
+  --color-bg-elevated: #1f2c25;
+  --color-bg-subtle: #27382e;
+  --color-material: rgba(31, 44, 37, 0.88);
+  --color-material-heavy: rgba(31, 44, 37, 0.96);
+  --color-text: #f1f8f3;
+  --color-text-secondary: #bfd2c5;
+  --color-text-tertiary: #8fa99a;
+  --color-separator: rgba(255, 255, 255, 0.08);
+  --color-primary: #e4a392;
+  --color-primary-soft: #422d28;
+  --color-success: #8fc79e;
+  --color-success-soft: #203a29;
+  --color-warning: #e2be72;
+  --color-warning-soft: #40351f;
+  --color-danger: #df918b;
+  --color-danger-soft: #422826;
+  --color-pastel-coral: #422d28;
+  --color-pastel-amber: #40351f;
+  --color-pastel-sage: #203a29;
+  --color-pastel-rose: #3c2940;
+  --color-pastel-blue: #223642;
+  --color-pastel-lilac: #312743;
+  --world-coral-from: #a96352;
+  --world-coral-to: #c17a66;
+  --world-amber-from: #a77935;
+  --world-amber-to: #c4944c;
+  --world-sage-from: #537f60;
+  --world-sage-to: #6d9a75;
+  --world-rose-from: #795d93;
+  --world-rose-to: #9674b2;
+  --visual-component-bg: #16201b;
+  --visual-component-elevated: #1f2c25;
+  --visual-component-subtle: #27382e;
+  --visual-component-material-heavy: rgba(31, 44, 37, 0.96);
+  --visual-component-text: #f1f8f3;
+  --visual-component-text-secondary: #bfd2c5;
+  --visual-component-text-tertiary: #8fa99a;
+  --visual-component-separator: rgba(255, 255, 255, 0.08);
+  --visual-component-primary: #e4a392;
+  --visual-component-primary-soft: #422d28;
+  --visual-component-success: #8fc79e;
+  --visual-component-success-soft: #203a29;
+  --visual-component-warning: #e2be72;
+  --visual-component-warning-soft: #40351f;
+  --visual-component-danger: #df918b;
+  --visual-component-danger-soft: #422826;
+}
+
+.page.theme-style-minimal {
+  --color-bg: #f6f6f2;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #eeeeea;
+  --color-material: rgba(255, 255, 255, 0.9);
+  --color-material-heavy: #ffffff;
+  --color-text: #151515;
+  --color-text-secondary: #42423d;
+  --color-text-tertiary: #787873;
+  --color-separator: rgba(21, 21, 21, 0.13);
+  --color-primary: #b6543e;
+  --color-primary-soft: #f7e9e4;
+  --color-success: #4f755e;
+  --color-success-soft: #eaf2ed;
+  --color-warning: #8c5d20;
+  --color-warning-soft: #f6efdf;
+  --color-danger: #a94137;
+  --color-danger-soft: #f7e8e6;
+  --color-accent-blue: #4b6f8d;
+  --color-accent-blue-soft: #e9f0f5;
+  --color-accent-lilac: #715f84;
+  --color-accent-lilac-soft: #f0ebf3;
+  --color-on-accent: #ffffff;
+  --color-pastel-coral: #f7e9e4;
+  --color-pastel-amber: #f6efdf;
+  --color-pastel-sage: #eaf2ed;
+  --color-pastel-rose: #f7e8e6;
+  --color-pastel-blue: #e9f0f5;
+  --color-pastel-lilac: #f0ebf3;
+  --world-coral-from: #b6543e;
+  --world-coral-to: #c87864;
+  --world-amber-from: #8c5d20;
+  --world-amber-to: #bd9658;
+  --world-sage-from: #4f755e;
+  --world-sage-to: #789784;
+  --world-rose-from: #715f84;
+  --world-rose-to: #9c8baa;
+  --shadow-card: none;
+  --shadow-pop: none;
+  --border-card: 2rpx solid #151515;
+  --border-control: 2rpx solid #151515;
+  --radius-card: 8rpx;
+  --radius-hero: 8rpx;
+  --radius-control: 4rpx;
+  --radius-icon: 0;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  --theme-art-filter: grayscale(1) contrast(1.12);
+  --theme-decoration-display: none;
+  --theme-decoration-opacity: 0;
+  --visual-component-bg: #f6f6f2;
+  --visual-component-elevated: #ffffff;
+  --visual-component-subtle: #eeeeea;
+  --visual-component-material-heavy: #ffffff;
+  --visual-component-text: #151515;
+  --visual-component-text-secondary: #42423d;
+  --visual-component-text-tertiary: #787873;
+  --visual-component-separator: rgba(21, 21, 21, 0.13);
+  --visual-component-primary: #b6543e;
+  --visual-component-primary-soft: #f7e9e4;
+  --visual-component-success: #4f755e;
+  --visual-component-success-soft: #eaf2ed;
+  --visual-component-warning: #8c5d20;
+  --visual-component-warning-soft: #f6efdf;
+  --visual-component-danger: #a94137;
+  --visual-component-danger-soft: #f7e8e6;
+  --visual-component-card-border: 2rpx solid #151515;
+  --visual-component-control-border: 2rpx solid #151515;
+  --visual-component-card-radius: 8rpx;
+  --visual-component-hero-radius: 8rpx;
+  --visual-component-control-radius: 4rpx;
+  --visual-component-icon-radius: 0;
+  --visual-component-card-shadow: none;
+  --visual-component-pop-shadow: none;
+  --visual-component-font-display: -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --visual-component-art-filter: grayscale(1) contrast(1.12);
+}
+
+.page.theme-dark.theme-style-minimal {
+  --color-bg: #0f1010;
+  --color-bg-elevated: #171817;
+  --color-bg-subtle: #20211f;
+  --color-material: rgba(23, 24, 23, 0.92);
+  --color-material-heavy: #171817;
+  --color-text: #f5f5f0;
+  --color-text-secondary: #cacac2;
+  --color-text-tertiary: #92928b;
+  --color-separator: rgba(245, 245, 240, 0.15);
+  --color-primary: #e0927e;
+  --color-primary-soft: #32201c;
+  --color-success: #8bb29a;
+  --color-success-soft: #19281f;
+  --color-warning: #d4ae6a;
+  --color-warning-soft: #2e2619;
+  --color-danger: #de8d85;
+  --color-danger-soft: #2f1d1b;
+  --color-accent-blue: #91acc1;
+  --color-accent-blue-soft: #18252e;
+  --color-accent-lilac: #b39fc2;
+  --color-accent-lilac-soft: #271f2e;
+  --color-on-accent: #151515;
+  --color-pastel-coral: #32201c;
+  --color-pastel-amber: #2e2619;
+  --color-pastel-sage: #19281f;
+  --color-pastel-rose: #2f1d1b;
+  --color-pastel-blue: #18252e;
+  --color-pastel-lilac: #271f2e;
+  --world-coral-from: #e0927e;
+  --world-coral-to: #b66f5d;
+  --world-amber-from: #d4ae6a;
+  --world-amber-to: #aa8242;
+  --world-sage-from: #8bb29a;
+  --world-sage-to: #5f856c;
+  --world-rose-from: #b39fc2;
+  --world-rose-to: #847297;
+  --border-card: 2rpx solid #f5f5f0;
+  --border-control: 2rpx solid #f5f5f0;
+  --visual-component-bg: #0f1010;
+  --visual-component-elevated: #171817;
+  --visual-component-subtle: #20211f;
+  --visual-component-material-heavy: #171817;
+  --visual-component-text: #f5f5f0;
+  --visual-component-text-secondary: #cacac2;
+  --visual-component-text-tertiary: #92928b;
+  --visual-component-separator: rgba(245, 245, 240, 0.15);
+  --visual-component-primary: #e0927e;
+  --visual-component-primary-soft: #32201c;
+  --visual-component-success: #8bb29a;
+  --visual-component-success-soft: #19281f;
+  --visual-component-warning: #d4ae6a;
+  --visual-component-warning-soft: #2e2619;
+  --visual-component-danger: #de8d85;
+  --visual-component-danger-soft: #2f1d1b;
+  --visual-component-card-border: 2rpx solid #f5f5f0;
+  --visual-component-control-border: 2rpx solid #f5f5f0;
+}
+
 .page-scroll {
   width: 100%;
   height: 100%;
@@ -357,4 +611,857 @@ page {
 @keyframes soft-pulse {
   0%, 100% { opacity: 0.45; }
   50% { opacity: 0.82; }
+}
+
+/* Global visual themes intentionally sit after page primitives so the
+ * independent appearance mode and the selected visual language can compose. */
+.page.theme-style-soft .ambient-blob + .ambient-blob {
+  display: none;
+}
+
+.page.theme-style-soft .ambient-blob {
+  opacity: 0.16;
+}
+
+.page.theme-style-soft .primary-button,
+.page.theme-style-soft .chip--active {
+  color: var(--color-on-accent);
+  background-image: none;
+  background-color: var(--color-primary);
+  box-shadow: 0 14rpx 38rpx rgba(78, 89, 80, 0.14);
+}
+
+.page.theme-style-soft .today-card,
+.page.theme-style-soft .detail-hero--danger,
+.page.theme-style-soft .preview-hero,
+.page.theme-style-soft .guide-hero,
+.page.theme-style-soft .course-sheet-hero {
+  background-image: linear-gradient(145deg, #f7beae, #fbd8cc);
+}
+
+.page.theme-style-soft .feature-card--grades,
+.page.theme-style-soft .grade-overview,
+.page.theme-style-soft .detail-hero,
+.page.theme-style-soft .detail-hero--warning,
+.page.theme-style-soft .pass-hero,
+.page.theme-style-soft .electricity-query-button {
+  background-image: linear-gradient(145deg, #f4d995, #fbe9bb);
+}
+
+.page.theme-style-soft .feature-card--utility,
+.page.theme-style-soft .calendar-hero,
+.page.theme-style-soft .balance-card,
+.page.theme-style-soft .detail-hero--good {
+  background-image: linear-gradient(145deg, #b5dbc0, #d4ecd9);
+}
+
+.page.theme-style-soft .exam-hero,
+.page.theme-style-soft .semester-chip--active,
+.page.theme-style-soft .detail-hero--great {
+  background-image: linear-gradient(145deg, #dcc8ed, #ece0f5);
+}
+
+.page.theme-dark.theme-style-soft .today-card,
+.page.theme-dark.theme-style-soft .detail-hero--danger,
+.page.theme-dark.theme-style-soft .preview-hero,
+.page.theme-dark.theme-style-soft .guide-hero,
+.page.theme-dark.theme-style-soft .course-sheet-hero {
+  background-image: linear-gradient(145deg, #a96352, #c17a66);
+}
+
+.page.theme-dark.theme-style-soft .feature-card--grades,
+.page.theme-dark.theme-style-soft .grade-overview,
+.page.theme-dark.theme-style-soft .detail-hero,
+.page.theme-dark.theme-style-soft .detail-hero--warning,
+.page.theme-dark.theme-style-soft .pass-hero,
+.page.theme-dark.theme-style-soft .electricity-query-button {
+  background-image: linear-gradient(145deg, #a77935, #c4944c);
+}
+
+.page.theme-dark.theme-style-soft .feature-card--utility,
+.page.theme-dark.theme-style-soft .calendar-hero,
+.page.theme-dark.theme-style-soft .balance-card,
+.page.theme-dark.theme-style-soft .detail-hero--good {
+  background-image: linear-gradient(145deg, #537f60, #6d9a75);
+}
+
+.page.theme-dark.theme-style-soft .exam-hero,
+.page.theme-dark.theme-style-soft .semester-chip--active,
+.page.theme-dark.theme-style-soft .detail-hero--great {
+  background-image: linear-gradient(145deg, #795d93, #9674b2);
+}
+
+.page.theme-style-soft .today-card,
+.page.theme-style-soft .feature-card,
+.page.theme-style-soft .grade-overview,
+.page.theme-style-soft .detail-hero,
+.page.theme-style-soft .exam-hero,
+.page.theme-style-soft .calendar-hero,
+.page.theme-style-soft .balance-card,
+.page.theme-style-soft .pass-hero,
+.page.theme-style-soft .preview-hero,
+.page.theme-style-soft .guide-hero,
+.page.theme-style-soft .course-sheet-hero {
+  color: var(--color-text);
+}
+
+.page.theme-style-soft .today-card text,
+.page.theme-style-soft .feature-card text,
+.page.theme-style-soft .grade-overview text,
+.page.theme-style-soft .detail-hero text,
+.page.theme-style-soft .exam-hero text,
+.page.theme-style-soft .calendar-hero text,
+.page.theme-style-soft .balance-card text,
+.page.theme-style-soft .pass-hero text,
+.page.theme-style-soft .preview-hero text,
+.page.theme-style-soft .guide-hero text,
+.page.theme-style-soft .course-sheet-hero text {
+  color: var(--color-text);
+}
+
+.page.theme-style-soft .timetable-pill,
+.page.theme-style-soft .today-course-row,
+.page.theme-style-soft .course-slot,
+.page.theme-style-soft .course-status--current,
+.page.theme-style-soft .today-empty,
+.page.theme-style-soft .utility-pill,
+.page.theme-style-soft .exam-hero-stats,
+.page.theme-style-soft .calendar-stat,
+.page.theme-style-soft .pass-hero-stat {
+  border: 1rpx solid var(--color-separator);
+  background-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.page.theme-dark.theme-style-soft .timetable-pill,
+.page.theme-dark.theme-style-soft .today-course-row,
+.page.theme-dark.theme-style-soft .course-slot,
+.page.theme-dark.theme-style-soft .course-status--current,
+.page.theme-dark.theme-style-soft .today-empty,
+.page.theme-dark.theme-style-soft .utility-pill,
+.page.theme-dark.theme-style-soft .exam-hero-stats,
+.page.theme-dark.theme-style-soft .calendar-stat,
+.page.theme-dark.theme-style-soft .pass-hero-stat {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.page.theme-style-soft .detail-hero--average {
+  background: linear-gradient(145deg, #bcdee9, #d9edf3);
+}
+
+.page.theme-style-soft .detail-hero--muted {
+  background: linear-gradient(145deg, #d8e9de, #ebf4ee);
+}
+
+.page.theme-style-soft .balance-card--negative {
+  background: linear-gradient(145deg, #efbdb5, #f7d8d2);
+}
+
+.page.theme-style-soft .score-tile,
+.page.theme-style-soft .timeline-entry {
+  background-image: none;
+  background-color: var(--color-pastel-coral);
+}
+
+.page.theme-style-soft .score-tile--great,
+.page.theme-style-soft .timeline-entry--purple {
+  background-color: var(--color-pastel-lilac);
+}
+
+.page.theme-style-soft .score-tile--good,
+.page.theme-style-soft .timeline-entry--green,
+.page.theme-style-soft .timeline-entry--mint {
+  background-color: var(--color-pastel-sage);
+}
+
+.page.theme-style-soft .score-tile--average,
+.page.theme-style-soft .timeline-entry--cyan {
+  background-color: var(--color-pastel-blue);
+}
+
+.page.theme-style-soft .score-tile--warning,
+.page.theme-style-soft .timeline-entry--orange,
+.page.theme-style-soft .timeline-entry--yellow {
+  background-color: var(--color-pastel-amber);
+}
+
+.page.theme-style-soft .score-tile--danger,
+.page.theme-style-soft .timeline-entry--rose,
+.page.theme-style-soft .timeline-entry--plan {
+  background-color: var(--color-pastel-rose);
+}
+
+.page.theme-style-soft .welcome-name {
+  color: var(--color-primary);
+}
+
+.page.theme-style-soft .publication-badge {
+  background-color: var(--color-danger);
+}
+
+.page.theme-style-soft .side-action-icon--pass-rate {
+  background-color: var(--color-pastel-sage);
+}
+
+.page.theme-style-soft .side-action-icon--rooms {
+  background-color: var(--color-pastel-blue);
+}
+
+.page.theme-style-soft .identity-card,
+.page.theme-style-soft .identity-card--male,
+.page.theme-style-soft .identity-card--female {
+  --identity-ink: var(--color-text);
+  --identity-secondary: var(--color-text-secondary);
+  --identity-tertiary: var(--color-text-tertiary);
+  --identity-faint: var(--color-text-tertiary);
+  background: #edf8f0;
+}
+
+.page.theme-style-soft .identity-card--male {
+  background: #ebf5fa;
+}
+
+.page.theme-style-soft .identity-card--female {
+  background: #f8eef9;
+}
+
+.page.theme-style-soft .login-button,
+.page.theme-style-soft .primary-button.creator-submit,
+.page.theme-style-soft .primary-button.feedback-submit,
+.page.theme-style-soft .room-query-button,
+.page.theme-style-soft .period-picker-confirm,
+.page.theme-style-soft .review-submit,
+.page.theme-style-soft .thoughts-gate-button,
+.page.theme-style-soft .week-selection-circle,
+.page.theme-style-soft .campus-indicator,
+.page.theme-style-soft .building-pill--active,
+.page.theme-style-soft .quick-date-indicator,
+.page.theme-style-soft .date-choice--active,
+.page.theme-style-soft .period-choice--active,
+.page.theme-style-soft .period-pill--active,
+.page.theme-style-soft .period-group-option--active {
+  background-color: #cf806d;
+  box-shadow: 0 14rpx 36rpx rgba(88, 128, 104, 0.16);
+}
+
+.page.theme-style-soft .composition-segment,
+.page.theme-style-soft .component-dot,
+.page.theme-style-soft .progress-fill {
+  background-color: #cf806d;
+}
+
+.page.theme-style-soft .composition-segment--great,
+.page.theme-style-soft .component-dot--great,
+.page.theme-style-soft .progress-fill--great {
+  background-color: #a782c5;
+}
+
+.page.theme-style-soft .composition-segment--good,
+.page.theme-style-soft .component-dot--good,
+.page.theme-style-soft .progress-fill--good,
+.page.theme-style-soft .auto-dorm-check-status-dot--success,
+.page.theme-style-soft .auto-dorm-check-setting-dot--success {
+  background-color: #68a47b;
+}
+
+.page.theme-style-soft .composition-segment--average,
+.page.theme-style-soft .component-dot--average,
+.page.theme-style-soft .progress-fill--average {
+  background-color: #6fa3ba;
+}
+
+.page.theme-style-soft .composition-segment--warning,
+.page.theme-style-soft .component-dot--warning,
+.page.theme-style-soft .progress-fill--warning,
+.page.theme-style-soft .auto-dorm-check-status-dot--warning,
+.page.theme-style-soft .auto-dorm-check-setting-dot--warning {
+  background-color: #c19145;
+}
+
+.page.theme-style-soft .composition-segment--danger,
+.page.theme-style-soft .component-dot--danger,
+.page.theme-style-soft .progress-fill--danger,
+.page.theme-style-soft .auto-dorm-check-status-dot--danger,
+.page.theme-style-soft .auto-dorm-check-setting-dot--danger {
+  background-color: #c47782;
+}
+
+.page.theme-style-soft .rooms-loading-spinner {
+  border-color: var(--color-primary-soft);
+  border-top-color: var(--color-primary);
+}
+
+.page.theme-style-soft .login-panel,
+.page.theme-style-soft .login-panel-extension {
+  background-color: var(--color-bg-elevated);
+}
+
+.page.theme-style-soft .field {
+  background: #f3faf6;
+}
+
+.page.theme-style-soft .field--focus {
+  background: #fff5f1;
+}
+
+.page.theme-style-soft .mascot-image,
+.page.theme-style-soft .login-clawd-mark,
+.page.theme-style-soft .score-ring-image,
+.page.theme-style-soft .average-ring-image {
+  filter: var(--theme-art-filter);
+}
+
+.page.assistant-page.theme-style-soft,
+.page.detail-page.theme-style-soft {
+  --guide-paper: var(--color-bg);
+  --guide-paper-2: var(--color-bg-subtle);
+  --guide-card: var(--color-bg-elevated);
+  --guide-ink: var(--color-text);
+  --guide-ink-2: var(--color-text-secondary);
+  --guide-muted: var(--color-text-tertiary);
+  --guide-line: var(--color-separator);
+  --guide-line-soft: var(--color-separator);
+  --guide-clay: #ad8172;
+  --guide-clay-deep: #8f675b;
+  --guide-clay-soft: var(--color-pastel-coral);
+  --guide-olive: #718571;
+  --guide-olive-soft: var(--color-pastel-sage);
+  --guide-blue: #728897;
+  --guide-blue-soft: var(--color-pastel-blue);
+  --guide-brick: #99706d;
+  --guide-brick-soft: var(--color-pastel-rose);
+}
+
+.page.theme-style-soft .preview-ring--two,
+.page.theme-style-soft .guide-ring--two {
+  display: none;
+}
+
+.page.theme-style-minimal .display,
+.page.theme-style-minimal .display-title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+}
+
+.page.theme-style-minimal .ambient-blob {
+  display: none;
+}
+
+.page.theme-style-minimal .card,
+.page.theme-style-minimal .material-card {
+  border: var(--border-card);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-elevated);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.page.theme-style-minimal .search-field,
+.page.theme-style-minimal .chip {
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.page.theme-style-minimal .primary-button,
+.page.theme-style-minimal .chip--active,
+.page.theme-style-minimal .announcement-confirm,
+.page.theme-style-minimal .login-button,
+.page.theme-style-minimal .electricity-query-button,
+.page.theme-style-minimal .room-query-button,
+.page.theme-style-minimal .period-picker-confirm,
+.page.theme-style-minimal .review-submit,
+.page.theme-style-minimal .thoughts-gate-button {
+  border: var(--border-control);
+  border-color: var(--color-primary);
+  border-radius: var(--radius-control);
+  color: var(--color-on-accent);
+  background-image: none;
+  background-color: var(--color-primary);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .secondary-button,
+.page.theme-style-minimal .danger-button {
+  border: var(--border-control);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .danger-button {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+.page.theme-style-minimal .primary-button--disabled,
+.page.theme-style-minimal .feedback-submit--disabled,
+.page.theme-style-minimal .login-button--loading {
+  opacity: 0.45;
+}
+
+.page.theme-style-minimal .today-card,
+.page.theme-style-minimal .feature-card,
+.page.theme-style-minimal .grade-overview,
+.page.theme-style-minimal .detail-hero,
+.page.theme-style-minimal .exam-hero,
+.page.theme-style-minimal .calendar-hero,
+.page.theme-style-minimal .balance-card,
+.page.theme-style-minimal .pass-hero,
+.page.theme-style-minimal .preview-hero,
+.page.theme-style-minimal .guide-hero,
+.page.theme-style-minimal .course-sheet-hero,
+.page.theme-style-minimal .identity-card,
+.page.theme-style-minimal .identity-card--male,
+.page.theme-style-minimal .identity-card--female {
+  border: var(--border-card);
+  border-radius: var(--radius-hero);
+  color: var(--color-text);
+  background-image: none;
+  background-color: var(--color-bg-elevated);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .today-card text,
+.page.theme-style-minimal .feature-card text,
+.page.theme-style-minimal .grade-overview text,
+.page.theme-style-minimal .detail-hero text,
+.page.theme-style-minimal .exam-hero text,
+.page.theme-style-minimal .calendar-hero text,
+.page.theme-style-minimal .balance-card text,
+.page.theme-style-minimal .pass-hero text,
+.page.theme-style-minimal .preview-hero text,
+.page.theme-style-minimal .guide-hero text,
+.page.theme-style-minimal .course-sheet-hero text,
+.page.theme-style-minimal .identity-card text {
+  color: var(--color-text);
+}
+
+.page.theme-style-minimal .welcome-name {
+  color: var(--color-primary);
+}
+
+.page.theme-style-minimal .side-action-icon--pass-rate,
+.page.theme-style-minimal .side-action-icon--rooms {
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.page.theme-style-minimal .timetable-pill,
+.page.theme-style-minimal .today-course-row,
+.page.theme-style-minimal .course-slot,
+.page.theme-style-minimal .course-status--current,
+.page.theme-style-minimal .today-empty,
+.page.theme-style-minimal .utility-pill,
+.page.theme-style-minimal .exam-hero-stats,
+.page.theme-style-minimal .calendar-stat,
+.page.theme-style-minimal .pass-hero-stat {
+  border: 1rpx solid var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.page.theme-style-minimal .score-tile,
+.page.theme-style-minimal .timeline-entry,
+.page.theme-style-minimal .exam-badge,
+.page.theme-style-minimal .message-badge,
+.page.theme-style-minimal .message-kind,
+.page.theme-style-minimal .course-tag,
+.page.theme-style-minimal .schedule-panel,
+.page.theme-style-minimal .legal-notice,
+.page.theme-style-minimal .outcome-row {
+  border: 1rpx solid var(--color-text);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  background-image: none;
+  background-color: var(--color-bg-elevated);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .score-tile,
+.page.theme-style-minimal .timeline-entry {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
+.page.theme-style-minimal .score-tile {
+  color: var(--color-primary);
+}
+
+.page.theme-style-minimal .score-tile--great,
+.page.theme-style-minimal .timeline-entry--purple {
+  border-color: var(--color-accent-lilac);
+  color: var(--color-accent-lilac);
+  background-color: var(--color-accent-lilac-soft);
+}
+
+.page.theme-style-minimal .score-tile--good,
+.page.theme-style-minimal .timeline-entry--green,
+.page.theme-style-minimal .timeline-entry--mint {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+.page.theme-style-minimal .score-tile--average,
+.page.theme-style-minimal .timeline-entry--cyan {
+  border-color: var(--color-accent-blue);
+  color: var(--color-accent-blue);
+  background-color: var(--color-accent-blue-soft);
+}
+
+.page.theme-style-minimal .score-tile--warning,
+.page.theme-style-minimal .timeline-entry--orange,
+.page.theme-style-minimal .timeline-entry--yellow {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  background-color: var(--color-warning-soft);
+}
+
+.page.theme-style-minimal .score-tile--danger,
+.page.theme-style-minimal .timeline-entry--rose,
+.page.theme-style-minimal .timeline-entry--plan {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+.page.theme-style-minimal .score-tile--muted {
+  border-color: var(--color-text-tertiary);
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-subtle);
+}
+
+.page.theme-style-minimal .message-badge--blue,
+.page.theme-style-minimal .message-kind--blue {
+  border-color: var(--color-accent-blue);
+  color: var(--color-accent-blue);
+  background-color: var(--color-accent-blue-soft);
+}
+
+.page.theme-style-minimal .message-badge--green,
+.page.theme-style-minimal .message-kind--green {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+.page.theme-style-minimal .message-badge--orange,
+.page.theme-style-minimal .message-kind--orange {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+.page.theme-style-minimal .course-tag--gpa {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  background-color: var(--color-warning-soft);
+}
+
+.page.theme-style-minimal .exam-badge--current,
+.page.theme-style-minimal .exam-badge--urgent {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+.page.theme-style-minimal .exam-badge--soon {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
+.page.theme-style-minimal .exam-badge--week {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  background-color: var(--color-warning-soft);
+}
+
+.page.theme-style-minimal .exam-badge--later {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+.page.theme-style-minimal .component-dot,
+.page.theme-style-minimal .composition-segment,
+.page.theme-style-minimal .progress-fill,
+.page.theme-style-minimal .class-chart-fill,
+.page.theme-style-minimal .campus-dot,
+.page.theme-style-minimal .campus-bullet,
+.page.theme-style-minimal .auto-dorm-check-setting-dot,
+.page.theme-style-minimal .week-day-dot {
+  background-color: var(--color-primary);
+}
+
+.page.theme-style-minimal .campus-bullet {
+  background-color: var(--color-accent-blue);
+}
+
+.page.theme-style-minimal .composition-segment--great,
+.page.theme-style-minimal .component-dot--great,
+.page.theme-style-minimal .progress-fill--great {
+  background-color: var(--color-accent-lilac);
+}
+
+.page.theme-style-minimal .composition-segment--good,
+.page.theme-style-minimal .component-dot--good,
+.page.theme-style-minimal .progress-fill--good,
+.page.theme-style-minimal .auto-dorm-check-status-dot--success,
+.page.theme-style-minimal .auto-dorm-check-setting-dot--success {
+  background-color: var(--color-success);
+}
+
+.page.theme-style-minimal .composition-segment--average,
+.page.theme-style-minimal .component-dot--average,
+.page.theme-style-minimal .progress-fill--average {
+  background-color: var(--color-accent-blue);
+}
+
+.page.theme-style-minimal .composition-segment--warning,
+.page.theme-style-minimal .component-dot--warning,
+.page.theme-style-minimal .progress-fill--warning,
+.page.theme-style-minimal .auto-dorm-check-status-dot--warning,
+.page.theme-style-minimal .auto-dorm-check-setting-dot--warning {
+  background-color: var(--color-warning);
+}
+
+.page.theme-style-minimal .composition-segment--danger,
+.page.theme-style-minimal .component-dot--danger,
+.page.theme-style-minimal .progress-fill--danger,
+.page.theme-style-minimal .auto-dorm-check-status-dot--danger,
+.page.theme-style-minimal .auto-dorm-check-setting-dot--danger {
+  background-color: var(--color-danger);
+}
+
+.page.theme-style-minimal .semester-chip,
+.page.theme-style-minimal .nav-refresh,
+.page.theme-style-minimal .round-action,
+.page.theme-style-minimal .grade-filter-button,
+.page.theme-style-minimal .filter-button,
+.page.theme-style-minimal .today-chip,
+.page.theme-style-minimal .publication-bell--plain,
+.page.theme-style-minimal .image-action,
+.page.theme-style-minimal .calendar-year-option {
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .semester-chip--active,
+.page.theme-style-minimal .week-selection-circle,
+.page.theme-style-minimal .campus-indicator,
+.page.theme-style-minimal .building-pill--active,
+.page.theme-style-minimal .quick-date-indicator,
+.page.theme-style-minimal .date-choice--active,
+.page.theme-style-minimal .period-choice--active,
+.page.theme-style-minimal .period-pill--active,
+.page.theme-style-minimal .period-group-option--active,
+.page.theme-style-minimal .segment-indicator,
+.page.theme-style-minimal .appearance-indicator {
+  border-color: var(--color-primary);
+  border-radius: var(--radius-control);
+  color: var(--color-on-accent);
+  background-image: none;
+  background-color: var(--color-primary);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .week-day--active .week-day-date,
+.page.theme-style-minimal .campus-option--active,
+.page.theme-style-minimal .quick-date-option--active,
+.page.theme-style-minimal .date-choice--active,
+.page.theme-style-minimal .period-choice--active,
+.page.theme-style-minimal .period-group-option--active {
+  color: var(--color-on-accent);
+}
+
+.page.theme-style-minimal .plan-dashed-border {
+  border-color: var(--color-text);
+  border-style: solid;
+  border-radius: var(--radius-card);
+}
+
+.page.theme-style-minimal .plan-border-corners,
+.page.theme-style-minimal .preview-ring,
+.page.theme-style-minimal .guide-ring {
+  display: none;
+}
+
+.page.theme-style-minimal .mascot-image,
+.page.theme-style-minimal .login-clawd-mark,
+.page.theme-style-minimal .detail-favorite-image,
+.page.theme-style-minimal rich-text {
+  filter: var(--theme-art-filter);
+}
+
+.page.theme-style-minimal image {
+  filter: var(--theme-art-filter);
+}
+
+.page.theme-light.theme-style-minimal .score-ring-image,
+.page.theme-light.theme-style-minimal .average-ring-image {
+  filter: brightness(0);
+}
+
+.page.theme-dark.theme-style-minimal .score-ring-image,
+.page.theme-dark.theme-style-minimal .average-ring-image {
+  filter: none;
+}
+
+.page.theme-style-minimal .login-panel,
+.page.theme-style-minimal .login-panel-extension {
+  border-radius: 0;
+  background-color: var(--color-bg);
+  box-shadow: 0 -2rpx 0 var(--color-text);
+}
+
+.page.theme-style-minimal .field,
+.page.theme-style-minimal .field--focus,
+.page.theme-style-minimal .feedback-textarea,
+.page.theme-style-minimal .creator-value,
+.page.theme-style-minimal .creator-title {
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .agreement-checkbox,
+.page.theme-style-minimal .agreement-checkbox--checked,
+.page.theme-style-minimal .plan-circle,
+.page.theme-style-minimal .plan-circle--checked {
+  border-color: var(--color-text);
+  border-radius: 0;
+  color: var(--color-on-accent);
+  background-color: var(--color-bg);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .agreement-checkbox--checked,
+.page.theme-style-minimal .plan-circle--checked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+.page.theme-style-minimal .search-field--focus,
+.page.theme-style-minimal .field--focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4rpx var(--color-primary-soft);
+}
+
+.page.theme-style-minimal .publication-popover,
+.page.theme-style-minimal .publication-list-card,
+.page.theme-style-minimal .announcement-modal,
+.page.theme-style-minimal .announcement-article,
+.page.theme-style-minimal .message-filter-popover,
+.page.theme-style-minimal .room-results-card,
+.page.theme-style-minimal .room-results-scroll,
+.page.theme-style-minimal .period-picker-card,
+.page.theme-style-minimal .period-picker-scroll {
+  border: var(--border-card);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.page.theme-style-minimal .markdown-code-block,
+.page.theme-style-minimal .terminal-card {
+  border: 1rpx solid var(--color-text);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.page.theme-style-minimal .terminal-token,
+.page.theme-style-minimal .terminal-head text,
+.page.theme-style-minimal .markdown-code-content,
+.page.theme-style-minimal .markdown-code-language {
+  color: var(--color-text);
+}
+
+.page.theme-style-minimal .terminal-dot {
+  border: 1rpx solid var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.page.theme-style-minimal .terminal-dot:nth-child(1) {
+  border-color: var(--color-danger);
+  background-color: var(--color-danger);
+}
+
+.page.theme-style-minimal .terminal-dot:nth-child(2) {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning);
+}
+
+.page.theme-style-minimal .terminal-dot:nth-child(3) {
+  border-color: var(--color-success);
+  background-color: var(--color-success);
+}
+
+.page.assistant-page.theme-style-minimal,
+.page.detail-page.theme-style-minimal {
+  --guide-paper: var(--color-bg);
+  --guide-paper-2: var(--color-bg);
+  --guide-card: var(--color-bg);
+  --guide-ink: var(--color-text);
+  --guide-ink-2: var(--color-text);
+  --guide-muted: var(--color-text-tertiary);
+  --guide-line: var(--color-text);
+  --guide-line-soft: var(--color-separator);
+  --guide-clay: var(--color-primary);
+  --guide-clay-deep: var(--color-primary);
+  --guide-clay-soft: var(--color-primary-soft);
+  --guide-olive: var(--color-success);
+  --guide-olive-soft: var(--color-success-soft);
+  --guide-blue: var(--color-accent-blue);
+  --guide-blue-soft: var(--color-accent-blue-soft);
+  --guide-brick: var(--color-danger);
+  --guide-brick-soft: var(--color-danger-soft);
+}
+
+.page.theme-style-minimal .preview-card,
+.page.theme-style-minimal .course-card,
+.page.theme-style-minimal .review-card,
+.page.theme-style-minimal .score-panel,
+.page.theme-style-minimal .history-card {
+  border: var(--border-card);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .campus-switch,
+.page.theme-style-minimal .building-pill,
+.page.theme-style-minimal .quick-date-track,
+.page.theme-style-minimal .date-choice,
+.page.theme-style-minimal .period-choice,
+.page.theme-style-minimal .period-group-option,
+.page.theme-style-minimal .period-pill,
+.page.theme-style-minimal .inline-placeholder {
+  border: 1rpx solid var(--color-text);
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  box-shadow: none;
+}
+
+.page.theme-style-minimal .calendar-image-card {
+  border: var(--border-card);
+}
+
+.page.theme-style-minimal .calendar-image {
+  filter: grayscale(1);
 }

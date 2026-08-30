@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="auto-dorm-check-content page-content page-enter">

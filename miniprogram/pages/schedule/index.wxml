@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page schedule-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page schedule-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view
     class="page-scroll"
     type="list"
@@ -19,7 +19,7 @@
             <lucide-icon name="calendar-days" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{32}}"></lucide-icon>
           </view>
           <view class="round-action round-action--dark pressable" bindtap="openCreator" hover-class="pressing" aria-role="button" aria-label="添加待办">
-            <lucide-icon name="plus" tone="white" size="{{32}}"></lucide-icon>
+            <lucide-icon name="plus" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{32}}"></lucide-icon>
           </view>
         </view>
       </view>

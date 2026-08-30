@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page page--quick-entry assistant-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry assistant-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
 
   <view wx:if="{{statusLoading}}" class="assistant-state page-content">

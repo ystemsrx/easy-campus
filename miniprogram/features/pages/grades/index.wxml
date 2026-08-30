@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page grades-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page grades-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onGradeScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="成绩" back extra-left transparent theme="{{theme}}">
       <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{refreshing ? '正在刷新成绩' : '刷新成绩'}}" aria-disabled="{{refreshing}}">
@@ -11,7 +11,7 @@
     <view class="grades-content page-content page-enter">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
-          <view wx:for="{{semesterChips}}" wx:key="id" class="semester-chip pressable {{activeSemesterId === item.id ? 'semester-chip--active' : ''}}" data-id="{{item.id}}" bindtap="selectSemesterQuick" hover-class="pressing"><text>{{item.label}}</text></view>
+          <view wx:for="{{semesterChips}}" wx:key="id" class="semester-chip pressable {{activeSemesterId === item.id ? 'semester-chip--active' : ''}}" data-id="{{item.id}}" bindtap="selectSemesterQuick" hover-class="semester-chip--pressed" hover-stay-time="0"><text>{{item.label}}</text></view>
         </view>
       </scroll-view>
 
@@ -57,5 +57,5 @@
   </scroll-view>
 
   <grade-sort-filter id="grade-sort-filter" value="{{sortMode}}" theme="{{theme}}" bindchange="selectSortMode"></grade-sort-filter>
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

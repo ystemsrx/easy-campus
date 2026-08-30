@@ -268,7 +268,14 @@ assert(
 assert(
   /\.timeline-legend > view\s*\{[^}]*flex:\s*none;[^}]*white-space:\s*nowrap;/s.test(
     pageStyles,
-  ) && !pageStyles.includes(".legend-note"),
+  ) &&
+    !pageStyles.includes(".legend-note") &&
+    /\.schedule-page\.theme-style-minimal \.legend-square--course\s*\{[^}]*border:\s*2rpx solid var\(--color-text\);[^}]*background-color:\s*var\(--color-text\);/s.test(
+      pageStyles,
+    ) &&
+    /\.schedule-page\.theme-style-minimal \.legend-square--plan\s*\{[^}]*border-color:\s*var\(--color-text\);[^}]*background-color:\s*var\(--color-bg\);/s.test(
+      pageStyles,
+    ),
   "图例项目必须保持独立宽度且不得被附加说明挤压重叠",
 );
 assert(
@@ -280,6 +287,18 @@ assert(
     timetableScript.includes("backgroundMetrics(this.data.compactHeader)") &&
     homeScript.includes('navigateTo("/features/pages/timetable/index")'),
   "日程的模态课表入口必须使用等边距紧凑顶部，同时保持首页原生安全区布局",
+);
+assert(
+  template.includes(
+    'name="plus" tone="{{visualTheme === \'minimal\' ? (theme === \'dark\' ? \'white\' : \'ink\') : \'white\'}}"',
+  ) && !template.includes('name="plus" tone="white"'),
+  "极简主题浅色模式的日程新增按钮必须使用深色加号",
+);
+assert(
+  /\.schedule-page\.theme-style-minimal \.week-day-today-ring\s*\{[^}]*border-color:\s*var\(--color-text\);[^}]*border-radius:\s*0;/s.test(
+    pageStyles,
+  ),
+  "极简主题的今日日期轮廓必须使用黑白方框",
 );
 
 console.log("Schedule checks passed.");

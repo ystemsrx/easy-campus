@@ -10,6 +10,8 @@ Page({
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
     motionClass: "motion-normal",
     showGradesOnHome: true,
     showGradesBelow60: true,
@@ -24,7 +26,7 @@ Page({
   applyPreferences() {
     const preferences = loadPreferences();
     const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData({
       ...appearance,
       showGradesOnHome: preferences.showGradesOnHome,

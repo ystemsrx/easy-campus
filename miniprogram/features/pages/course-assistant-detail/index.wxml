@@ -1,5 +1,5 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page detail-page {{themeClass}} {{motionClass}}">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page detail-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar back="{{true}}" transparent="{{true}}" theme="{{theme}}">
     <view slot="center" class="detail-nav-label"><text>COURSE PROFILE</text></view>
   </navigation-bar>

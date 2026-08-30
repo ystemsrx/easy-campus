@@ -266,7 +266,7 @@ Page({
   },
   applyAppearance() {
     const appearance = resolveAppearance();
-    syncWindowBackground(appearance.theme);
+    syncWindowBackground(appearance);
     this.setData(appearance);
   },
   startUnauthenticatedLogin() {

@@ -1,7 +1,4 @@
-import {
-  PET_SHAPE_IDS,
-  type PetShapeId,
-} from "../geometric-pet/engine-data";
+import { PET_SHAPE_IDS, type PetShapeId } from "../geometric-pet/engine-data";
 import { PET_COLORS } from "../../store/pet";
 
 const SHAPE_OPTIONS = PET_SHAPE_IDS.map((id, index) => ({
@@ -13,6 +10,7 @@ Component({
   properties: {
     open: { type: Boolean, value: false },
     themeClass: { type: String, value: "theme-light" },
+    visualThemeClass: { type: String, value: "theme-style-default" },
     motionClass: { type: String, value: "motion-normal" },
     selected: { type: Boolean, value: false },
     selectedShape: { type: String, value: "blob" },

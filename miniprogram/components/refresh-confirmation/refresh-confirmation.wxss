@@ -36,3 +36,25 @@
   transform: translate(-50%, -50%);
   transition: opacity 160ms ease;
 }
+
+.refresh-confirmation--soft {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(53, 64, 56, 0.68);
+  box-shadow: 0 14rpx 40rpx rgba(53, 64, 56, 0.14);
+  backdrop-filter: blur(16px) saturate(0.72);
+}
+
+.refresh-confirmation--minimal {
+  border: 2rpx solid #000;
+  border-radius: 4rpx;
+  color: #fff;
+  background: #000;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.refresh-confirmation--dark.refresh-confirmation--minimal {
+  border-color: #fff;
+  color: #000;
+  background: #fff;
+}

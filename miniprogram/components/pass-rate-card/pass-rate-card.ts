@@ -3,6 +3,7 @@ import type {
   PassRateScoreItem,
   PassRateStatistics,
 } from "../../types/api";
+import type { VisualTheme } from "../../types/app";
 
 interface DistributionView extends PassRateDistributionItem {
   height: number;
@@ -137,20 +138,35 @@ function percentageLabel(value: number): string {
   return `${rounded}%`;
 }
 
-function passRateRingSource(value: number, theme: string): string {
+function passRateRingSource(
+  value: number,
+  theme: string,
+  visualTheme: VisualTheme = "default",
+): string {
   const progress = Math.max(0, Math.min(100, Number(value) || 0));
   const circumference = 2 * Math.PI * 42;
   const progressLength = Number(((circumference * progress) / 100).toFixed(2));
   const remainderLength = Number((circumference - progressLength).toFixed(2));
   const trackColor = theme === "dark" ? "#ffffff" : "#2b2620";
-  const trackOpacity = theme === "dark" ? 0.08 : 0.06;
+  const trackOpacity =
+    visualTheme === "minimal" ? 0.2 : theme === "dark" ? 0.08 : 0.06;
+  const progressColor =
+    visualTheme === "minimal"
+      ? theme === "dark"
+        ? "#ffffff"
+        : "#000000"
+      : visualTheme === "soft"
+        ? theme === "dark"
+          ? "#8fc79e"
+          : "#5e9a73"
+        : "#7d8f6e";
   const animation = progress
     ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".65s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
     : "";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
     `<circle cx="50" cy="50" r="42" fill="none" stroke="${trackColor}" stroke-opacity="${trackOpacity}" stroke-width="9.24"/>` +
-    `<circle cx="50" cy="50" r="42" fill="none" stroke="#7d8f6e" stroke-width="9.24" stroke-linecap="round" stroke-dasharray="${progressLength} ${remainderLength}" stroke-opacity="${progress ? 1 : 0}" transform="rotate(-90 50 50)">${animation}</circle>` +
+    `<circle cx="50" cy="50" r="42" fill="none" stroke="${progressColor}" stroke-width="9.24" stroke-linecap="round" stroke-dasharray="${progressLength} ${remainderLength}" stroke-opacity="${progress ? 1 : 0}" transform="rotate(-90 50 50)">${animation}</circle>` +
     `</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
@@ -179,6 +195,11 @@ Component({
       value: "light",
       observer: "refreshStatistics",
     },
+    visualTheme: {
+      type: String,
+      value: "default" as VisualTheme,
+      observer: "refreshStatistics",
+    },
   },
   data: {
     distribution: [] as DistributionView[],
@@ -205,7 +226,11 @@ Component({
           scoreAxisTicks: [],
           scoreBarWidth: SCORE_BAR_MAX_WIDTH,
           scoreChartWidth: SCORE_CHART_VIEWPORT_WIDTH,
-          passRingSource: passRateRingSource(0, String(this.data.theme)),
+          passRingSource: passRateRingSource(
+            0,
+            String(this.data.theme),
+            this.data.visualTheme as VisualTheme,
+          ),
           passedLabel: "0 人",
           failedLabel: "0 人",
         });
@@ -216,11 +241,7 @@ Component({
       const total = Math.max(0, Number(statistics.totalCount) || 0);
       const scoreChart = scoreChartView(statistics, ownScore);
       this.setData({
-        distribution: distributionViews(
-          statistics,
-          ownScore,
-          percentageOnly,
-        ),
+        distribution: distributionViews(statistics, ownScore, percentageOnly),
         scoreEntries: scoreChart.entries,
         scoreAxisTicks: scoreChart.ticks,
         scoreBarWidth: scoreChart.barWidth,
@@ -228,6 +249,7 @@ Component({
         passRingSource: passRateRingSource(
           statistics.passRate,
           String(this.data.theme),
+          this.data.visualTheme as VisualTheme,
         ),
         passedLabel: percentageOnly
           ? percentageLabel(

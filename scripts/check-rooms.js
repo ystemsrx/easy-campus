@@ -53,8 +53,9 @@ function loadTypeScriptModule(relativePath) {
   return moduleRecord.exports;
 }
 
-const { resolveInitialRoomDate, formatRoomResultDate } =
-  loadTypeScriptModule("features/utils/room-date.ts");
+const { resolveInitialRoomDate, formatRoomResultDate } = loadTypeScriptModule(
+  "features/utils/room-date.ts",
+);
 const { groupRoomsByFloor } = loadTypeScriptModule(
   "features/utils/room-floor.ts",
 );
@@ -88,8 +89,8 @@ assert(
     /\.nav-title\s*\{[\s\S]*?display:\s*block;[\s\S]*?color:\s*#16161a;/.test(
       navigationStyles,
     ) &&
-    navigationStyles.includes(
-      ".nav-shell--dark .nav-title { color: #f7f3e9; }",
+    /\.nav-shell--dark \.nav-title\s*\{[\s\S]*?color:\s*#f7f3e9;/.test(
+      navigationStyles,
     ),
   "空教室标题必须使用衬线字并与内缩返回按钮在同一行",
 );
@@ -136,9 +137,15 @@ assert(
     /selectQuickDate[\s\S]*?dateLabel: formatFriendlyDate\(date\)/.test(
       script,
     ) &&
+    script.includes(
+      "left: 10rpx; width: calc((100% - 20rpx) / ${options.length});",
+    ) &&
     /\.quick-date-track\s*\{[\s\S]*?border-radius:\s*999rpx;/.test(styles) &&
+    /\.quick-date-track\s*\{[\s\S]*?box-sizing:\s*border-box;[\s\S]*?padding:\s*0 10rpx;/.test(
+      styles,
+    ) &&
     /\.quick-date-indicator\s*\{[\s\S]*?border-radius:\s*50%;/.test(styles),
-  "日期必须提供圆形指示器在胶囊滑轨上的 7 天快捷选择，并与原生日期选择器双向同步",
+  "日期必须提供两端留有间距的圆形指示器，在胶囊滑轨上完成 7 天快捷选择并与原生日期选择器双向同步",
 );
 
 assert(
@@ -306,6 +313,14 @@ assert(
       styles,
     ),
   "教室卡片必须删除中间信息行、降低高度，并只在右侧显示带“人”单位的容量",
+);
+
+assert(
+  (template.match(/visualTheme === 'minimal'/g) || []).length >= 2 &&
+    /\.rooms-page\.theme-style-minimal \.date-icon,[\s\S]*?\.rooms-page\.theme-style-minimal \.period-choice-icon\s*\{[\s\S]*?border-color:\s*var\(--color-text\);[\s\S]*?background:\s*transparent;/.test(
+      styles,
+    ),
+  "极简模式的日期和节次图标必须使用黑白图标及无彩色底的黑白框线",
 );
 
 console.log("Empty-room page checks passed.");

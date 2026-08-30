@@ -1,6 +1,6 @@
-<rate-limit-toast id="rate-limit-toast"></rate-limit-toast>
-<view class="page exams-page {{themeClass}} {{motionClass}}">
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page exams-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onExamScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="考试安排" back extra-left transparent theme="{{theme}}">
       <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{refreshing ? '正在刷新考试安排' : '刷新考试安排'}}" aria-disabled="{{refreshing}}">
         <image wx:if="{{refreshing}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
@@ -31,7 +31,7 @@
       <loading-view wx:if="{{loading}}" label="正在读取考试安排"></loading-view>
       <view wx:elif="{{examItems.length}}" class="exam-list-viewport">
         <view class="exam-list {{examListSlideClass}}">
-          <view wx:for="{{examItems}}" wx:key="id" class="exam-card card pressable" data-id="{{item.id}}" bindtap="openExam" hover-class="pressing">
+          <view wx:for="{{examItems}}" wx:key="id" class="exam-card card pressable" data-id="{{item.id}}" bindtouchstart="onExamTouchStart" bindtouchmove="onExamTouchMove" bindtouchend="onExamTouchEnd" bindtouchcancel="onExamTouchCancel" bindtap="openExam">
             <view class="exam-countdown exam-countdown--{{item.countdownTone}}">
               <view wx:if="{{item.countdownTone === 'current'}}" class="exam-countdown-current" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
               <text wx:else class="exam-countdown-value tnum">{{item.countdownLabel}}</text>
@@ -53,5 +53,5 @@
   <bottom-sheet visible="{{selectedExamVisible}}" title="{{selectedExamTitle}}" theme="{{theme}}" scrollable="{{false}}" bindclose="closeExam">
     <scroll-view wx:if="{{selectedExam}}" class="exam-detail-scroll" type="custom" style="{{selectedExamDetailHeight > 0 ? 'height:' + selectedExamDetailHeight + 'px;' : ''}}" scroll-y enhanced show-scrollbar="{{false}}"><view id="exam-detail-content" class="exam-detail-content"><view class="exam-detail-card card"><view wx:for="{{selectedExam.rows}}" wx:key="label" class="exam-detail-row {{index < selectedExam.rows.length - 1 ? 'exam-detail-row--divided' : ''}}"><text>{{item.label}}</text><text overflow="ellipsis" max-lines="4">{{item.value}}</text></view></view><view wx:if="{{selectedExam.note}}" class="exam-note"><text>备注</text><text>{{selectedExam.note}}</text></view><view class="exam-detail-spacer"></view></view></scroll-view>
   </bottom-sheet>
-  <refresh-confirmation id="refresh-confirmation" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
+  <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>

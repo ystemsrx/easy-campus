@@ -2,12 +2,17 @@ import {
   DEFAULT_PREFERENCES,
   type AppPreferences,
   type ThemePreference,
+  type VisualTheme,
 } from "../types/app";
 
 const PREFERENCES_KEY = "easy-swu:preferences";
 
 function isThemePreference(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
+}
+
+function isVisualTheme(value: unknown): value is VisualTheme {
+  return value === "default" || value === "soft" || value === "minimal";
 }
 
 export function loadPreferences(): AppPreferences {
@@ -21,6 +26,9 @@ export function loadPreferences(): AppPreferences {
     theme: isThemePreference(stored.theme)
       ? stored.theme
       : DEFAULT_PREFERENCES.theme,
+    visualTheme: isVisualTheme(stored.visualTheme)
+      ? stored.visualTheme
+      : DEFAULT_PREFERENCES.visualTheme,
     showGradesOnHome:
       typeof stored.showGradesOnHome === "boolean"
         ? stored.showGradesOnHome

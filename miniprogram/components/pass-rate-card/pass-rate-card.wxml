@@ -1,4 +1,4 @@
-<view wx:if="{{statistics}}" class="pass-rate-card {{theme === 'dark' ? 'pass-rate-card--dark' : ''}} card">
+<view wx:if="{{statistics}}" class="pass-rate-card {{theme === 'dark' ? 'pass-rate-card--dark' : ''}} pass-rate-card--{{visualTheme}} card">
   <view class="statistics-overview">
     <view class="pass-ring">
       <image class="pass-ring-image" src="{{passRingSource}}" mode="aspectFit"></image>
@@ -43,7 +43,7 @@
     </view>
   </view>
   <view wx:if="{{showOwnScore}}" class="own-score-note">
-    <lucide-icon name="sparkles" tone="coral" size="{{23}}"></lucide-icon>
+    <lucide-icon name="sparkles" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{23}}"></lucide-icon>
     <text>你的成绩为 <text class="own-score-value tnum">{{displayScore}}</text>，图中高亮为对应区间</text>
   </view>
 </view>

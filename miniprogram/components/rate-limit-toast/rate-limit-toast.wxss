@@ -35,3 +35,25 @@
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
+
+.rate-limit-toast--soft {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(53, 64, 56, 0.68);
+  box-shadow: 0 14rpx 40rpx rgba(53, 64, 56, 0.14);
+  backdrop-filter: blur(14px) saturate(0.72);
+}
+
+.rate-limit-toast--minimal {
+  border: 2rpx solid #000;
+  border-radius: 4rpx;
+  color: #fff;
+  background: #000;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.rate-limit-toast--dark.rate-limit-toast--minimal {
+  border-color: #fff;
+  color: #000;
+  background: #fff;
+}
