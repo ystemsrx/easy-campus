@@ -84,6 +84,7 @@ export async function logout(): Promise<void> {
       method: "POST",
       data: {},
       retry: false,
+      allowInvalidCredential: true,
     });
   } finally {
     if (lease) {

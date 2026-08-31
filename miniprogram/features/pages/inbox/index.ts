@@ -1,5 +1,8 @@
 import { getMessages, getNotices } from "../../../services/teaching";
-import { getErrorMessage } from "../../../services/request";
+import {
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import { isUpstreamRefreshResult } from "../../../store/cache-policy";
 import {
   captureSessionLease,
@@ -29,7 +32,10 @@ import {
   startRefreshFlight,
   type RefreshFlight,
 } from "../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 import {
   isCurrentSemesterTimestamp,
   isLatestSchoolNoticeSemesterAssignment,
@@ -71,6 +77,7 @@ interface MessageTypeOption {
 
 interface MessageRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   messageTypes: MessageType[];
   result: Awaited<ReturnType<typeof getMessages>> | null;
   errorMessage: string;
@@ -78,6 +85,7 @@ interface MessageRefreshOutcome {
 
 interface NoticeRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   query: string;
   result: Awaited<ReturnType<typeof getNotices>> | null;
   errorMessage: string;
@@ -131,6 +139,7 @@ async function refreshInboxMessages(
     }
     return {
       succeeded: refreshed,
+      showFailureFeedback: !refreshed && result.meta.stale === true,
       messageTypes,
       result,
       errorMessage: "",
@@ -138,6 +147,7 @@ async function refreshInboxMessages(
   } catch (error) {
     return {
       succeeded: false,
+      showFailureFeedback: shouldShowRefreshFailureFeedback(error),
       messageTypes,
       result: null,
       errorMessage: getErrorMessage(error),
@@ -163,10 +173,17 @@ async function refreshInboxNotices(
     if (refreshed && !query) {
       saveTeachingPreview(lease.account, { notices: result.data.items });
     }
-    return { succeeded: refreshed, query, result, errorMessage: "" };
+    return {
+      succeeded: refreshed,
+      showFailureFeedback: !refreshed && result.meta.stale === true,
+      query,
+      result,
+      errorMessage: "",
+    };
   } catch (error) {
     return {
       succeeded: false,
+      showFailureFeedback: shouldShowRefreshFailureFeedback(error),
       query,
       result: null,
       errorMessage: getErrorMessage(error),
@@ -520,6 +537,9 @@ Page({
         observedMessageRefreshFlightId: 0,
       });
       if (!outcome.succeeded || !outcome.result) {
+        if (outcome.showFailureFeedback && this.data.activeTab === 0) {
+          showRefreshFailure(this);
+        }
         if (outcome.errorMessage) {
           this.setData({ messageError: outcome.errorMessage });
         }
@@ -589,6 +609,9 @@ Page({
         observedNoticeRefreshFlightId: 0,
       });
       if (!outcome.succeeded || !outcome.result) {
+        if (outcome.showFailureFeedback && this.data.activeTab === 1) {
+          showRefreshFailure(this);
+        }
         if (outcome.errorMessage) {
           this.setData({ noticeError: outcome.errorMessage });
         }

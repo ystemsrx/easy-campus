@@ -47,6 +47,15 @@ export interface AutoDormCheckIn {
   sourceTimezone: string;
 }
 
+export interface AutoDormCheckLocation {
+  locationName: string;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyMeters: number | null;
+  checkedAt: string | null;
+  sourceTimezone: string;
+}
+
 export interface AutoDormCheckStatus {
   /** Compatibility alias for whether both global switches are on. */
   featureEnabled: boolean;
@@ -62,10 +71,11 @@ export interface AutoDormCheckStatus {
   plannedCheckInDate: string | null;
   updatedAt: string | null;
   lastCheckIn: AutoDormCheckIn | null;
+  checkInLocation: AutoDormCheckLocation | null;
 }
 
 export type AutoDormCheckState =
-  "checked_in" | "pending" | "unavailable" | "disabled";
+  "checked_in" | "pending" | "failed" | "unavailable" | "disabled";
 
 export interface Session {
   token: string;
@@ -814,6 +824,7 @@ export interface MessagesQuery {
   from?: string;
   to?: string;
   refresh?: boolean;
+  automatic?: boolean;
 }
 
 export interface NoticesQuery {
@@ -821,6 +832,7 @@ export interface NoticesQuery {
   pageSize?: number;
   q?: string;
   refresh?: boolean;
+  automatic?: boolean;
 }
 
 export interface GradesQuery {

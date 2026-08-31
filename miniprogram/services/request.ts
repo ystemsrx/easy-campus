@@ -6,9 +6,9 @@ import {
   getSession,
   isSessionLeaseCurrent,
   queueAccountDeactivatedNotice,
-  queueSessionInvalidNotice,
   sessionLeaseKey,
   type SessionLease,
+  updateSessionCredential,
   updateSessionDevice,
 } from "../store/session";
 import type {
@@ -34,6 +34,8 @@ interface RequestOptions {
   authenticated?: boolean;
   retry?: boolean;
   timeout?: number;
+  allowInvalidCredential?: boolean;
+  credentialReauthFeedback?: boolean;
 }
 
 interface SuccessEnvelope<T> extends ApiSuccess<T> {
@@ -43,8 +45,6 @@ interface SuccessEnvelope<T> extends ApiSuccess<T> {
 const AUTH_ERROR_CODES = new Set([
   "INVALID_TOKEN",
   "USER_NOT_FOUND",
-  "SWU_AUTH_FAILED",
-  "SWU_CREDENTIAL_INVALID",
   "SWU_SESSION_INVALIDATED",
   "DEVICE_ENROLLMENT_REQUIRED",
   "DEVICE_PROOF_REQUIRED",
@@ -52,15 +52,28 @@ const AUTH_ERROR_CODES = new Set([
   "DEVICE_KEY_REVOKED",
   "DEVICE_SIGNATURE_INVALID",
 ]);
-const CREDENTIAL_INVALIDATION_CODES = new Set([
-  "SWU_AUTH_FAILED",
+const CREDENTIAL_REAUTH_CODES = new Set([
+  "SWU_CREDENTIAL_REAUTH_REQUIRED",
   "SWU_CREDENTIAL_INVALID",
+]);
+const CAMPUS_CREDENTIAL_INVALIDATION_CODES = new Set([
+  "SWU_AUTH_FAILED",
+  "SWU_ACCOUNT_LOCKED",
+  "SWU_ACCOUNT_INACTIVE",
+  "SWU_PASSWORD_EXPIRED",
+  "SWU_ADDITIONAL_VERIFICATION_REQUIRED",
+  "SWU_OFFICE_ACCOUNT_NOT_FOUND",
+  "SWU_UNSUPPORTED_STUDENT",
+  "SWU_ACCOUNT_DISABLED",
+  "SWU_AUTH_RESPONSE_UNEXPECTED",
 ]);
 const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
 const STALE_SESSION_ERROR_CODE = "STALE_SESSION";
 export const ACCOUNT_DEACTIVATED_MESSAGE = "账户已停用";
+export const CREDENTIAL_REAUTH_REQUIRED_CODE = "SWU_CREDENTIAL_REAUTH_REQUIRED";
+export const CREDENTIAL_REAUTH_REQUIRED_MESSAGE = "验证失败，请重新登录小程序";
 export const FEEDBACK_DAILY_LIMITED_CODE = "FEEDBACK_DAILY_LIMITED";
 export const FEEDBACK_DAILY_LIMITED_MESSAGE = "反馈已收到，明天再来吧";
 let redirectingToLogin = false;
@@ -112,33 +125,59 @@ function showRateLimitToast(message = "访问速度太快了"): void {
   wx.showToast({ title: message, icon: "none", duration: 3000 });
 }
 
-function redirectAfterAuthFailure(
-  credentialInvalid = false,
-  lease?: SessionLease | null,
-): void {
+function redirectAfterAuthFailure(lease?: SessionLease | null): void {
   if (lease === undefined) {
     clearSession();
   } else if (!clearSessionIfCurrent(lease)) {
     return;
   }
-  if (credentialInvalid) {
-    queueSessionInvalidNotice();
-  } else {
-    wx.showToast({
-      title: "登录已失效，请重新登录",
-      icon: "none",
-      duration: 2200,
-    });
-  }
+  wx.showToast({
+    title: "登录已失效，请重新登录",
+    icon: "none",
+    duration: 2200,
+  });
   if (redirectingToLogin) return;
   redirectingToLogin = true;
-  setTimeout(
-    () => {
-      if (!getSession()) goToLogin();
-      redirectingToLogin = false;
-    },
-    credentialInvalid ? 0 : 320,
+  setTimeout(() => {
+    if (!getSession()) goToLogin();
+    redirectingToLogin = false;
+  }, 320);
+}
+
+function credentialReauthError(): ApiClientError {
+  return new ApiClientError({
+    code: CREDENTIAL_REAUTH_REQUIRED_CODE,
+    message: CREDENTIAL_REAUTH_REQUIRED_MESSAGE,
+    statusCode: 409,
+  });
+}
+
+function isCredentialInvalidationCode(code: string): boolean {
+  return (
+    CREDENTIAL_REAUTH_CODES.has(code) ||
+    CAMPUS_CREDENTIAL_INVALIDATION_CODES.has(code)
   );
+}
+
+export function notifyCredentialReauthRequired(
+  lease?: SessionLease | null,
+  errorCode = CREDENTIAL_REAUTH_REQUIRED_CODE,
+  showFeedback = true,
+): ApiClientError {
+  if (lease === undefined || isSessionLeaseCurrent(lease)) {
+    const session = getSession();
+    if (session) {
+      updateSessionCredential({
+        status: "invalid",
+        checkedAt: new Date().toISOString(),
+        errorCode,
+      });
+    }
+    if (showFeedback) {
+      showRateLimitToast(CREDENTIAL_REAUTH_REQUIRED_MESSAGE);
+    }
+  }
+  return credentialReauthError();
 }
 
 function redirectAfterAccountDeactivation(lease?: SessionLease | null): void {
@@ -214,7 +253,9 @@ interface DeviceEnrollmentData {
   tokenType: "Bearer";
 }
 
-async function ensureDeviceEnrollment(): Promise<void> {
+async function ensureDeviceEnrollment(
+  showCredentialFeedback: boolean,
+): Promise<void> {
   const session = getSession();
   if (!session || session.device) return;
   const lease = captureSessionLease(session);
@@ -224,7 +265,7 @@ async function ensureDeviceEnrollment(): Promise<void> {
     await deviceEnrollmentFlight.promise;
     return;
   }
-  const promise = enrollCurrentDevice(lease);
+  const promise = enrollCurrentDevice(lease, showCredentialFeedback);
   deviceEnrollmentFlight = { leaseKey, promise };
   try {
     await promise;
@@ -235,13 +276,17 @@ async function ensureDeviceEnrollment(): Promise<void> {
   }
 }
 
-async function enrollCurrentDevice(lease: SessionLease): Promise<void> {
+async function enrollCurrentDevice(
+  lease: SessionLease,
+  showCredentialFeedback: boolean,
+): Promise<void> {
   const publicKey = await getDevicePublicKey();
   if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
   const data = await requestProofBootstrap<DeviceEnrollmentData>(
     "/auth/device",
     lease,
     { publicKey },
+    showCredentialFeedback,
   );
   if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
   updateSessionDevice(data.device, data.token);
@@ -251,6 +296,7 @@ function requestProofBootstrap<T>(
   path: string,
   lease: SessionLease,
   data: WechatMiniprogram.IAnyObject,
+  showCredentialFeedback: boolean,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     wx.request({
@@ -277,7 +323,9 @@ function requestProofBootstrap<T>(
           return;
         }
         const error = toApiError(response.data, response.statusCode);
-        handleAuthenticatedRequestError(error, lease);
+        if (!isCredentialInvalidationCode(error.code)) {
+          handleAuthenticatedRequestError(error, lease, showCredentialFeedback);
+        }
         reject(error);
       },
       fail: () => {
@@ -323,16 +371,18 @@ async function createRequestProof(
 function handleAuthenticatedRequestError(
   error: ApiClientError,
   lease: SessionLease | null,
+  showCredentialFeedback = false,
 ): void {
+  if (isCredentialInvalidationCode(error.code)) {
+    notifyCredentialReauthRequired(lease, error.code, showCredentialFeedback);
+    return;
+  }
   if (error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
     redirectAfterAccountDeactivation(lease);
     return;
   }
   if (AUTH_ERROR_CODES.has(error.code)) {
-    redirectAfterAuthFailure(
-      CREDENTIAL_INVALIDATION_CODES.has(error.code),
-      lease,
-    );
+    redirectAfterAuthFailure(lease);
   }
 }
 
@@ -387,9 +437,15 @@ async function requestOnce<T>(
 
         const error = toApiError(response.data, response.statusCode);
         if (authenticated) {
-          handleAuthenticatedRequestError(error, lease);
+          if (!isCredentialInvalidationCode(error.code)) {
+            handleAuthenticatedRequestError(
+              error,
+              lease,
+              options.credentialReauthFeedback === true,
+            );
+          }
           if (error.code === "SWU_SESSION_EXPIRED" && options.retry === false) {
-            redirectAfterAuthFailure(false, lease);
+            redirectAfterAuthFailure(lease);
           }
         }
         reject(error);
@@ -409,11 +465,30 @@ async function requestEnvelope<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<SuccessEnvelope<T>> {
+  const showCredentialFeedback = options.credentialReauthFeedback === true;
+  if (
+    options.authenticated !== false &&
+    options.allowInvalidCredential !== true &&
+    getSession()?.credential.status === "invalid"
+  ) {
+    throw notifyCredentialReauthRequired(
+      captureSessionLease(),
+      CREDENTIAL_REAUTH_REQUIRED_CODE,
+      showCredentialFeedback,
+    );
+  }
   if (options.authenticated !== false) {
     try {
-      await ensureDeviceEnrollment();
+      await ensureDeviceEnrollment(showCredentialFeedback);
     } catch (error) {
       const apiError = error as ApiClientError;
+      if (isCredentialInvalidationCode(apiError.code)) {
+        throw notifyCredentialReauthRequired(
+          captureSessionLease(),
+          apiError.code,
+          showCredentialFeedback,
+        );
+      }
       if (isRateLimitError(apiError)) showRateLimitToast();
       if (
         options.retry !== false &&
@@ -421,7 +496,7 @@ async function requestEnvelope<T>(
           RETRYABLE_STATUS_CODES.has(apiError.statusCode))
       ) {
         await wait(360);
-        await ensureDeviceEnrollment();
+        await ensureDeviceEnrollment(showCredentialFeedback);
       } else {
         throw error;
       }
@@ -432,6 +507,16 @@ async function requestEnvelope<T>(
     return await requestOnce<T>(path, options, context);
   } catch (error) {
     const apiError = error as ApiClientError;
+    if (
+      context.authenticated &&
+      isCredentialInvalidationCode(apiError.code)
+    ) {
+      throw notifyCredentialReauthRequired(
+        context.lease,
+        apiError.code,
+        showCredentialFeedback,
+      );
+    }
     if (context.authenticated && AUTH_ERROR_CODES.has(apiError.code)) {
       handleAuthenticatedRequestError(apiError, context.lease);
     }
@@ -456,7 +541,26 @@ async function requestEnvelope<T>(
     if (context.authenticated && !isSessionLeaseCurrent(context.lease)) {
       throw staleSessionError();
     }
-    return requestOnce<T>(path, { ...options, retry: false }, context);
+    try {
+      return await requestOnce<T>(
+        path,
+        { ...options, retry: false },
+        context,
+      );
+    } catch (retryError) {
+      const retryApiError = retryError as ApiClientError;
+      if (
+        context.authenticated &&
+        isCredentialInvalidationCode(retryApiError.code)
+      ) {
+        throw notifyCredentialReauthRequired(
+          context.lease,
+          retryApiError.code,
+          showCredentialFeedback,
+        );
+      }
+      throw retryError;
+    }
   }
 }
 
@@ -464,22 +568,17 @@ export function handleAuthenticationFailure(
   error: ApiClientError,
   lease?: SessionLease | null,
 ): void {
+  if (isCredentialInvalidationCode(error.code)) {
+    notifyCredentialReauthRequired(lease, error.code);
+    return;
+  }
   if (error.code === ACCOUNT_DEACTIVATED_ERROR_CODE) {
     redirectAfterAccountDeactivation(lease);
     return;
   }
   if (error.statusCode === 401 || AUTH_ERROR_CODES.has(error.code)) {
-    redirectAfterAuthFailure(
-      CREDENTIAL_INVALIDATION_CODES.has(error.code),
-      lease,
-    );
+    redirectAfterAuthFailure(lease);
   }
-}
-
-export function handleCredentialInvalidation(
-  lease?: SessionLease | null,
-): void {
-  redirectAfterAuthFailure(true, lease);
 }
 
 export async function apiRequest<T>(
@@ -515,6 +614,7 @@ export function getErrorMessage(
     return ACCOUNT_DEACTIVATED_MESSAGE;
   }
   if (isRateLimitError(error)) return "";
+  if (isCredentialReauthError(error)) return "";
   if (error instanceof ApiClientError && error.message) {
     return error.message;
   }
@@ -526,6 +626,23 @@ export function getErrorMessage(
 
 export function isRateLimitError(error: unknown): boolean {
   return error instanceof ApiClientError && error.statusCode === 429;
+}
+
+export function isCredentialReauthError(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError && CREDENTIAL_REAUTH_CODES.has(error.code)
+  );
+}
+
+export function shouldShowRefreshFailureFeedback(error: unknown): boolean {
+  if (isRateLimitError(error) || isCredentialReauthError(error)) return false;
+  if (!(error instanceof ApiClientError)) return true;
+  return (
+    error.code !== ACCOUNT_DEACTIVATED_ERROR_CODE &&
+    error.code !== STALE_SESSION_ERROR_CODE &&
+    error.code !== "SWU_SESSION_EXPIRED" &&
+    !AUTH_ERROR_CODES.has(error.code)
+  );
 }
 
 export function isFeedbackDailyLimitError(error: unknown): boolean {

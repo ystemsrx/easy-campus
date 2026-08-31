@@ -4,6 +4,7 @@ const PREFIX = "easy-swu:auto-dorm-check:v1:";
 const VALID_STATES = new Set<AutoDormCheckState>([
   "checked_in",
   "pending",
+  "failed",
   "unavailable",
   "disabled",
 ]);

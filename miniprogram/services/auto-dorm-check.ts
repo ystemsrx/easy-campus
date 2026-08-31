@@ -52,7 +52,15 @@ function requestStatus(
 }
 
 export function getAutoDormCheckStatus(): Promise<AutoDormCheckStatus> {
-  return requestStatus(() => apiRequest<AutoDormCheckStatus>(`${ROOT}/status`));
+  return requestStatus(() =>
+    apiRequest<AutoDormCheckStatus>(`${ROOT}/status?refresh=true`),
+  );
+}
+
+export function getAutoDormCheckLocalStatus(): Promise<AutoDormCheckStatus> {
+  return requestStatus(() =>
+    apiRequest<AutoDormCheckStatus>(`${ROOT}/status`),
+  );
 }
 
 /** 每次进入主页时静默刷新，供“我的”页直接复用。 */
@@ -79,6 +87,7 @@ export function setAutoDormCheckEnabled(
     apiRequest<AutoDormCheckStatus>(`${ROOT}/preferences`, {
       method: "PUT",
       data: { enabled },
+      credentialReauthFeedback: true,
     }),
   );
 }

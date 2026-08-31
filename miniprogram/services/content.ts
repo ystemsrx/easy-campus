@@ -1,7 +1,15 @@
 import { getApiUrl } from "../config/index";
-import { captureSessionLease, isSessionLeaseCurrent } from "../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../store/session";
 import type { PublicationFeed, PublicationMedia } from "../types/api";
-import { apiRequest } from "./request";
+import {
+  apiRequest,
+  CREDENTIAL_REAUTH_REQUIRED_CODE,
+  notifyCredentialReauthRequired,
+} from "./request";
 
 const mediaCache = new Map<string, string>();
 const mediaPreloads = new Map<string, Promise<string | null>>();
@@ -45,6 +53,9 @@ export function downloadPublicationMedia(
   const cacheKey = `${lease.userId}:${media.id}`;
   const cached = mediaCache.get(cacheKey);
   if (cached) return Promise.resolve(cached);
+  if (getSession()?.credential.status === "invalid") {
+    return Promise.resolve(null);
+  }
   const inFlight = mediaPreloads.get(cacheKey);
   if (inFlight) return inFlight;
 
@@ -71,6 +82,13 @@ export function downloadPublicationMedia(
               resolve(response.tempFilePath);
             });
             return;
+          }
+          if (response.statusCode === 409) {
+            notifyCredentialReauthRequired(
+              lease,
+              CREDENTIAL_REAUTH_REQUIRED_CODE,
+              false,
+            );
           }
           resolve(null);
         },
@@ -114,10 +132,7 @@ function preloadLocalImage(path: string): Promise<boolean> {
       clearTimeout(timeout);
       resolve(ready);
     };
-    const timeout = setTimeout(
-      () => finish(false),
-      IMAGE_DECODE_TIMEOUT_MS,
-    );
+    const timeout = setTimeout(() => finish(false), IMAGE_DECODE_TIMEOUT_MS);
     try {
       wx.getImageInfo({
         src: path,

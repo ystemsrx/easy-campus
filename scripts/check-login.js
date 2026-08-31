@@ -420,8 +420,6 @@ if (
   !script.includes('return "账号或密码错误";') ||
   !script.includes("consumeSessionInvalidNotice") ||
   !script.includes('this.showErrorToast("会话已失效")') ||
-  !requestScript.includes("CREDENTIAL_INVALIDATION_CODES") ||
-  !requestScript.includes("queueSessionInvalidNotice()") ||
   !sessionStore.includes("SESSION_INVALID_NOTICE_TTL_MS = 15_000") ||
   (script.match(/this\.showErrorToast\(/g) || []).length < 3 ||
   !styles.includes("position: fixed;") ||

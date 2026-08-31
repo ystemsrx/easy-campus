@@ -95,6 +95,27 @@ const homeSource = stableDataConsumers[0][1];
 const inboxSource = source("features", "pages", "inbox", "index.ts");
 const cacheRefreshSource = source("services", "cache-refresh.ts");
 const electricityServiceSource = source("services", "electricity.ts");
+const refreshFeedbackSource = source(
+  "features",
+  "utils",
+  "refresh-feedback.ts",
+);
+const refreshConfirmationSource = source(
+  "components",
+  "refresh-confirmation",
+  "refresh-confirmation.ts",
+);
+const refreshConfirmationTemplate = source(
+  "components",
+  "refresh-confirmation",
+  "refresh-confirmation.wxml",
+);
+assert(
+  refreshFeedbackSource.includes('component?.show?.("刷新失败，请稍后重试")') &&
+    refreshConfirmationSource.includes('message: "已刷新"') &&
+    refreshConfirmationTemplate.includes("{{message}}"),
+  "统一刷新胶囊必须同时支持成功和失败文案",
+);
 assert(
   homeSource.includes("refreshElectricityOnForeground()") &&
     cacheRefreshSource.includes("getElectricityAccount()") &&
@@ -151,6 +172,10 @@ for (const [page, ...pageSegments] of manualRefreshPages) {
       '<refresh-confirmation id="refresh-confirmation"',
     ) && pageSource.includes("showRefreshConfirmation(this)"),
     `${page} 手动刷新成功后必须显示统一的完成反馈`,
+  );
+  assert(
+    pageSource.includes("showRefreshFailure(this)"),
+    `${page} 手动刷新失败后必须显示统一的失败反馈`,
   );
   assert(
     pageSource.includes("startRefreshFlight(") &&

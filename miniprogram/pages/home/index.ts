@@ -22,10 +22,7 @@ import {
   refreshElectricityOnForeground,
   refreshExamsOnForeground,
 } from "../../services/cache-refresh";
-import {
-  getErrorMessage,
-  handleCredentialInvalidation,
-} from "../../services/request";
+import { getErrorMessage } from "../../services/request";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
@@ -233,7 +230,6 @@ let dashboardStableRefreshQueued = false;
 let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
 let credentialPollTimer: number | undefined;
 let credentialPollAttempt = 0;
-let credentialExitLease: SessionLease | null = null;
 let credentialProfileRefreshPending = false;
 let hydratedAccount = "";
 let hydratedDashboardKey = "";
@@ -722,7 +718,6 @@ Page({
       clearTimeout(petSetupDrawerTimer);
       petSetupDrawerTimer = undefined;
     }
-    credentialExitLease = null;
     credentialPollAttempt = 0;
     credentialProfileRefreshPending = false;
     lastPublicationRequestAt = 0;
@@ -1260,7 +1255,12 @@ Page({
   },
   handleCredentialState(credential: CredentialState) {
     if (credential.status === "invalid") {
-      this.exitInvalidCredential();
+      this.stopCredentialPoll();
+      credentialProfileRefreshPending = false;
+      this.setData({
+        serviceHealthy: false,
+        serviceLabel: "正在显示缓存",
+      });
       return;
     }
     if (credential.status === "pending") {
@@ -1314,16 +1314,6 @@ Page({
         // 普通网络失败不应清除仍然有效的本地会话。
       }
     }, delay) as unknown as number;
-  },
-  exitInvalidCredential() {
-    const lease = captureSessionLease();
-    if (!lease) return;
-    if (credentialExitLease && isSessionLeaseCurrent(credentialExitLease)) {
-      return;
-    }
-    credentialExitLease = lease;
-    this.stopCredentialPoll();
-    handleCredentialInvalidation(lease);
   },
   async loadPublicationFeed(force = false) {
     const lease = captureSessionLease();
@@ -1850,6 +1840,7 @@ Page({
       page: 1,
       pageSize: 15,
       refresh: refreshTeaching,
+      automatic: true,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
         if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {
@@ -1869,6 +1860,7 @@ Page({
       page: 1,
       pageSize: 50,
       refresh: refreshTeaching,
+      automatic: true,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
         if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {

@@ -22,14 +22,26 @@
             <text class="auto-dorm-check-title">自动查寝打卡</text>
             <text class="auto-dorm-check-caption">打卡时段 {{checkInWindowLabel}}</text>
           </view>
-          <switch
-            class="auto-dorm-check-switch"
-            checked="{{effectiveEnabled}}"
-            disabled="{{saving || !available}}"
-            color="#7d8f6e"
-            bindchange="onEnabledChange"
-            aria-label="自动查寝打卡，{{statusLabel}}"
-          />
+          <view
+            class="auto-dorm-check-switch {{effectiveEnabled ? 'auto-dorm-check-switch--checked' : ''}} {{checkingCapability ? 'auto-dorm-check-switch--checking' : ''}} {{saving ? 'auto-dorm-check-switch--saving' : ''}} {{!available ? 'auto-dorm-check-switch--disabled' : ''}}"
+            bindtap="onEnabledTap"
+            hover-class="{{saving || !available ? 'none' : 'auto-dorm-check-switch--pressed'}}"
+            hover-stay-time="80"
+            aria-role="switch"
+            aria-checked="{{effectiveEnabled}}"
+            aria-disabled="{{saving || !available}}"
+            aria-label="自动查寝打卡，{{checkingCapability ? '正在检查' : statusLabel}}"
+          >
+            <view class="auto-dorm-check-switch-thumb">
+              <image
+                wx:if="{{checkingCapability}}"
+                class="auto-dorm-check-switch-spinner"
+                src="/assets/icons/refresh-spinner-ink.svg"
+                mode="aspectFit"
+                draggable="{{false}}"
+              ></image>
+            </view>
+          </view>
         </view>
         <view wx:if="{{errorMessage}}" class="auto-dorm-check-error" bindtap="retryStatus" aria-role="button">
           <text>{{errorMessage}}</text>
@@ -52,7 +64,7 @@
       </view>
 
       <view class="auto-dorm-check-detail-card card stagger-item stagger-3">
-        <text class="auto-dorm-check-detail-title">今晚打卡地点</text>
+        <text class="auto-dorm-check-detail-title">打卡地点</text>
         <view class="auto-dorm-check-location">
           <lucide-icon name="map-pin" tone="sage" size="{{24}}"></lucide-icon>
           <text wx:if="{{hasCheckInLocation}}" overflow="ellipsis" max-lines="2">{{checkInLocationName}}</text>
@@ -61,5 +73,9 @@
         <text class="auto-dorm-check-location-tip">如需更换地点，请先关闭自动查寝，再手动完成一次正常打卡，下次将使用新的地点。</text>
       </view>
     </view>
+  </view>
+
+  <view wx:if="{{capsuleToastMounted}}" class="auto-dorm-check-toast {{capsuleToastVisible ? 'auto-dorm-check-toast--visible' : ''}}" aria-role="status">
+    <text>{{capsuleToastMessage}}</text>
   </view>
 </view>

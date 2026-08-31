@@ -25,7 +25,10 @@ import {
   timetableThemePatch,
   type TimetableThemeId,
 } from "../../../data/timetable-theme";
-import { getErrorMessage } from "../../../services/request";
+import {
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import { getPassRates, getTimetable } from "../../../services/teaching";
 import {
   claimAutomaticRefresh,
@@ -72,7 +75,10 @@ import {
   startRefreshFlight,
   type RefreshFlight,
 } from "../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 import {
   shortAcademicSemesterLabel,
   timetableSemesterMenuLabel,
@@ -1277,6 +1283,7 @@ interface InFlightTimetableRequest {
 
 interface TimetableRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback: boolean;
   semester?: string;
 }
 
@@ -1315,15 +1322,19 @@ function timetableRefreshFlightKey(lease: SessionLease): string {
 async function refreshTimetableSnapshot(
   lease: SessionLease,
   semester?: string,
-): Promise<boolean> {
-  if (!isSessionLeaseCurrent(lease)) return false;
+): Promise<Pick<TimetableRefreshOutcome, "succeeded" | "showFailureFeedback">> {
+  if (!isSessionLeaseCurrent(lease)) {
+    return { succeeded: false, showFailureFeedback: false };
+  }
   const requestKey = timetableRequestKey(lease, semester);
   const existingRequest = timetableRequestsInFlight.get(requestKey);
   if (existingRequest) {
     const succeeded = await existingRequest.completion;
-    if (!isSessionLeaseCurrent(lease)) return false;
+    if (!isSessionLeaseCurrent(lease)) {
+      return { succeeded: false, showFailureFeedback: false };
+    }
     return existingRequest.refresh
-      ? succeeded
+      ? { succeeded, showFailureFeedback: !succeeded }
       : refreshTimetableSnapshot(lease, semester);
   }
 
@@ -1332,6 +1343,7 @@ async function refreshTimetableSnapshot(
     resolveCompletion = resolve;
   });
   timetableRequestsInFlight.set(requestKey, { refresh: true, completion });
+  let showFailureFeedback = false;
   void (async () => {
     let succeeded = false;
     try {
@@ -1345,8 +1357,10 @@ async function refreshTimetableSnapshot(
           });
         }
         succeeded = isUpstreamRefreshResult(result.meta);
+        showFailureFeedback = !succeeded && result.meta.stale === true;
       }
-    } catch {
+    } catch (error) {
+      showFailureFeedback = shouldShowRefreshFailureFeedback(error);
       // 手动刷新失败时保留已有课表，下次进入或再次操作时可重试。
     } finally {
       if (
@@ -1357,7 +1371,8 @@ async function refreshTimetableSnapshot(
       resolveCompletion(succeeded);
     }
   })();
-  return completion;
+  const succeeded = await completion;
+  return { succeeded, showFailureFeedback };
 }
 
 function resetClawdSceneScheduler(): void {
@@ -2119,7 +2134,10 @@ Page({
         return;
       }
       this.setData({ refreshing: false, observedRefreshFlightId: 0 });
-      if (!outcome.succeeded) return;
+      if (!outcome.succeeded) {
+        if (outcome.showFailureFeedback) showRefreshFailure(this);
+        return;
+      }
       const snapshot = loadTimetableSnapshot(lease.account, outcome.semester);
       if (snapshot) {
         activeSnapshot = snapshot;
@@ -2632,7 +2650,7 @@ Page({
     const { flight, started } = startRefreshFlight(
       timetableRefreshFlightKey(lease),
       async () => ({
-        succeeded: await refreshTimetableSnapshot(lease, semester),
+        ...(await refreshTimetableSnapshot(lease, semester)),
         semester,
       }),
     );

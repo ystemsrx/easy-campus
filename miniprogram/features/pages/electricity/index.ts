@@ -1,4 +1,8 @@
-import { ApiClientError, getErrorMessage } from "../../../services/request";
+import {
+  ApiClientError,
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import { queryElectricity } from "../../../services/electricity";
 import { getElectricityBuildings } from "../../services/utilities";
 import { refreshElectricityOnForeground } from "../../../services/cache-refresh";
@@ -33,7 +37,10 @@ import {
   startRefreshFlight,
   type RefreshFlight,
 } from "../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 
 interface ElectricityView {
   billedElectricityLabel: string;
@@ -57,6 +64,7 @@ interface ElectricityRefreshInput {
 
 interface ElectricityRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   input: ElectricityRefreshInput;
   result: Awaited<ReturnType<typeof queryElectricity>> | null;
   errorMessage: string;
@@ -138,20 +146,22 @@ async function refreshElectricity(
     }
     return {
       succeeded: refreshed,
+      showFailureFeedback: !refreshed && result.meta.stale === true,
       input,
       result,
       errorMessage: "",
       unavailable: false,
     };
   } catch (error) {
+    const unavailable = isUnavailable(error);
     return {
       succeeded: false,
+      showFailureFeedback:
+        unavailable || shouldShowRefreshFailureFeedback(error),
       input,
       result: null,
-      errorMessage: isUnavailable(error)
-        ? ""
-        : getErrorMessage(error, "电费查询失败。"),
-      unavailable: isUnavailable(error),
+      errorMessage: unavailable ? "" : getErrorMessage(error, "电费查询失败。"),
+      unavailable,
     };
   }
 }
@@ -346,6 +356,7 @@ Page({
       }
       this.setData({ querying: false, observedRefreshFlightId: 0 });
       if (!outcome.succeeded || !outcome.result) {
+        if (outcome.showFailureFeedback) showRefreshFailure(this);
         this.setData({
           serviceUnavailable: outcome.unavailable,
           errorMessage: outcome.errorMessage,

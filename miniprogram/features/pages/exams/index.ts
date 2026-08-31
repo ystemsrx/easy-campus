@@ -1,5 +1,8 @@
 import { getExams } from "../../../services/teaching";
-import { getErrorMessage } from "../../../services/request";
+import {
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import {
   isExamAutomaticRefreshDue,
   refreshExamsOnForeground,
@@ -41,7 +44,10 @@ import {
   startRefreshFlight,
   type RefreshFlight,
 } from "../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 import {
   examBatchLabel,
   examCountdown,
@@ -85,6 +91,7 @@ interface ExamsRefreshInput {
 
 interface ExamsRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   input: ExamsRefreshInput;
   result: Awaited<ReturnType<typeof getExams>> | null;
   errorMessage: string;
@@ -146,8 +153,10 @@ async function refreshExams(
         lastAutomaticRefreshAt: local?.lastAutomaticRefreshAt || 0,
       });
     }
+    const succeeded = isUpstreamRefreshResult(result.meta);
     return {
-      succeeded: isUpstreamRefreshResult(result.meta),
+      succeeded,
+      showFailureFeedback: !succeeded && result.meta.stale === true,
       input,
       result,
       errorMessage: "",
@@ -155,6 +164,7 @@ async function refreshExams(
   } catch (error) {
     return {
       succeeded: false,
+      showFailureFeedback: shouldShowRefreshFailureFeedback(error),
       input,
       result: null,
       errorMessage: getErrorMessage(error, "考试信息加载失败。"),
@@ -379,6 +389,7 @@ Page({
         observedRefreshFlightId: 0,
       });
       if (!outcome.succeeded || !outcome.result) {
+        if (outcome.showFailureFeedback) showRefreshFailure(this);
         if (outcome.errorMessage) {
           this.setData({ errorMessage: outcome.errorMessage });
         }

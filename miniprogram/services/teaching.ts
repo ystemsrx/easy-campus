@@ -1,5 +1,9 @@
 import { getApiBaseUrl } from "../config/index";
-import { captureSessionLease, isSessionLeaseCurrent } from "../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+} from "../store/session";
 import type {
   CalendarData,
   ExamsData,
@@ -28,7 +32,9 @@ import { withoutUnsuccessfulGrades } from "../utils/grades";
 import {
   ApiClientError,
   apiRequest,
+  CREDENTIAL_REAUTH_REQUIRED_CODE,
   handleAuthenticationFailure,
+  notifyCredentialReauthRequired,
   teachingRequest,
 } from "./request";
 
@@ -47,22 +53,35 @@ export function getCalendar(
 ): Promise<CalendarData> {
   return apiRequest<CalendarData>(
     `/teaching/calendar${buildQuery({ academicYear, refresh: refresh || undefined })}`,
+    { credentialReauthFeedback: refresh },
   );
 }
 
 export function getMessages(
   query: MessagesQuery = {},
 ): Promise<TeachingResult<Paginated<TeachingMessage>>> {
+  const requestQuery = { ...query };
+  delete requestQuery.automatic;
   return teachingRequest<Paginated<TeachingMessage>>(
-    `/teaching/messages${buildQuery(asQuery(query))}`,
+    `/teaching/messages${buildQuery(asQuery(requestQuery))}`,
+    {
+      credentialReauthFeedback:
+        query.refresh === true && query.automatic !== true,
+    },
   );
 }
 
 export function getNotices(
   query: NoticesQuery = {},
 ): Promise<TeachingResult<Paginated<Notice>>> {
+  const requestQuery = { ...query };
+  delete requestQuery.automatic;
   return teachingRequest<Paginated<Notice>>(
-    `/teaching/notices${buildQuery(asQuery(query))}`,
+    `/teaching/notices${buildQuery(asQuery(requestQuery))}`,
+    {
+      credentialReauthFeedback:
+        query.refresh === true && query.automatic !== true,
+    },
   );
 }
 
@@ -72,6 +91,7 @@ export function getNoticeDetail(
 ): Promise<TeachingResult<NoticeDetail>> {
   return teachingRequest<NoticeDetail>(
     `/teaching/notices/detail${buildQuery({ id, refresh: refresh || undefined })}`,
+    { credentialReauthFeedback: refresh },
   );
 }
 
@@ -84,6 +104,10 @@ export function getGrades(
   };
   return teachingRequest<GradesData>(
     `/teaching/grades${buildQuery(asQuery(requestQuery))}`,
+    {
+      credentialReauthFeedback:
+        query.refresh === true && query.automatic !== true,
+    },
   ).then((result) =>
     query.includeUnsuccessful === false
       ? { ...result, data: withoutUnsuccessfulGrades(result.data) }
@@ -138,6 +162,7 @@ export function getRooms(
 ): Promise<TeachingResult<RoomsData>> {
   return teachingRequest<RoomsData>(
     `/teaching/rooms${buildQuery(asQuery(query))}`,
+    { credentialReauthFeedback: true },
   );
 }
 
@@ -150,6 +175,10 @@ export function getExams(
 ): Promise<TeachingResult<ExamsData>> {
   return teachingRequest<ExamsData>(
     `/teaching/exams${buildQuery(asQuery(query))}`,
+    {
+      credentialReauthFeedback:
+        query.refresh === true && query.automatic !== true,
+    },
   );
 }
 
@@ -158,6 +187,10 @@ export function getTimetable(
 ): Promise<TeachingResult<TimetableData>> {
   return teachingRequest<TimetableData>(
     `/teaching/timetable${buildQuery(asQuery(query))}`,
+    {
+      credentialReauthFeedback:
+        query.refresh === true && query.automatic !== true,
+    },
   );
 }
 
@@ -172,6 +205,7 @@ export function putLocalSchedule(
     method: "PUT",
     data,
     retry: false,
+    credentialReauthFeedback: true,
   });
 }
 
@@ -187,6 +221,15 @@ export function downloadCalendarImage(
         message: "请先登录。",
         statusCode: 401,
       }),
+    );
+  }
+  if (getSession()?.credential.status === "invalid") {
+    return Promise.reject(
+      notifyCredentialReauthRequired(
+        lease,
+        CREDENTIAL_REAUTH_REQUIRED_CODE,
+        refresh,
+      ),
     );
   }
 
@@ -213,6 +256,16 @@ export function downloadCalendarImage(
         }
         if (response.statusCode === 200) {
           resolve(response.tempFilePath);
+          return;
+        }
+        if (response.statusCode === 409) {
+          reject(
+            notifyCredentialReauthRequired(
+              lease,
+              CREDENTIAL_REAUTH_REQUIRED_CODE,
+              refresh,
+            ),
+          );
           return;
         }
         const error = new ApiClientError({

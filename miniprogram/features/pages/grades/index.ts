@@ -1,5 +1,8 @@
 import { getGrades } from "../../../services/teaching";
-import { getErrorMessage } from "../../../services/request";
+import {
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
@@ -48,7 +51,10 @@ import {
   startRefreshFlight,
   type RefreshFlight,
 } from "../../utils/refresh-flight";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 import { numberedAcademicSemesterLabel } from "../../../utils/semester";
 import {
   canActivateTap,
@@ -105,6 +111,7 @@ interface GradesRefreshInput {
 
 interface GradesRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   input: GradesRefreshInput;
   result: Awaited<ReturnType<typeof getGrades>> | null;
   errorMessage: string;
@@ -152,7 +159,13 @@ async function refreshGrades(
       return { succeeded: false, input, result: null, errorMessage: "" };
     }
     if (!isUpstreamRefreshResult(refreshed.meta)) {
-      return { succeeded: false, input, result: null, errorMessage: "" };
+      return {
+        succeeded: false,
+        showFailureFeedback: refreshed.meta.stale === true,
+        input,
+        result: null,
+        errorMessage: "",
+      };
     }
     const local = loadGradesSnapshotForPreference(
       lease.account,
@@ -197,6 +210,7 @@ async function refreshGrades(
   } catch (error) {
     return {
       succeeded: false,
+      showFailureFeedback: shouldShowRefreshFailureFeedback(error),
       input,
       result: null,
       errorMessage: getErrorMessage(error, "成绩加载失败。"),
@@ -468,6 +482,7 @@ Page({
         return;
       }
       if (!outcome.succeeded || !outcome.result) {
+        if (outcome.showFailureFeedback) showRefreshFailure(this);
         if (outcome.errorMessage) {
           this.setData({ errorMessage: outcome.errorMessage });
         }

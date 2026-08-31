@@ -81,7 +81,10 @@ assert.doesNotMatch(
 
 const service = read("miniprogram/features/services/course-assistant.ts");
 assert.match(service, /const ROOT = "\/course-assistant"/);
-assert.match(service, /method: "POST", data: \{\}, retry: false/);
+assert.match(
+  service,
+  /method: "POST",\s*data: \{\},\s*retry: false,\s*credentialReauthFeedback: true/,
+);
 assert.doesNotMatch(service, /\/status|\/authorize|CourseAssistantStatus/);
 assert.doesNotMatch(service, /\/api\/v1\/api\/v1\//);
 

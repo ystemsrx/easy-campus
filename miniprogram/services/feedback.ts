@@ -9,5 +9,6 @@ export function submitFeedback(input: {
     method: "POST",
     data: input,
     retry: false,
+    credentialReauthFeedback: true,
   });
 }

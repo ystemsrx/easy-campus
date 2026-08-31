@@ -27,6 +27,22 @@ const requestScript = fs.readFileSync(
   path.join(miniprogramRoot, "services", "request.ts"),
   "utf8",
 );
+const authService = fs.readFileSync(
+  path.join(miniprogramRoot, "services", "auth.ts"),
+  "utf8",
+);
+const heartbeatService = fs.readFileSync(
+  path.join(miniprogramRoot, "services", "heartbeat.ts"),
+  "utf8",
+);
+const teachingService = fs.readFileSync(
+  path.join(miniprogramRoot, "services", "teaching.ts"),
+  "utf8",
+);
+const homeScript = fs.readFileSync(
+  path.join(miniprogramRoot, "pages", "home", "index.ts"),
+  "utf8",
+);
 const sessionStore = fs.readFileSync(
   path.join(miniprogramRoot, "store", "session.ts"),
   "utf8",
@@ -75,6 +91,29 @@ if (
   !/if \(isRateLimitError\(error\)\) return "";/.test(requestScript)
 ) {
   failures.push("429 必须统一触发胶囊并阻止服务端英文文案进入页面错误态");
+}
+
+if (
+  !requestScript.includes('"SWU_CREDENTIAL_REAUTH_REQUIRED"') ||
+  !requestScript.includes('"验证失败，请重新登录小程序"') ||
+  !requestScript.includes("credentialReauthFeedback?: boolean") ||
+  !requestScript.includes('getSession()?.credential.status === "invalid"') ||
+  !requestScript.includes("if (showFeedback)") ||
+  !requestScript.includes('if (isCredentialReauthError(error)) return "";') ||
+  !authService.includes("allowInvalidCredential: true") ||
+  !heartbeatService.includes("allowInvalidCredential: true")
+) {
+  failures.push("校园凭据失效必须保留本地会话并复用三秒胶囊提示");
+}
+
+if (
+  !teachingService.includes(
+    "query.refresh === true && query.automatic !== true",
+  ) ||
+  !teachingService.includes("credentialReauthFeedback: refresh") ||
+  !homeScript.includes("automatic: true")
+) {
+  failures.push("自动刷新必须静默拦截，只有手动刷新才提示重新登录");
 }
 
 const declaredPages = [

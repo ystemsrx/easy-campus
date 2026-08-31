@@ -3,5 +3,5 @@
   class="refresh-confirmation refresh-confirmation--{{theme}} refresh-confirmation--{{visualTheme}} {{visible ? 'refresh-confirmation--visible' : ''}} {{reducedMotion ? 'refresh-confirmation--reduced-motion' : ''}}"
   aria-role="status"
 >
-  <text>已刷新</text>
+  <text>{{message}}</text>
 </view>

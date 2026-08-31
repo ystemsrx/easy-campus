@@ -103,8 +103,8 @@ global.wx = previousWx;
 const requestSource = source("services", "request.ts");
 assert(
   requestSource.includes("const context = createRequestContext(options)") &&
-    requestSource.includes(
-      "requestOnce<T>(path, { ...options, retry: false }, context)",
+    /requestOnce<T>\(\s*path,\s*\{\s*\.\.\.options,\s*retry:\s*false\s*\},\s*context,?\s*\)/.test(
+      requestSource,
     ),
   "首次请求与重试必须共用同一不可变请求上下文",
 );

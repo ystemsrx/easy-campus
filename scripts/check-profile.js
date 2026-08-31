@@ -25,15 +25,15 @@ function loadTypeScriptModule(relativePath) {
   return moduleRecord.exports;
 }
 
-const { identityCardTone, singleSelectionOptions } = loadTypeScriptModule(
-  "utils/profile.ts",
-);
+const { identityCardTone, singleSelectionOptions } =
+  loadTypeScriptModule("utils/profile.ts");
 const profileScript = read("pages/profile/index.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
 const profilePageConfig = JSON.parse(read("app.json"));
 const autoDormCheckPage = read("features/pages/auto-dorm-check/index.wxml");
 const autoDormCheckScript = read("features/pages/auto-dorm-check/index.ts");
+const autoDormCheckStyles = read("features/pages/auto-dorm-check/index.wxss");
 const autoDormCheckService = read("services/auto-dorm-check.ts");
 const autoDormCheckStore = read("store/auto-dorm-check.ts");
 const feedbackService = read("services/feedback.ts");
@@ -110,7 +110,9 @@ assert(
       "encodeURIComponent(account.trim().toLowerCase())",
     ) &&
     autoDormCheckService.includes("saveAutoDormCheckSnapshot") &&
+    autoDormCheckStore.includes('"failed"') &&
     profileScript.includes("AUTO_DORM_CHECK_STATUS[status.checkInStatus]") &&
+    profileScript.includes('failed: { label: "已失败"') &&
     profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
     profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
     profileTemplate.includes(
@@ -124,19 +126,42 @@ assert(
   "自动查寝入口必须由主页按账号预取并缓存服务端状态，个人页不得重复请求",
 );
 assert(
-  autoDormCheckPage.includes('checked="{{effectiveEnabled}}"') &&
-    autoDormCheckPage.includes('disabled="{{saving || !available}}"') &&
+  autoDormCheckPage.includes('aria-checked="{{effectiveEnabled}}"') &&
+    autoDormCheckPage.includes('aria-disabled="{{saving || !available}}"') &&
     autoDormCheckPage.includes("auto-dorm-check-status-dot--{{statusTone}}") &&
     autoDormCheckPage.includes("auto-dorm-check-detail-card") &&
     autoDormCheckPage.includes("目标时间") &&
     autoDormCheckPage.includes("{{targetTimeLabel}}") &&
     autoDormCheckScript.includes("status.plannedCheckInAt") &&
     autoDormCheckScript.includes("status.plannedCheckInDate") &&
+    autoDormCheckScript.includes("status.checkInLocation?.locationName") &&
+    autoDormCheckScript.includes('failed: { label: "已失败"') &&
+    autoDormCheckScript.includes("scheduleTaskStatusRefresh(status)") &&
+    autoDormCheckScript.includes("getAutoDormCheckLocalStatus") &&
+    autoDormCheckScript.includes(
+      "TASK_STATUS_REFRESH_INTERVAL_MILLISECONDS = 30_000",
+    ) &&
     autoDormCheckScript.includes("scheduleChinaDayRefresh") &&
-    autoDormCheckPage.includes("今晚打卡地点") &&
+    autoDormCheckPage.includes("打卡地点") &&
     autoDormCheckPage.includes("再手动完成一次正常打卡") &&
-    autoDormCheckPage.includes('bindchange="onEnabledChange"') &&
+    autoDormCheckPage.includes('bindtap="onEnabledTap"') &&
+    autoDormCheckPage.includes("auto-dorm-check-switch-spinner") &&
+    autoDormCheckPage.includes("/assets/icons/refresh-spinner-ink.svg") &&
+    autoDormCheckPage.includes("auto-dorm-check-switch--checking") &&
+    autoDormCheckPage.includes("{{capsuleToastMessage}}") &&
+    autoDormCheckScript.includes("checkingCapability: true") &&
+    autoDormCheckScript.includes("AUTO_DORM_CHECK_NO_TASK") &&
+    autoDormCheckScript.includes('return "暂无打卡任务"') &&
+    autoDormCheckScript.includes("AUTO_DORM_CHECK_LOCATION_REQUIRED") &&
+    autoDormCheckScript.includes('this.showCapsuleToast("已开启自动打卡")') &&
+    autoDormCheckScript.includes("CAPSULE_TOAST_HOLD_MILLISECONDS = 3000") &&
+    autoDormCheckStyles.includes("animation-name: auto-dorm-check-spin") &&
+    autoDormCheckStyles.includes("animation-duration: 720ms") &&
+    autoDormCheckStyles.includes("border-radius: 999rpx") &&
+    autoDormCheckStyles.includes(".auto-dorm-check-switch--checking") &&
+    autoDormCheckStyles.includes(".auto-dorm-check-toast--visible") &&
     autoDormCheckService.includes('const ROOT = "/auto-dorm-check"') &&
+    autoDormCheckService.includes("`${ROOT}/status?refresh=true`") &&
     autoDormCheckService.includes('method: "PUT"'),
   "自动查寝页面必须读取服务端状态并持久化学生个人开关",
 );
@@ -154,7 +179,9 @@ assert(
     profileScript.includes(
       'const feedbackType = this.data.feedbackType === type ? "" : type',
     ) &&
-    profileScript.includes("feedbackTypes: feedbackTypeOptions(feedbackType)") &&
+    profileScript.includes(
+      "feedbackTypes: feedbackTypeOptions(feedbackType)",
+    ) &&
     profileTemplate.includes(
       "{{item.selected ? 'feedback-type-option--active' : 'feedback-type-option--inactive'}}",
     ) &&

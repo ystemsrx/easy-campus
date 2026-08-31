@@ -1,4 +1,5 @@
 import {
+  getAutoDormCheckLocalStatus,
   getAutoDormCheckStatus,
   setAutoDormCheckEnabled,
 } from "../../../services/auto-dorm-check";
@@ -6,7 +7,7 @@ import type {
   AutoDormCheckState,
   AutoDormCheckStatus,
 } from "../../../types/api";
-import { getErrorMessage } from "../../../services/request";
+import { ApiClientError, getErrorMessage } from "../../../services/request";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -24,11 +25,21 @@ const STATUS_PRESENTATION: Record<
 > = {
   checked_in: { label: "已打卡", tone: "success" },
   pending: { label: "待打卡", tone: "warning" },
+  failed: { label: "已失败", tone: "danger" },
   unavailable: { label: "不可用", tone: "danger" },
   disabled: { label: "已关闭", tone: "muted" },
 };
 const CHINA_OFFSET_MILLISECONDS = 8 * 60 * 60 * 1000;
+const LOCATION_REQUIRED_CODE = "AUTO_DORM_CHECK_LOCATION_REQUIRED";
+const NO_TASK_CODE = "AUTO_DORM_CHECK_NO_TASK";
+const CAPSULE_TOAST_HOLD_MILLISECONDS = 3000;
+const CAPSULE_TOAST_EXIT_MILLISECONDS = 150;
+const TASK_STATUS_REFRESH_INTERVAL_MILLISECONDS = 30_000;
 let chinaDayRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let taskStatusRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let capsuleToastShowTimer: ReturnType<typeof setTimeout> | undefined;
+let capsuleToastHideTimer: ReturnType<typeof setTimeout> | undefined;
+let capsuleToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -93,9 +104,55 @@ function clearChinaDayRefreshTimer(): void {
   chinaDayRefreshTimer = undefined;
 }
 
+function clearTaskStatusRefreshTimer(): void {
+  if (taskStatusRefreshTimer === undefined) return;
+  clearTimeout(taskStatusRefreshTimer);
+  taskStatusRefreshTimer = undefined;
+}
+
+function taskStatusRefreshDelay(
+  status: AutoDormCheckStatus,
+  now = new Date(),
+): number | null {
+  if (status.checkInStatus !== "pending" || !status.plannedCheckInAt) {
+    return null;
+  }
+  const target = new Date(status.plannedCheckInAt).getTime();
+  if (!Number.isFinite(target)) return null;
+  return Math.max(
+    TASK_STATUS_REFRESH_INTERVAL_MILLISECONDS,
+    target - now.getTime() + TASK_STATUS_REFRESH_INTERVAL_MILLISECONDS,
+  );
+}
+
+function clearCapsuleToastTimers(): void {
+  for (const timer of [
+    capsuleToastShowTimer,
+    capsuleToastHideTimer,
+    capsuleToastUnmountTimer,
+  ]) {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+  capsuleToastShowTimer = undefined;
+  capsuleToastHideTimer = undefined;
+  capsuleToastUnmountTimer = undefined;
+}
+
+function capabilityFailureMessage(error: unknown): string {
+  if (!(error instanceof ApiClientError)) return "当前账号暂时无法打卡";
+  if (error.code === NO_TASK_CODE) return "暂无打卡任务";
+  if (error.code === LOCATION_REQUIRED_CODE) {
+    return "请先手动进行一次正常打卡";
+  }
+  return "当前账号暂时无法打卡";
+}
+
 function statusViewData(status: AutoDormCheckStatus) {
   const presentation = STATUS_PRESENTATION[status.checkInStatus];
-  const checkInLocationName = status.lastCheckIn?.locationName || "";
+  const checkInLocationName =
+    status.checkInLocation?.locationName ||
+    status.lastCheckIn?.locationName ||
+    "";
   return {
     entryEnabled: status.entryEnabled,
     functionEnabled: status.functionEnabled,
@@ -122,6 +179,7 @@ Page({
     loading: true,
     loaded: false,
     saving: false,
+    checkingCapability: false,
     entryEnabled: false,
     functionEnabled: false,
     available: false,
@@ -135,6 +193,9 @@ Page({
     checkInLocationName: "",
     hasCheckInLocation: false,
     errorMessage: "",
+    capsuleToastMounted: false,
+    capsuleToastVisible: false,
+    capsuleToastMessage: "",
   },
   onLoad() {
     this.applyAppearance();
@@ -147,9 +208,13 @@ Page({
   },
   onHide() {
     clearChinaDayRefreshTimer();
+    clearTaskStatusRefreshTimer();
+    this.dismissCapsuleToast();
   },
   onUnload() {
     clearChinaDayRefreshTimer();
+    clearTaskStatusRefreshTimer();
+    clearCapsuleToastTimers();
   },
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
@@ -157,7 +222,7 @@ Page({
     syncWindowBackground(appearance);
     this.setData(appearance);
   },
-  async loadStatus() {
+  async loadStatus(observeSchool = true) {
     if (this.data.loading && this.data.loaded) return;
     const lease = captureSessionLease();
     if (!lease) return;
@@ -166,12 +231,15 @@ Page({
       errorMessage: "",
     });
     try {
-      const status = await getAutoDormCheckStatus();
+      const status = await (observeSchool
+        ? getAutoDormCheckStatus()
+        : getAutoDormCheckLocalStatus());
       if (!isSessionLeaseCurrent(lease)) return;
       this.setData({
         ...statusViewData(status),
         loaded: true,
       });
+      this.scheduleTaskStatusRefresh(status);
     } catch (error) {
       if (!isSessionLeaseCurrent(lease)) return;
       this.setData({
@@ -194,7 +262,51 @@ Page({
       this.scheduleChinaDayRefresh();
     }, millisecondsUntilNextChinaDay());
   },
-  async onEnabledChange(event: WechatMiniprogram.SwitchChange) {
+  scheduleTaskStatusRefresh(status: AutoDormCheckStatus) {
+    clearTaskStatusRefreshTimer();
+    const delay = taskStatusRefreshDelay(status);
+    if (delay === null) return;
+    taskStatusRefreshTimer = setTimeout(() => {
+      taskStatusRefreshTimer = undefined;
+      void this.loadStatus(false);
+    }, delay);
+  },
+  showCapsuleToast(message: string) {
+    clearCapsuleToastTimers();
+    this.setData(
+      {
+        capsuleToastMounted: true,
+        capsuleToastVisible: false,
+        capsuleToastMessage: message,
+      },
+      () => {
+        capsuleToastShowTimer = setTimeout(() => {
+          capsuleToastShowTimer = undefined;
+          this.setData({ capsuleToastVisible: true });
+          capsuleToastHideTimer = setTimeout(() => {
+            capsuleToastHideTimer = undefined;
+            this.setData({ capsuleToastVisible: false });
+            capsuleToastUnmountTimer = setTimeout(() => {
+              capsuleToastUnmountTimer = undefined;
+              if (!this.data.capsuleToastVisible) {
+                this.setData({ capsuleToastMounted: false });
+              }
+            }, CAPSULE_TOAST_EXIT_MILLISECONDS);
+          }, CAPSULE_TOAST_HOLD_MILLISECONDS);
+        }, 16);
+      },
+    );
+  },
+  dismissCapsuleToast() {
+    clearCapsuleToastTimers();
+    if (!this.data.capsuleToastMounted) return;
+    this.setData({
+      capsuleToastMounted: false,
+      capsuleToastVisible: false,
+      capsuleToastMessage: "",
+    });
+  },
+  async onEnabledTap() {
     if (this.data.saving || !this.data.available) return;
     const lease = captureSessionLease();
     if (!lease) return;
@@ -206,21 +318,27 @@ Page({
       statusTone: this.data.statusTone,
       targetTimeLabel: this.data.targetTimeLabel,
     };
-    const enabled = event.detail.value;
+    const enabled = !this.data.effectiveEnabled;
     haptic("light");
-    const optimisticState: AutoDormCheckState = enabled
-      ? "pending"
-      : "disabled";
-    this.setData({
-      enabled,
-      effectiveEnabled: enabled,
-      checkInStatus: optimisticState,
-      statusLabel: STATUS_PRESENTATION[optimisticState].label,
-      statusTone: STATUS_PRESENTATION[optimisticState].tone,
-      targetTimeLabel: enabled ? "计算中" : "—",
-      saving: true,
-      errorMessage: "",
-    });
+    this.dismissCapsuleToast();
+    if (enabled) {
+      this.setData({
+        saving: true,
+        checkingCapability: true,
+        errorMessage: "",
+      });
+    } else {
+      this.setData({
+        enabled: false,
+        effectiveEnabled: false,
+        checkInStatus: "disabled",
+        statusLabel: STATUS_PRESENTATION.disabled.label,
+        statusTone: STATUS_PRESENTATION.disabled.tone,
+        targetTimeLabel: "—",
+        saving: true,
+        errorMessage: "",
+      });
+    }
     try {
       const status = await setAutoDormCheckEnabled(enabled);
       if (!isSessionLeaseCurrent(lease)) return;
@@ -228,14 +346,26 @@ Page({
         ...statusViewData(status),
         loaded: true,
       });
+      this.scheduleTaskStatusRefresh(status);
+      if (enabled) {
+        haptic("medium");
+        this.showCapsuleToast("已开启自动打卡");
+      }
     } catch (error) {
       if (!isSessionLeaseCurrent(lease)) return;
-      this.setData({
-        ...previous,
-        errorMessage: getErrorMessage(error, "设置保存失败，请重试。"),
-      });
+      if (enabled) {
+        this.setData({ ...previous, errorMessage: "" });
+        this.showCapsuleToast(capabilityFailureMessage(error));
+      } else {
+        this.setData({
+          ...previous,
+          errorMessage: getErrorMessage(error, "设置保存失败，请重试。"),
+        });
+      }
     } finally {
-      if (isSessionLeaseCurrent(lease)) this.setData({ saving: false });
+      if (isSessionLeaseCurrent(lease)) {
+        this.setData({ saving: false, checkingCapability: false });
+      }
     }
   },
 });

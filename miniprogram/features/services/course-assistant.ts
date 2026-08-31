@@ -38,6 +38,7 @@ export function publishCourseAssistantReview(
     method: "POST",
     data: input,
     retry: false,
+    credentialReauthFeedback: true,
   });
 }
 
@@ -46,6 +47,11 @@ export function toggleCourseAssistantReviewLike(
 ): Promise<{ liked: boolean; likeCount: number }> {
   return apiRequest<{ liked: boolean; likeCount: number }>(
     `${ROOT}/reviews/${encodeURIComponent(reviewId)}/like`,
-    { method: "POST", data: {}, retry: false },
+    {
+      method: "POST",
+      data: {},
+      retry: false,
+      credentialReauthFeedback: true,
+    },
   );
 }

@@ -11,6 +11,7 @@ export function queryElectricity(
       method: "POST",
       data: query,
       retry: false,
+      credentialReauthFeedback: true,
     },
   );
 }

@@ -111,6 +111,7 @@ const stubs = {
   },
   "../../utils/refresh-feedback": {
     showRefreshConfirmation: () => undefined,
+    showRefreshFailure: () => undefined,
   },
   "../../utils/refresh-flight": {
     createRefreshPageToken: () => 1,

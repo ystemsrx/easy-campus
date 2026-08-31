@@ -29,6 +29,7 @@ async function reportHeartbeat(): Promise<void> {
       data: {},
       retry: false,
       timeout: HEARTBEAT_TIMEOUT_MS,
+      allowInvalidCredential: true,
     });
   } catch {
     // 心跳失败不打断当前页面；认证失效仍由统一请求层处理。

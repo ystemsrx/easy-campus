@@ -27,6 +27,7 @@ Component({
   data: {
     mounted: false,
     visible: false,
+    message: "已刷新",
   },
   lifetimes: {
     detached() {
@@ -34,10 +35,14 @@ Component({
     },
   },
   methods: {
-    show() {
+    show(message = "已刷新") {
       const instance = this as unknown as object;
       clearRefreshConfirmationTimers(instance);
-      this.setData({ mounted: true, visible: true });
+      this.setData({
+        mounted: true,
+        visible: true,
+        message: message.trim() || "已刷新",
+      });
 
       const active: RefreshConfirmationTimers = {};
       active.hide = setTimeout(() => {

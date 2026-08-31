@@ -1,4 +1,8 @@
-import { ApiClientError, getErrorMessage } from "../../../services/request";
+import {
+  ApiClientError,
+  getErrorMessage,
+  shouldShowRefreshFailureFeedback,
+} from "../../../services/request";
 import { downloadCalendarImage, getCalendar } from "../../../services/teaching";
 import { getCachedCalendarImage } from "../../store/calendar";
 import type {
@@ -8,7 +12,10 @@ import type {
 import { resolveAppearance } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
-import { showRefreshConfirmation } from "../../utils/refresh-feedback";
+import {
+  showRefreshConfirmation,
+  showRefreshFailure,
+} from "../../utils/refresh-feedback";
 import {
   captureSessionLease,
   isSessionLeaseCurrent,
@@ -32,6 +39,7 @@ interface YearOption {
 
 interface CalendarRefreshOutcome {
   succeeded: boolean;
+  showFailureFeedback?: boolean;
   calendar: CalendarData | null;
   imagePath: string;
   errorMessage: string;
@@ -105,6 +113,7 @@ async function refreshCalendar(
         : undefined;
     return {
       succeeded: false,
+      showFailureFeedback: shouldShowRefreshFailureFeedback(error),
       calendar: null,
       imagePath: "",
       errorMessage: getErrorMessage(error, "校历加载失败。"),
@@ -202,6 +211,7 @@ Page({
         observedRefreshFlightId: 0,
       });
       if (!outcome.succeeded || !outcome.calendar) {
+        if (outcome.showFailureFeedback) showRefreshFailure(this);
         const available = outcome.availableCalendars;
         this.setData({
           errorMessage: outcome.errorMessage,
