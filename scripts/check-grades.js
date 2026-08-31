@@ -774,14 +774,20 @@ assert(
   "成绩展示选项必须位于独立设置页，默认展示低分，并在网络与缓存两条路径本地兜底过滤",
 );
 assert(
-    gradesStore.includes("const SCHEMA_VERSION = 12;") &&
+  gradesStore.includes("const SCHEMA_VERSION = 12;") &&
     gradesPageScript.includes("const PAGE_SIZE = 5000;") &&
     gradesPageScript.includes("automatic: refresh") &&
-    gradesPageScript.includes("academicYear: refresh ? undefined") &&
-    gradesPageScript.includes("reloadAfterAutomaticRefresh = true") &&
+    gradesPageScript.includes("const loadCanonical =") &&
+    gradesPageScript.includes("refresh || loadCanonical ? undefined") &&
+    gradesPageScript.includes(
+      "reloadAfterAutomaticRefresh = isUpstreamRefreshResult(result.meta)",
+    ) &&
+    gradesPageScript.includes(
+      "shouldStoreServerSnapshot(local, refreshed.meta, true)",
+    ) &&
     teachingService.includes("getGrades(") &&
     teachingService.includes("buildQuery(asQuery(requestQuery))"),
-  "成绩新版缓存必须完整保存全部记录，并将静默刷新标记为只更新最新学期",
+  "成绩新版缓存必须完整保存全部记录，且只有真正访问上游后才提交刷新结果",
 );
 assert(
   gradesPageTemplate.includes('bindscroll="onGradeScroll"') &&
@@ -832,7 +838,7 @@ assert(
       gradesPageStyles,
     ) &&
     semesterSelectionBlock.includes("filterLabel: chip.label,") &&
-    semesterSelectionBlock.includes("}, () => {") &&
+    /},\s*\(\) => \{/.test(semesterSelectionBlock) &&
     !semesterSelectionBlock.includes("wx.nextTick"),
   "切换学期必须一次性更新选中状态，并使用不改变透明度的按压反馈以避免闪烁",
 );

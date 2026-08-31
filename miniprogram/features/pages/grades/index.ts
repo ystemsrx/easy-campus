@@ -4,7 +4,8 @@ import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
-  shouldUseServerSnapshot,
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
 } from "../../../store/cache-policy";
 import {
   loadGradesSnapshot,
@@ -141,33 +142,56 @@ async function refreshGrades(
   input: GradesRefreshInput,
 ): Promise<GradesRefreshOutcome> {
   try {
-    const result = await getGrades({
+    const refreshed = await getGrades({
       page: 1,
       pageSize: PAGE_SIZE,
-      academicYear: input.academicYear || undefined,
-      term: (input.term || undefined) as 1 | 2 | 3 | undefined,
-      q: input.queryText || undefined,
-      sort: input.sort,
-      order: input.order,
       includeUnsuccessful: input.includeUnsuccessful,
       refresh: true,
     });
     if (!isSessionLeaseCurrent(lease)) {
       return { succeeded: false, input, result: null, errorMessage: "" };
     }
-    const canonical =
-      !input.academicYear &&
-      !input.term &&
-      !input.queryText &&
-      input.sort === "default" &&
-      input.order === "desc";
-    if (canonical) {
+    if (!isUpstreamRefreshResult(refreshed.meta)) {
+      return { succeeded: false, input, result: null, errorMessage: "" };
+    }
+    const local = loadGradesSnapshotForPreference(
+      lease.account,
+      input.includeUnsuccessful,
+    );
+    if (shouldStoreServerSnapshot(local, refreshed.meta, true)) {
       saveGradesSnapshot(
         lease.account,
-        result.data,
-        result.meta.fetchedAt,
+        refreshed.data,
+        refreshed.meta.fetchedAt,
         input.includeUnsuccessful,
       );
+    }
+    let result = refreshed;
+    if (input.queryText || input.sort !== "default" || input.order !== "desc") {
+      result = await getGrades({
+        page: 1,
+        pageSize: PAGE_SIZE,
+        academicYear: input.academicYear || undefined,
+        term: (input.term || undefined) as 1 | 2 | 3 | undefined,
+        q: input.queryText || undefined,
+        sort: input.sort,
+        order: input.order,
+        includeUnsuccessful: input.includeUnsuccessful,
+      });
+    } else if (input.academicYear && input.term) {
+      const semester = refreshed.data.semesters.find(
+        (item) =>
+          item.academicYear === input.academicYear && item.term === input.term,
+      );
+      if (semester) {
+        result = {
+          ...refreshed,
+          data: gradesForSemester(refreshed.data, semester),
+        };
+      }
+    }
+    if (!isSessionLeaseCurrent(lease)) {
+      return { succeeded: false, input, result: null, errorMessage: "" };
     }
     return { succeeded: true, input, result, errorMessage: "" };
   } catch (error) {
@@ -554,6 +578,8 @@ Page({
     const queryText = this.data.queryText.trim();
     const sort = this.data.sort;
     const order = this.data.order;
+    const loadCanonical =
+      reset && !refresh && !queryText && sort === "default" && order === "desc";
     const sequence = ++requestSequence;
     this.setData({
       loading: reset && !this.data.gradeItems.length,
@@ -569,13 +595,16 @@ Page({
       const result = await getGrades({
         page,
         pageSize: PAGE_SIZE,
-        academicYear: refresh ? undefined : academicYear || undefined,
+        academicYear:
+          refresh || loadCanonical ? undefined : academicYear || undefined,
         term: refresh
           ? undefined
-          : ((term || undefined) as 1 | 2 | 3 | undefined),
-        q: refresh ? undefined : queryText || undefined,
-        sort: refresh ? "default" : sort,
-        order: refresh ? "desc" : order,
+          : loadCanonical
+            ? undefined
+            : ((term || undefined) as 1 | 2 | 3 | undefined),
+        q: refresh || loadCanonical ? undefined : queryText || undefined,
+        sort: refresh || loadCanonical ? "default" : sort,
+        order: refresh || loadCanonical ? "desc" : order,
         includeUnsuccessful: this.data.includeUnsuccessful,
         refresh,
         automatic: refresh,
@@ -585,24 +614,12 @@ Page({
       }
 
       const account = lease.account;
-      const canonical =
-        page === 1 &&
-        (refresh ||
-          (!academicYear &&
-            !term &&
-            !queryText &&
-            sort === "default" &&
-            order === "desc"));
+      const canonical = page === 1 && (refresh || loadCanonical);
       const local = loadGradesSnapshotForPreference(
         account,
         this.data.includeUnsuccessful,
       );
-      if (
-        canonical &&
-        (refresh ||
-          !local ||
-          shouldUseServerSnapshot(local, result.meta.fetchedAt))
-      ) {
+      if (canonical && shouldStoreServerSnapshot(local, result.meta, refresh)) {
         saveGradesSnapshot(
           account,
           result.data,
@@ -611,17 +628,25 @@ Page({
         );
       }
       if (refresh) {
-        reloadAfterAutomaticRefresh = true;
-        return true;
+        reloadAfterAutomaticRefresh = isUpstreamRefreshResult(result.meta);
+        return reloadAfterAutomaticRefresh;
       }
 
       const initializedSemester = this.initializeLatestSemester(result.data);
-      if (initializedSemester) {
+      const selectedSemester =
+        initializedSemester ||
+        result.data.semesters.find(
+          (item) =>
+            item.academicYear === this.data.academicYear &&
+            item.term === this.data.term,
+        ) ||
+        null;
+      if (selectedSemester) {
         this.applyGradesData(
-          gradesForSemester(result.data, initializedSemester),
+          gradesForSemester(result.data, selectedSemester),
           result.meta.fetchedAt,
         );
-        loadInitializedSemester = true;
+        loadInitializedSemester = Boolean(initializedSemester);
       } else {
         this.applyGradesData(
           result.data,
@@ -697,14 +722,17 @@ Page({
     haptic("light");
     const chip = this.data.semesterChips.find((item) => item.id === id);
     if (!chip) return;
-    this.setData({
-      academicYear: chip.academicYear,
-      term: chip.term,
-      activeSemesterId: chip.id,
-      filterLabel: chip.label,
-    }, () => {
-      void this.loadGrades(true, false);
-    });
+    this.setData(
+      {
+        academicYear: chip.academicYear,
+        term: chip.term,
+        activeSemesterId: chip.id,
+        filterLabel: chip.label,
+      },
+      () => {
+        void this.loadGrades(true, false);
+      },
+    );
   },
   loadMore() {
     if (this.data.page < this.data.totalPages) {

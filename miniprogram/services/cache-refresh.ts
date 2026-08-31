@@ -3,7 +3,8 @@ import {
   claimAutomaticRefresh,
   DAY_MS,
   isCacheStale,
-  shouldUseServerSnapshot,
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
 } from "../store/cache-policy";
 import {
   loadElectricitySnapshot,
@@ -56,7 +57,7 @@ export function refreshElectricityOnForeground(
       const serverBindingCleared = !result.data.binding && !result.data.account;
       if (
         serverBindingCleared ||
-        shouldUseServerSnapshot(current, result.meta.fetchedAt)
+        shouldStoreServerSnapshot(current, result.meta)
       ) {
         current = saveElectricitySnapshot(
           lease.account,
@@ -83,6 +84,9 @@ export function refreshElectricityOnForeground(
         roomNumber,
       });
       if (!isSessionLeaseCurrent(lease)) return null;
+      if (!isUpstreamRefreshResult(result.meta)) {
+        return loadElectricitySnapshot(lease.account);
+      }
       return saveElectricitySnapshot(
         lease.account,
         result.data,
@@ -147,10 +151,13 @@ export function refreshExamsOnForeground(
           automatic: true,
         });
         if (!isSessionLeaseCurrent(lease)) return null;
-        latest = saveExamsSnapshot(account, result.data, {
-          serverFetchedAt: result.meta.fetchedAt,
-          lastAutomaticRefreshAt: Date.now(),
-        });
+        const local = loadExamsSnapshot(account);
+        if (shouldStoreServerSnapshot(local, result.meta, true)) {
+          latest = saveExamsSnapshot(account, result.data, {
+            serverFetchedAt: result.meta.fetchedAt,
+            lastAutomaticRefreshAt: Date.now(),
+          });
+        }
       } catch {
         if (!isSessionLeaseCurrent(lease)) return null;
       }
@@ -167,13 +174,15 @@ export function refreshExamsOnForeground(
         if (!isSessionLeaseCurrent(lease)) return null;
         const isLatest = latest?.data.semester?.id === semester.id;
         const stored = loadExamsSnapshot(account, semester.id);
-        const updated = saveExamsSnapshot(account, result.data, {
-          semesterId: isLatest ? "default" : semester.id,
-          serverFetchedAt: result.meta.fetchedAt,
-          lastAutomaticRefreshAt: isLatest
-            ? latest?.lastAutomaticRefreshAt || 0
-            : stored?.lastAutomaticRefreshAt || 0,
-        });
+        const updated = shouldStoreServerSnapshot(stored, result.meta)
+          ? saveExamsSnapshot(account, result.data, {
+              semesterId: isLatest ? "default" : semester.id,
+              serverFetchedAt: result.meta.fetchedAt,
+              lastAutomaticRefreshAt: isLatest
+                ? latest?.lastAutomaticRefreshAt || 0
+                : stored?.lastAutomaticRefreshAt || 0,
+            })
+          : stored;
         if (isLatest) latest = updated;
       } catch {
         // 已有学期继续保留；缺失学期会在下次进入前台时再次补齐。

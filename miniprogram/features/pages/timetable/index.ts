@@ -31,7 +31,8 @@ import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
-  shouldUseServerSnapshot,
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
 } from "../../../store/cache-policy";
 import {
   DEFAULT_PET_PREFERENCES,
@@ -1336,11 +1337,14 @@ async function refreshTimetableSnapshot(
     try {
       const result = await getTimetable({ semester, refresh: true });
       if (isSessionLeaseCurrent(lease)) {
-        saveTimetableSnapshot(lease.account, result.data, {
-          semesterId: semester,
-          serverFetchedAt: result.meta.fetchedAt,
-        });
-        succeeded = true;
+        const local = loadTimetableSnapshot(lease.account, semester);
+        if (shouldStoreServerSnapshot(local, result.meta, true)) {
+          saveTimetableSnapshot(lease.account, result.data, {
+            semesterId: semester,
+            serverFetchedAt: result.meta.fetchedAt,
+          });
+        }
+        succeeded = isUpstreamRefreshResult(result.meta);
       }
     } catch {
       // 手动刷新失败时保留已有课表，下次进入或再次操作时可重试。
@@ -2182,8 +2186,11 @@ Page({
       });
       if (!isSessionLeaseCurrent(lease)) return false;
       const local = loadTimetableSnapshot(requestAccount, semester);
-      const shouldStore =
-        refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt);
+      const shouldStore = shouldStoreServerSnapshot(
+        local,
+        result.meta,
+        refresh,
+      );
       let stored = local;
       if (shouldStore) {
         stored = saveTimetableSnapshot(requestAccount, result.data, {
@@ -2229,8 +2236,8 @@ Page({
           `timetable:${semester || "default"}`,
           requestAccount,
         );
-      succeeded = true;
-      return true;
+      succeeded = !refresh || isUpstreamRefreshResult(result.meta);
+      return succeeded;
     } catch {
       if (
         isSessionLeaseCurrent(lease) &&

@@ -87,6 +87,9 @@ const stubs = {
     isSessionLeaseCurrent: () => true,
     sessionLeaseKey: () => "test-session",
   },
+  "../../../store/cache-policy": {
+    isUpstreamRefreshResult: (meta) => meta?.cached === false,
+  },
   "../../../store/teaching-preview": {
     cleanupTeachingPreview: () => null,
     loadTeachingPreview: () => cachedPreview,

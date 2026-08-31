@@ -1,5 +1,8 @@
 import { prewarmScheduleFirstScreen } from "../data/schedule-render";
-import { shouldUseServerSnapshot, timestampValue } from "../store/cache-policy";
+import {
+  shouldStoreServerSnapshot,
+  timestampValue,
+} from "../store/cache-policy";
 import { loadScheduleData, storeScheduleData } from "../store/schedule";
 import {
   captureSessionLease,
@@ -91,7 +94,7 @@ async function preloadTimetable(
   if (!isActive(state)) return result;
   const local = loadTimetableSnapshot(state.account);
   let current = local;
-  if (shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+  if (shouldStoreServerSnapshot(local, result.meta)) {
     current =
       saveTimetableSnapshot(state.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
@@ -104,7 +107,7 @@ async function preloadTimetable(
   const semesterId = result.data.semester?.id;
   if (semesterId) {
     const semesterLocal = loadTimetableSnapshot(state.account, semesterId);
-    if (shouldUseServerSnapshot(semesterLocal, result.meta.fetchedAt)) {
+    if (shouldStoreServerSnapshot(semesterLocal, result.meta)) {
       saveTimetableSnapshot(state.account, result.data, {
         semesterId,
         serverFetchedAt: result.meta.fetchedAt,
@@ -125,10 +128,13 @@ async function backfillMissingTimetableSemesters(
     try {
       const result = await getTimetable({ semester: semester.id });
       if (!isActive(state)) return;
-      saveTimetableSnapshot(state.account, result.data, {
-        semesterId: semester.id,
-        serverFetchedAt: result.meta.fetchedAt,
-      });
+      const local = loadTimetableSnapshot(state.account, semester.id);
+      if (shouldStoreServerSnapshot(local, result.meta)) {
+        saveTimetableSnapshot(state.account, result.data, {
+          semesterId: semester.id,
+          serverFetchedAt: result.meta.fetchedAt,
+        });
+      }
     } catch {
       // 已有学期继续保留；缺失学期会在下次进入前台时再次补齐。
     }

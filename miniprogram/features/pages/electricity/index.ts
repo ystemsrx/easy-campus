@@ -7,6 +7,7 @@ import {
   saveElectricitySnapshot,
   type ElectricitySnapshot,
 } from "../../../store/electricity";
+import { isUpstreamRefreshResult } from "../../../store/cache-policy";
 import {
   captureSessionLease,
   getSession,
@@ -127,9 +128,16 @@ async function refreshElectricity(
         unavailable: false,
       };
     }
-    saveElectricitySnapshot(lease.account, result.data, result.meta.fetchedAt);
+    const refreshed = isUpstreamRefreshResult(result.meta);
+    if (refreshed) {
+      saveElectricitySnapshot(
+        lease.account,
+        result.data,
+        result.meta.fetchedAt,
+      );
+    }
     return {
-      succeeded: true,
+      succeeded: refreshed,
       input,
       result,
       errorMessage: "",
@@ -632,6 +640,11 @@ Page({
         !isSessionLeaseCurrent(lease) ||
         activeAccount !== lease.account
       ) {
+        return false;
+      }
+      if (!isUpstreamRefreshResult(result.meta)) {
+        activeSnapshot = loadElectricitySnapshot(activeAccount);
+        if (activeSnapshot) this.applyElectricityData(activeSnapshot.data);
         return false;
       }
       activeSnapshot = saveElectricitySnapshot(

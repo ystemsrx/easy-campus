@@ -10,6 +10,7 @@ import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
 } from "../../../store/timetable";
+import { shouldStoreServerSnapshot } from "../../../store/cache-policy";
 import type {
   GradeClassDistributionItem,
   GradeCourse,
@@ -294,10 +295,13 @@ Page({
       ) {
         return;
       }
-      saveTimetableSnapshot(lease.account, result.data, {
-        semesterId,
-        serverFetchedAt: result.meta.fetchedAt,
-      });
+      const local = loadTimetableSnapshot(lease.account, semesterId);
+      if (shouldStoreServerSnapshot(local, result.meta)) {
+        saveTimetableSnapshot(lease.account, result.data, {
+          semesterId,
+          serverFetchedAt: result.meta.fetchedAt,
+        });
+      }
       this.setData({
         classDistributionClassName: timetableTeachingClassName(
           course,

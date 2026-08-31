@@ -230,7 +230,7 @@ assert(
     /onShow\(\)[\s\S]*?homeVisible = true;[\s\S]*?this\.prepareForAuthenticatedReveal\(\);[\s\S]*?if \(homeReady\)/.test(
       homeScript,
     ) &&
-    /prepareForAuthenticatedReveal\(onReady\?: \(\) => void\)[\s\S]*?authenticated: true[\s\S]*?this\.hydrateCachedDashboard\(\);[\s\S]*?wx\.nextTick\(\(\) => \{[\s\S]*?isSessionLeaseCurrent\(lease\)[\s\S]*?onReady\?\.\(\)/.test(
+    /prepareForAuthenticatedReveal\(onReady\?: \(\) => void\)[\s\S]*?const dashboard = cachedDashboardState\([\s\S]*?authenticated: true[\s\S]*?\.\.\.dashboard\.patch[\s\S]*?wx\.nextTick\(\(\) => \{[\s\S]*?isSessionLeaseCurrent\(lease\)[\s\S]*?onReady\?\.\(\)/.test(
       homeScript,
     ) &&
     /activateHomeAfterFirstFrame\(\)[\s\S]*?const petSetupPending = this\.openPendingPetSetup\(sessionAccount\);[\s\S]*?void this\.loadDashboard\(false\)/.test(
@@ -253,7 +253,17 @@ assert(
     homeStyles.includes("visibility: hidden;") &&
     homeStyles.includes("animation-name: home-auth-login-backdrop-in;") &&
     homeTemplate.includes('bind:finish="finishPendingPetSetup"'),
-  "首页必须在登录页下预挂载匿名框架，提交可见首帧后再返回并静默刷新数据",
+  "首页必须在登录页下预挂载匿名框架，把本地缓存提交到登录后首帧再返回并静默刷新数据",
+);
+assert(
+  homeScript.includes("function cachedDashboardState(") &&
+    homeScript.includes("grades?.localStoredAt || 0") &&
+    homeScript.includes('grades?.serverFetchedAt || ""') &&
+    homeScript.includes(
+      "if (hydratedDashboardKey === dashboard.key) return;",
+    ) &&
+    /onShow\(\)[\s\S]*?this\.hydrateCachedDashboard\(\)/.test(homeScript),
+  "首页返回前台时必须按成绩快照版本重新读取缓存并立即更新预览",
 );
 assert(
   appScript.includes("foregroundEntryId: 0") &&

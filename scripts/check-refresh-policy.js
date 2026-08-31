@@ -25,7 +25,13 @@ new Function("module", "exports", output)(
   cachePolicyModule,
   cachePolicyModule.exports,
 );
-const { DAY_MS, FIFTEEN_DAYS_MS, isCacheStale } = cachePolicyModule.exports;
+const {
+  DAY_MS,
+  FIFTEEN_DAYS_MS,
+  isCacheStale,
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
+} = cachePolicyModule.exports;
 
 assert(
   FIFTEEN_DAYS_MS === 15 * DAY_MS &&
@@ -40,6 +46,36 @@ assert(
       1_000 + FIFTEEN_DAYS_MS,
     ),
   "成绩和课表自动刷新阈值必须是完整的 15 天",
+);
+
+const localSnapshot = {
+  serverFetchedAt: "2026-08-30T00:00:00.000Z",
+  localStoredAt: 1_000,
+};
+assert(
+  !isUpstreamRefreshResult({ cached: true }) &&
+    !isUpstreamRefreshResult({ cached: false, stale: true }) &&
+    isUpstreamRefreshResult({ cached: false }) &&
+    !shouldStoreServerSnapshot(
+      localSnapshot,
+      { cached: true, fetchedAt: "2026-08-31T00:00:00.000Z" },
+      true,
+    ) &&
+    !shouldStoreServerSnapshot(localSnapshot, {
+      cached: true,
+      stale: true,
+      fetchedAt: "2026-08-31T00:00:00.000Z",
+    }) &&
+    shouldStoreServerSnapshot(localSnapshot, {
+      cached: true,
+      fetchedAt: "2026-08-31T00:00:00.000Z",
+    }) &&
+    shouldStoreServerSnapshot(
+      localSnapshot,
+      { cached: false, fetchedAt: "2026-08-31T00:00:00.000Z" },
+      true,
+    ),
+  "限流缓存和失败兜底不得覆盖本地快照，普通新快照和真实刷新仍应写入",
 );
 
 const stableDataConsumers = [
@@ -146,11 +182,7 @@ assert(
 );
 
 async function checkRefreshFlights() {
-  const refreshFlightSource = source(
-    "features",
-    "utils",
-    "refresh-flight.ts",
-  );
+  const refreshFlightSource = source("features", "utils", "refresh-flight.ts");
   const refreshFlightOutput = ts.transpileModule(refreshFlightSource, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,

@@ -1,5 +1,6 @@
 import { getMessages, getNotices } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
+import { isUpstreamRefreshResult } from "../../../store/cache-policy";
 import {
   captureSessionLease,
   getSession,
@@ -124,10 +125,16 @@ async function refreshInboxMessages(
         errorMessage: "",
       };
     }
-    if (!messageTypes.length) {
+    const refreshed = isUpstreamRefreshResult(result.meta);
+    if (refreshed && !messageTypes.length) {
       saveTeachingPreview(lease.account, { messages: result.data.items });
     }
-    return { succeeded: true, messageTypes, result, errorMessage: "" };
+    return {
+      succeeded: refreshed,
+      messageTypes,
+      result,
+      errorMessage: "",
+    };
   } catch (error) {
     return {
       succeeded: false,
@@ -152,10 +159,11 @@ async function refreshInboxNotices(
     if (!isSessionLeaseCurrent(lease)) {
       return { succeeded: false, query, result: null, errorMessage: "" };
     }
-    if (!query) {
+    const refreshed = isUpstreamRefreshResult(result.meta);
+    if (refreshed && !query) {
       saveTeachingPreview(lease.account, { notices: result.data.items });
     }
-    return { succeeded: true, query, result, errorMessage: "" };
+    return { succeeded: refreshed, query, result, errorMessage: "" };
   } catch (error) {
     return {
       succeeded: false,
@@ -720,7 +728,10 @@ Page({
         return false;
       }
       const incoming = result.data.items.map(toMessageView);
-      if (!this.data.messageTypes.length) {
+      if (
+        !this.data.messageTypes.length &&
+        (!refresh || isUpstreamRefreshResult(result.meta))
+      ) {
         saveTeachingPreview(lease.account, {
           messages: result.data.items,
         });
@@ -787,7 +798,10 @@ Page({
         return false;
       }
       const incoming = result.data.items.map(toNoticeView);
-      if (!this.data.noticeQuery.trim()) {
+      if (
+        !this.data.noticeQuery.trim() &&
+        (!refresh || isUpstreamRefreshResult(result.meta))
+      ) {
         saveTeachingPreview(lease.account, {
           notices: result.data.items,
         });

@@ -18,7 +18,7 @@ import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
-  shouldUseServerSnapshot,
+  shouldStoreServerSnapshot,
 } from "../../store/cache-policy";
 import { loadScheduleData, saveScheduleData } from "../../store/schedule";
 import {
@@ -165,7 +165,7 @@ Page({
         return;
       }
       const local = loadTimetableSnapshot(lease.account);
-      if (shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+      if (shouldStoreServerSnapshot(local, result.meta)) {
         saveTimetableSnapshot(lease.account, result.data, {
           serverFetchedAt: result.meta.fetchedAt,
         });
@@ -206,6 +206,8 @@ Page({
       if (!isSessionLeaseCurrent(lease) || activeAccount !== lease.account) {
         return;
       }
+      const local = loadTimetableSnapshot(lease.account);
+      if (!shouldStoreServerSnapshot(local, result.meta, true)) return;
       activeTimetable = result.data;
       const snapshot = saveTimetableSnapshot(lease.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,

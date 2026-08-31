@@ -4,7 +4,10 @@ import {
   isExamAutomaticRefreshDue,
   refreshExamsOnForeground,
 } from "../../../services/cache-refresh";
-import { shouldUseServerSnapshot } from "../../../store/cache-policy";
+import {
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
+} from "../../../store/cache-policy";
 import { loadExamsSnapshot, saveExamsSnapshot } from "../../../store/exams";
 import {
   captureSessionLease,
@@ -136,12 +139,19 @@ async function refreshExams(
     }
     const storageSemester = input.semesterId || "default";
     const local = loadExamsSnapshot(lease.account, storageSemester);
-    saveExamsSnapshot(lease.account, result.data, {
-      semesterId: storageSemester,
-      serverFetchedAt: result.meta.fetchedAt,
-      lastAutomaticRefreshAt: local?.lastAutomaticRefreshAt || 0,
-    });
-    return { succeeded: true, input, result, errorMessage: "" };
+    if (shouldStoreServerSnapshot(local, result.meta, true)) {
+      saveExamsSnapshot(lease.account, result.data, {
+        semesterId: storageSemester,
+        serverFetchedAt: result.meta.fetchedAt,
+        lastAutomaticRefreshAt: local?.lastAutomaticRefreshAt || 0,
+      });
+    }
+    return {
+      succeeded: isUpstreamRefreshResult(result.meta),
+      input,
+      result,
+      errorMessage: "",
+    };
   } catch (error) {
     return {
       succeeded: false,
@@ -447,11 +457,7 @@ Page({
       const account = lease.account;
       const storageSemester = query.semester || "default";
       const local = loadExamsSnapshot(account, storageSemester);
-      if (
-        !reset ||
-        refresh ||
-        shouldUseServerSnapshot(local, result.meta.fetchedAt)
-      ) {
+      if (!reset || shouldStoreServerSnapshot(local, result.meta, refresh)) {
         const lastAutomaticRefreshAt = local?.lastAutomaticRefreshAt || 0;
         if (reset) {
           saveExamsSnapshot(account, result.data, {

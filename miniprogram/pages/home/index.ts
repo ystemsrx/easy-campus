@@ -30,7 +30,8 @@ import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
   isCacheStale,
-  shouldUseServerSnapshot,
+  isUpstreamRefreshResult,
+  shouldStoreServerSnapshot,
 } from "../../store/cache-policy";
 import {
   loadGradesSnapshot,
@@ -235,6 +236,7 @@ let credentialPollAttempt = 0;
 let credentialExitLease: SessionLease | null = null;
 let credentialProfileRefreshPending = false;
 let hydratedAccount = "";
+let hydratedDashboardKey = "";
 let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
 let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
 let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
@@ -573,6 +575,49 @@ function latestSchoolNoticeItems<T extends NoticePreview>(
   );
 }
 
+function cachedDashboardState(account: string, animateGrades: boolean) {
+  const cached =
+    cleanupTeachingPreview(account) || loadTeachingPreview(account);
+  const timetable = loadTimetableSnapshot(account);
+  const preferences = loadPreferences();
+  const grades =
+    loadGradesSnapshotForPreference(account, preferences.showGradesBelow60) ||
+    loadGradesSnapshot(account);
+  const semesterBoundary = startedCurrentSemester(timetable?.data || null);
+  const messages = (cached?.messages || [])
+    .filter((message) =>
+      isCurrentSemesterTimestamp(message.createdAt, semesterBoundary),
+    )
+    .slice(0, HOME_PREVIEW_ITEM_LIMIT)
+    .map(toMessagePreview);
+  const notices = latestSchoolNoticeItems(
+    (cached?.notices || []).map(toNoticePreview),
+    semesterBoundary,
+  ).slice(0, HOME_PREVIEW_ITEM_LIMIT);
+  return {
+    key: [
+      account,
+      cached?.updatedAt || 0,
+      timetable?.localStoredAt || 0,
+      grades?.localStoredAt || 0,
+      grades?.serverFetchedAt || "",
+      preferences.showGradesBelow60 ? 1 : 0,
+    ].join(":"),
+    timetable: timetable?.data || null,
+    hasGrades: Boolean(grades),
+    patch: {
+      messages,
+      notices,
+      ...(grades ? gradePreviewPatch(grades.data, animateGrades) : {}),
+      loaded:
+        messages.length > 0 ||
+        notices.length > 0 ||
+        Boolean(timetable) ||
+        Boolean(grades),
+    },
+  };
+}
+
 function preloadNextPrimaryTabFramework(): void {
   if (nextPrimaryTabFrameworkPreloadStarted) return;
   nextPrimaryTabFrameworkPreloadStarted = true;
@@ -670,6 +715,7 @@ Page({
     clearHomeActivationTimer();
     clearPlanTransitionTimers();
     hydratedAccount = "";
+    hydratedDashboardKey = "";
     activeTimetable = null;
     cancelPendingAnnouncementPresentation();
     if (petSetupDrawerTimer !== undefined) {
@@ -688,6 +734,13 @@ Page({
     if (getSession()?.token) {
       if (!this.data.authenticated) this.setData({ authenticated: true });
       this.hydrateIdentity();
+      const account = getSession()?.user.account || "";
+      if (account) {
+        this.hydratePet(account);
+        this.hydrateCachedDashboard();
+        this.hydrateShortcutCaches();
+        this.setData(planPreviewPatch(account));
+      }
     } else {
       this.prepareForAuthenticationRequired();
     }
@@ -739,6 +792,7 @@ Page({
     this.stopCredentialPoll();
     this.setTabBarHidden(true);
     hydratedAccount = "";
+    hydratedDashboardKey = "";
     activeTimetable = null;
     queuedAnnouncements = [];
     publicationRefreshQueued = false;
@@ -825,6 +879,15 @@ Page({
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
     const identity = resolveHomeIdentity(session, loadCurrentUser());
+    const account = lease.account;
+    const dashboard = cachedDashboardState(
+      account,
+      appearance.motionClass !== "motion-reduced",
+    );
+    hydratedAccount = account;
+    hydratedDashboardKey = dashboard.key;
+    activeTimetable = dashboard.timetable;
+    const now = new Date();
     syncWindowBackground(appearance);
     authenticationRevealPrepared = true;
     this.setData(
@@ -839,37 +902,37 @@ Page({
         electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
         showGradesOnHome: preferences.showGradesOnHome,
         petReducedMotion: appearance.motionClass === "motion-reduced",
+        ...dashboard.patch,
+        ...shortcutCachePatch(account, activeTimetable),
+        ...planPreviewPatch(account),
+        currentTime: formatClock(now),
+        todayCourses: todayCoursePreview(now),
+        remainingCourseCount: remainingCourses(activeTimetable, now).length,
       },
       () => {
         if (!isSessionLeaseCurrent(lease)) return;
-        const account = lease.account;
         this.hydratePet(account);
-        this.hydrateCachedDashboard();
-        this.hydrateShortcutCaches();
-        this.setData(planPreviewPatch(account), () => {
-          if (!isSessionLeaseCurrent(lease)) return;
-          const tabBar = this.getTabBar();
-          const finish = () =>
-            wx.nextTick(() => {
-              if (isSessionLeaseCurrent(lease)) onReady?.();
-            });
-          if (!tabBar) {
-            finish();
-            return;
-          }
-          tabBar.setData(
-            {
-              selected: 0,
-              themeClass: appearance.themeClass,
-              visualThemeClass: appearance.visualThemeClass,
-              motionClass: appearance.motionClass,
-              hidden: false,
-            },
-            () => {
-              if (isSessionLeaseCurrent(lease)) finish();
-            },
-          );
-        });
+        const tabBar = this.getTabBar();
+        const finish = () =>
+          wx.nextTick(() => {
+            if (isSessionLeaseCurrent(lease)) onReady?.();
+          });
+        if (!tabBar) {
+          finish();
+          return;
+        }
+        tabBar.setData(
+          {
+            selected: 0,
+            themeClass: appearance.themeClass,
+            visualThemeClass: appearance.visualThemeClass,
+            motionClass: appearance.motionClass,
+            hidden: false,
+          },
+          () => {
+            if (isSessionLeaseCurrent(lease)) finish();
+          },
+        );
       },
     );
   },
@@ -1108,46 +1171,28 @@ Page({
   },
   hydrateCachedDashboard() {
     const account = getSession()?.user.account || "";
-    if (!account || hydratedAccount === account) return;
+    if (!account) return;
+    const dashboard = cachedDashboardState(
+      account,
+      this.data.motionClass !== "motion-reduced",
+    );
+    if (hydratedDashboardKey === dashboard.key) return;
     const changedAccount = Boolean(
       hydratedAccount && hydratedAccount !== account,
     );
     hydratedAccount = account;
-    const cached =
-      cleanupTeachingPreview(account) || loadTeachingPreview(account);
-    const cachedTimetable = loadTimetableSnapshot(account);
-    const cachedGrades = loadGradesSnapshotForPreference(
-      account,
-      loadPreferences().showGradesBelow60,
-    );
-    activeTimetable = cachedTimetable?.data || null;
-    const semesterBoundary = startedCurrentSemester(activeTimetable);
-    const messages = (cached?.messages || [])
-      .filter((message) =>
-        isCurrentSemesterTimestamp(message.createdAt, semesterBoundary),
-      )
-      .slice(0, HOME_PREVIEW_ITEM_LIMIT)
-      .map(toMessagePreview);
-    const notices = latestSchoolNoticeItems(
-      (cached?.notices || []).map(toNoticePreview),
-      semesterBoundary,
-    ).slice(0, HOME_PREVIEW_ITEM_LIMIT);
+    hydratedDashboardKey = dashboard.key;
+    activeTimetable = dashboard.timetable;
     this.setData({
-      messages,
-      notices,
-      ...(cachedGrades
-        ? gradePreviewPatch(
-            cachedGrades.data,
-            this.data.motionClass !== "motion-reduced",
-          )
-        : changedAccount
-          ? {
-              gradeRingSource: progressRingSource(null),
-              gradeAverageLabel: "—",
-              gradePointAverageLabel: "—",
-              gradeCourseCount: 0,
-            }
-          : {}),
+      ...dashboard.patch,
+      ...(!dashboard.hasGrades && changedAccount
+        ? {
+            gradeRingSource: progressRingSource(null),
+            gradeAverageLabel: "—",
+            gradePointAverageLabel: "—",
+            gradeCourseCount: 0,
+          }
+        : {}),
       ...(changedAccount
         ? {
             publications: [],
@@ -1155,8 +1200,6 @@ Page({
             publicationUnreadLabel: "",
           }
         : {}),
-      loaded:
-        messages.length > 0 || notices.length > 0 || Boolean(cachedTimetable),
       ...(changedAccount ? { errorMessage: "" } : {}),
     });
     this.updateTodayCourses();
@@ -1168,10 +1211,7 @@ Page({
     includeUnsuccessful: boolean,
   ) {
     const local = loadGradesSnapshotForPreference(account, includeUnsuccessful);
-    const useServer =
-      refresh ||
-      !local ||
-      shouldUseServerSnapshot(local, result.meta.fetchedAt);
+    const useServer = shouldStoreServerSnapshot(local, result.meta, refresh);
     if (useServer) {
       saveGradesSnapshot(
         account,
@@ -1195,7 +1235,7 @@ Page({
     refresh: boolean,
   ) {
     const local = loadTimetableSnapshot(account);
-    if (refresh || shouldUseServerSnapshot(local, result.meta.fetchedAt)) {
+    if (shouldStoreServerSnapshot(local, result.meta, refresh)) {
       activeTimetable = result.data;
       saveTimetableSnapshot(account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
@@ -1812,7 +1852,9 @@ Page({
       refresh: refreshTeaching,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
-        saveTeachingPreview(account, { messages: result.data.items });
+        if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {
+          saveTeachingPreview(account, { messages: result.data.items });
+        }
         this.setData({
           messages: mergeMessagePreviews(
             result.data.items.map(toMessagePreview),
@@ -1829,7 +1871,9 @@ Page({
       refresh: refreshTeaching,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
-        saveTeachingPreview(account, { notices: result.data.items });
+        if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {
+          saveTeachingPreview(account, { notices: result.data.items });
+        }
         this.setData({
           notices: mergeNoticePreviews(
             result.data.items.map(toNoticePreview),
@@ -1918,9 +1962,14 @@ Page({
       semesterBoundary,
     );
     if (messageResult.status === "fulfilled") {
-      saveTeachingPreview(account, {
-        messages: messageResult.value.data.items,
-      });
+      if (
+        !refreshTeaching ||
+        isUpstreamRefreshResult(messageResult.value.meta)
+      ) {
+        saveTeachingPreview(account, {
+          messages: messageResult.value.data.items,
+        });
+      }
       patch.messages = mergeMessagePreviews(
         messageResult.value.data.items.map(toMessagePreview),
         this.data.messages,
@@ -1928,9 +1977,14 @@ Page({
       );
     }
     if (noticeResult.status === "fulfilled") {
-      saveTeachingPreview(account, {
-        notices: noticeResult.value.data.items,
-      });
+      if (
+        !refreshTeaching ||
+        isUpstreamRefreshResult(noticeResult.value.meta)
+      ) {
+        saveTeachingPreview(account, {
+          notices: noticeResult.value.data.items,
+        });
+      }
       patch.notices = mergeNoticePreviews(
         noticeResult.value.data.items.map(toNoticePreview),
         this.data.notices,
