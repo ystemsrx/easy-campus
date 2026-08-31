@@ -30,6 +30,11 @@ import { formatCourseTeacherNames } from "../../utils/course-assistant";
 import { formatCredits, formatScore } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
+import {
+  canActivateTap,
+  movementExceedsTapThreshold,
+  type TapPoint,
+} from "../../utils/tap-guard";
 
 type AssistantTab = "browse" | "publish";
 type KeywordSentiment = "positive" | "neutral" | "negative";
@@ -127,6 +132,26 @@ let catalogCache = new Map<string, CatalogCacheEntry>();
 let favoriteKeys = new Set<string>();
 let selectedKeywords = new Set<string>();
 let mineGrades: GradeView[] = [];
+let courseTouchStart: TapPoint | null = null;
+let courseTouchMoved = false;
+let lastCourseScrollAt = 0;
+
+function touchPoint(
+  event: WechatMiniprogram.TouchEvent,
+  changed = false,
+): TapPoint | null {
+  const touches = changed ? event.changedTouches : event.touches;
+  const touch = touches[0];
+  if (!touch) return null;
+  return { x: Number(touch.clientX), y: Number(touch.clientY) };
+}
+
+function canActivateCourse() {
+  const canActivate = canActivateTap(courseTouchMoved, lastCourseScrollAt);
+  courseTouchStart = null;
+  courseTouchMoved = false;
+  return canActivate;
+}
 
 Page({
   data: {
@@ -566,6 +591,7 @@ Page({
     void this.loadCatalog();
   },
   toggleFavorite(event: WechatMiniprogram.TouchEvent) {
+    if (!canActivateCourse()) return;
     const courseKey = String(event.currentTarget.dataset.key || "");
     const lease = captureSessionLease();
     if (!lease || !courseKey) return;
@@ -576,6 +602,7 @@ Page({
     this.applyCatalogView();
   },
   openCourse(event: WechatMiniprogram.TouchEvent) {
+    if (!canActivateCourse()) return;
     const courseKey = String(event.currentTarget.dataset.key || "");
     if (!courseKey) return;
     haptic("light");
@@ -634,7 +661,41 @@ Page({
     haptic("light");
     void this.loadMine();
   },
+  onCourseTouchStart(event: WechatMiniprogram.TouchEvent) {
+    courseTouchStart = touchPoint(event);
+    courseTouchMoved = false;
+  },
+  onCourseTouchMove(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event);
+    if (
+      courseTouchStart &&
+      current &&
+      movementExceedsTapThreshold(courseTouchStart, current)
+    ) {
+      courseTouchMoved = true;
+    }
+  },
+  onCourseTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const current = touchPoint(event, true);
+    if (
+      courseTouchStart &&
+      current &&
+      movementExceedsTapThreshold(courseTouchStart, current)
+    ) {
+      courseTouchMoved = true;
+    }
+    courseTouchStart = null;
+  },
+  onCourseTouchCancel() {
+    courseTouchStart = null;
+    courseTouchMoved = true;
+  },
+  onCourseScroll() {
+    lastCourseScrollAt = Date.now();
+    if (courseTouchStart) courseTouchMoved = true;
+  },
   openReview(event: WechatMiniprogram.TouchEvent) {
+    if (!canActivateCourse()) return;
     const courseKey = String(event.currentTarget.dataset.key || "");
     this.openReviewFromDetail(courseKey);
   },

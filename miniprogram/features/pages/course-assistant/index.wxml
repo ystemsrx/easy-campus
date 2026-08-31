@@ -11,7 +11,7 @@
   </view>
 
   <view wx:else class="assistant-shell">
-    <scroll-view wx:if="{{activeTab === 'browse'}}" class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="160" bindscrolltolower="loadMoreCatalog">
+    <scroll-view wx:if="{{activeTab === 'browse'}}" class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="160" bindscroll="onCourseScroll" bindscrolltolower="loadMoreCatalog">
         <view class="assistant-content page-enter">
           <view class="masthead">
             <view class="masthead-meta"><text class="kicker">COURSE GUIDE</text></view>
@@ -71,7 +71,7 @@
           <empty-state wx:elif="{{catalogError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="课程列表加载失败" description="{{catalogError}}" action-text="重新加载" bindaction="retryCatalog"></empty-state>
           <empty-state wx:elif="{{!courses.length}}" icon="book-open" icon-tone="amber" title="暂无匹配课程" description="{{favoritesOnly ? '收藏课程后会显示在这里' : '换个课程类型或关键词试试'}}"></empty-state>
           <view wx:else class="course-list">
-            <view wx:for="{{courses}}" wx:key="courseKey" class="course-card pressable" data-key="{{item.courseKey}}" bindtap="openCourse" hover-class="course-card--pressed">
+            <view wx:for="{{courses}}" wx:key="courseKey" class="course-card pressable" data-key="{{item.courseKey}}" bindtouchstart="onCourseTouchStart" bindtouchmove="onCourseTouchMove" bindtouchend="onCourseTouchEnd" bindtouchcancel="onCourseTouchCancel" bindtap="openCourse" hover-class="course-card--pressed">
               <view class="course-card-top">
                 <view class="course-card-copy">
                   <text class="course-index tnum">NO. {{item.indexLabel}}</text>
@@ -100,7 +100,7 @@
         </view>
     </scroll-view>
 
-    <scroll-view wx:else class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <scroll-view wx:else class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onCourseScroll">
         <view class="assistant-content publish-content page-enter">
           <view class="masthead">
             <view class="masthead-meta"><text class="kicker">WRITE A REVIEW</text><text class="semester-badge">匿名发布</text></view>
@@ -113,7 +113,7 @@
           <empty-state wx:elif="{{mineError && !takenCourses.length}}" icon="circle-alert" icon-tone="danger" title="课程加载失败" description="{{mineError}}" action-text="重新加载" bindaction="retryMine"></empty-state>
           <empty-state wx:elif="{{!takenCourses.length}}" icon="book-open" icon-tone="amber" title="暂无可评价课程" description="仅通识选修课和体育课会显示在这里"></empty-state>
           <view wx:else class="taken-list">
-            <view wx:for="{{takenCourses}}" wx:key="courseKey" class="taken-item {{item.reviewed ? 'taken-item--done' : ''}}" data-key="{{item.courseKey}}" bindtap="openReview" hover-class="{{item.reviewed ? '' : 'taken-item--pressed'}}">
+            <view wx:for="{{takenCourses}}" wx:key="courseKey" class="taken-item {{item.reviewed ? 'taken-item--done' : ''}}" data-key="{{item.courseKey}}" bindtouchstart="onCourseTouchStart" bindtouchmove="onCourseTouchMove" bindtouchend="onCourseTouchEnd" bindtouchcancel="onCourseTouchCancel" bindtap="openReview" hover-class="{{item.reviewed ? '' : 'taken-item--pressed'}}">
               <view class="taken-copy"><view class="taken-name-row"><text class="taken-name" overflow="ellipsis" max-lines="1">{{item.displayName}}</text><text wx:if="{{item.reviewed}}" class="done-badge">已发布</text></view><text class="taken-meta tnum">{{item.metaLabel}}</text></view>
               <lucide-icon name="{{item.reviewed ? 'check' : 'chevron-right'}}" tone="{{item.reviewed ? 'sage' : 'muted'}}" size="27"></lucide-icon>
             </view>
@@ -122,7 +122,7 @@
           <block wx:if="{{myReviews.length}}">
             <view class="course-section-head my-reviews-head"><text class="course-section-title display-title">我发布过的想法</text><text class="course-section-note">已匿名</text></view>
             <view class="my-review-list">
-              <view wx:for="{{myReviews}}" wx:key="id" class="my-review-card" data-key="{{item.courseKey}}" bindtap="openCourse">
+              <view wx:for="{{myReviews}}" wx:key="id" class="my-review-card" data-key="{{item.courseKey}}" bindtouchstart="onCourseTouchStart" bindtouchmove="onCourseTouchMove" bindtouchend="onCourseTouchEnd" bindtouchcancel="onCourseTouchCancel" bindtap="openCourse">
                 <text class="my-review-name">{{item.displayName || '课程想法'}}</text>
                 <view class="my-review-meta"><view class="stars-row"><image wx:for="{{item.stars}}" wx:for-item="star" wx:key="value" class="star-small" src="{{star.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image></view><text wx:for="{{item.visibleKeywords}}" wx:key="text" class="review-keyword review-keyword--{{item.sentiment}}">{{item.text}}</text><text wx:if="{{item.remainingKeywordCount}}" class="review-keyword review-keyword--more">+{{item.remainingKeywordCount}}</text></view>
                 <text class="my-review-body" max-lines="3">“{{item.content}}”</text>

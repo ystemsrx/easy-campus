@@ -50,6 +50,11 @@ assert.match(page, /data-sort="rating"/);
 assert.match(page, /reviewAccess\.ownReviewCount === 0/);
 assert.match(page, /course-sort-option--locked/);
 assert.match(page, /name="lock-keyhole" tone="muted"/);
+assert.match(page, /bindscroll="onCourseScroll"/);
+assert.match(page, /bindtouchstart="onCourseTouchStart"/);
+assert.match(page, /bindtouchmove="onCourseTouchMove"/);
+assert.match(page, /bindtouchend="onCourseTouchEnd"/);
+assert.match(page, /bindtouchcancel="onCourseTouchCancel"/);
 
 const controller = read("miniprogram/features/pages/course-assistant/index.ts");
 assert.doesNotMatch(
@@ -73,6 +78,9 @@ assert.match(controller, /formatCourseTeacherNames\(course\.teacherNames\)/);
 assert.doesNotMatch(controller, /教师信息待补充/);
 assert.match(controller, /course\.type !== "physical_education"/);
 assert.match(controller, /Boolean\(course\.sportName\?\.trim\(\)\)/);
+assert.match(controller, /movementExceedsTapThreshold\(/);
+assert.match(controller, /canActivateTap\(courseTouchMoved, lastCourseScrollAt\)/);
+assert.match(controller, /if \(!canActivateCourse\(\)\) return;/);
 assert.doesNotMatch(
   controller,
   /setStorageSync\([^)]*(?:consent|authoriz)/i,
