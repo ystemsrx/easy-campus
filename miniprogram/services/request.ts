@@ -31,6 +31,7 @@ type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 interface RequestOptions {
   method?: HttpMethod;
   data?: WechatMiniprogram.IAnyObject | string | ArrayBuffer;
+  headers?: Record<string, string>;
   authenticated?: boolean;
   retry?: boolean;
   timeout?: number;
@@ -418,6 +419,7 @@ async function requestOnce<T>(
         ...(options.method && options.method !== "GET"
           ? { "Content-Type": "application/json" }
           : {}),
+        ...options.headers,
         ...(lease ? { Authorization: `Bearer ${lease.token}` } : {}),
         ...deviceProofHeaders,
       },

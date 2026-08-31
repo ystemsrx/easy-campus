@@ -1,0 +1,161 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page page--quick-entry auto-dorm-check-payment-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+  <view wx:if="{{processing}}" class="payment-processing" aria-role="alert" aria-label="正在确认付款结果">
+    <image
+      class="payment-processing-spinner"
+      src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}"
+      mode="aspectFit"
+      draggable="{{false}}"
+    ></image>
+  </view>
+
+  <scroll-view wx:else class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="打卡套餐" back transparent theme="{{theme}}"></navigation-bar>
+
+    <view class="payment-content page-content page-enter">
+      <loading-view wx:if="{{loading && !loaded}}" label="正在读取套餐"></loading-view>
+
+      <empty-state
+        wx:elif="{{errorMessage && !loaded}}"
+        icon="circle-alert"
+        icon-tone="danger"
+        title="读取失败"
+        description="{{errorMessage}}"
+        action-text="重新读取"
+        bindaction="retryPayment"
+      ></empty-state>
+
+      <empty-state
+        wx:elif="{{pendingResult}}"
+        icon="clock-3"
+        icon-tone="amber"
+        title="支付结果确认中"
+        description="请重新确认上一笔订单结果"
+        action-text="重新确认"
+        bindaction="retryPendingPayment"
+      ></empty-state>
+
+      <empty-state
+        wx:elif="{{!paymentEnabled}}"
+        icon="circle-check-big"
+        icon-tone="sage"
+        title="当前免费使用"
+        description="无需购买打卡套餐"
+        action-text="返回"
+        bindaction="returnToAutoDormCheck"
+      ></empty-state>
+
+      <view wx:else class="payment-sections">
+        <view class="payment-balance-card card stagger-item stagger-1">
+          <view class="payment-balance-heading">
+            <view>
+              <text class="payment-balance-kicker">当前额度</text>
+              <text class="payment-balance-title">{{hasTimeEntitlement || hasUseEntitlement ? '可用额度' : '暂无可用额度'}}</text>
+            </view>
+            <view class="payment-balance-icon">
+              <lucide-icon name="shield-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{34}}"></lucide-icon>
+            </view>
+          </view>
+
+          <view wx:if="{{hasTimeEntitlement}}" class="payment-balance-row">
+            <view class="payment-balance-row-icon">
+              <lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{24}}"></lucide-icon>
+            </view>
+            <text>连续时间</text>
+            <text class="tnum">剩余 {{remainingDays}} 天</text>
+          </view>
+          <text wx:if="{{timeEntitlementPaused && entitlementResumesAt}}" class="payment-balance-pause">下学期开学继续计算</text>
+          <view wx:if="{{hasUseEntitlement}}" class="payment-balance-row">
+            <view class="payment-balance-row-icon">
+              <lucide-icon name="clipboard-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{24}}"></lucide-icon>
+            </view>
+            <text>可用次数</text>
+            <text class="tnum">剩余 {{remainingUses}} 次</text>
+          </view>
+          <text wx:if="{{!hasTimeEntitlement && !hasUseEntitlement}}" class="payment-balance-empty">购买后即可使用自动打卡</text>
+        </view>
+
+        <view wx:if="{{errorMessage}}" class="payment-inline-error" bindtap="retryPayment" aria-role="button">
+          <text>{{errorMessage}}</text>
+          <text>重试</text>
+        </view>
+
+        <view wx:if="{{timePlans.length}}" class="payment-plan-section stagger-item stagger-2">
+          <view class="payment-section-heading">
+            <view>
+              <text class="payment-section-title">按时间</text>
+              <text class="payment-section-caption">限有效期内使用，学期结束将从下学期继续</text>
+            </view>
+          </view>
+          <view class="payment-plan-list">
+            <view
+              wx:for="{{timePlans}}"
+              wx:key="id"
+              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading ? 'payment-plan-card--disabled' : ''}}"
+              data-id="{{item.id}}"
+              bindtap="onPlanTap"
+              hover-class="{{loading ? 'none' : 'payment-plan-card--pressed'}}"
+              hover-stay-time="80"
+              aria-role="button"
+              aria-disabled="{{loading}}"
+              aria-label="购买{{item.name}}，{{item.priceLabel}}"
+            >
+              <view class="payment-plan-icon payment-plan-icon--time">
+                <lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{28}}"></lucide-icon>
+              </view>
+              <view class="payment-plan-copy">
+                <text class="payment-plan-name">{{item.name}}</text>
+                <text wx:if="{{item.description}}" class="payment-plan-description" overflow="ellipsis" max-lines="2">{{item.description}}</text>
+              </view>
+              <view class="payment-plan-action">
+                <text class="payment-plan-price tnum">{{item.priceLabel}}</text>
+                <text>{{confirmingPlanId === item.id ? '确认中' : '购买'}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{countPlans.length}}" class="payment-plan-section stagger-item stagger-3">
+          <view class="payment-section-heading">
+            <view>
+              <text class="payment-section-title">按次数</text>
+              <text class="payment-section-caption">不限时间，用完为止</text>
+            </view>
+          </view>
+          <view class="payment-plan-list">
+            <view
+              wx:for="{{countPlans}}"
+              wx:key="id"
+              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading ? 'payment-plan-card--disabled' : ''}}"
+              data-id="{{item.id}}"
+              bindtap="onPlanTap"
+              hover-class="{{loading ? 'none' : 'payment-plan-card--pressed'}}"
+              hover-stay-time="80"
+              aria-role="button"
+              aria-disabled="{{loading}}"
+              aria-label="购买{{item.name}}，{{item.priceLabel}}"
+            >
+              <view class="payment-plan-icon payment-plan-icon--count">
+                <lucide-icon name="clipboard-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{28}}"></lucide-icon>
+              </view>
+              <view class="payment-plan-copy">
+                <text class="payment-plan-name">{{item.name}}</text>
+                <text wx:if="{{item.description}}" class="payment-plan-description" overflow="ellipsis" max-lines="2">{{item.description}}</text>
+              </view>
+              <view class="payment-plan-action">
+                <text class="payment-plan-price tnum">{{item.priceLabel}}</text>
+                <text>{{confirmingPlanId === item.id ? '确认中' : '购买'}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="payment-bottom-space"></view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{capsuleToastMounted}}" class="payment-capsule-toast {{capsuleToastVisible ? 'payment-capsule-toast--visible' : ''}}" aria-role="status">
+    <text>{{capsuleToastMessage}}</text>
+  </view>
+</view>

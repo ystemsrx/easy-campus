@@ -1,0 +1,112 @@
+.agreement-page {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+}
+
+.agreement-content {
+  padding-top: 20rpx;
+  padding-bottom: calc(52rpx + env(safe-area-inset-bottom));
+}
+
+.agreement-hero {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  padding: 20rpx 10rpx 28rpx;
+}
+
+.agreement-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 66rpx;
+  height: 66rpx;
+  border-radius: 22rpx;
+  background-color: var(--color-primary-soft);
+}
+
+.agreement-title {
+  display: block;
+  margin-top: 22rpx;
+  color: var(--color-text);
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.agreement-intro {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin-top: 14rpx;
+  color: var(--color-text-secondary);
+  font-size: 23rpx;
+  line-height: 1.7;
+  white-space: normal;
+  word-break: normal;
+}
+
+.agreement-document {
+  padding: 10rpx 30rpx;
+}
+
+.agreement-section {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 20rpx;
+  padding: 26rpx 0 28rpx;
+  min-width: 0;
+}
+
+.agreement-section-index {
+  flex: none;
+  width: 44rpx;
+  padding-top: 2rpx;
+  color: #879979;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 19rpx;
+  font-weight: 760;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.agreement-section-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.agreement-section-title {
+  display: block;
+  color: var(--color-text);
+  font-size: 26rpx;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.agreement-section-text {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 22rpx;
+  line-height: 1.78;
+}
+
+.agreement-divider {
+  height: 1rpx;
+  margin-left: 64rpx;
+  background-color: var(--color-separator);
+}
+
+.agreement-page.theme-style-minimal .agreement-hero-icon {
+  border-radius: var(--radius-icon);
+  background-color: transparent;
+}

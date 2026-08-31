@@ -1,79 +1,126 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
 <view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
-  <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
 
-  <view class="auto-dorm-check-content page-content page-enter">
-    <loading-view wx:if="{{loading && !loaded}}" label="正在读取"></loading-view>
+    <view class="auto-dorm-check-content page-content page-enter">
+      <loading-view wx:if="{{loading && !loaded}}" label="正在读取"></loading-view>
 
-    <empty-state
-      wx:elif="{{errorMessage && !loaded}}"
-      icon="circle-alert"
-      icon-tone="danger"
-      title="读取失败"
-      description="{{errorMessage}}"
-      action-text="重新读取"
-      bindaction="retryStatus"
-    ></empty-state>
+      <empty-state
+        wx:elif="{{errorMessage && !loaded}}"
+        icon="circle-alert"
+        icon-tone="danger"
+        title="读取失败"
+        description="{{errorMessage}}"
+        action-text="重新读取"
+        bindaction="retryStatus"
+      ></empty-state>
 
-    <view wx:else class="auto-dorm-check-sections">
-      <view class="auto-dorm-check-card card stagger-item stagger-1">
-        <view class="auto-dorm-check-row">
-          <view class="auto-dorm-check-copy">
-            <text class="auto-dorm-check-title">自动查寝打卡</text>
-            <text class="auto-dorm-check-caption">打卡时段 {{checkInWindowLabel}}</text>
+      <view wx:else class="auto-dorm-check-sections">
+        <view class="auto-dorm-check-card card stagger-item stagger-1">
+          <view class="auto-dorm-check-row">
+            <view class="auto-dorm-check-copy">
+              <text class="auto-dorm-check-title">自动查寝打卡</text>
+              <text class="auto-dorm-check-caption">打卡时段 {{checkInWindowLabel}}</text>
+            </view>
+            <view
+              class="auto-dorm-check-switch {{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted))) ? 'auto-dorm-check-switch--checked' : ''}} {{checkingCapability ? 'auto-dorm-check-switch--checking' : ''}} {{saving ? 'auto-dorm-check-switch--saving' : ''}} {{!available ? 'auto-dorm-check-switch--disabled' : ''}}"
+              bindtap="onEnabledTap"
+              hover-class="{{saving || savingAgreement || !available ? 'none' : 'auto-dorm-check-switch--pressed'}}"
+              hover-stay-time="80"
+              aria-role="switch"
+              aria-checked="{{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted)))}}"
+              aria-disabled="{{saving || savingAgreement || !available}}"
+              aria-label="自动查寝打卡，{{checkingCapability ? '正在检查' : statusLabel}}"
+            >
+              <view class="auto-dorm-check-switch-thumb">
+                <image
+                  wx:if="{{checkingCapability}}"
+                  class="auto-dorm-check-switch-spinner"
+                  src="/assets/icons/refresh-spinner-ink.svg"
+                  mode="aspectFit"
+                  draggable="{{false}}"
+                ></image>
+              </view>
+            </view>
           </view>
-          <view
-            class="auto-dorm-check-switch {{effectiveEnabled ? 'auto-dorm-check-switch--checked' : ''}} {{checkingCapability ? 'auto-dorm-check-switch--checking' : ''}} {{saving ? 'auto-dorm-check-switch--saving' : ''}} {{!available ? 'auto-dorm-check-switch--disabled' : ''}}"
-            bindtap="onEnabledTap"
-            hover-class="{{saving || !available ? 'none' : 'auto-dorm-check-switch--pressed'}}"
-            hover-stay-time="80"
-            aria-role="switch"
-            aria-checked="{{effectiveEnabled}}"
-            aria-disabled="{{saving || !available}}"
-            aria-label="自动查寝打卡，{{checkingCapability ? '正在检查' : statusLabel}}"
-          >
-            <view class="auto-dorm-check-switch-thumb">
-              <image
-                wx:if="{{checkingCapability}}"
-                class="auto-dorm-check-switch-spinner"
-                src="/assets/icons/refresh-spinner-ink.svg"
-                mode="aspectFit"
-                draggable="{{false}}"
-              ></image>
+          <view wx:if="{{errorMessage}}" class="auto-dorm-check-error" bindtap="retryStatus" aria-role="button">
+            <text>{{errorMessage}}</text>
+            <text>重试</text>
+          </view>
+        </view>
+
+        <view class="auto-dorm-check-detail-card card stagger-item stagger-2">
+          <text class="auto-dorm-check-detail-title">打卡状态</text>
+          <view class="auto-dorm-check-status-row">
+            <view class="auto-dorm-check-status">
+              <view class="auto-dorm-check-status-dot auto-dorm-check-status-dot--{{statusTone}}"></view>
+              <text>{{statusLabel}}</text>
+            </view>
+            <view class="auto-dorm-check-target">
+              <text class="auto-dorm-check-target-label">目标时间</text>
+              <text class="auto-dorm-check-target-value">{{targetTimeLabel}}</text>
             </view>
           </view>
         </view>
-        <view wx:if="{{errorMessage}}" class="auto-dorm-check-error" bindtap="retryStatus" aria-role="button">
-          <text>{{errorMessage}}</text>
-          <text>重试</text>
-        </view>
-      </view>
 
-      <view class="auto-dorm-check-detail-card card stagger-item stagger-2">
-        <text class="auto-dorm-check-detail-title">打卡状态</text>
-        <view class="auto-dorm-check-status-row">
-          <view class="auto-dorm-check-status">
-            <view class="auto-dorm-check-status-dot auto-dorm-check-status-dot--{{statusTone}}"></view>
-            <text>{{statusLabel}}</text>
+        <view class="auto-dorm-check-detail-card card stagger-item stagger-3">
+          <text class="auto-dorm-check-detail-title">打卡地点</text>
+          <view class="auto-dorm-check-location">
+            <lucide-icon name="map-pin" tone="sage" size="{{24}}"></lucide-icon>
+            <text wx:if="{{hasCheckInLocation}}" overflow="ellipsis" max-lines="2">{{checkInLocationName}}</text>
+            <text wx:else class="auto-dorm-check-location-empty">尚未记录打卡地点</text>
           </view>
-          <view class="auto-dorm-check-target">
-            <text class="auto-dorm-check-target-label">目标时间</text>
-            <text class="auto-dorm-check-target-value">{{targetTimeLabel}}</text>
-          </view>
+          <text class="auto-dorm-check-location-tip">如需更换地点，请先关闭自动查寝，再手动完成一次正常打卡，下次将使用新的地点。</text>
         </view>
-      </view>
 
-      <view class="auto-dorm-check-detail-card card stagger-item stagger-3">
-        <text class="auto-dorm-check-detail-title">打卡地点</text>
-        <view class="auto-dorm-check-location">
-          <lucide-icon name="map-pin" tone="sage" size="{{24}}"></lucide-icon>
-          <text wx:if="{{hasCheckInLocation}}" overflow="ellipsis" max-lines="2">{{checkInLocationName}}</text>
-          <text wx:else class="auto-dorm-check-location-empty">尚未记录打卡地点</text>
+        <view
+          wx:if="{{paymentEnabled}}"
+          class="auto-dorm-check-package-card card stagger-item stagger-4 {{openingPayment ? 'auto-dorm-check-package-card--opening' : ''}}"
+          bindtap="openPayment"
+          hover-class="{{openingPayment ? 'none' : 'auto-dorm-check-package-card--pressed'}}"
+          hover-stay-time="80"
+          aria-role="button"
+          aria-label="打开打卡套餐，{{entitlementLabel}}"
+        >
+          <view class="auto-dorm-check-package-icon">
+            <lucide-icon name="sparkles" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{27}}"></lucide-icon>
+          </view>
+          <view class="auto-dorm-check-package-copy">
+            <text class="auto-dorm-check-package-title">打卡套餐</text>
+            <text class="auto-dorm-check-package-balance" overflow="ellipsis" max-lines="1">{{entitlementLabel}}</text>
+            <text wx:if="{{entitlementPaused && entitlementResumesAt}}" class="auto-dorm-check-package-pause">时间额度将在下学期开学继续</text>
+          </view>
+          <lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{26}}"></lucide-icon>
         </view>
-        <text class="auto-dorm-check-location-tip">如需更换地点，请先关闭自动查寝，再手动完成一次正常打卡，下次将使用新的地点。</text>
+
+        <view class="auto-dorm-check-agreement-footer stagger-item">
+          <view
+            class="auto-dorm-check-agreement-row {{agreementAccepted ? 'auto-dorm-check-agreement-row--accepted' : ''}}"
+            bindtap="onAgreementTap"
+            hover-class="{{savingAgreement || saving ? 'none' : 'auto-dorm-check-agreement-row--pressed'}}"
+            hover-stay-time="80"
+            aria-role="checkbox"
+            aria-checked="{{agreementAccepted}}"
+            aria-disabled="{{savingAgreement || saving}}"
+            aria-label="{{agreementAccepted ? '取消同意自动查寝使用须知' : '勾选同意自动查寝使用须知'}}"
+          >
+            <view class="auto-dorm-check-agreement-checkbox {{agreementAccepted ? 'auto-dorm-check-agreement-checkbox--checked' : ''}}">
+              <lucide-icon wx:if="{{agreementAccepted}}" name="check" tone="white" size="{{21}}"></lucide-icon>
+            </view>
+            <view class="auto-dorm-check-agreement-copy">
+              <text>我已阅读并同意</text>
+              <text
+                class="auto-dorm-check-agreement-link {{openingAgreement ? 'auto-dorm-check-agreement-link--opening' : ''}}"
+                catchtap="openAgreement"
+                aria-role="link"
+              >《自动查寝使用须知》</text>
+            </view>
+          </view>
+        </view>
       </view>
     </view>
-  </view>
+  </scroll-view>
 
   <view wx:if="{{capsuleToastMounted}}" class="auto-dorm-check-toast {{capsuleToastVisible ? 'auto-dorm-check-toast--visible' : ''}}" aria-role="status">
     <text>{{capsuleToastMessage}}</text>

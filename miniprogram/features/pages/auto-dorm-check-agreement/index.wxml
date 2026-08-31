@@ -1,0 +1,71 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<view class="page agreement-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+    <navigation-bar title="使用须知" back transparent theme="{{theme}}"></navigation-bar>
+
+    <view class="agreement-content page-content page-enter">
+      <view class="agreement-hero stagger-item stagger-1">
+        <view class="agreement-hero-icon">
+          <lucide-icon name="shield-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{31}}"></lucide-icon>
+        </view>
+        <text class="agreement-title">自动查寝使用须知</text>
+        <text class="agreement-intro">请在首次启用前完整阅读。自动查寝是一项辅助能力，提交过程不校验本人实时位置，不能替代本人按学校要求完成查寝打卡。</text>
+      </view>
+
+      <view class="agreement-document card stagger-item stagger-2">
+        <view class="agreement-section">
+          <text class="agreement-section-index">01</text>
+          <view class="agreement-section-copy">
+            <text class="agreement-section-title">功能用途</text>
+            <text class="agreement-section-text">本功能仅在你忘记手动打卡时提供自动尝试。打卡过程不读取或校验执行时的实际位置，而是使用已保存的打卡地点发起提交；因此，无论你当时实际身处何处，系统都有可能完成打卡。</text>
+            <text class="agreement-section-text">成功提交只代表校园系统可能收到一条打卡记录，不代表你实际位于学校规定范围，也不代表你已经符合学校的查寝要求。本功能不承诺每次提交都能成功。</text>
+          </view>
+        </view>
+
+        <view class="agreement-divider"></view>
+
+        <view class="agreement-section">
+          <text class="agreement-section-index">02</text>
+          <view class="agreement-section-copy">
+            <text class="agreement-section-title">使用条件</text>
+            <text class="agreement-section-text">即使技术上可以在任意实际位置发起并完成打卡，你也必须确保在学校规定的查寝时间段内，本人真实位于规定的打卡范围，并且符合当日全部查寝要求后，方可开启或继续使用。</text>
+            <text class="agreement-section-text">你应确保校园账号可正常使用、已保存的打卡地点准确，并及时关注学校对打卡时间、地点和流程的调整。不得在本人不处于规定范围或不符合查寝要求时使用本功能，也不得将校园账号或本功能交由他人使用。</text>
+          </view>
+        </view>
+
+        <view class="agreement-divider"></view>
+
+        <view class="agreement-section">
+          <text class="agreement-section-index">03</text>
+          <view class="agreement-section-copy">
+            <text class="agreement-section-title">自动执行与结果确认</text>
+            <text class="agreement-section-text">启用后，系统会在设定时段内使用已保存的历史打卡地点尝试提交，不会在执行时根据你的真实位置决定是否打卡。实际结果可能受到网络、设备、服务器、校园系统维护、接口调整或规则变化等因素影响。</text>
+            <text class="agreement-section-text">页面显示“已开启”或计划时间，不代表学校端已经成功记录。你仍需及时查看当日打卡结果；失败、延迟或记录异常时，应立即手动处理。</text>
+          </view>
+        </view>
+
+        <view class="agreement-divider"></view>
+
+        <view class="agreement-section">
+          <text class="agreement-section-index">04</text>
+          <view class="agreement-section-copy">
+            <text class="agreement-section-title">责任说明</text>
+            <text class="agreement-section-text">你应对本人是否在学校规定时间内处于查寝范围、是否符合学校规定以及提交信息的真实性负责。如果你未处于规定范围或不符合查寝要求，却仍开启或继续使用本功能，由此产生的不实记录、认定争议、纪律处理及其他后续影响，由你自行承担，本功能提供方不承担责任。</text>
+            <text class="agreement-section-text">因地点信息失效、未及时核验结果、网络或校园系统异常、学校规则变化等产生的漏打卡、延迟、异常记录或其他后果，也需要由你及时处理并自行承担。</text>
+          </view>
+        </view>
+
+        <view class="agreement-divider"></view>
+
+        <view class="agreement-section">
+          <text class="agreement-section-index">05</text>
+          <view class="agreement-section-copy">
+            <text class="agreement-section-title">启停与须知更新</text>
+            <text class="agreement-section-text">你可以随时关闭自动查寝。关闭只会停止后续自动尝试，不会撤销学校端已有记录。若本须知有重要更新，系统会要求你重新阅读并确认后，才会继续自动执行。</text>
+          </view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+</view>

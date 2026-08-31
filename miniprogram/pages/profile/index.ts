@@ -23,6 +23,7 @@ import {
 import { loadPreferences } from "../../store/preferences";
 import type {
   AutoDormCheckState,
+  AutoDormCheckStatus,
   CurrentUserData,
   FeedbackType,
 } from "../../types/api";
@@ -89,6 +90,8 @@ const AUTO_DORM_CHECK_STATUS: Record<
   failed: { label: "已失败", tone: "danger" },
   unavailable: { label: "不可用", tone: "danger" },
   disabled: { label: "已关闭", tone: "muted" },
+  agreement_required: { label: "待同意", tone: "warning" },
+  payment_required: { label: "额度不足", tone: "warning" },
 };
 
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
@@ -98,6 +101,23 @@ function clearAuthenticationExitTimer(): void {
   if (authenticationExitTimer === undefined) return;
   clearTimeout(authenticationExitTimer);
   authenticationExitTimer = undefined;
+}
+
+export function autoDormCheckSettingTitle(
+  status: Pick<
+    AutoDormCheckSnapshot,
+    "paymentEnabled" | "remainingDays" | "remainingUses"
+  >,
+): string {
+  if (status.paymentEnabled === false) return "自动查寝（限免）";
+  if (status.paymentEnabled !== true) return "自动查寝";
+  if (status.remainingDays > 0) {
+    return `自动查寝（${status.remainingDays}天）`;
+  }
+  if (status.remainingUses > 0) {
+    return `自动查寝（${status.remainingUses}次）`;
+  }
+  return "自动查寝";
 }
 
 Page({
@@ -124,6 +144,7 @@ Page({
     petEnabled: false,
     petVisible: false,
     autoDormCheckVisible: false,
+    autoDormCheckTitle: "自动查寝",
     autoDormCheckStatusLabel: "已关闭",
     autoDormCheckStatusTone: "muted" as
       "success" | "warning" | "danger" | "muted",
@@ -170,6 +191,7 @@ Page({
         enrollmentDate: "",
         identityCardTone: "neutral",
         autoDormCheckVisible: false,
+        autoDormCheckTitle: "自动查寝",
         autoDormCheckStatusLabel: "已关闭",
         autoDormCheckStatusTone: "muted",
         errorMessage: "",
@@ -260,11 +282,35 @@ Page({
     void this.loadUser(true);
   },
   applyAutoDormCheckAvailability(
-    status: Pick<AutoDormCheckSnapshot, "entryEnabled" | "checkInStatus">,
+    status:
+      | Pick<
+          AutoDormCheckSnapshot,
+          | "entryEnabled"
+          | "checkInStatus"
+          | "paymentEnabled"
+          | "remainingDays"
+          | "remainingUses"
+        >
+      | AutoDormCheckStatus,
   ) {
     const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
+    const quota =
+      "remainingDays" in status
+        ? status
+        : {
+            paymentEnabled: status.paymentEnabled,
+            remainingDays: Math.max(
+              0,
+              Math.floor(Number(status.entitlement.time.remainingDays) || 0),
+            ),
+            remainingUses: Math.max(
+              0,
+              Math.floor(Number(status.entitlement.uses.remaining) || 0),
+            ),
+          };
     this.setData({
       autoDormCheckVisible: status.entryEnabled,
+      autoDormCheckTitle: autoDormCheckSettingTitle(quota),
       autoDormCheckStatusLabel: presentation.label,
       autoDormCheckStatusTone: presentation.tone,
     });

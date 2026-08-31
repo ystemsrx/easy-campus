@@ -62,6 +62,9 @@ export interface AutoDormCheckStatus {
   entryEnabled: boolean;
   functionEnabled: boolean;
   available: boolean;
+  agreementVersion: number;
+  agreementAccepted: boolean;
+  agreementAcceptedAt: string | null;
   enabled: boolean;
   effectiveEnabled: boolean;
   checkInStatus: AutoDormCheckState;
@@ -72,10 +75,74 @@ export interface AutoDormCheckStatus {
   updatedAt: string | null;
   lastCheckIn: AutoDormCheckIn | null;
   checkInLocation: AutoDormCheckLocation | null;
+  paymentEnabled: boolean;
+  accessGranted: boolean;
+  accessMode: AutoDormCheckAccessMode;
+  entitlement: AutoDormCheckEntitlement;
 }
 
 export type AutoDormCheckState =
-  "checked_in" | "pending" | "failed" | "unavailable" | "disabled";
+  | "checked_in"
+  | "pending"
+  | "failed"
+  | "unavailable"
+  | "disabled"
+  | "agreement_required"
+  | "payment_required";
+
+export type AutoDormCheckAccessMode = "free" | "time" | "count" | "none";
+
+export interface AutoDormCheckEntitlement {
+  time: {
+    remainingSeconds: number;
+    remainingDays: number;
+    paused: boolean;
+    resumesAt: string | null;
+  };
+  uses: {
+    remaining: number;
+  };
+}
+
+export interface AutoDormCheckPaymentPlan {
+  id: string;
+  /** Compatibility with servers deployed before editable plans. */
+  code?: string;
+  name: string;
+  billingType: "time" | "count";
+  priceCents: number;
+  priceLabel: string;
+  quotaUnit: "day" | "semester" | "count";
+  quotaAmount: number;
+  quotaLabel: string;
+  description: string;
+}
+
+export interface AutoDormCheckPaymentData {
+  paymentEnabled: boolean;
+  accessGranted: boolean;
+  accessMode: AutoDormCheckAccessMode;
+  plans: AutoDormCheckPaymentPlan[];
+  entitlement: AutoDormCheckEntitlement;
+}
+
+export type AutoDormCheckPaymentOrderStatus =
+  "pending" | "paid" | "failed" | "cancelled";
+
+export interface AutoDormCheckPaymentOrder {
+  id: string;
+  planId: string;
+  status: AutoDormCheckPaymentOrderStatus;
+  credited: boolean;
+  amountCents: number;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+export interface AutoDormCheckPaymentOrderResult {
+  order: AutoDormCheckPaymentOrder;
+  entitlement: AutoDormCheckEntitlement;
+}
 
 export interface Session {
   token: string;

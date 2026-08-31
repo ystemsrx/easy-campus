@@ -110,11 +110,18 @@ assert(
       "encodeURIComponent(account.trim().toLowerCase())",
     ) &&
     autoDormCheckService.includes("saveAutoDormCheckSnapshot") &&
+    autoDormCheckStore.includes("paymentEnabled") &&
+    autoDormCheckStore.includes("remainingDays") &&
+    autoDormCheckStore.includes("remainingUses") &&
     autoDormCheckStore.includes('"failed"') &&
     profileScript.includes("AUTO_DORM_CHECK_STATUS[status.checkInStatus]") &&
     profileScript.includes('failed: { label: "已失败"') &&
     profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
     profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
+    profileTemplate.includes("{{autoDormCheckTitle}}") &&
+    profileScript.includes('return "自动查寝（限免）"') &&
+    profileScript.includes("status.remainingDays > 0") &&
+    profileScript.includes("status.remainingUses > 0") &&
     profileTemplate.includes(
       "auto-dorm-check-setting-dot--{{autoDormCheckStatusTone}}",
     ) &&
@@ -126,8 +133,12 @@ assert(
   "自动查寝入口必须由主页按账号预取并缓存服务端状态，个人页不得重复请求",
 );
 assert(
-  autoDormCheckPage.includes('aria-checked="{{effectiveEnabled}}"') &&
-    autoDormCheckPage.includes('aria-disabled="{{saving || !available}}"') &&
+  autoDormCheckPage.includes(
+    'aria-checked="{{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted)))}}"',
+  ) &&
+    autoDormCheckPage.includes(
+      'aria-disabled="{{saving || savingAgreement || !available}}"',
+    ) &&
     autoDormCheckPage.includes("auto-dorm-check-status-dot--{{statusTone}}") &&
     autoDormCheckPage.includes("auto-dorm-check-detail-card") &&
     autoDormCheckPage.includes("目标时间") &&

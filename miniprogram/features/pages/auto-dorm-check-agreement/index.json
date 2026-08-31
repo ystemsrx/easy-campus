@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "lucide-icon": "/components/lucide-icon/lucide-icon",
+    "navigation-bar": "/components/navigation-bar/navigation-bar",
+    "rate-limit-toast": "/components/rate-limit-toast/rate-limit-toast"
+  }
+}
