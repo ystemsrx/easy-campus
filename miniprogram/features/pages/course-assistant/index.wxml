@@ -158,3 +158,4 @@
     <button slot="footer" class="review-submit {{!reviewCanSubmit || reviewSubmitting ? 'review-submit--disabled' : ''}}" disabled="{{!reviewCanSubmit || reviewSubmitting}}" loading="{{reviewSubmitting}}" bindtap="submitReview">匿名发布</button>
   </bottom-sheet>
 </view>
+<screen-watermark></screen-watermark>

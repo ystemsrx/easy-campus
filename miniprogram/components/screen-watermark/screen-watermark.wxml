@@ -1,0 +1,10 @@
+<root-portal wx:if="{{source}}">
+  <image
+    class="screen-watermark-layer"
+    src="{{source}}"
+    mode="scaleToFill"
+    fade-in="{{false}}"
+    draggable="{{false}}"
+    aria-hidden="true"
+  ></image>
+</root-portal>

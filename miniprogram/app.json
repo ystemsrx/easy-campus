@@ -54,7 +54,8 @@
     "loading-view": "/components/loading-view/loading-view",
     "refresh-confirmation": "/components/refresh-confirmation/refresh-confirmation",
     "rate-limit-toast": "/components/rate-limit-toast/rate-limit-toast",
-    "geometric-pet": "/components/geometric-pet/geometric-pet"
+    "geometric-pet": "/components/geometric-pet/geometric-pet",
+    "screen-watermark": "/components/screen-watermark/screen-watermark"
   },
   "window": {
     "navigationBarTextStyle": "black",
