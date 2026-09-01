@@ -140,6 +140,14 @@ const gradeSettingsTemplate = fs.readFileSync(
 );
 
 assert(
+  homeTemplate.includes("{{item.periodLabel}}") &&
+    /periodLabel:\s*course\.periodStart === course\.periodEnd[\s\S]*?String\(course\.periodStart\)[\s\S]*?`\$\{course\.periodStart\}–\$\{course\.periodEnd\}`/.test(
+      homeScript,
+    ),
+  "首页课表预览的节次标签必须只显示数字或数字区间",
+);
+
+assert(
   homeScript.includes('"/features/pages/pass-rates/index"') &&
     homeScript.includes('"/features/pages/rooms/index"') &&
     /onQuickAction\(event:[\s\S]*?MODAL_QUICK_ACTION_ROUTES\.has\(route\)[\s\S]*?navigateTo\(route, "wx:\/\/cupertino-modal"\)/.test(

@@ -390,6 +390,10 @@ function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
     const current = course.id === preview.currentCourseId;
     return {
       ...course,
+      periodLabel:
+        course.periodStart === course.periodEnd
+          ? String(course.periodStart)
+          : `${course.periodStart}–${course.periodEnd}`,
       current,
       statusLabel: current ? "进行中" : `${course.startTime}–${course.endTime}`,
     };
