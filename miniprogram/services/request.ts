@@ -369,6 +369,20 @@ async function createRequestProof(
   return headers;
 }
 
+export async function createAuthenticatedRequestHeaders(
+  path: string,
+  lease: SessionLease,
+  options: Pick<RequestOptions, "method" | "data"> = {},
+): Promise<Record<string, string>> {
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  const deviceProofHeaders = await createRequestProof(path, options, lease);
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  return {
+    Authorization: `Bearer ${lease.token}`,
+    ...deviceProofHeaders,
+  };
+}
+
 function handleAuthenticatedRequestError(
   error: ApiClientError,
   lease: SessionLease | null,

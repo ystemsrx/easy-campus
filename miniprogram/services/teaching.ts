@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "../config/index";
+import { getApiUrl } from "../config/index";
 import {
   captureSessionLease,
   getSession,
@@ -33,6 +33,7 @@ import {
   ApiClientError,
   apiRequest,
   CREDENTIAL_REAUTH_REQUIRED_CODE,
+  createAuthenticatedRequestHeaders,
   handleAuthenticationFailure,
   notifyCredentialReauthRequired,
   teachingRequest,
@@ -209,7 +210,7 @@ export function putLocalSchedule(
   });
 }
 
-export function downloadCalendarImage(
+export async function downloadCalendarImage(
   calendar: Pick<CalendarData, "startYear" | "version">,
   refresh = false,
 ): Promise<string> {
@@ -238,10 +239,12 @@ export function downloadCalendarImage(
     version: calendar.version || undefined,
     refresh: refresh || undefined,
   });
+  const path = `/teaching/calendar/image${query}`;
+  const headers = await createAuthenticatedRequestHeaders(path, lease);
   return new Promise((resolve, reject) => {
     wx.downloadFile({
-      url: `${getApiBaseUrl()}/teaching/calendar/image${query}`,
-      header: { Authorization: `Bearer ${lease.token}` },
+      url: getApiUrl(path),
+      header: headers,
       timeout: 60000,
       success: (response) => {
         if (!isSessionLeaseCurrent(lease)) {

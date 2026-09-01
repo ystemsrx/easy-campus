@@ -3,11 +3,13 @@ import {
   captureSessionLease,
   getSession,
   isSessionLeaseCurrent,
+  type SessionLease,
 } from "../store/session";
 import type { PublicationFeed, PublicationMedia } from "../types/api";
 import {
   apiRequest,
   CREDENTIAL_REAUTH_REQUIRED_CODE,
+  createAuthenticatedRequestHeaders,
   notifyCredentialReauthRequired,
 } from "./request";
 
@@ -59,13 +61,27 @@ export function downloadPublicationMedia(
   const inFlight = mediaPreloads.get(cacheKey);
   if (inFlight) return inFlight;
 
-  const pending = new Promise<string | null>((resolve) => {
-    try {
+  const pending = downloadPublicationMediaFile(media, lease, cacheKey);
+  mediaPreloads.set(cacheKey, pending);
+  void pending.finally(() => {
+    if (mediaPreloads.get(cacheKey) === pending) {
+      mediaPreloads.delete(cacheKey);
+    }
+  });
+  return pending;
+}
+
+async function downloadPublicationMediaFile(
+  media: PublicationMedia,
+  lease: SessionLease,
+  cacheKey: string,
+): Promise<string | null> {
+  try {
+    const headers = await createAuthenticatedRequestHeaders(media.url, lease);
+    return await new Promise<string | null>((resolve) => {
       wx.downloadFile({
         url: getApiUrl(media.url),
-        header: {
-          Authorization: `Bearer ${lease.token}`,
-        },
+        header: headers,
         timeout: 30000,
         success: (response) => {
           if (!isSessionLeaseCurrent(lease)) {
@@ -94,17 +110,10 @@ export function downloadPublicationMedia(
         },
         fail: () => resolve(null),
       });
-    } catch {
-      resolve(null);
-    }
-  });
-  mediaPreloads.set(cacheKey, pending);
-  void pending.finally(() => {
-    if (mediaPreloads.get(cacheKey) === pending) {
-      mediaPreloads.delete(cacheKey);
-    }
-  });
-  return pending;
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function preloadPublicationMedia(

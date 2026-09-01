@@ -12,6 +12,12 @@ const requestSource = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "services", "request.ts"),
   "utf8",
 );
+const serviceDirectory = path.resolve(
+  __dirname,
+  "..",
+  "miniprogram",
+  "services",
+);
 const vendoredNaclPath = path.resolve(
   __dirname,
   "..",
@@ -79,7 +85,10 @@ new Function("module", "exports", "require", compiled)(
     if (specifier === "../config/index") {
       return {
         getApiUrl(requestPath) {
-          return `https://api.example.test/api/v1/${String(requestPath).replace(/^\/+/, "")}`;
+          const normalizedPath = String(requestPath);
+          return normalizedPath.startsWith("/api/v1/")
+            ? `https://api.example.test${normalizedPath}`
+            : `https://api.example.test/api/v1/${normalizedPath.replace(/^\/+/, "")}`;
         },
       };
     }
@@ -97,6 +106,24 @@ assert.doesNotMatch(
 );
 assert.equal(requestSource.includes("/auth/challenge"), false);
 assert.match(requestSource, /createDeviceProofHeaders/);
+for (const fileName of fs.readdirSync(serviceDirectory)) {
+  if (!fileName.endsWith(".ts")) continue;
+  const serviceSource = fs.readFileSync(
+    path.join(serviceDirectory, fileName),
+    "utf8",
+  );
+  if (!serviceSource.includes("wx.downloadFile(")) continue;
+  assert.match(
+    serviceSource,
+    /createAuthenticatedRequestHeaders/,
+    `${fileName} must add a device proof to authenticated downloads`,
+  );
+  assert.match(
+    serviceSource,
+    /header:\s*headers/,
+    `${fileName} must pass the signed headers to wx.downloadFile`,
+  );
+}
 
 void (async () => {
   try {
@@ -107,6 +134,18 @@ void (async () => {
     assert.equal(
       deviceProof.canonicalRequestTarget("/auth/me"),
       "/api/v1/auth/me",
+    );
+    assert.equal(
+      deviceProof.canonicalRequestTarget(
+        "/api/v1/content/media/123e4567-e89b-12d3-a456-426614174000",
+      ),
+      "/api/v1/content/media/123e4567-e89b-12d3-a456-426614174000",
+    );
+    assert.equal(
+      deviceProof.canonicalRequestTarget(
+        "/teaching/calendar/image?academicYear=2026&refresh=true",
+      ),
+      "/api/v1/teaching/calendar/image?academicYear=2026&refresh=true",
     );
     const bodyHash = deviceProof.hashRequestData({ b: 2, a: "值" });
     assert.equal(
