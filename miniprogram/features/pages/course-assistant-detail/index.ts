@@ -86,6 +86,7 @@ interface DetailView extends CourseAssistantCourseDetail {
   historyAxisTicks: HistoryAxisTickView[];
   historyRangeLabel: string;
   reviewRows: ReviewView[];
+  ownReviewUnderReview: boolean;
 }
 
 interface CourseAssistantHostPage {
@@ -188,7 +189,12 @@ Page({
     const rowIndex = detail.reviewRows.findIndex(
       (item) => item.id === reviewId,
     );
-    if (rowIndex < 0 || detail.reviewRows[rowIndex].likePending) return;
+    if (
+      rowIndex < 0 ||
+      detail.reviewRows[rowIndex].underReview ||
+      detail.reviewRows[rowIndex].likePending
+    )
+      return;
     const lease = captureSessionLease();
     if (!lease) return;
     haptic("light");
@@ -276,6 +282,9 @@ function toDetailView(detail: CourseAssistantCourseDetail): DetailView {
     historyAxisTicks: historyChart.axisTicks,
     historyRangeLabel: historyRangeLabel(history),
     reviewRows: detail.reviews.map(toReviewView),
+    ownReviewUnderReview: detail.reviews.some(
+      (review) => review.own && review.underReview,
+    ),
   };
 }
 

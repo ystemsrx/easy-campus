@@ -531,6 +531,7 @@ export interface CourseAssistantReview {
   displayName?: string;
   authorLabel: "我（匿名）" | "匿名同学";
   own: boolean;
+  underReview: boolean;
   termLabel: string;
   teacherNames: string[];
   calculationScore: number | null;
@@ -561,6 +562,7 @@ export interface CourseAssistantGrade {
   sourceFetchedAt: string | null;
   reviewed?: boolean;
   reviewId?: string | null;
+  reviewUnderReview?: boolean;
 }
 
 export interface CourseAssistantCourseDetail extends CourseAssistantCourse {

@@ -55,6 +55,10 @@ assert.match(page, /bindtouchstart="onCourseTouchStart"/);
 assert.match(page, /bindtouchmove="onCourseTouchMove"/);
 assert.match(page, /bindtouchend="onCourseTouchEnd"/);
 assert.match(page, /bindtouchcancel="onCourseTouchCancel"/);
+assert.match(page, /审核中，仅自己可见/);
+assert.match(page, /item\.reviewUnderReview/);
+assert.match(page, /item\.underReview/);
+assert.match(page, /name="lock-keyhole" tone="danger"/);
 
 const controller = read("miniprogram/features/pages/course-assistant/index.ts");
 assert.doesNotMatch(
@@ -79,8 +83,12 @@ assert.doesNotMatch(controller, /教师信息待补充/);
 assert.match(controller, /course\.type !== "physical_education"/);
 assert.match(controller, /Boolean\(course\.sportName\?\.trim\(\)\)/);
 assert.match(controller, /movementExceedsTapThreshold\(/);
-assert.match(controller, /canActivateTap\(courseTouchMoved, lastCourseScrollAt\)/);
+assert.match(
+  controller,
+  /canActivateTap\(courseTouchMoved, lastCourseScrollAt\)/,
+);
 assert.match(controller, /if \(!canActivateCourse\(\)\) return;/);
+assert.match(controller, /grade\.reviewUnderReview/);
 assert.doesNotMatch(
   controller,
   /setStorageSync\([^)]*(?:consent|authoriz)/i,
@@ -162,6 +170,14 @@ assert.match(page, /course-sort-trigger[^>]*hover-class="none"/);
 assert.match(page, /data-sort="average_score"[^>]*hover-class="none"/);
 assert.match(page, /data-sort="rating"[^>]*hover-class="none"/);
 assert.match(styles, /\.course-sort-option--locked\s*\{[^}]*opacity:\s*0\.58/s);
+assert.match(
+  styles,
+  /\.my-review-moderation text\s*\{[^}]*color:\s*var\(--guide-brick\)/s,
+);
+assert.match(
+  styles,
+  /\.done-badge--reviewing\s*\{[^}]*color:\s*var\(--guide-brick\)/s,
+);
 assert.doesNotMatch(styles, /\.consent-/);
 
 const detailPage = read(
@@ -174,6 +190,11 @@ assert.match(detailPage, /item\.peak/);
 assert.match(detailPage, /title="暂无数据"/);
 assert.match(detailPage, /detail\.reviewAccess\.requiresContribution/);
 assert.match(detailPage, /\{\{item\.studyLabel\}\}/);
+assert.match(detailPage, /审核中，仅自己可见/);
+assert.match(detailPage, /wx:if="\{\{item\.underReview\}\}"/);
+assert.match(detailPage, /wx:if="\{\{!item\.underReview\}\}"/);
+assert.match(detailPage, /detail\.ownReviewUnderReview/);
+assert.match(detailPage, /name="lock-keyhole" tone="danger"/);
 assert.doesNotMatch(detailPage, /还没有课程想法|item\.latest/);
 
 const detailController = read(
@@ -194,6 +215,16 @@ assert.doesNotMatch(detailPage, /教务课程名/);
 assert.match(
   detailController,
   /formatCourseTeacherNames\(detail\.teacherNames\)/,
+);
+assert.match(detailController, /detail\.reviewRows\[rowIndex\]\.underReview/);
+assert.match(detailController, /review\.own && review\.underReview/);
+assert.match(
+  detailStyles,
+  /\.review-moderation text\s*\{[^}]*color:\s*var\(--guide-brick\)/s,
+);
+assert.match(
+  detailStyles,
+  /\.published-note--reviewing\s*\{[^}]*background-color:\s*var\(--guide-brick-soft\)/s,
 );
 assert.doesNotMatch(detailController, /教师信息待补充/);
 

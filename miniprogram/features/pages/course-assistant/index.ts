@@ -717,7 +717,12 @@ Page({
       return;
     }
     if (grade.reviewed) {
-      wx.showToast({ title: "这门课已经发表过想法", icon: "none" });
+      wx.showToast({
+        title: grade.reviewUnderReview
+          ? "想法审核中，仅自己可见"
+          : "这门课已经发表过想法",
+        icon: "none",
+      });
       return;
     }
     selectedKeywords = new Set();

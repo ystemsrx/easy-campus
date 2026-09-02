@@ -65,21 +65,22 @@
         <view class="impression-list"><text wx:for="{{detail.keywords}}" wx:key="text" class="review-keyword review-keyword--{{item.sentiment}}">{{item.text}} · {{item.count}}</text></view>
       </view>
 
-      <view class="reviews-heading"><text class="reviews-title display-title">学长学姐说</text><text class="reviews-count tnum">{{detail.reviewAccess.requiresContribution ? '解锁后查看' : detail.reviewCount + ' 条 · 按有用排序'}}</text></view>
+      <view class="reviews-heading"><text class="reviews-title display-title">学长学姐说</text><text class="reviews-count tnum">{{detail.reviewAccess.requiresContribution ? '解锁后查看' : detail.reviewCount + ' 条公开想法'}}</text></view>
       <view wx:if="{{detail.reviewAccess.requiresContribution}}" class="thoughts-gate"><view class="thoughts-gate-icon"><lucide-icon name="lock-keyhole" tone="coral" size="34"></lucide-icon></view><text class="thoughts-gate-title display-title">发布一条想法后查看</text><text class="thoughts-gate-copy">从“我修过的课”中任选一门匿名分享，即可查看所有课程想法。</text><button class="thoughts-gate-button" bindtap="goContribute">去发布想法</button></view>
       <empty-state wx:elif="{{!detail.reviewRows.length}}" compact icon="message-circle-more" icon-tone="amber" title="暂无数据" description="修过这门课的同学可以留下第一条"></empty-state>
       <view wx:else class="review-list">
-        <view wx:for="{{detail.reviewRows}}" wx:key="id" class="review-card">
+        <view wx:for="{{detail.reviewRows}}" wx:key="id" class="review-card {{item.underReview ? 'review-card--reviewing' : ''}}">
           <view class="review-head"><view class="review-avatar"><text>匿</text></view><view class="review-author"><text class="review-author-name">{{item.authorLabel}}</text><text class="review-author-term tnum">{{item.studyLabel}}</text></view><text class="review-grade tnum">{{item.scoreLabel}}</text></view>
+          <view wx:if="{{item.underReview}}" class="review-moderation"><lucide-icon name="lock-keyhole" tone="danger" size="25"></lucide-icon><text>审核中，仅自己可见</text></view>
           <view class="review-rating"><view class="stars-row"><image wx:for="{{item.stars}}" wx:for-item="star" wx:key="value" class="star-small" src="{{star.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image></view><text class="review-rating-number tnum">{{item.rating}}.0</text></view>
           <view wx:if="{{item.keywords.length}}" class="review-keywords"><text wx:for="{{item.keywords}}" wx:key="text" class="review-keyword review-keyword--{{item.sentiment}}">{{item.text}}</text></view>
           <text class="review-body">“{{item.content}}”</text>
-          <view class="review-foot"><view class="like-button {{item.liked ? 'like-button--active' : ''}} {{item.likePending ? 'like-button--pending' : ''}}" data-id="{{item.id}}" bindtap="toggleLike" hover-class="like-button--pressed" aria-role="button" aria-label="觉得有用"><image class="like-image" src="{{item.liked ? '/features/assets/course-assistant/thumbs-up-coral.svg' : '/features/assets/course-assistant/thumbs-up-muted.svg'}}" mode="aspectFit"></image><text class="tnum">{{item.likeCount}}</text></view><text class="review-useful">觉得有用就点个赞</text><text wx:if="{{item.createdLabel}}" class="review-date tnum">{{item.createdLabel}}</text></view>
+          <view class="review-foot"><block wx:if="{{!item.underReview}}"><view class="like-button {{item.liked ? 'like-button--active' : ''}} {{item.likePending ? 'like-button--pending' : ''}}" data-id="{{item.id}}" bindtap="toggleLike" hover-class="like-button--pressed" aria-role="button" aria-label="觉得有用"><image class="like-image" src="{{item.liked ? '/features/assets/course-assistant/thumbs-up-coral.svg' : '/features/assets/course-assistant/thumbs-up-muted.svg'}}" mode="aspectFit"></image><text class="tnum">{{item.likeCount}}</text></view><text class="review-useful">觉得有用就点个赞</text></block><text wx:if="{{item.createdLabel}}" class="review-date tnum">{{item.createdLabel}}</text></view>
         </view>
       </view>
 
       <view wx:if="{{detail.canReview}}" class="publish-callout"><text class="publish-callout-title display-title">你也修过这门课</text><text class="publish-callout-copy">把真实感受匿名留给后来选课的同学。</text><button class="publish-button" bindtap="goPublish">匿名发表想法</button></view>
-      <view wx:elif="{{detail.ownReviewId}}" class="published-note"><lucide-icon name="check" tone="sage" size="28"></lucide-icon><text>你已匿名分享过这门课的想法</text></view>
+      <view wx:elif="{{detail.ownReviewId}}" class="published-note {{detail.ownReviewUnderReview ? 'published-note--reviewing' : ''}}"><lucide-icon name="{{detail.ownReviewUnderReview ? 'lock-keyhole' : 'check'}}" tone="{{detail.ownReviewUnderReview ? 'danger' : 'sage'}}" size="28"></lucide-icon><text>{{detail.ownReviewUnderReview ? '审核中，仅自己可见' : '你已匿名分享过这门课的想法'}}</text></view>
       <view class="detail-bottom-space"></view>
     </view>
   </scroll-view>
