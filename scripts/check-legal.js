@@ -57,6 +57,13 @@ for (const disclosure of [
   "90 天滑动有效期",
   "百度地图开放平台",
   "相册仅写入权限",
+  "部分个人信息",
+  "设备公钥",
+  "精确经纬度",
+  "订单与额度记录",
+  "自建统一身份服务",
+  "必要的安全标识",
+  "退出登录仅撤销当前会话",
   "查阅、复制、更正、补充、删除",
   "未满十四周岁",
   "15 个工作日",
@@ -64,6 +71,18 @@ for (const disclosure of [
 ]) {
   if (!content.includes(disclosure)) {
     failures.push(`隐私政策缺少实际数据处理披露：${disclosure}`);
+  }
+}
+
+for (const term of [
+  "持续服务",
+  "可选功能与付费服务",
+  "自动查寝",
+  "结果确认",
+  "清理微信小程序存储",
+]) {
+  if (!content.includes(term)) {
+    failures.push(`用户协议缺少具体使用约定：${term}`);
   }
 }
 
@@ -92,9 +111,7 @@ if (
 }
 
 if (
-  !content.includes(
-    'import { APP_NAME } from "../../config/app";',
-  ) ||
+  !content.includes('import { APP_NAME } from "../../config/app";') ||
   !content.includes("${APP_NAME}")
 ) {
   failures.push("用户协议和隐私政策必须使用固定小程序名称");
