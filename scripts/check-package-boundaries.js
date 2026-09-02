@@ -9,6 +9,18 @@ const appConfig = JSON.parse(
 const projectConfig = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "..", "project.config.json"), "utf8"),
 );
+const privateProjectConfigPath = path.resolve(
+  __dirname,
+  "..",
+  "project.private.config.json",
+);
+const privateProjectConfig = fs.existsSync(privateProjectConfigPath)
+  ? JSON.parse(fs.readFileSync(privateProjectConfigPath, "utf8"))
+  : {};
+const effectiveProjectSetting = {
+  ...projectConfig.setting,
+  ...privateProjectConfig.setting,
+};
 const failures = [];
 const TWO_MIB = 2 * 1024 * 1024;
 
@@ -199,6 +211,15 @@ if (
 ) {
   failures.push(
     "上传配置必须启用压缩、过滤未使用文件、显式保留动态资源并关闭生产源码映射",
+  );
+}
+
+if (
+  effectiveProjectSetting.compileHotReLoad !== false ||
+  effectiveProjectSetting.ignoreDevUnusedFiles !== false
+) {
+  failures.push(
+    "开发配置必须关闭热重载和未使用文件过滤，避免增量编译遗漏分包依赖",
   );
 }
 
