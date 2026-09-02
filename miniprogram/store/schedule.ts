@@ -2,6 +2,11 @@ import type { LocalScheduleData, LocalSchedulePlan } from "../types/api";
 
 const PREFIX = "easy-swu:schedule:";
 const LEGACY_KEY = "easy-swu:schedule-plans";
+let scheduleRevision = 0;
+
+export function getScheduleRevision(): number {
+  return scheduleRevision;
+}
 
 function storageKey(account: string): string {
   return `${PREFIX}${encodeURIComponent(account.trim())}`;
@@ -44,6 +49,7 @@ export function saveScheduleData(
   if (!account.trim()) return data;
   try {
     wx.setStorageSync(storageKey(account), data);
+    scheduleRevision += 1;
   } catch {
     // 日程仍保留在当前页面内存中，下一次修改会再次尝试写入。
   }
@@ -61,6 +67,7 @@ export function storeScheduleData(
   if (account.trim()) {
     try {
       wx.setStorageSync(storageKey(account), normalized);
+      scheduleRevision += 1;
     } catch {
       // 服务端恢复只是辅助层，写入失败不阻塞页面。
     }

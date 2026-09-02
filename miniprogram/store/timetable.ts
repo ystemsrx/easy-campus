@@ -9,6 +9,11 @@ import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:timetable:";
 const SEMESTER_CATALOG_PREFIX = "easy-swu:timetable-semesters:";
+let timetableRevision = 0;
+
+export function getTimetableRevision(): number {
+  return timetableRevision;
+}
 
 export interface TimetableSnapshot extends CacheMetadata {
   data: TimetableData;
@@ -149,6 +154,7 @@ export function saveTimetableSnapshot(
   };
   try {
     wx.setStorageSync(storageKey(account, options.semesterId), snapshot);
+    if (!options.semesterId) timetableRevision += 1;
   } catch {
     // 本地快照只是首屏加速层，服务端仍保存完整的用户课表。
   }

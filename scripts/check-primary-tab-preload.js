@@ -134,7 +134,7 @@ assert(
   scheduleRender.includes("prewarmScheduleFirstScreen(") &&
     scheduleRender.includes("buildScheduleWeekView(") &&
     schedulePage.includes("getPrewarmedScheduleFirstScreen(account)") &&
-    schedulePage.includes("this.setData(prewarmed.view)") &&
+    schedulePage.includes("Object.assign(patch, prewarmed.view)") &&
     schedulePage.includes("getPreloadedTimetable()") &&
     schedulePage.includes("getPreloadedSchedule()"),
   "日程页必须直接消费启动阶段准备好的首屏和共享请求",

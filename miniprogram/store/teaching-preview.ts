@@ -6,6 +6,11 @@ const NOTICE_ITEM_LIMIT = 50;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const MESSAGE_SCHEMA_VERSION = 4;
 const NOTICE_SCHEMA_VERSION = 3;
+let teachingPreviewRevision = 0;
+
+export function getTeachingPreviewRevision(): number {
+  return teachingPreviewRevision;
+}
 
 export interface TeachingPreview {
   messageSchemaVersion: number;
@@ -82,6 +87,7 @@ export function saveTeachingPreview(
       updatedAt: Date.now(),
       lastCleanupAt: current.lastCleanupAt,
     } satisfies TeachingPreview);
+    teachingPreviewRevision += 1;
   } catch {
     // 本地预览只是加速层，写入失败时服务器持久快照仍然可用。
   }

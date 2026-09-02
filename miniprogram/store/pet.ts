@@ -45,6 +45,11 @@ export const DEFAULT_PET_PREFERENCES: PetPreferences = {
 };
 
 const PET_PREFERENCES_KEY_PREFIX = "easy-swu:pet:v1:";
+let petPreferencesRevision = 0;
+
+export function getPetPreferencesRevision(): number {
+  return petPreferencesRevision;
+}
 
 function petStorageKey(account: string): string {
   const normalized = account.trim().toLowerCase() || "guest";
@@ -95,8 +100,7 @@ export function loadPetPreferences(account: string): PetPreferences {
     completed: selected,
     selected,
     skipped: false,
-    enabled:
-      selected && !hiddenDefaultSelection && stored.enabled !== false,
+    enabled: selected && !hiddenDefaultSelection && stored.enabled !== false,
     enhanced: stored.enhanced === true,
     shape,
     color,
@@ -136,6 +140,7 @@ export function savePetSelection(
     updatedAt: Date.now(),
   };
   wx.setStorageSync(petStorageKey(account), next);
+  petPreferencesRevision += 1;
   return next;
 }
 
@@ -150,6 +155,7 @@ export function skipPetSetup(account: string): PetPreferences {
     updatedAt: Date.now(),
   };
   wx.setStorageSync(petStorageKey(account), next);
+  petPreferencesRevision += 1;
   return next;
 }
 
@@ -164,6 +170,7 @@ export function setPetEnabled(
     updatedAt: Date.now(),
   };
   wx.setStorageSync(petStorageKey(account), next);
+  petPreferencesRevision += 1;
   return next;
 }
 
@@ -204,5 +211,6 @@ export function storeServerPetPreferences(
     updatedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now(),
   };
   wx.setStorageSync(petStorageKey(account), next);
+  petPreferencesRevision += 1;
   return next;
 }

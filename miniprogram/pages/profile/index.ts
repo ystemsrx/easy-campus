@@ -8,19 +8,27 @@ import {
   isFeedbackDailyLimitError,
 } from "../../services/request";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
-import { loadPetPreferences, shouldShowPet } from "../../store/pet";
 import {
+  getPetPreferencesRevision,
+  loadPetPreferences,
+  shouldShowPet,
+} from "../../store/pet";
+import {
+  getAutoDormCheckRevision,
   loadAutoDormCheckSnapshot,
   type AutoDormCheckSnapshot,
 } from "../../store/auto-dorm-check";
 import {
   captureSessionLease,
+  getSessionRevision,
   getSession,
   isSessionLeaseCurrent,
   loadCurrentUser,
-  sessionLeaseKey,
 } from "../../store/session";
-import { loadPreferences } from "../../store/preferences";
+import {
+  getPreferencesRevision,
+  loadPreferences,
+} from "../../store/preferences";
 import type {
   AutoDormCheckState,
   AutoDormCheckStatus,
@@ -70,6 +78,7 @@ const INITIAL_PROFILE_APPEARANCE = resolveAppearance(
   INITIAL_PROFILE_PREFERENCES,
 );
 const PROFILE_AUTH_EXIT_MS = 180;
+const PROFILE_RETURN_REFRESH_DELAY_MS = 520;
 const FEEDBACK_TYPES: Array<{ value: FeedbackType; label: string }> = [
   { value: "bug", label: "问题反馈" },
   { value: "feature", label: "功能建议" },
@@ -95,7 +104,65 @@ const AUTO_DORM_CHECK_STATUS: Record<
 };
 
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
-let activeProfileSessionKey = "";
+let hydratedProfileSources: ProfileSourceRevisions | null = null;
+let profileRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let profileVisible = false;
+
+interface ProfileSourceRevisions {
+  account: string;
+  preferences: number;
+  session: number;
+  pet: number;
+  autoDormCheck: number;
+}
+
+type ProfileSourceName = Exclude<keyof ProfileSourceRevisions, "account">;
+
+const PROFILE_SOURCE_NAMES: readonly ProfileSourceName[] = [
+  "preferences",
+  "session",
+  "pet",
+  "autoDormCheck",
+];
+
+function readProfileSourceRevisions(account: string): ProfileSourceRevisions {
+  return {
+    account,
+    preferences: getPreferencesRevision(),
+    session: getSessionRevision(),
+    pet: getPetPreferencesRevision(),
+    autoDormCheck: getAutoDormCheckRevision(),
+  };
+}
+
+function profileSourcesAreCurrent(account: string): boolean {
+  if (!hydratedProfileSources || hydratedProfileSources.account !== account) {
+    return false;
+  }
+  const current = readProfileSourceRevisions(account);
+  return PROFILE_SOURCE_NAMES.every(
+    (source) => current[source] === hydratedProfileSources?.[source],
+  );
+}
+
+function markProfileSourcesHydrated(
+  account: string,
+  sources: readonly ProfileSourceName[],
+): void {
+  if (!hydratedProfileSources || hydratedProfileSources.account !== account) {
+    return;
+  }
+  const current = readProfileSourceRevisions(account);
+  const next = { ...hydratedProfileSources };
+  for (const source of sources) next[source] = current[source];
+  hydratedProfileSources = next;
+}
+
+function clearProfileRefreshTimer(): void {
+  if (profileRefreshTimer === undefined) return;
+  clearTimeout(profileRefreshTimer);
+  profileRefreshTimer = undefined;
+}
 
 function clearAuthenticationExitTimer(): void {
   if (authenticationExitTimer === undefined) return;
@@ -118,6 +185,92 @@ export function autoDormCheckSettingTitle(
     return `自动查寝（${status.remainingUses}次）`;
   }
   return "自动查寝";
+}
+
+function profileUserPatch(user: CurrentUserData | null) {
+  const name = user?.name || "同学";
+  return {
+    userName: name,
+    avatarText: user ? name.slice(0, 1) : "易",
+    account: user?.account || "",
+    organizationName: user?.profile.organizationName || "西南大学",
+    classLabel: user ? classLabel(user) : "",
+    enrollmentDate: user
+      ? enrollmentDateLabel(user.profile.enrollmentDate)
+      : "",
+    identityCardTone: user
+      ? identityCardTone(user.profile.gender)
+      : ("neutral" as IdentityCardTone),
+  };
+}
+
+function autoDormCheckPresentationPatch(
+  status:
+    | Pick<
+        AutoDormCheckSnapshot,
+        | "entryEnabled"
+        | "checkInStatus"
+        | "paymentEnabled"
+        | "remainingDays"
+        | "remainingUses"
+      >
+    | AutoDormCheckStatus
+    | null,
+) {
+  if (!status) {
+    return {
+      autoDormCheckVisible: false,
+      autoDormCheckTitle: "自动查寝",
+      autoDormCheckStatusLabel: "已关闭",
+      autoDormCheckStatusTone: "muted" as const,
+    };
+  }
+  const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
+  const quota =
+    "remainingDays" in status
+      ? status
+      : {
+          paymentEnabled: status.paymentEnabled,
+          remainingDays: Math.max(
+            0,
+            Math.floor(Number(status.entitlement.time.remainingDays) || 0),
+          ),
+          remainingUses: Math.max(
+            0,
+            Math.floor(Number(status.entitlement.uses.remaining) || 0),
+          ),
+        };
+  return {
+    autoDormCheckVisible: status.entryEnabled,
+    autoDormCheckTitle: autoDormCheckSettingTitle(quota),
+    autoDormCheckStatusLabel: presentation.label,
+    autoDormCheckStatusTone: presentation.tone,
+  };
+}
+
+function cachedProfileRenderState(account: string) {
+  const preferences = loadPreferences();
+  const appearance = resolveAppearance(preferences);
+  const pet = loadPetPreferences(account);
+  const cachedUser = getApp<IAppOption>().globalData.user || loadCurrentUser();
+  const user = cachedUser?.account === account ? cachedUser : null;
+  return {
+    appearance,
+    sourceRevisions: readProfileSourceRevisions(account),
+    patch: {
+      ...appearance,
+      reducedMotion: preferences.reducedMotion,
+      ...profileUserPatch(user),
+      petShape: pet.shape,
+      petColor: pet.color,
+      petEnhanced: pet.enhanced,
+      petSelected: pet.selected,
+      petEnabled: pet.enabled,
+      petVisible: shouldShowPet(pet),
+      ...autoDormCheckPresentationPatch(loadAutoDormCheckSnapshot(account)),
+      errorMessage: "",
+    },
+  };
 }
 
 Page({
@@ -158,68 +311,70 @@ Page({
     feedbackErrorMessage: "",
   },
   onLoad() {
-    activeProfileSessionKey = "";
-    this.applyAppearance();
+    hydratedProfileSources = null;
+    profileVisible = false;
     const sessionAccount = getSession()?.user.account || "";
-    const cached = getApp<IAppOption>().globalData.user || loadCurrentUser();
-    if (cached?.account === sessionAccount) {
-      this.applyUser(cached);
-      this.loadPet(cached.account);
+    if (sessionAccount) {
+      this.hydrateCachedProfileIfNeeded(sessionAccount, true);
     }
-    this.hydrateAutoDormCheckAvailability(sessionAccount);
   },
   onShow() {
     if (!ensureAuthenticated()) {
       return;
     }
     clearAuthenticationExitTimer();
+    profileVisible = true;
     const lease = captureSessionLease();
     if (!lease) return;
     const account = lease.account;
-    const sessionKey = sessionLeaseKey(lease);
+    const hydrated = this.hydrateCachedProfileIfNeeded(account);
     if (
-      (activeProfileSessionKey && activeProfileSessionKey !== sessionKey) ||
-      (this.data.account && this.data.account !== account)
+      !hydrated &&
+      (this.data.loggingOut ||
+        this.data.openingSetting ||
+        this.data.authenticationExitClass)
     ) {
       this.setData({
-        loading: false,
-        userName: "同学",
-        avatarText: "易",
-        account: "",
-        organizationName: "西南大学",
-        classLabel: "",
-        enrollmentDate: "",
-        identityCardTone: "neutral",
-        autoDormCheckVisible: false,
-        autoDormCheckTitle: "自动查寝",
-        autoDormCheckStatusLabel: "已关闭",
-        autoDormCheckStatusTone: "muted",
-        errorMessage: "",
+        loggingOut: false,
+        openingSetting: "",
+        authenticationExitClass: "",
       });
     }
-    activeProfileSessionKey = sessionKey;
+    this.syncTabBarAppearance();
+    this.scheduleProfileRefresh(PROFILE_RETURN_REFRESH_DELAY_MS);
+  },
+  onHide() {
+    profileVisible = false;
+    clearProfileRefreshTimer();
+  },
+  onUnload() {
+    profileVisible = false;
+    clearProfileRefreshTimer();
+    clearAuthenticationExitTimer();
+  },
+  hydrateCachedProfileIfNeeded(account: string, force = false): boolean {
+    if (!force && profileSourcesAreCurrent(account)) return false;
+    const state = cachedProfileRenderState(account);
+    hydratedProfileSources = state.sourceRevisions;
+    const appearance = state.appearance;
+    syncWindowBackground(appearance);
     this.setData({
+      ...state.patch,
+      loading: false,
       loggingOut: false,
       openingSetting: "",
       authenticationExitClass: "",
     });
-    this.applyAppearance();
-    this.loadPet(account);
-    this.hydrateAutoDormCheckAvailability(account);
-    this.syncTabBarAppearance();
-    void this.loadUser();
+    return true;
   },
-  onUnload() {
-    clearAuthenticationExitTimer();
-  },
-  applyAppearance() {
-    const preferences = getApp<IAppOption>().globalData.preferences;
-    const appearance = resolveAppearance(preferences);
-    syncWindowBackground(appearance);
-    this.setData({
-      ...appearance,
-      reducedMotion: preferences.reducedMotion,
-    });
+  scheduleProfileRefresh(delay: number) {
+    clearProfileRefreshTimer();
+    profileRefreshTimer = setTimeout(() => {
+      profileRefreshTimer = undefined;
+      if (!profileVisible) return;
+      void this.loadUser();
+      this.hydrateAutoDormCheckAvailability();
+    }, delay);
   },
   syncTabBarAppearance() {
     this.getTabBar().setData({
@@ -231,27 +386,8 @@ Page({
     });
   },
   applyUser(user: CurrentUserData) {
-    const name = user.name || "同学";
-    this.setData({
-      userName: name,
-      avatarText: name.slice(0, 1),
-      account: user.account,
-      organizationName: user.profile.organizationName || "西南大学",
-      classLabel: classLabel(user),
-      enrollmentDate: enrollmentDateLabel(user.profile.enrollmentDate),
-      identityCardTone: identityCardTone(user.profile.gender),
-    });
-  },
-  loadPet(account: string) {
-    if (!account) return;
-    const preferences = loadPetPreferences(account);
-    this.setData({
-      petShape: preferences.shape,
-      petColor: preferences.color,
-      petEnhanced: preferences.enhanced,
-      petSelected: preferences.selected,
-      petEnabled: preferences.enabled,
-      petVisible: shouldShowPet(preferences),
+    this.setData(profileUserPatch(user), () => {
+      markProfileSourcesHydrated(user.account, ["session"]);
     });
   },
   async loadUser(refresh = false) {
@@ -260,21 +396,27 @@ Page({
     }
     const lease = captureSessionLease();
     if (!lease) return;
-    this.setData({
-      loading: !this.data.account,
-      errorMessage: "",
-    });
+    if (!this.data.account || this.data.errorMessage) {
+      this.setData({
+        loading: !this.data.account,
+        errorMessage: "",
+      });
+    }
     try {
       const user = await getPreloadedCurrentUser(refresh);
-      if (user && isSessionLeaseCurrent(lease)) this.applyUser(user);
+      if (user && profileVisible && isSessionLeaseCurrent(lease)) {
+        this.applyUser(user);
+      }
     } catch (error) {
-      if (isSessionLeaseCurrent(lease)) {
+      if (profileVisible && isSessionLeaseCurrent(lease)) {
         this.setData({
           errorMessage: getErrorMessage(error, "个人资料加载失败。"),
         });
       }
     } finally {
-      if (isSessionLeaseCurrent(lease)) this.setData({ loading: false });
+      if (profileVisible && this.data.loading && isSessionLeaseCurrent(lease)) {
+        this.setData({ loading: false });
+      }
     }
   },
   retryLoadUser() {
@@ -293,38 +435,19 @@ Page({
         >
       | AutoDormCheckStatus,
   ) {
-    const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
-    const quota =
-      "remainingDays" in status
-        ? status
-        : {
-            paymentEnabled: status.paymentEnabled,
-            remainingDays: Math.max(
-              0,
-              Math.floor(Number(status.entitlement.time.remainingDays) || 0),
-            ),
-            remainingUses: Math.max(
-              0,
-              Math.floor(Number(status.entitlement.uses.remaining) || 0),
-            ),
-          };
-    this.setData({
-      autoDormCheckVisible: status.entryEnabled,
-      autoDormCheckTitle: autoDormCheckSettingTitle(quota),
-      autoDormCheckStatusLabel: presentation.label,
-      autoDormCheckStatusTone: presentation.tone,
+    this.setData(autoDormCheckPresentationPatch(status), () => {
+      const account = getSession()?.user.account || "";
+      if (account) markProfileSourcesHydrated(account, ["autoDormCheck"]);
     });
   },
-  hydrateAutoDormCheckAvailability(account: string) {
-    const cached = loadAutoDormCheckSnapshot(account);
-    if (cached) this.applyAutoDormCheckAvailability(cached);
+  hydrateAutoDormCheckAvailability() {
     const lease = captureSessionLease();
     if (!lease) return;
     const pending = getPendingAutoDormCheckStatus();
     if (!pending) return;
     void pending
       .then((status) => {
-        if (isSessionLeaseCurrent(lease)) {
+        if (profileVisible && isSessionLeaseCurrent(lease)) {
           this.applyAutoDormCheckAvailability(status);
         }
       })

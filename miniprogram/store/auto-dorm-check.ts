@@ -7,6 +7,7 @@ import type {
 const PREFIX = "easy-swu:auto-dorm-check:v1:";
 const LOCATION_PREFIX = "easy-swu:auto-dorm-check-location:v1:";
 const PAYMENT_PENDING_PREFIX = "easy-swu:auto-dorm-check-payment:v1:";
+let autoDormCheckRevision = 0;
 const VALID_STATES = new Set<AutoDormCheckState>([
   "checked_in",
   "pending",
@@ -32,6 +33,10 @@ export interface PendingAutoDormCheckPayment {
   orderId: string | null;
   planId: string;
   createdAt: number;
+}
+
+export function getAutoDormCheckRevision(): number {
+  return autoDormCheckRevision;
 }
 
 function storageKey(account: string): string {
@@ -177,6 +182,7 @@ export function saveAutoDormCheckSnapshot(
   };
   try {
     wx.setStorageSync(storageKey(account), snapshot);
+    autoDormCheckRevision += 1;
   } catch {
     // 写入失败时，本次应用生命周期仍可复用主页发出的请求。
   }

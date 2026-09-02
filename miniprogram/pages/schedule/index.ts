@@ -20,7 +20,15 @@ import {
   isCacheStale,
   shouldStoreServerSnapshot,
 } from "../../store/cache-policy";
-import { loadScheduleData, saveScheduleData } from "../../store/schedule";
+import {
+  getScheduleRevision,
+  loadScheduleData,
+  saveScheduleData,
+} from "../../store/schedule";
+import {
+  getPreferencesRevision,
+  loadPreferences,
+} from "../../store/preferences";
 import {
   captureSessionLease,
   getSession,
@@ -28,6 +36,7 @@ import {
   type SessionLease,
 } from "../../store/session";
 import {
+  getTimetableRevision,
   loadTimetableSnapshot,
   saveTimetableSnapshot,
 } from "../../store/timetable";
@@ -41,18 +50,83 @@ let activeTimetable: TimetableData | null = null;
 let activeAccount = "";
 let timetableRequestLease: SessionLease | null = null;
 let scheduleSyncLease: SessionLease | null = null;
-let skipNextScheduleRebuild = false;
 let activeSchedulePrewarmRevision = 0;
 let activeTimetableStoredAt = 0;
 let activeScheduleUpdatedAt: string | null = null;
+let hydratedScheduleSources: ScheduleSourceRevisions | null = null;
+let scheduleRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let scheduleVisible = false;
+
+const INITIAL_SCHEDULE_PREFERENCES = loadPreferences();
+const INITIAL_SCHEDULE_APPEARANCE = resolveAppearance(
+  INITIAL_SCHEDULE_PREFERENCES,
+);
+const SCHEDULE_RETURN_REFRESH_DELAY_MS = 520;
+
+interface ScheduleSourceRevisions {
+  account: string;
+  date: string;
+  preferences: number;
+  timetable: number;
+  schedule: number;
+}
+
+type ScheduleSourceName = Exclude<
+  keyof ScheduleSourceRevisions,
+  "account" | "date"
+>;
+
+const SCHEDULE_SOURCE_NAMES: readonly ScheduleSourceName[] = [
+  "preferences",
+  "timetable",
+  "schedule",
+];
+
+function readScheduleSourceRevisions(account: string): ScheduleSourceRevisions {
+  return {
+    account,
+    date: toDateString(new Date()),
+    preferences: getPreferencesRevision(),
+    timetable: getTimetableRevision(),
+    schedule: getScheduleRevision(),
+  };
+}
+
+function scheduleSourcesAreCurrent(account: string): boolean {
+  if (!hydratedScheduleSources || hydratedScheduleSources.account !== account) {
+    return false;
+  }
+  const current = readScheduleSourceRevisions(account);
+  return (
+    current.date === hydratedScheduleSources.date &&
+    SCHEDULE_SOURCE_NAMES.every(
+      (source) => current[source] === hydratedScheduleSources?.[source],
+    )
+  );
+}
+
+function markScheduleSourcesHydrated(
+  account: string,
+  sources: readonly ScheduleSourceName[],
+): void {
+  if (!hydratedScheduleSources || hydratedScheduleSources.account !== account) {
+    return;
+  }
+  const current = readScheduleSourceRevisions(account);
+  const next = { ...hydratedScheduleSources, date: current.date };
+  for (const source of sources) next[source] = current[source];
+  hydratedScheduleSources = next;
+}
+
+function clearScheduleRefreshTimer(): void {
+  if (scheduleRefreshTimer === undefined) return;
+  clearTimeout(scheduleRefreshTimer);
+  scheduleRefreshTimer = undefined;
+}
 
 Page({
   data: {
-    theme: "light" as "light" | "dark",
-    themeClass: "theme-light",
-    visualTheme: "default",
-    visualThemeClass: "theme-style-default",
-    motionClass: "motion-normal",
+    ...INITIAL_SCHEDULE_APPEARANCE,
     currentTime: "",
     monthLabel: "",
     teachingWeekLabel: "",
@@ -72,28 +146,17 @@ Page({
     editingPlanId: "",
   },
   onLoad() {
-    this.setData(resolveAppearance());
+    scheduleVisible = false;
+    hydratedScheduleSources = null;
     const account = getSession()?.user.account || "";
-    const prewarmed = getPrewarmedScheduleFirstScreen(account);
-    if (prewarmed) {
-      activeAccount = account;
-      activeTimetable = prewarmed.timetable;
-      activeSchedulePrewarmRevision = prewarmed.revision;
-      activeTimetableStoredAt = prewarmed.timetableStoredAt;
-      activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
-      this.setData(prewarmed.view);
-    } else {
-      activeSchedulePrewarmRevision = 0;
-      activeTimetableStoredAt = 0;
-      activeScheduleUpdatedAt = null;
-      this.hydrateTimetable();
-      this.rebuildWeek();
-    }
-    skipNextScheduleRebuild = true;
+    if (account) this.hydrateCachedScheduleIfNeeded(account, true);
   },
   onShow() {
     if (!ensureAuthenticated()) return;
-    this.setData(resolveAppearance());
+    scheduleVisible = true;
+    const account = getSession()?.user.account || "";
+    if (!account) return;
+    this.hydrateCachedScheduleIfNeeded(account);
     const tabBar = this.getTabBar();
     if (tabBar) {
       tabBar.setData({
@@ -104,47 +167,100 @@ Page({
         hidden: false,
       });
     }
-    this.hydrateTimetable();
-    if (skipNextScheduleRebuild) {
-      skipNextScheduleRebuild = false;
-    } else {
-      this.rebuildWeek();
-    }
-    void this.loadTimetable();
-    void this.syncSchedule();
+    this.scheduleBackgroundRefresh(SCHEDULE_RETURN_REFRESH_DELAY_MS);
   },
   onHide() {
-    this.setData({ creating: false, editingPlanId: "" });
+    scheduleVisible = false;
+    clearScheduleRefreshTimer();
+    if (this.data.creating || this.data.editingPlanId) {
+      this.setData({ creating: false, editingPlanId: "" });
+    }
     this.setTabBarHidden(false);
+  },
+  onUnload() {
+    scheduleVisible = false;
+    clearScheduleRefreshTimer();
   },
   setTabBarHidden(hidden: boolean) {
     const tabBar = this.getTabBar();
     if (tabBar) tabBar.setData({ hidden });
   },
-  hydrateTimetable() {
-    const account = getSession()?.user.account || "";
-    if (!account) return;
-    if (account !== activeAccount) {
-      activeAccount = account;
-      const snapshot = loadTimetableSnapshot(account);
-      activeTimetable = snapshot?.data || null;
-      activeTimetableStoredAt = snapshot?.localStoredAt || 0;
-    } else if (!activeTimetable) {
-      const snapshot = loadTimetableSnapshot(account);
-      activeTimetable = snapshot?.data || null;
-      activeTimetableStoredAt = snapshot?.localStoredAt || 0;
+  hydrateCachedScheduleIfNeeded(account: string, force = false): boolean {
+    if (!force && scheduleSourcesAreCurrent(account)) return false;
+    const previous = hydratedScheduleSources;
+    const current = readScheduleSourceRevisions(account);
+    const accountChanged = !previous || previous.account !== account;
+    const preferencesChanged =
+      force || accountChanged || previous.preferences !== current.preferences;
+    const contentChanged =
+      force ||
+      accountChanged ||
+      previous.date !== current.date ||
+      previous.timetable !== current.timetable ||
+      previous.schedule !== current.schedule;
+    const patch: Record<string, unknown> = {};
+    if (preferencesChanged) {
+      Object.assign(patch, resolveAppearance(loadPreferences()));
     }
+    if (contentChanged) {
+      const prewarmed = force ? getPrewarmedScheduleFirstScreen(account) : null;
+      activeAccount = account;
+      if (prewarmed) {
+        activeTimetable = prewarmed.timetable;
+        activeSchedulePrewarmRevision = prewarmed.revision;
+        activeTimetableStoredAt = prewarmed.timetableStoredAt;
+        activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
+        Object.assign(patch, prewarmed.view);
+      } else {
+        const timetable = loadTimetableSnapshot(account);
+        const schedule = loadScheduleData(account);
+        activeTimetable = timetable?.data || null;
+        activeSchedulePrewarmRevision = 0;
+        activeTimetableStoredAt = timetable?.localStoredAt || 0;
+        activeScheduleUpdatedAt = schedule.clientUpdatedAt;
+        Object.assign(
+          patch,
+          buildScheduleWeekView(
+            activeTimetable,
+            schedule.plans,
+            accountChanged ? currentIsoWeekday() : this.data.selectedWeekday,
+          ),
+        );
+      }
+    }
+    hydratedScheduleSources = readScheduleSourceRevisions(account);
+    if (Object.keys(patch).length) this.setData(patch);
+    return true;
+  },
+  scheduleBackgroundRefresh(delay: number) {
+    clearScheduleRefreshTimer();
+    scheduleRefreshTimer = setTimeout(() => {
+      scheduleRefreshTimer = undefined;
+      if (!scheduleVisible) return;
+      void this.loadTimetable();
+      void this.syncSchedule();
+    }, delay);
   },
   applyPrewarmedSchedule() {
+    if (!scheduleVisible) return false;
     const prewarmed = getPrewarmedScheduleFirstScreen(activeAccount);
     if (!prewarmed || prewarmed.revision === activeSchedulePrewarmRevision) {
+      return false;
+    }
+    if (
+      prewarmed.timetableStoredAt === activeTimetableStoredAt &&
+      prewarmed.scheduleUpdatedAt === activeScheduleUpdatedAt
+    ) {
+      activeSchedulePrewarmRevision = prewarmed.revision;
       return false;
     }
     activeTimetable = prewarmed.timetable;
     activeSchedulePrewarmRevision = prewarmed.revision;
     activeTimetableStoredAt = prewarmed.timetableStoredAt;
     activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
-    this.setData(prewarmed.view);
+    this.setData(prewarmed.view, () => {
+      markScheduleSourcesHydrated(activeAccount, ["timetable", "schedule"]);
+    });
     return true;
   },
   async loadTimetable() {
@@ -159,6 +275,7 @@ Page({
       const result = await getPreloadedTimetable();
       if (
         !result ||
+        !scheduleVisible ||
         !isSessionLeaseCurrent(lease) ||
         activeAccount !== lease.account
       ) {
@@ -187,7 +304,11 @@ Page({
       if (timetableRequestLease === lease) timetableRequestLease = null;
       if (shouldRefreshAfterward && isSessionLeaseCurrent(lease)) {
         setTimeout(() => {
-          if (isSessionLeaseCurrent(lease) && activeAccount === lease.account) {
+          if (
+            scheduleVisible &&
+            isSessionLeaseCurrent(lease) &&
+            activeAccount === lease.account
+          ) {
             void this.refreshTimetable();
           }
         }, 0);
@@ -213,7 +334,7 @@ Page({
         serverFetchedAt: result.meta.fetchedAt,
       });
       activeTimetableStoredAt = snapshot?.localStoredAt || Date.now();
-      this.rebuildWeek();
+      if (scheduleVisible) this.rebuildWeek();
     } catch {
       // 周期刷新失败时继续使用旧课表。
     } finally {
@@ -227,7 +348,11 @@ Page({
     scheduleSyncLease = lease;
     try {
       await getPreloadedSchedule();
-      if (!isSessionLeaseCurrent(lease) || activeAccount !== lease.account) {
+      if (
+        !scheduleVisible ||
+        !isSessionLeaseCurrent(lease) ||
+        activeAccount !== lease.account
+      ) {
         return;
       }
       if (!this.applyPrewarmedSchedule()) {
@@ -258,6 +383,9 @@ Page({
         schedule.plans,
         this.data.selectedWeekday,
       ),
+      () => {
+        markScheduleSourcesHydrated(activeAccount, ["timetable", "schedule"]);
+      },
     );
   },
   applyDay(

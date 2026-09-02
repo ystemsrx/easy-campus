@@ -260,10 +260,24 @@ assert(
   renderScript.includes("export function prewarmScheduleFirstScreen(") &&
     renderScript.includes("buildScheduleWeekView(") &&
     pageScript.includes("getPrewarmedScheduleFirstScreen(account)") &&
-    pageScript.includes("this.setData(prewarmed.view)") &&
+    pageScript.includes("Object.assign(patch, prewarmed.view)") &&
     pageScript.includes("getPreloadedTimetable()") &&
     pageScript.includes("getPreloadedSchedule()"),
   "日程页必须复用启动时预构建的首屏与静默请求",
+);
+assert(
+  pageScript.includes("getPreferencesRevision()") &&
+    pageScript.includes("getTimetableRevision()") &&
+    pageScript.includes("getScheduleRevision()") &&
+    pageScript.includes("scheduleSourcesAreCurrent(account)") &&
+    /onShow\(\)[\s\S]*?this\.hydrateCachedScheduleIfNeeded\(account\)[\s\S]*?this\.scheduleBackgroundRefresh\(SCHEDULE_RETURN_REFRESH_DELAY_MS\)/.test(
+      pageScript,
+    ) &&
+    pageScript.includes("const SCHEDULE_RETURN_REFRESH_DELAY_MS = 520;") &&
+    /scheduleBackgroundRefresh\(delay: number\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?this\.loadTimetable\(\)[\s\S]*?this\.syncSchedule\(\)/.test(
+      pageScript,
+    ),
+  "日程页返回时必须按数据版本复用页面状态，并在底栏动画结束后静默同步",
 );
 assert(
   /\.timeline-legend > view\s*\{[^}]*flex:\s*none;[^}]*white-space:\s*nowrap;/s.test(
@@ -290,7 +304,7 @@ assert(
 );
 assert(
   template.includes(
-    'name="plus" tone="{{visualTheme === \'minimal\' ? (theme === \'dark\' ? \'white\' : \'ink\') : \'white\'}}"',
+    "name=\"plus\" tone=\"{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}\"",
   ) && !template.includes('name="plus" tone="white"'),
   "极简主题浅色模式的日程新增按钮必须使用深色加号",
 );

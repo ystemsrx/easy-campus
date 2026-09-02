@@ -4,6 +4,11 @@ import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:grades:";
 const SCHEMA_VERSION = 12;
+let gradesRevision = 0;
+
+export function getGradesRevision(): number {
+  return gradesRevision;
+}
 
 export interface GradesSnapshot extends CacheMetadata {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -84,6 +89,7 @@ export function saveGradesSnapshot(
   };
   try {
     wx.setStorageSync(storageKey(account), snapshot);
+    gradesRevision += 1;
   } catch {
     // 服务端仍保存完整快照，本地写入失败不会影响后续查询。
   }

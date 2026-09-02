@@ -5,6 +5,7 @@ const USER_KEY = "easy-swu:user";
 const SESSION_INVALID_NOTICE_KEY = "easy-swu:session-invalid-notice";
 const ACCOUNT_DEACTIVATED_NOTICE_KEY = "easy-swu:account-deactivated-notice";
 const SESSION_INVALID_NOTICE_TTL_MS = 15_000;
+let sessionRevision = 0;
 const CURRENT_USER_PROFILE_FIELDS = [
   "gender",
   "grade",
@@ -18,6 +19,10 @@ export interface SessionLease {
   userId: string;
   account: string;
   signedInAt: number;
+}
+
+export function getSessionRevision(): number {
+  return sessionRevision;
 }
 
 function isSession(value: unknown): value is Session {
@@ -85,6 +90,7 @@ export function saveSession(loginData: LoginData): Session {
     app.globalData.selectedGrade = null;
   }
   app.globalData.session = session;
+  sessionRevision += 1;
   return session;
 }
 
@@ -96,6 +102,7 @@ export function updateSessionCredential(
   const updated = { ...session, credential };
   wx.setStorageSync(SESSION_KEY, updated);
   getApp<IAppOption>().globalData.session = updated;
+  sessionRevision += 1;
 }
 
 export function updateSessionDevice(
@@ -107,6 +114,7 @@ export function updateSessionDevice(
   const updated = { ...session, device, token };
   wx.setStorageSync(SESSION_KEY, updated);
   getApp<IAppOption>().globalData.session = updated;
+  sessionRevision += 1;
   return updated;
 }
 
@@ -165,6 +173,7 @@ export function saveCurrentUser(user: CurrentUserData): void {
   const sanitized = sanitizeCurrentUser(user);
   wx.setStorageSync(USER_KEY, sanitized);
   getApp<IAppOption>().globalData.user = sanitized;
+  sessionRevision += 1;
 }
 
 export function loadCurrentUser(): CurrentUserData | null {
@@ -199,6 +208,7 @@ export function clearSession(): void {
   app.globalData.session = null;
   app.globalData.user = null;
   app.globalData.selectedGrade = null;
+  sessionRevision += 1;
 }
 
 /** 仅清理由发起方捕获的会话，不能让旧请求退出后来登录的新账号。 */

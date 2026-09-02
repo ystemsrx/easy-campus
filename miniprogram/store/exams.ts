@@ -3,6 +3,11 @@ import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:exams:";
 const SCHEMA_VERSION = 3;
+let examsRevision = 0;
+
+export function getExamsRevision(): number {
+  return examsRevision;
+}
 
 export interface ExamsSnapshot extends CacheMetadata {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -73,6 +78,7 @@ export function saveExamsSnapshot(
   try {
     const semesterId = options.semesterId || "default";
     wx.setStorageSync(storageKey(account, semesterId), snapshot);
+    if (semesterId === "default") examsRevision += 1;
     if (semesterId === "default" && data.semester?.id) {
       wx.setStorageSync(storageKey(account, data.semester.id), snapshot);
     }

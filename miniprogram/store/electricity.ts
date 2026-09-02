@@ -2,6 +2,11 @@ import type { ElectricityCachedData } from "../types/api";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:electricity:";
+let electricityRevision = 0;
+
+export function getElectricityRevision(): number {
+  return electricityRevision;
+}
 
 export interface ElectricitySnapshot extends CacheMetadata {
   data: ElectricityCachedData;
@@ -38,6 +43,7 @@ export function saveElectricitySnapshot(
   };
   try {
     wx.setStorageSync(storageKey(account), snapshot);
+    electricityRevision += 1;
   } catch {
     // 本地失败时仍可从服务器恢复绑定和最近一次账单。
   }

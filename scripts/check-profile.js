@@ -81,6 +81,26 @@ assert(
 );
 
 assert(
+  profileScript.includes("getPreferencesRevision()") &&
+    profileScript.includes("getSessionRevision()") &&
+    profileScript.includes("getPetPreferencesRevision()") &&
+    profileScript.includes("getAutoDormCheckRevision()") &&
+    profileScript.includes("profileSourcesAreCurrent(account)") &&
+    /onShow\(\)[\s\S]*?this\.hydrateCachedProfileIfNeeded\(account\)[\s\S]*?this\.scheduleProfileRefresh\(PROFILE_RETURN_REFRESH_DELAY_MS\)/.test(
+      profileScript,
+    ) &&
+    profileScript.includes("const PROFILE_RETURN_REFRESH_DELAY_MS = 520;") &&
+    /scheduleProfileRefresh\(delay: number\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?this\.loadUser\(\)[\s\S]*?this\.hydrateAutoDormCheckAvailability\(\)/.test(
+      profileScript,
+    ) &&
+    autoDormCheckStore.includes(
+      "export function getAutoDormCheckRevision(): number",
+    ) &&
+    autoDormCheckStore.includes("autoDormCheckRevision += 1"),
+  "我的页面返回时必须按数据版本复用页面状态，并在底栏动画结束后静默同步",
+);
+
+assert(
   /\.identity-card--male\s*\{[^}]*background:\s*#e3eff8/.test(profileStyles) &&
     /\.identity-card--female\s*\{[^}]*background:\s*#ece4f5/.test(
       profileStyles,

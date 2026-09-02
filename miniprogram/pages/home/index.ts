@@ -2,6 +2,7 @@ import { APP_NAME } from "../../config/app";
 import { getCredentialStatus } from "../../services/auth";
 import { preloadAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import {
+  getPreloadedSchedule,
   getPreloadedCurrentUser,
   getPreloadedTimetable,
 } from "../../services/primary-tab-preload";
@@ -31,23 +32,36 @@ import {
   shouldStoreServerSnapshot,
 } from "../../store/cache-policy";
 import {
+  getGradesRevision,
   loadGradesSnapshot,
   loadGradesSnapshotForPreference,
   saveGradesSnapshot,
 } from "../../store/grades";
-import { loadElectricitySnapshot } from "../../store/electricity";
-import { loadExamsSnapshot } from "../../store/exams";
 import {
+  getElectricityRevision,
+  loadElectricitySnapshot,
+} from "../../store/electricity";
+import { getExamsRevision, loadExamsSnapshot } from "../../store/exams";
+import {
+  getPetPreferencesRevision,
   loadPetPreferences,
   savePetSelection,
   shouldShowPet,
   skipPetSetup,
 } from "../../store/pet";
 import { uploadLocalCompanionPreferences } from "../../services/companion";
-import { loadPreferences } from "../../store/preferences";
-import { loadScheduleData, saveScheduleData } from "../../store/schedule";
+import {
+  getPreferencesRevision,
+  loadPreferences,
+} from "../../store/preferences";
+import {
+  getScheduleRevision,
+  loadScheduleData,
+  saveScheduleData,
+} from "../../store/schedule";
 import {
   captureSessionLease,
+  getSessionRevision,
   getSession,
   isSessionLeaseCurrent,
   loadCurrentUser,
@@ -56,10 +70,12 @@ import {
 } from "../../store/session";
 import {
   cleanupTeachingPreview,
+  getTeachingPreviewRevision,
   loadTeachingPreview,
   saveTeachingPreview,
 } from "../../store/teaching-preview";
 import {
+  getTimetableRevision,
   loadTimetableSnapshot,
   saveTimetableSnapshot,
 } from "../../store/timetable";
@@ -80,7 +96,7 @@ import type {
   TeachingMessage,
   TimetableData,
 } from "../../types/api";
-import type { VisualTheme } from "../../types/app";
+import type { AppPreferences, VisualTheme } from "../../types/app";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -181,6 +197,7 @@ interface ExamPreview {
 const HOME_PREVIEW_ITEM_LIMIT = 3;
 const HOME_FIRST_FRAME_SETTLE_MS = 32;
 const HOME_LOGIN_REVEAL_SETTLE_MS = 360;
+const HOME_RETURN_REFRESH_DELAY_MS = 520;
 const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
 const PLAN_CARD_MIN_HEIGHT_RPX = 224;
@@ -205,6 +222,33 @@ interface ShortcutCachePatch {
   examEmptyLabel: string;
 }
 
+interface HomeSourceRevisions {
+  account: string;
+  preferences: number;
+  session: number;
+  pet: number;
+  timetable: number;
+  grades: number;
+  teaching: number;
+  electricity: number;
+  exams: number;
+  schedule: number;
+}
+
+type HomeSourceName = Exclude<keyof HomeSourceRevisions, "account">;
+
+const HOME_SOURCE_NAMES: readonly HomeSourceName[] = [
+  "preferences",
+  "session",
+  "pet",
+  "timetable",
+  "grades",
+  "teaching",
+  "electricity",
+  "exams",
+  "schedule",
+];
+
 let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
 let announcementModalTimer: number | undefined;
@@ -216,6 +260,10 @@ let publicationRefreshQueued = false;
 let homeVisible = false;
 let homeReady = false;
 let homeActivationTimer: ReturnType<typeof setTimeout> | undefined;
+let homeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let homeHasActivated = false;
+let hydratedHomeSources: HomeSourceRevisions | null = null;
+let lastHomeClockKey = "";
 let authenticationRevealPrepared = false;
 let nextPrimaryTabFrameworkPreloadStarted = false;
 let queuedAnnouncements: Publication[] = [];
@@ -232,7 +280,6 @@ let credentialPollTimer: number | undefined;
 let credentialPollAttempt = 0;
 let credentialProfileRefreshPending = false;
 let hydratedAccount = "";
-let hydratedDashboardKey = "";
 let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
 let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
 let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
@@ -384,8 +431,11 @@ function publicationPreview(
   };
 }
 
-function todayCoursePreview(now = new Date()): TodayCoursePreview[] {
-  const preview = coursePreview(activeTimetable, now, 3);
+function todayCoursePreview(
+  now = new Date(),
+  timetable = activeTimetable,
+): TodayCoursePreview[] {
+  const preview = coursePreview(timetable, now, 3);
   return preview.courses.map((course) => {
     const current = course.id === preview.currentCourseId;
     return {
@@ -575,11 +625,14 @@ function latestSchoolNoticeItems<T extends NoticePreview>(
   );
 }
 
-function cachedDashboardState(account: string, animateGrades: boolean) {
+function cachedDashboardState(
+  account: string,
+  preferences: AppPreferences,
+  animateGrades: boolean,
+) {
   const cached =
     cleanupTeachingPreview(account) || loadTeachingPreview(account);
   const timetable = loadTimetableSnapshot(account);
-  const preferences = loadPreferences();
   const grades =
     loadGradesSnapshotForPreference(account, preferences.showGradesBelow60) ||
     loadGradesSnapshot(account);
@@ -595,16 +648,7 @@ function cachedDashboardState(account: string, animateGrades: boolean) {
     semesterBoundary,
   ).slice(0, HOME_PREVIEW_ITEM_LIMIT);
   return {
-    key: [
-      account,
-      cached?.updatedAt || 0,
-      timetable?.localStoredAt || 0,
-      grades?.localStoredAt || 0,
-      grades?.serverFetchedAt || "",
-      preferences.showGradesBelow60 ? 1 : 0,
-    ].join(":"),
     timetable: timetable?.data || null,
-    hasGrades: Boolean(grades),
     patch: {
       messages,
       notices,
@@ -614,6 +658,86 @@ function cachedDashboardState(account: string, animateGrades: boolean) {
         notices.length > 0 ||
         Boolean(timetable) ||
         Boolean(grades),
+    },
+  };
+}
+
+function readHomeSourceRevisions(account: string): HomeSourceRevisions {
+  return {
+    account,
+    preferences: getPreferencesRevision(),
+    session: getSessionRevision(),
+    pet: getPetPreferencesRevision(),
+    timetable: getTimetableRevision(),
+    grades: getGradesRevision(),
+    teaching: getTeachingPreviewRevision(),
+    electricity: getElectricityRevision(),
+    exams: getExamsRevision(),
+    schedule: getScheduleRevision(),
+  };
+}
+
+function homeSourcesAreCurrent(account: string): boolean {
+  if (!hydratedHomeSources || hydratedHomeSources.account !== account) {
+    return false;
+  }
+  const current = readHomeSourceRevisions(account);
+  return HOME_SOURCE_NAMES.every(
+    (source) => current[source] === hydratedHomeSources?.[source],
+  );
+}
+
+function markHomeSourcesHydrated(
+  account: string,
+  sources: readonly HomeSourceName[],
+): void {
+  if (!hydratedHomeSources || hydratedHomeSources.account !== account) return;
+  const current = readHomeSourceRevisions(account);
+  const next = { ...hydratedHomeSources };
+  for (const source of sources) next[source] = current[source];
+  hydratedHomeSources = next;
+}
+
+function homeClockKey(now: Date): string {
+  return `${today()}:${formatClock(now)}`;
+}
+
+function cachedHomeRenderState(account: string) {
+  const preferences = loadPreferences();
+  const appearance = resolveAppearance(preferences);
+  const dashboard = cachedDashboardState(
+    account,
+    preferences,
+    appearance.motionClass !== "motion-reduced",
+  );
+  const pet = loadPetPreferences(account);
+  const now = new Date();
+  return {
+    sourceRevisions: readHomeSourceRevisions(account),
+    appearance,
+    dashboard,
+    clockKey: homeClockKey(now),
+    patch: {
+      ...appearance,
+      ...resolveHomeIdentity(getSession(), loadCurrentUser()),
+      timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
+      campusCardRadius: getCampusCardRadius(appearance.visualTheme),
+      examCardRadius: getCampusCardRadius(appearance.visualTheme),
+      gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
+      electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
+      showGradesOnHome: preferences.showGradesOnHome,
+      petReducedMotion: appearance.motionClass === "motion-reduced",
+      petShape: pet.shape,
+      petColor: pet.color,
+      petEnhanced: pet.enhanced,
+      petSelected: pet.selected,
+      petVisible: shouldShowPet(pet),
+      ...dashboard.patch,
+      ...shortcutCachePatch(account, dashboard.timetable),
+      ...planPreviewPatch(account),
+      currentTime: formatClock(now),
+      todayCourses: todayCoursePreview(now, dashboard.timetable),
+      remainingCourseCount: remainingCourses(dashboard.timetable, now).length,
     },
   };
 }
@@ -639,6 +763,12 @@ function clearHomeActivationTimer(): void {
   if (homeActivationTimer === undefined) return;
   clearTimeout(homeActivationTimer);
   homeActivationTimer = undefined;
+}
+
+function clearHomeRefreshTimer(): void {
+  if (homeRefreshTimer === undefined) return;
+  clearTimeout(homeRefreshTimer);
+  homeRefreshTimer = undefined;
 }
 
 Page({
@@ -712,10 +842,13 @@ Page({
     homeVisible = false;
     homeReady = false;
     authenticationRevealPrepared = false;
+    homeHasActivated = false;
+    hydratedHomeSources = null;
+    lastHomeClockKey = "";
     clearHomeActivationTimer();
+    clearHomeRefreshTimer();
     clearPlanTransitionTimers();
     hydratedAccount = "";
-    hydratedDashboardKey = "";
     activeTimetable = null;
     cancelPendingAnnouncementPresentation();
     if (petSetupDrawerTimer !== undefined) {
@@ -729,18 +862,13 @@ Page({
     dashboardTeachingRefreshQueued = false;
     dashboardStableRefreshQueued = false;
     clearDashboardTeachingFollowupTimer();
-    this.applyAppearance();
     if (getSession()?.token) {
-      if (!this.data.authenticated) this.setData({ authenticated: true });
-      this.hydrateIdentity();
       const account = getSession()?.user.account || "";
       if (account) {
-        this.hydratePet(account);
-        this.hydrateCachedDashboard();
-        this.hydrateShortcutCaches();
-        this.setData(planPreviewPatch(account));
+        this.hydrateCachedHomeIfNeeded(account, true);
       }
     } else {
+      this.applyAppearance();
       this.prepareForAuthenticationRequired();
     }
   },
@@ -759,10 +887,9 @@ Page({
       return;
     }
     homeVisible = true;
-    void preloadAutoDormCheckStatus().catch(() => undefined);
     if (this.data.authenticated) {
-      this.applyAppearance();
-      this.hydrateIdentity();
+      const account = getSession()?.user.account || "";
+      if (account) this.hydrateCachedHomeIfNeeded(account);
     } else {
       this.prepareForAuthenticatedReveal();
     }
@@ -784,14 +911,17 @@ Page({
   prepareForAuthenticationRequired(onReady?: () => void) {
     homeVisible = false;
     authenticationRevealPrepared = false;
+    homeHasActivated = false;
+    hydratedHomeSources = null;
+    lastHomeClockKey = "";
     clearHomeActivationTimer();
+    clearHomeRefreshTimer();
     clearDashboardTeachingFollowupTimer();
     clearPlanTransitionTimers();
     this.stopCourseClock();
     this.stopCredentialPoll();
     this.setTabBarHidden(true);
     hydratedAccount = "";
-    hydratedDashboardKey = "";
     activeTimetable = null;
     queuedAnnouncements = [];
     publicationRefreshQueued = false;
@@ -875,42 +1005,21 @@ Page({
       this.prepareForAuthenticationRequired(onReady);
       return;
     }
-    const preferences = getApp<IAppOption>().globalData.preferences;
-    const appearance = resolveAppearance(preferences);
-    const identity = resolveHomeIdentity(session, loadCurrentUser());
     const account = lease.account;
-    const dashboard = cachedDashboardState(
-      account,
-      appearance.motionClass !== "motion-reduced",
-    );
+    const state = cachedHomeRenderState(account);
     hydratedAccount = account;
-    hydratedDashboardKey = dashboard.key;
-    activeTimetable = dashboard.timetable;
-    const now = new Date();
-    syncWindowBackground(appearance);
+    activeTimetable = state.dashboard.timetable;
+    hydratedHomeSources = state.sourceRevisions;
+    lastHomeClockKey = state.clockKey;
+    syncWindowBackground(state.appearance);
     authenticationRevealPrepared = true;
     this.setData(
       {
         authenticated: true,
-        ...appearance,
-        ...identity,
-        timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
-        campusCardRadius: getCampusCardRadius(appearance.visualTheme),
-        examCardRadius: getCampusCardRadius(appearance.visualTheme),
-        gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
-        electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
-        showGradesOnHome: preferences.showGradesOnHome,
-        petReducedMotion: appearance.motionClass === "motion-reduced",
-        ...dashboard.patch,
-        ...shortcutCachePatch(account, activeTimetable),
-        ...planPreviewPatch(account),
-        currentTime: formatClock(now),
-        todayCourses: todayCoursePreview(now),
-        remainingCourseCount: remainingCourses(activeTimetable, now).length,
+        ...state.patch,
       },
       () => {
         if (!isSessionLeaseCurrent(lease)) return;
-        this.hydratePet(account);
         const tabBar = this.getTabBar();
         const finish = () =>
           wx.nextTick(() => {
@@ -923,9 +1032,9 @@ Page({
         tabBar.setData(
           {
             selected: 0,
-            themeClass: appearance.themeClass,
-            visualThemeClass: appearance.visualThemeClass,
-            motionClass: appearance.motionClass,
+            themeClass: state.appearance.themeClass,
+            visualThemeClass: state.appearance.visualThemeClass,
+            motionClass: state.appearance.motionClass,
             hidden: false,
           },
           () => {
@@ -942,27 +1051,73 @@ Page({
       if (homeVisible) this.activateHomeAfterFirstFrame();
     }, delay);
   },
+  hydrateCachedHomeIfNeeded(account: string, force = false): boolean {
+    if (!force && homeSourcesAreCurrent(account)) return false;
+    const changedAccount = Boolean(
+      hydratedAccount && hydratedAccount !== account,
+    );
+    const state = cachedHomeRenderState(account);
+    hydratedAccount = account;
+    activeTimetable = state.dashboard.timetable;
+    hydratedHomeSources = state.sourceRevisions;
+    lastHomeClockKey = state.clockKey;
+    syncWindowBackground(state.appearance);
+    this.setData({
+      ...state.patch,
+      ...(changedAccount
+        ? {
+            publications: [],
+            publicationUnreadCount: 0,
+            publicationUnreadLabel: "",
+            errorMessage: "",
+          }
+        : {}),
+    });
+    return true;
+  },
+  scheduleHomeRefresh(delay: number) {
+    clearHomeRefreshTimer();
+    const refresh = () => {
+      homeRefreshTimer = undefined;
+      if (!homeVisible) return;
+      const lease = captureSessionLease();
+      if (!lease) return;
+      void preloadAutoDormCheckStatus().catch(() => undefined);
+      void this.loadDashboard(false);
+      void this.loadPublicationFeed();
+      void getPreloadedSchedule()
+        .then(() => {
+          if (homeVisible && isSessionLeaseCurrent(lease)) {
+            this.hydratePlanPreviews(lease.account);
+          }
+        })
+        .catch(() => undefined);
+      void Promise.all([
+        refreshExamsOnForeground(),
+        refreshElectricityOnForeground(),
+      ]).then(() => {
+        if (homeVisible && isSessionLeaseCurrent(lease)) {
+          this.hydrateShortcutCaches();
+        }
+      });
+    };
+    if (delay <= 0) {
+      refresh();
+      return;
+    }
+    homeRefreshTimer = setTimeout(refresh, delay);
+  },
   activateHomeAfterFirstFrame() {
     const sessionAccount = getSession()?.user.account || "";
     if (!sessionAccount || !homeVisible) return;
-    this.hydratePet(sessionAccount);
+    this.hydrateCachedHomeIfNeeded(sessionAccount);
     const petSetupPending = this.openPendingPetSetup(sessionAccount);
     const currentAutomaticPopupEntryKey = `${getApp<IAppOption>().globalData.foregroundEntryId}:${sessionAccount}`;
     if (currentAutomaticPopupEntryKey !== automaticPopupEntryKey) {
       automaticPopupEntryKey = currentAutomaticPopupEntryKey;
       automaticPopupsThisEntry = new Set<string>();
     }
-    this.hydrateCachedDashboard();
-    this.hydrateShortcutCaches();
-    this.getTabBar().setData({
-      selected: 0,
-      themeClass: this.data.themeClass,
-      visualThemeClass: this.data.visualThemeClass,
-      motionClass: this.data.motionClass,
-      hidden: petSetupPending,
-    });
     this.updateTodayCourses();
-    this.setData(planPreviewPatch(sessionAccount));
     this.stopCourseClock();
     courseClockTimer = setInterval(
       () => this.updateTodayCourses(),
@@ -970,23 +1125,17 @@ Page({
     ) as unknown as number;
     const credential = getSession()?.credential;
     if (credential) this.handleCredentialState(credential);
-    void this.loadDashboard(false);
-    void this.loadPublicationFeed();
-    const lease = captureSessionLease();
-    void Promise.all([
-      refreshExamsOnForeground(),
-      refreshElectricityOnForeground(),
-    ]).then(() => {
-      if (homeVisible && isSessionLeaseCurrent(lease)) {
-        this.hydrateShortcutCaches();
-      }
-    });
+    const refreshDelay = homeHasActivated ? HOME_RETURN_REFRESH_DELAY_MS : 0;
+    homeHasActivated = true;
+    this.scheduleHomeRefresh(refreshDelay);
+    if (petSetupPending) this.setTabBarHidden(true);
     preloadNextPrimaryTabFramework();
   },
   onHide() {
     homeVisible = false;
     this.settlePlanTransition();
     clearHomeActivationTimer();
+    clearHomeRefreshTimer();
     clearDashboardTeachingFollowupTimer();
     this.stopCourseClock();
     this.stopCredentialPoll();
@@ -998,6 +1147,7 @@ Page({
     homeVisible = false;
     homeReady = false;
     clearHomeActivationTimer();
+    clearHomeRefreshTimer();
     clearDashboardTeachingFollowupTimer();
     clearPlanTransitionTimers();
     if (petSetupDrawerTimer !== undefined) {
@@ -1027,15 +1177,21 @@ Page({
     }
     clearPlanTransitionTimers();
     const account = getSession()?.user.account || "";
-    this.setData({
-      ...planPreviewPatch(account),
-      completingPlanId: "",
-      removingPlanId: "",
-      enteringPlanId: "",
-    });
+    this.setData(
+      {
+        ...planPreviewPatch(account),
+        completingPlanId: "",
+        removingPlanId: "",
+        enteringPlanId: "",
+      },
+      () => markHomeSourcesHydrated(account, ["schedule"]),
+    );
   },
-  updateTodayCourses() {
+  updateTodayCourses(force = false) {
     const now = new Date();
+    const clockKey = homeClockKey(now);
+    if (!force && clockKey === lastHomeClockKey) return;
+    lastHomeClockKey = clockKey;
     const courses = todayCoursePreview(now);
     this.setData({
       currentTime: formatClock(now),
@@ -1049,27 +1205,36 @@ Page({
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
     syncWindowBackground(appearance);
-    this.setData({
-      ...appearance,
-      timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
-      campusCardRadius: getCampusCardRadius(appearance.visualTheme),
-      examCardRadius: getCampusCardRadius(appearance.visualTheme),
-      gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
-      electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
-      showGradesOnHome: preferences.showGradesOnHome,
-      petReducedMotion: appearance.motionClass === "motion-reduced",
-    });
+    this.setData(
+      {
+        ...appearance,
+        timetableCardRadius: getTimetableCardRadius(appearance.visualTheme),
+        campusCardRadius: getCampusCardRadius(appearance.visualTheme),
+        examCardRadius: getCampusCardRadius(appearance.visualTheme),
+        gradeCardRadius: getFeatureCardRadius(appearance.visualTheme),
+        electricityCardRadius: getFeatureCardRadius(appearance.visualTheme),
+        showGradesOnHome: preferences.showGradesOnHome,
+        petReducedMotion: appearance.motionClass === "motion-reduced",
+      },
+      () => {
+        const account = getSession()?.user.account || "";
+        if (account) markHomeSourcesHydrated(account, ["preferences"]);
+      },
+    );
   },
   hydratePet(account: string) {
     if (!account) return;
     const preferences = loadPetPreferences(account);
-    this.setData({
-      petShape: preferences.shape,
-      petColor: preferences.color,
-      petEnhanced: preferences.enhanced,
-      petSelected: preferences.selected,
-      petVisible: shouldShowPet(preferences),
-    });
+    this.setData(
+      {
+        petShape: preferences.shape,
+        petColor: preferences.color,
+        petEnhanced: preferences.enhanced,
+        petSelected: preferences.selected,
+        petVisible: shouldShowPet(preferences),
+      },
+      () => markHomeSourcesHydrated(account, ["pet"]),
+    );
   },
   openPendingPetSetup(account: string): boolean {
     if (!account) return false;
@@ -1161,47 +1326,23 @@ Page({
       user || loadCurrentUser(),
     );
     if (!identity.userName) return;
-    this.setData(identity);
+    this.setData(identity, () => {
+      const account = getSession()?.user.account || "";
+      if (account) markHomeSourcesHydrated(account, ["session"]);
+    });
   },
   hydrateShortcutCaches() {
     const account = getSession()?.user.account || "";
     if (!account) return;
-    this.setData(shortcutCachePatch(account));
-  },
-  hydrateCachedDashboard() {
-    const account = getSession()?.user.account || "";
-    if (!account) return;
-    const dashboard = cachedDashboardState(
-      account,
-      this.data.motionClass !== "motion-reduced",
-    );
-    if (hydratedDashboardKey === dashboard.key) return;
-    const changedAccount = Boolean(
-      hydratedAccount && hydratedAccount !== account,
-    );
-    hydratedAccount = account;
-    hydratedDashboardKey = dashboard.key;
-    activeTimetable = dashboard.timetable;
-    this.setData({
-      ...dashboard.patch,
-      ...(!dashboard.hasGrades && changedAccount
-        ? {
-            gradeRingSource: progressRingSource(null),
-            gradeAverageLabel: "—",
-            gradePointAverageLabel: "—",
-            gradeCourseCount: 0,
-          }
-        : {}),
-      ...(changedAccount
-        ? {
-            publications: [],
-            publicationUnreadCount: 0,
-            publicationUnreadLabel: "",
-          }
-        : {}),
-      ...(changedAccount ? { errorMessage: "" } : {}),
+    this.setData(shortcutCachePatch(account), () => {
+      markHomeSourcesHydrated(account, ["electricity", "exams"]);
     });
-    this.updateTodayCourses();
+  },
+  hydratePlanPreviews(account: string) {
+    if (!account) return;
+    this.setData(planPreviewPatch(account), () => {
+      markHomeSourcesHydrated(account, ["schedule"]);
+    });
   },
   hydrateServerGrade(
     account: string,
@@ -1219,12 +1360,13 @@ Page({
         includeUnsuccessful,
       );
     }
-    if (useServer && getSession()?.user.account === account) {
+    if (useServer && homeVisible && getSession()?.user.account === account) {
       this.setData(
         gradePreviewPatch(
           result.data,
           this.data.motionClass !== "motion-reduced",
         ),
+        () => markHomeSourcesHydrated(account, ["grades"]),
       );
     }
   },
@@ -1241,14 +1383,21 @@ Page({
       });
     }
     activeTimetable = loadTimetableSnapshot(account)?.data || result.data;
+    if (!homeVisible) return;
     const now = new Date();
+    lastHomeClockKey = homeClockKey(now);
     const courses = todayCoursePreview(now);
-    this.setData({
-      currentTime: formatClock(now),
-      todayCourses: courses,
-      remainingCourseCount: remainingCourses(activeTimetable, now).length,
-      ...shortcutCachePatch(account, activeTimetable),
-    });
+    this.setData(
+      {
+        currentTime: formatClock(now),
+        todayCourses: courses,
+        remainingCourseCount: remainingCourses(activeTimetable, now).length,
+        ...shortcutCachePatch(account, activeTimetable),
+      },
+      () => {
+        markHomeSourcesHydrated(account, ["timetable", "electricity", "exams"]);
+      },
+    );
   },
   stopCredentialPoll() {
     if (credentialPollTimer !== undefined) {
@@ -1904,7 +2053,7 @@ Page({
           ? getTimetable({ refresh: true, automatic: true })
           : getPreloadedTimetable()
         ).then((result) => {
-          if (result && homeVisible && isSessionLeaseCurrent(lease)) {
+          if (result && isSessionLeaseCurrent(lease)) {
             this.hydrateServerTimetable(account, result, refreshStable);
           }
           return result;
@@ -1996,7 +2145,15 @@ Page({
         "动态暂时加载失败，请稍后再试。",
       );
     }
-    this.setData(patch);
+    this.setData(patch, () => {
+      markHomeSourcesHydrated(account, [
+        "session",
+        "pet",
+        "timetable",
+        "grades",
+        "teaching",
+      ]);
+    });
     const needsFreshResult =
       !refreshTeaching &&
       ((messageResult.status === "fulfilled" &&
@@ -2107,7 +2264,7 @@ Page({
     const schedule = loadScheduleData(lease.account);
     const target = schedule.plans.find((plan) => plan.id === id && !plan.done);
     if (!target) {
-      this.setData(planPreviewPatch(lease.account));
+      this.hydratePlanPreviews(lease.account);
       return;
     }
 
@@ -2143,13 +2300,16 @@ Page({
           () => {
             planRemovalTimer = undefined;
             if (!isSessionLeaseCurrent(lease)) return;
-            this.setData({
-              plans: nextPlans,
-              planCardHeight: planCardHeight(nextPlans.length),
-              completingPlanId: "",
-              removingPlanId: "",
-              enteringPlanId: reducedMotion ? "" : enteringPlanId,
-            });
+            this.setData(
+              {
+                plans: nextPlans,
+                planCardHeight: planCardHeight(nextPlans.length),
+                completingPlanId: "",
+                removingPlanId: "",
+                enteringPlanId: reducedMotion ? "" : enteringPlanId,
+              },
+              () => markHomeSourcesHydrated(lease.account, ["schedule"]),
+            );
             if (!reducedMotion && enteringPlanId) {
               planEntryTimer = setTimeout(() => {
                 planEntryTimer = undefined;

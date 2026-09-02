@@ -6,6 +6,11 @@ import {
 } from "../types/app";
 
 const PREFERENCES_KEY = "easy-swu:preferences";
+let preferencesRevision = 0;
+
+export function getPreferencesRevision(): number {
+  return preferencesRevision;
+}
 
 function isThemePreference(value: unknown): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
@@ -51,6 +56,7 @@ export function loadPreferences(): AppPreferences {
 export function savePreferences(preferences: AppPreferences): void {
   wx.setStorageSync(PREFERENCES_KEY, preferences);
   getApp<IAppOption>().globalData.preferences = preferences;
+  preferencesRevision += 1;
 }
 
 export function updatePreferences(
