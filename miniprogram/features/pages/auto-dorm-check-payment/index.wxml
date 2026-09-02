@@ -70,7 +70,7 @@
               <lucide-icon name="clipboard-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{24}}"></lucide-icon>
             </view>
             <text>可用次数</text>
-            <text class="tnum">剩余 {{remainingUses}} 次</text>
+            <text class="tnum">{{remainingUses > 0 ? '剩余 ' + remainingUses + ' 次' : reservedUses + ' 次执行中'}}</text>
           </view>
           <text wx:if="{{!hasTimeEntitlement && !hasUseEntitlement}}" class="payment-balance-empty">购买后即可使用自动打卡</text>
         </view>

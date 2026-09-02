@@ -70,6 +70,8 @@ export interface AutoDormCheckStatus {
   checkInStatus: AutoDormCheckState;
   checkInStartTime: string;
   checkInEndTime: string;
+  schoolCheckInStartTime: string;
+  schoolCheckInEndTime: string;
   plannedCheckInAt: string | null;
   plannedCheckInDate: string | null;
   updatedAt: string | null;
@@ -102,6 +104,7 @@ export interface AutoDormCheckEntitlement {
   };
   uses: {
     remaining: number;
+    reserved: number;
   };
 }
 

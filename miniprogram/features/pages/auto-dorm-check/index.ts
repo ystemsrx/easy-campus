@@ -55,7 +55,7 @@ const EMPTY_ENTITLEMENT: AutoDormCheckEntitlement = {
     paused: false,
     resumesAt: null,
   },
-  uses: { remaining: 0 },
+  uses: { remaining: 0, reserved: 0 },
 };
 let chinaDayRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let taskStatusRefreshTimer: ReturnType<typeof setTimeout> | undefined;

@@ -47,7 +47,7 @@ const EMPTY_ENTITLEMENT: AutoDormCheckEntitlement = {
     paused: false,
     resumesAt: null,
   },
-  uses: { remaining: 0 },
+  uses: { remaining: 0, reserved: 0 },
 };
 
 interface CapsuleToastTimers {
@@ -134,6 +134,7 @@ function normalizeEntitlement(
     },
     uses: {
       remaining: Math.max(0, Math.floor(Number(source.uses?.remaining) || 0)),
+      reserved: Math.max(0, Math.floor(Number(source.uses?.reserved) || 0)),
     },
   };
 }
@@ -146,8 +147,10 @@ function entitlementViewData(
     entitlement: normalized,
     remainingDays: normalized.time.remainingDays,
     remainingUses: normalized.uses.remaining,
+    reservedUses: normalized.uses.reserved,
     hasTimeEntitlement: normalized.time.remainingSeconds > 0,
-    hasUseEntitlement: normalized.uses.remaining > 0,
+    hasUseEntitlement:
+      normalized.uses.remaining > 0 || normalized.uses.reserved > 0,
     timeEntitlementPaused:
       normalized.time.paused && normalized.time.remainingSeconds > 0,
     entitlementResumesAt: normalized.time.resumesAt || "",
@@ -248,6 +251,7 @@ Page({
     entitlement: EMPTY_ENTITLEMENT,
     remainingDays: 0,
     remainingUses: 0,
+    reservedUses: 0,
     hasTimeEntitlement: false,
     hasUseEntitlement: false,
     timeEntitlementPaused: false,
