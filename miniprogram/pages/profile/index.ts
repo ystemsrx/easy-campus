@@ -96,6 +96,7 @@ const AUTO_DORM_CHECK_STATUS: Record<
 > = {
   checked_in: { label: "已打卡", tone: "success" },
   pending: { label: "待打卡", tone: "warning" },
+  skipped: { label: "已跳过", tone: "muted" },
   failed: { label: "已失败", tone: "danger" },
   unavailable: { label: "不可用", tone: "danger" },
   disabled: { label: "已关闭", tone: "muted" },

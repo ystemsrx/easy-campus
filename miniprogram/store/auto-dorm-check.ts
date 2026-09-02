@@ -11,6 +11,7 @@ let autoDormCheckRevision = 0;
 const VALID_STATES = new Set<AutoDormCheckState>([
   "checked_in",
   "pending",
+  "skipped",
   "failed",
   "unavailable",
   "disabled",

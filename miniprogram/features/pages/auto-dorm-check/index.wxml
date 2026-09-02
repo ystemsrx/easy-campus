@@ -21,7 +21,7 @@
           <view class="auto-dorm-check-row">
             <view class="auto-dorm-check-copy">
               <text class="auto-dorm-check-title">自动查寝打卡</text>
-              <text class="auto-dorm-check-caption">打卡时段 {{checkInWindowLabel}}</text>
+              <text class="auto-dorm-check-caption">最佳时段 {{checkInWindowLabel}}</text>
             </view>
             <view
               class="auto-dorm-check-switch {{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted))) ? 'auto-dorm-check-switch--checked' : ''}} {{checkingCapability ? 'auto-dorm-check-switch--checking' : ''}} {{saving ? 'auto-dorm-check-switch--saving' : ''}} {{!available ? 'auto-dorm-check-switch--disabled' : ''}}"

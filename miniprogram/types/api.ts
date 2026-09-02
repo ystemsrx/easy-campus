@@ -84,6 +84,7 @@ export interface AutoDormCheckStatus {
 export type AutoDormCheckState =
   | "checked_in"
   | "pending"
+  | "skipped"
   | "failed"
   | "unavailable"
   | "disabled"

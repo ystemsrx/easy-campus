@@ -134,8 +134,10 @@ assert(
     autoDormCheckStore.includes("remainingDays") &&
     autoDormCheckStore.includes("remainingUses") &&
     autoDormCheckStore.includes('"failed"') &&
+    autoDormCheckStore.includes('"skipped"') &&
     profileScript.includes("AUTO_DORM_CHECK_STATUS[status.checkInStatus]") &&
     profileScript.includes('failed: { label: "已失败"') &&
+    profileScript.includes('skipped: { label: "已跳过", tone: "muted" }') &&
     profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
     profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
     profileTemplate.includes("{{autoDormCheckTitle}}") &&
@@ -167,6 +169,9 @@ assert(
     autoDormCheckScript.includes("status.plannedCheckInDate") &&
     autoDormCheckScript.includes("status.checkInLocation?.locationName") &&
     autoDormCheckScript.includes('failed: { label: "已失败"') &&
+    autoDormCheckScript.includes(
+      'skipped: { label: "已跳过", tone: "muted" }',
+    ) &&
     autoDormCheckScript.includes("scheduleTaskStatusRefresh(status)") &&
     autoDormCheckScript.includes("getAutoDormCheckLocalStatus") &&
     autoDormCheckScript.includes(
