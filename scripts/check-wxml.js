@@ -350,7 +350,12 @@ const passRateStyles = fs.readFileSync(
   "utf8",
 );
 const passRateCardTemplate = fs.readFileSync(
-  path.join(miniprogramRoot, "components", "pass-rate-card", "pass-rate-card.wxml"),
+  path.join(
+    miniprogramRoot,
+    "components",
+    "pass-rate-card",
+    "pass-rate-card.wxml",
+  ),
   "utf8",
 );
 if (
@@ -487,6 +492,25 @@ if (
 ) {
   failures.push(
     "features/pages/electricity: 换绑草稿必须与当前绑定分离，并保留紧凑的读取、换绑和刷新状态",
+  );
+}
+if (
+  !electricityTemplate.includes('<text class="usage-label">已用电费</text>') ||
+  !electricityTemplate.includes(
+    '<text class="consumption-title">消耗记录</text>',
+  ) ||
+  !electricityTemplate.includes('wx:for="{{account.dailyElectricityFees}}"') ||
+  electricityTemplate.includes("consumption-point--peak") ||
+  electricityTemplate.includes("consumption-peak-amount") ||
+  !electricityScript.includes("dailyElectricityFeeChart(account)") ||
+  !electricityScript.includes("const top = 0;") ||
+  !electricityStyles.includes(".consumption-chart") ||
+  !/\.consumption-point\s*\{[^}]*background-color:\s*var\(--color-bg-elevated\);[^}]*box-shadow:\s*0 0 0 4rpx var\(--color-bg-elevated\);/.test(
+    electricityStyles,
+  )
+) {
+  failures.push(
+    "features/pages/electricity: 近七天消耗折线图必须铺满纵向空间并使用不透线的空心节点",
   );
 }
 

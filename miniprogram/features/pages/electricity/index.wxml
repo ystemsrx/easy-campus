@@ -43,7 +43,21 @@
           </view>
           <view class="usage-grid">
             <view class="usage-card card"><view class="usage-icon usage-icon--power"><lucide-icon name="chart-no-axes-column-increasing" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{30}}"></lucide-icon></view><text class="usage-label">计费电量</text><view><text class="usage-value tnum">{{account.billedElectricityLabel}}</text><text class="usage-unit">度</text></view></view>
-            <view class="usage-card card"><view class="usage-icon usage-icon--fee"><lucide-icon name="zap" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{30}}"></lucide-icon></view><text class="usage-label">电费</text><view><text class="usage-value tnum">{{account.electricityFeeLabel}}</text><text class="usage-unit">元</text></view></view>
+            <view class="usage-card card"><view class="usage-icon usage-icon--fee"><lucide-icon name="zap" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{30}}"></lucide-icon></view><text class="usage-label">已用电费</text><view><text class="usage-value tnum">{{account.electricityFeeLabel}}</text><text class="usage-unit">元</text></view></view>
+          </view>
+          <view class="consumption-card card">
+            <view class="consumption-heading"><text class="consumption-title">消耗记录</text><text class="consumption-note">近7天 · 元</text></view>
+            <view wx:if="{{account.dailyElectricityFees.length}}" class="consumption-chart-layout">
+              <view class="consumption-y-axis"><text wx:for="{{account.dailyElectricityFeeAxisTicks}}" wx:key="id" class="consumption-axis-tick tnum" style="top: {{item.y}}rpx;">{{item.label}}</text></view>
+              <view class="consumption-chart">
+                <view class="consumption-axis-line consumption-axis-line--y"></view><view class="consumption-axis-line consumption-axis-line--x"></view>
+                <view wx:for="{{account.dailyElectricityFeeAxisTicks}}" wx:key="id" class="consumption-grid-line" style="top: {{item.y}}rpx;"></view>
+                <view wx:for="{{account.dailyElectricityFeeSegments}}" wx:key="id" class="consumption-segment" style="left: {{item.left}}rpx; top: {{item.top}}rpx; width: {{item.width}}rpx; transform: rotate({{item.angle}}deg);"><view class="consumption-segment-fill"></view></view>
+                <view wx:for="{{account.dailyElectricityFees}}" wx:key="date" class="consumption-point" style="left: {{item.x}}rpx; top: {{item.y}}rpx;"></view>
+                <text wx:for="{{account.dailyElectricityFees}}" wx:key="date" class="consumption-date tnum" style="left: {{item.x}}rpx;">{{item.dateLabel}}</text>
+              </view>
+            </view>
+            <text wx:else class="consumption-empty">暂无消耗记录</text>
           </view>
           <view class="date-card card">
             <view class="date-row"><view class="date-icon"><lucide-icon name="calendar-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{29}}"></lucide-icon></view><view><text>上次缴费日期</text><text class="tnum">{{account.lastPaymentDateLabel}}</text></view></view>

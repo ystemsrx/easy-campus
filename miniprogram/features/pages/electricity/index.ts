@@ -49,6 +49,30 @@ interface ElectricityView {
   balanceNegative: boolean;
   lastPaymentDateLabel: string;
   lastSettlementDateLabel: string;
+  dailyElectricityFees: ElectricityDailyFeeView[];
+  dailyElectricityFeeSegments: ElectricityChartSegmentView[];
+  dailyElectricityFeeAxisTicks: ElectricityChartAxisTickView[];
+}
+
+interface ElectricityDailyFeeView {
+  date: string;
+  dateLabel: string;
+  x: number;
+  y: number;
+}
+
+interface ElectricityChartSegmentView {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  angle: number;
+}
+
+interface ElectricityChartAxisTickView {
+  id: string;
+  label: string;
+  y: number;
 }
 
 interface ElectricityBuildingRow {
@@ -85,6 +109,115 @@ function formatDecimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
 }
 
+function shortDateLabel(date: string): string {
+  const match = date.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  if (!match) return date;
+  return `${Number(match[1])}/${Number(match[2])}`;
+}
+
+function niceCeiling(value: number, segments: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const roughStep = value / segments;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalizedStep = roughStep / magnitude;
+  const niceStep =
+    normalizedStep <= 1
+      ? 1
+      : normalizedStep <= 2
+        ? 2
+        : normalizedStep <= 2.5
+          ? 2.5
+          : normalizedStep <= 5
+            ? 5
+            : 10;
+  return niceStep * magnitude * segments;
+}
+
+function formatAxisAmount(value: number): string {
+  if (value === 0) return "0";
+  if (value >= 10 && Number.isInteger(value)) return String(value);
+  return value >= 1 ? value.toFixed(1) : value.toFixed(2);
+}
+
+function dailyElectricityFeeChart(
+  account: ElectricityAccount,
+): Pick<
+  ElectricityView,
+  | "dailyElectricityFees"
+  | "dailyElectricityFeeSegments"
+  | "dailyElectricityFeeAxisTicks"
+> {
+  const records = (account.dailyElectricityFees || [])
+    .filter(
+      (record) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(record.date) &&
+        Number.isFinite(record.amountYuan) &&
+        record.amountYuan >= 0,
+    )
+    .slice(-7);
+  if (!records.length) {
+    return {
+      dailyElectricityFees: [],
+      dailyElectricityFeeSegments: [],
+      dailyElectricityFeeAxisTicks: [],
+    };
+  }
+
+  const chartWidth = 500;
+  const left = 18;
+  const right = chartWidth - 18;
+  const top = 0;
+  const bottom = 180;
+  const axisSegments = 4;
+  const amounts = records.map((record) => record.amountYuan);
+  const maximum = niceCeiling(Math.max(...amounts), axisSegments);
+  const coordinates = amounts.map((amount, index) => ({
+    x:
+      amounts.length === 1
+        ? (left + right) / 2
+        : left + (index * (right - left)) / (amounts.length - 1),
+    y: bottom - (amount / maximum) * (bottom - top),
+  }));
+  const dailyElectricityFees = records.map((record, index) => ({
+    ...record,
+    dateLabel: shortDateLabel(record.date),
+    x: Number(coordinates[index].x.toFixed(2)),
+    y: Number(coordinates[index].y.toFixed(2)),
+  }));
+  const dailyElectricityFeeSegments = coordinates
+    .slice(0, -1)
+    .map((point, index) => {
+      const next = coordinates[index + 1];
+      const deltaX = next.x - point.x;
+      const deltaY = next.y - point.y;
+      return {
+        id: `${records[index].date}:${records[index + 1].date}`,
+        left: Number(point.x.toFixed(2)),
+        top: Number((point.y - 2).toFixed(2)),
+        width: Number(Math.hypot(deltaX, deltaY).toFixed(2)),
+        angle: Number(
+          ((Math.atan2(deltaY, deltaX) * 180) / Math.PI).toFixed(2),
+        ),
+      };
+    });
+  const dailyElectricityFeeAxisTicks = Array.from(
+    { length: axisSegments + 1 },
+    (_, index) => {
+      const value = maximum - (maximum * index) / axisSegments;
+      return {
+        id: String(index),
+        label: formatAxisAmount(value),
+        y: Number((top + (index * (bottom - top)) / axisSegments).toFixed(2)),
+      };
+    },
+  );
+  return {
+    dailyElectricityFees,
+    dailyElectricityFeeSegments,
+    dailyElectricityFeeAxisTicks,
+  };
+}
+
 function toView(account: ElectricityAccount): ElectricityView {
   return {
     billedElectricityLabel: formatDecimal(account.billedElectricityKwh),
@@ -93,6 +226,7 @@ function toView(account: ElectricityAccount): ElectricityView {
     balanceNegative: account.remainingAmountYuan < 0,
     lastPaymentDateLabel: account.lastPaymentDate || "暂无记录",
     lastSettlementDateLabel: account.lastSettlementDate || "暂无记录",
+    ...dailyElectricityFeeChart(account),
   };
 }
 

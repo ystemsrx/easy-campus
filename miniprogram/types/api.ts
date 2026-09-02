@@ -687,6 +687,12 @@ export interface ElectricityAccount {
   remainingAmountYuan: number;
   lastPaymentDate: string | null;
   lastSettlementDate: string | null;
+  dailyElectricityFees?: ElectricityDailyFee[];
+}
+
+export interface ElectricityDailyFee {
+  date: string;
+  amountYuan: number;
 }
 
 export interface ElectricityBinding {
