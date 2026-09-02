@@ -652,7 +652,7 @@ assert(
     profileTemplate.includes('wx:else class="avatar"') &&
     profileTemplate.includes('auto-cycle="{{true}}"') &&
     profileTemplate.includes('enhanced="{{petEnhanced}}"') &&
-    profileScript.includes("petEnhanced: preferences.enhanced") &&
+    profileScript.includes("petEnhanced: pet.enhanced") &&
     profileTemplate.includes('label="点击和校园伙伴互动"') &&
     profileTemplate.includes('bindtap="openPetSetup"') &&
     profileTemplate.includes("设置校园伙伴") &&

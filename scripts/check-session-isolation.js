@@ -191,9 +191,14 @@ const electricitySource = source(
   "index.ts",
 );
 const timetableSource = source("features", "pages", "timetable", "index.ts");
+const profileHydration =
+  /hydrateCachedProfileIfNeeded\([^)]*\)\s*:\s*boolean\s*\{([\s\S]*?)\n  \},\n  scheduleProfileRefresh/.exec(
+    profileSource,
+  )?.[1] || "";
 assert(
-  profileSource.includes("activeProfileSessionKey") &&
-    profileSource.includes("loading: false"),
+  profileSource.includes("hydratedProfileSources.account !== account") &&
+    profileSource.includes("this.hydrateCachedProfileIfNeeded(account)") &&
+    profileHydration.includes("loading: false"),
   "个人页换会话时必须解除旧请求留下的 loading 锁",
 );
 assert(
