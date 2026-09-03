@@ -12,6 +12,7 @@ export interface WatermarkPayload {
   version: 1;
   type: 1;
   token: string;
+  generatedAt?: string;
   cellSize: number;
   strength: number;
   colorMode: "chroma";
@@ -102,6 +103,9 @@ function isPayload(value: unknown): value is WatermarkPayload {
     payload.type === 1 &&
     typeof payload.token === "string" &&
     /^[0-9a-f]{32}$/i.test(payload.token) &&
+    (payload.generatedAt === undefined ||
+      (typeof payload.generatedAt === "string" &&
+        Number.isFinite(Date.parse(payload.generatedAt)))) &&
     payload.colorMode === "chroma" &&
     Number.isFinite(payload.cellSize) &&
     Number.isFinite(payload.strength),

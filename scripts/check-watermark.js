@@ -51,6 +51,7 @@ const serviceSource = fs.readFileSync(
 assert.match(serviceSource, /"\/auth\/watermark"/);
 assert.match(serviceSource, /signedInAt/);
 assert.match(serviceSource, /active\?\.leaseKey/);
+assert.match(serviceSource, /generatedAt/);
 assert.doesNotMatch(serviceSource, /createScreenWatermarkSource\([^)]*account/);
 
 const corePath = path.join(miniprogram, "utils", "watermark-core.ts");
