@@ -3,7 +3,7 @@ import { withoutUnsuccessfulGrades } from "../utils/grades";
 import type { CacheMetadata } from "./cache-policy";
 
 const PREFIX = "easy-swu:grades:";
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 let gradesRevision = 0;
 
 export function getGradesRevision(): number {

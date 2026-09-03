@@ -729,7 +729,7 @@ assert(
     ) &&
     gradeDetailTemplate.includes('title="{{detailTitle}}"') &&
     gradeDetailTemplate.includes('<block wx:if="{{showComponentsSection}}">') &&
-    gradesStore.includes("const SCHEMA_VERSION = 12;"),
+    gradesStore.includes("const SCHEMA_VERSION = 13;"),
   "补考和缓考不得在列表或详情中展示成绩组成，旧分项缓存必须失效",
 );
 assert(
@@ -774,7 +774,7 @@ assert(
   "成绩展示选项必须位于独立设置页，默认展示低分，并在网络与缓存两条路径本地兜底过滤",
 );
 assert(
-  gradesStore.includes("const SCHEMA_VERSION = 12;") &&
+  gradesStore.includes("const SCHEMA_VERSION = 13;") &&
     gradesPageScript.includes("const PAGE_SIZE = 5000;") &&
     gradesPageScript.includes("automatic: refresh") &&
     gradesPageScript.includes("const loadCanonical =") &&
