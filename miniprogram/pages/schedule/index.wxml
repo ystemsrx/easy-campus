@@ -1,17 +1,10 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
 <view class="page schedule-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
-  <scroll-view
-    class="page-scroll"
-    type="list"
-    scroll-y
-    enhanced
-    show-scrollbar="{{false}}"
-  >
-    <navigation-bar transparent theme="{{theme}}"></navigation-bar>
-    <view class="schedule-content page-content page-content--tab page-enter">
+  <navigation-bar transparent theme="{{theme}}"></navigation-bar>
+  <view class="schedule-top page-content">
       <view class="schedule-header">
-        <view>
-          <text wx:if="{{teachingWeekLabel}}" class="schedule-eyebrow">{{teachingWeekLabel}} · {{monthLabel}}</text>
+        <view class="schedule-header-copy">
+          <text class="schedule-eyebrow" overflow="ellipsis" max-lines="1">{{teachingWeekLabel ? teachingWeekLabel + ' · ' : ''}}{{monthLabel}}</text>
           <text class="schedule-title display-title">日程</text>
         </view>
         <view class="schedule-header-actions">
@@ -24,35 +17,50 @@
         </view>
       </view>
 
-      <view class="week-strip">
-        <view class="week-selection week-selection--{{selectedWeekday}}">
+    <view class="week-viewport"><view class="week-track {{headerMotionReady ? 'week-track--ready' : ''}}">
+      <view wx:for="{{weekPages}}" wx:for-item="week" wx:key="slot" class="week-strip week-strip-slot-{{week.slot}}">
+        <view class="week-selection week-selection-slot-{{week.slot}}">
           <view class="week-selection-circle"></view>
         </view>
         <view
-          wx:for="{{days}}"
+          wx:for="{{week.days}}"
           wx:key="weekday"
-          class="week-day {{selectedWeekday === item.weekday ? 'week-day--active' : ''}}"
-          data-weekday="{{item.weekday}}"
+          class="week-day"
+          data-date="{{item.date}}" aria-role="button" aria-label="{{item.date}}" aria-pressed="{{selectedDate === item.date}}"
           bindtap="selectDay"
         >
           <text class="week-day-name">{{item.isToday ? '今' : item.shortLabel}}</text>
           <view class="week-day-number">
             <view wx:if="{{item.isToday}}" class="week-day-today-ring"></view>
-            <text class="week-day-date tnum">{{item.dateLabel}}</text>
+            <view class="week-day-date-layer week-day-date-layer--normal week-date-{{week.slot}}-{{item.weekday}}-normal"><text class="week-day-date tnum">{{item.dateLabel}}</text></view>
+            <view class="week-day-date-layer week-day-date-layer--selected week-date-{{week.slot}}-{{item.weekday}}-selected" aria-hidden="{{true}}"><text class="week-day-date week-day-date--selected tnum">{{item.dateLabel}}</text></view>
           </view>
           <view wx:if="{{item.hasPlan}}" class="week-day-dot"></view>
         </view>
       </view>
 
+    </view></view>
+  </view>
+  <swiper class="day-swiper" current="{{dayCurrent}}" data-window-start="{{dayPages[0].selectedDate}}" scroll-with-animation="{{dayAnimated}}" duration="{{!dayAnimated || motionClass === 'motion-reduced' ? 0 : 240}}" easing-function="easeOutCubic" cache-extent="1" bindchange="onDayChange" worklet:onscrollstart="onDayScrollStart" worklet:onscrollupdate="onDayScrollUpdate" worklet:onscrollend="onDayScrollEnd">
+    <swiper-item wx:for="{{dayPages}}" wx:for-item="day" wx:key="selectedDate">
+      <scroll-view class="day-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{dayScrollTops[day.slot]}}" scroll-into-view="{{day.selectedDate === selectedDate && focusedPlanId ? 'entry-' + day.slot + '-' + focusedPlanId : ''}}" data-date="{{day.selectedDate}}" bindscroll="onDayVerticalScroll">
+        <view class="schedule-day-content page-content page-content--tab">
       <view class="timeline-heading">
         <view>
-          <text class="timeline-title">{{selectedDateLabel}}</text>
-          <text class="timeline-caption">{{entries.length ? entries.length + ' 项安排' : '今天很从容'}}</text>
+          <text class="timeline-title">{{day.selectedDateLabel}}</text>
+          <text class="timeline-caption">{{day.entries.length ? day.entries.length + ' 项安排' : '没有安排'}}</text>
         </view>
         <view class="today-chip pressable" bindtap="goToday" hover-class="pressing"><text>今天</text></view>
       </view>
 
-      <view wx:if="{{entries.length}}" class="timeline-card card stagger-item">
+      <view wx:if="{{day.earlyEntries.length}}" class="outside-card card">
+        <text class="outside-label">08:00 之前</text>
+        <view wx:for="{{day.earlyEntries}}" wx:key="id" id="entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+          <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
+          <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
+        </view>
+      </view>
+      <view wx:if="{{day.timelineEntries.length}}" class="timeline-card card">
         <view class="timeline-scale" style="height: {{timelineHeight}}rpx;">
           <view class="hour-line hour-line--9"><text>09:00</text><view></view></view>
           <view class="hour-line hour-line--12"><text>12:00</text><view></view></view>
@@ -60,10 +68,11 @@
           <view class="hour-line hour-line--18"><text>18:00</text><view></view></view>
           <view class="hour-line hour-line--21"><text>21:00</text><view></view></view>
           <view
-            wx:for="{{entries}}"
+            wx:for="{{day.timelineEntries}}"
             wx:key="id"
-            class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}} stagger-item"
-            style="top: {{item.top}}rpx; height: {{item.height}}rpx; left: calc({{item.leftPercent}}% + {{item.leftInset}}rpx); width: calc({{item.widthPercent}}% - {{item.widthInset}}rpx); animation-delay: {{index < 7 ? index * 45 : 0}}ms;"
+            class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}}"
+            style="top: {{item.top}}rpx; height: {{item.height}}rpx; left: calc({{item.leftPercent}}% + {{item.leftInset}}rpx); width: calc({{item.widthPercent}}% - {{item.widthInset}}rpx);"
+            id="entry-{{day.slot}}-{{item.id}}"
             data-id="{{item.id}}"
             data-kind="{{item.kind}}"
             bindtap="openPlanEditor"
@@ -96,14 +105,23 @@
         </view>
       </view>
 
-      <view wx:else class="schedule-empty card stagger-item">
+      <view wx:if="{{day.lateEntries.length}}" class="outside-card card">
+        <text class="outside-label">22:30 之后</text>
+        <view wx:for="{{day.lateEntries}}" wx:key="id" id="entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+          <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
+          <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
+        </view>
+      </view>
+      <view wx:if="{{!day.entries.length}}" class="schedule-empty card">
         <view class="empty-orbit"><lucide-icon name="sparkles" tone="rose" size="{{40}}"></lucide-icon></view>
         <text class="schedule-empty-title">这一天还没有安排</text>
         <text class="schedule-empty-caption">给自己留白，或添加一点计划</text>
         <view class="schedule-empty-action pressable" bindtap="openCreator" hover-class="pressing"><text>添加待办</text></view>
       </view>
-    </view>
-  </scroll-view>
+        </view>
+      </scroll-view>
+    </swiper-item>
+  </swiper>
 
   <bottom-sheet visible="{{creating}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator">
     <view class="creator-form">

@@ -160,7 +160,7 @@ const tabTemplate = fs.readFileSync(
 );
 assert(
   template.includes(
-    'class="week-selection week-selection--{{selectedWeekday}}"',
+    'class="week-selection week-selection-slot-{{week.slot}}"',
   ) && template.includes('wx:if="{{item.hasPlan}}" class="week-day-dot"'),
   "日期选择器必须使用独立滑动圆形，并在有待办的日期下显示圆点",
 );
@@ -170,9 +170,8 @@ assert(
   "添加待办抽屉必须绕开 Skyline 插槽列表测量并按内容自适应高度",
 );
 assert(
-  renderScript.includes(
-    "layoutScheduleOverlaps([...courses, ...planEntries])",
-  ) && !template.includes("重叠安排并排显示"),
+  renderScript.includes("const allEntries = [...courses, ...planEntries]") &&
+    !template.includes("重叠安排并排显示"),
   "日程时间轴必须合并课程与待办后统一计算重叠分列",
 );
 assert(
@@ -253,7 +252,7 @@ assert(
       pageStyles,
     ) &&
     !/\.timeline-entry--done\s*\{[^}]*opacity:/.test(pageStyles) &&
-    renderScript.includes('? "日程" : `日程 · 延续至 ${plan.endDate}`'),
+    /\?\s*"日程"\s*:\s*`日程 · 延续至 \$\{plan.endDate\}`/.test(renderScript),
   "用户日程必须使用圆角虚线，完成后划除标题与时间，并显示日程类型",
 );
 assert(

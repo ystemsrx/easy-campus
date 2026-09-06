@@ -388,23 +388,16 @@ Page({
   },
   closePeriodPicker() {
     clearPickerTransitionTimer();
-    const periods = [...this.data.draftPeriods].sort((a, b) => a - b);
-    const selectionChanged =
-      periods.length !== this.data.selectedPeriods.length ||
-      periods.some(
-        (period, index) => period !== this.data.selectedPeriods[index],
-      );
+    const periods = [...this.data.selectedPeriods];
     this.setData({
       pickerVisible: false,
       pickerActive: false,
-      selectedPeriods: periods,
-      periodLabel: selectedPeriodLabel(periods),
+      draftPeriods: periods,
       periods: this.data.periods.map((item) => ({
         ...item,
         selected: periods.includes(item.period),
       })),
       periodGroups: periodGroupsWithSelection(this.data.periodGroups, periods),
-      ...(selectionChanged ? { hasQueried: false } : {}),
     });
     pickerTransitionTimer = setTimeout(() => {
       if (!this.data.pickerVisible) this.setData({ pickerMounted: false });
@@ -455,6 +448,14 @@ Page({
       wx.showToast({ title: "请至少选择一个节次", icon: "none" });
       return;
     }
+    const periods = [...this.data.draftPeriods].sort((a, b) => a - b);
+    const selectionChanged =
+      periods.join(",") !== this.data.selectedPeriods.join(",");
+    this.setData({
+      selectedPeriods: periods,
+      periodLabel: selectedPeriodLabel(periods),
+      ...(selectionChanged ? { hasQueried: false } : {}),
+    });
     this.closePeriodPicker();
   },
   openResultDrawer() {

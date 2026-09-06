@@ -2,6 +2,11 @@ import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
 import { getPendingAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import { submitFeedback } from "../../services/feedback";
+import {
+  loadInteractionDraft,
+  saveInteractionDraft,
+  clearInteractionDraft,
+} from "../../store/interaction-drafts";
 import { getPreloadedCurrentUser } from "../../services/primary-tab-preload";
 import {
   getErrorMessage,
@@ -328,6 +333,14 @@ Page({
     const lease = captureSessionLease();
     if (!lease) return;
     const account = lease.account;
+    if (this.data.account && this.data.account !== account)
+      this.setData({
+        feedbackVisible: false,
+        feedbackSubmitting: false,
+        feedbackContent: "",
+        feedbackType: "",
+        feedbackCanSubmit: false,
+      });
     const hydrated = this.hydrateCachedProfileIfNeeded(account);
     if (
       !hydrated &&
@@ -500,11 +513,21 @@ Page({
   },
   openFeedback() {
     if (this.data.feedbackVisible) return;
+    const account = getSession()?.user.account || "";
+    const draft = loadInteractionDraft(account, "feedback");
+    const type = FEEDBACK_TYPES.some((item) => item.value === draft?.type)
+      ? draft!.type
+      : "";
+    const content = draft?.content || "";
     haptic("light");
     this.setFeedbackTabBarHidden(true);
     this.setData({
       feedbackVisible: true,
-      feedbackTypes: feedbackTypeOptions(this.data.feedbackType),
+      feedbackTypes: feedbackTypeOptions(type),
+      feedbackType: type,
+      feedbackContent: content,
+      feedbackCharacterCount: content.length,
+      feedbackCanSubmit: Boolean(type && content.trim()),
       feedbackErrorMessage: "",
     });
   },
@@ -512,16 +535,19 @@ Page({
     if (this.data.feedbackSubmitting) return;
     this.setData({
       feedbackVisible: false,
-      feedbackTypes: feedbackTypeOptions(),
-      feedbackType: "",
-      feedbackContent: "",
-      feedbackCharacterCount: 0,
-      feedbackCanSubmit: false,
       feedbackErrorMessage: "",
     });
     this.setFeedbackTabBarHidden(false);
   },
+  saveFeedbackDraft() {
+    if (getSession()?.user.account !== this.data.account) return;
+    saveInteractionDraft(this.data.account, "feedback", {
+      type: this.data.feedbackType,
+      content: this.data.feedbackContent,
+    });
+  },
   selectFeedbackType(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.feedbackSubmitting) return;
     const type = String(event.currentTarget.dataset.type || "") as FeedbackType;
     if (!FEEDBACK_TYPES.some((item) => item.value === type)) return;
     haptic("light");
@@ -534,8 +560,10 @@ Page({
       ),
       feedbackErrorMessage: "",
     });
+    this.saveFeedbackDraft();
   },
   onFeedbackContentInput(event: WechatMiniprogram.Input) {
+    if (this.data.feedbackSubmitting) return;
     const feedbackContent = event.detail.value.slice(0, 500);
     this.setData({
       feedbackContent,
@@ -545,6 +573,7 @@ Page({
       ),
       feedbackErrorMessage: "",
     });
+    this.saveFeedbackDraft();
   },
   async submitFeedback() {
     if (this.data.feedbackSubmitting) return;
@@ -564,6 +593,7 @@ Page({
     this.setData({ feedbackSubmitting: true, feedbackErrorMessage: "" });
     try {
       await submitFeedback({ type, content });
+      clearInteractionDraft(lease.account, "feedback");
       if (!isSessionLeaseCurrent(lease)) return;
       this.setData({
         feedbackVisible: false,
@@ -581,11 +611,6 @@ Page({
       if (isFeedbackDailyLimitError(error)) {
         this.setData({
           feedbackVisible: false,
-          feedbackTypes: feedbackTypeOptions(),
-          feedbackType: "",
-          feedbackContent: "",
-          feedbackCharacterCount: 0,
-          feedbackCanSubmit: false,
           feedbackSubmitting: false,
           feedbackErrorMessage: "",
         });

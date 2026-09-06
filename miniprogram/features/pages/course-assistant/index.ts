@@ -1,5 +1,11 @@
 import {
+  loadInteractionDraft,
+  saveInteractionDraft,
+  clearInteractionDraft,
+} from "../../../store/interaction-drafts";
+import {
   getCourseAssistantCatalog,
+  getCourseAssistantCourse,
   getMyCourseAssistantData,
   publishCourseAssistantReview,
 } from "../../services/course-assistant";
@@ -130,6 +136,13 @@ let sortMenuTimer: ReturnType<typeof setTimeout> | undefined;
 let catalogCourses: CourseAssistantCourse[] = [];
 let catalogCache = new Map<string, CatalogCacheEntry>();
 let favoriteKeys = new Set<string>();
+let favoriteCourses = new Map<string, CourseAssistantCourse>();
+let favoritesRequestSequence = 0;
+let reviewDraftAccount = "";
+let tabScrollPositions: Record<AssistantTab, number> = {
+  browse: 0,
+  publish: 0,
+};
 let selectedKeywords = new Set<string>();
 let mineGrades: GradeView[] = [];
 let courseTouchStart: TapPoint | null = null;
@@ -160,6 +173,10 @@ Page({
     statusError: "",
     reviewAccess: DEFAULT_REVIEW_ACCESS,
     activeTab: "browse" as AssistantTab,
+    browseScrollTop: 0,
+    publishScrollTop: 0,
+    favoritesLoading: false,
+    favoritesError: "",
     courseType: "general_elective" as CourseAssistantCourseType,
     searchQuery: "",
     filterOpen: false,
@@ -197,6 +214,8 @@ Page({
   onLoad(options: Record<string, string | undefined>) {
     if (!ensureAuthenticated()) return;
     activeSessionKey = "";
+    favoriteCourses = new Map();
+    tabScrollPositions = { browse: 0, publish: 0 };
     catalogCourses = [];
     catalogCache = new Map();
     mineGrades = [];
@@ -216,6 +235,9 @@ Page({
     if (activeSessionKey && activeSessionKey !== key) {
       catalogRequestSequence += 1;
       mineRequestSequence += 1;
+      favoritesRequestSequence += 1;
+      favoriteCourses.clear();
+      tabScrollPositions = { browse: 0, publish: 0 };
       catalogCourses = [];
       catalogCache = new Map();
       mineGrades = [];
@@ -233,6 +255,13 @@ Page({
         takenCourses: [],
         myReviews: [],
         reviewVisible: false,
+        reviewSubmitting: false,
+        selectedGrade: null,
+        reviewText: "",
+        browseScrollTop: 0,
+        publishScrollTop: 0,
+        favoritesLoading: false,
+        favoritesError: "",
       });
       void this.loadAssistant();
       return;
@@ -240,8 +269,10 @@ Page({
     activeSessionKey = key;
     favoriteKeys = new Set(loadCourseAssistantFavorites(lease.account));
     this.applyCatalogView();
+    if (this.data.favoritesOnly) void this.loadFavorites();
   },
   onUnload() {
+    favoritesRequestSequence += 1;
     catalogRequestSequence += 1;
     mineRequestSequence += 1;
     if (searchTimer !== undefined) clearTimeout(searchTimer);
@@ -279,6 +310,10 @@ Page({
     void this.loadAssistant();
   },
   async loadCatalog(append = false) {
+    if (this.data.favoritesOnly) {
+      this.applyCatalogView();
+      return this.loadFavorites();
+    }
     const lease = captureSessionLease();
     if (!lease) return;
     if (
@@ -353,8 +388,35 @@ Page({
     void this.loadCatalog(true);
   },
   applyCatalogView() {
+    // DevTools Babel fails to infer this reassigned array in a for...of loop.
+    catalogCourses.forEach((course) => {
+      if (favoriteKeys.has(course.courseKey))
+        favoriteCourses.set(course.courseKey, course);
+    });
+    const query = this.data.searchQuery.trim().toLocaleLowerCase();
     const courses = this.data.favoritesOnly
-      ? catalogCourses.filter((course) => favoriteKeys.has(course.courseKey))
+      ? [...favoriteCourses.values()]
+          .filter(
+            (course) =>
+              favoriteKeys.has(course.courseKey) &&
+              course.type === this.data.courseType &&
+              (!query ||
+                [course.displayName, course.courseName, ...course.teacherNames]
+                  .join(" ")
+                  .toLocaleLowerCase()
+                  .includes(query)) &&
+              (!this.data.selectedKeyword ||
+                course.keywords.some(
+                  (keyword) => keyword.text === this.data.selectedKeyword,
+                )),
+          )
+          .sort(
+            (a, b) =>
+              (this.data.catalogSort === "rating"
+                ? (b.rating ?? -1) - (a.rating ?? -1)
+                : (b.averageScore ?? -1) - (a.averageScore ?? -1)) ||
+              a.courseKey.localeCompare(b.courseKey),
+          )
       : catalogCourses;
     this.setData({
       courses: courses.map((course, index) =>
@@ -366,11 +428,63 @@ Page({
       ),
     });
   },
+  async loadFavorites() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const request = ++favoritesRequestSequence;
+    const missing = [...favoriteKeys].filter(
+      (key) => !favoriteCourses.has(key),
+    );
+    this.setData({ favoritesLoading: missing.length > 0, favoritesError: "" });
+    let failed = false;
+    let cursor = 0;
+    const worker = async () => {
+      while (
+        cursor < missing.length &&
+        request === favoritesRequestSequence &&
+        isSessionLeaseCurrent(lease)
+      ) {
+        const key = missing[cursor++];
+        try {
+          const course = await getCourseAssistantCourse(key);
+          if (
+            request !== favoritesRequestSequence ||
+            !isSessionLeaseCurrent(lease)
+          )
+            return;
+          if (favoriteKeys.has(key) && isEligibleCourse(course))
+            favoriteCourses.set(key, course);
+          this.setData({ reviewAccess: course.reviewAccess });
+          this.applyCatalogView();
+        } catch {
+          failed = true;
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(3, missing.length) }, worker),
+    );
+    if (request !== favoritesRequestSequence || !isSessionLeaseCurrent(lease))
+      return;
+    this.setData({
+      favoritesLoading: false,
+      favoritesError: failed ? "部分收藏未能读取，点击重试" : "",
+    });
+    this.applyCatalogView();
+  },
+  retryFavorites() {
+    void this.loadFavorites();
+  },
   retryCatalog() {
     haptic("light");
     void this.loadCatalog();
   },
   restoreCatalogCache() {
+    if (this.data.favoritesOnly) {
+      this.applyCatalogView();
+      void this.loadFavorites();
+      return true;
+    }
     const cached = catalogCache.get(
       catalogCacheKey(
         this.data.courseType,
@@ -459,6 +573,7 @@ Page({
     );
   },
   onSearchInput(event: WechatMiniprogram.Input) {
+    catalogRequestSequence += 1;
     const searchQuery = event.detail.value;
     this.closeSortMenu();
     this.setData({ searchQuery });
@@ -472,9 +587,12 @@ Page({
   },
   toggleFavoritesOnly() {
     haptic("light");
-    this.setData({ favoritesOnly: !this.data.favoritesOnly }, () =>
-      this.applyCatalogView(),
-    );
+    catalogRequestSequence += 1;
+    this.setData({ catalogLoading: false, catalogLoadingMore: false });
+    this.setData({ favoritesOnly: !this.data.favoritesOnly });
+    this.applyCatalogView();
+    if (this.data.favoritesOnly) void this.loadFavorites();
+    else if (!this.restoreCatalogCache()) void this.loadCatalog();
   },
   toggleFilter() {
     if (this.data.reviewAccess.requiresContribution) {
@@ -616,7 +734,11 @@ Page({
       return;
     haptic("light");
     this.closeSortMenu();
-    this.setData({ activeTab: tab });
+    this.setData({
+      activeTab: tab,
+      browseScrollTop: tabScrollPositions.browse,
+      publishScrollTop: tabScrollPositions.publish,
+    });
     if (tab === "publish") void this.loadMine();
   },
   openPublishTab() {
@@ -645,7 +767,10 @@ Page({
             return !courseKey || eligibleCourseKeys.has(courseKey);
           })
           .map(toReviewView),
-        keywordOptions: keywordOptions(result.keywords),
+        keywordOptions: keywordOptions(result.keywords).map((item) => ({
+          ...item,
+          active: selectedKeywords.has(item.text),
+        })),
         reviewAccess: result.reviewAccess,
       });
     } catch (error) {
@@ -690,7 +815,10 @@ Page({
     courseTouchStart = null;
     courseTouchMoved = true;
   },
-  onCourseScroll() {
+  onCourseScroll(event: WechatMiniprogram.CustomEvent<{ scrollTop: number }>) {
+    const tab = event.currentTarget.dataset.tab as AssistantTab;
+    if (tab === "browse" || tab === "publish")
+      tabScrollPositions[tab] = event.detail.scrollTop;
     lastCourseScrollAt = Date.now();
     if (courseTouchStart) courseTouchMoved = true;
   },
@@ -725,27 +853,51 @@ Page({
       });
       return;
     }
-    selectedKeywords = new Set();
+    const lease = captureSessionLease();
+    if (!lease) return;
+    reviewDraftAccount = lease.account;
+    const draft = loadInteractionDraft(
+      lease.account,
+      "review",
+      grade.courseKey,
+    );
+    const rating = draft?.rating || 0;
+    const content = draft?.content || "";
+    selectedKeywords = new Set(draft?.keywords || []);
     this.setData({
       reviewVisible: true,
       selectedGrade: grade,
-      selectedRating: 0,
-      ratingStars: starsFor(0),
-      ratingHint: "点亮星星，给这门课一个总评",
+      selectedRating: rating,
+      ratingStars: starsFor(rating),
+      ratingHint: rating ? STAR_HINTS[rating] : "点亮星星，给这门课一个总评",
       keywordOptions: this.data.keywordOptions.map((item) => ({
         ...item,
-        active: false,
+        active: selectedKeywords.has(item.text),
       })),
-      reviewText: "",
-      reviewCharacterCount: 0,
-      reviewCanSubmit: false,
+      reviewText: content,
+      reviewCharacterCount: reviewContentLength(content),
+      reviewCanSubmit: canSubmitReview(grade, rating, content),
     });
+  },
+  saveReviewDraft() {
+    if (!this.data.selectedGrade) return;
+    saveInteractionDraft(
+      reviewDraftAccount,
+      "review",
+      {
+        rating: this.data.selectedRating,
+        keywords: [...selectedKeywords],
+        content: this.data.reviewText,
+      },
+      this.data.selectedGrade.courseKey,
+    );
   },
   closeReview() {
     if (this.data.reviewSubmitting) return;
     this.setData({ reviewVisible: false });
   },
   selectRating(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.reviewSubmitting) return;
     const rating = Number(event.currentTarget.dataset.rating || 0);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) return;
     haptic("light");
@@ -759,8 +911,10 @@ Page({
         this.data.reviewText,
       ),
     });
+    this.saveReviewDraft();
   },
   toggleReviewKeyword(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.reviewSubmitting) return;
     const keyword = String(event.currentTarget.dataset.keyword || "");
     if (!keyword) return;
     if (selectedKeywords.has(keyword)) selectedKeywords.delete(keyword);
@@ -778,8 +932,10 @@ Page({
         active: selectedKeywords.has(item.text),
       })),
     });
+    this.saveReviewDraft();
   },
   onReviewTextInput(event: WechatMiniprogram.Input) {
+    if (this.data.reviewSubmitting) return;
     const reviewText = event.detail.value;
     const reviewCharacterCount = reviewContentLength(reviewText);
     this.setData({
@@ -791,12 +947,13 @@ Page({
         reviewText,
       ),
     });
+    this.saveReviewDraft();
   },
   async submitReview() {
     if (!this.data.reviewCanSubmit || this.data.reviewSubmitting) return;
     const lease = captureSessionLease();
     const grade = this.data.selectedGrade;
-    if (!lease || !grade) return;
+    if (!lease || !grade || lease.account !== reviewDraftAccount) return;
     haptic("heavy");
     this.setData({ reviewSubmitting: true });
     try {
@@ -806,9 +963,12 @@ Page({
         keywords: [...selectedKeywords],
         content: this.data.reviewText.trim(),
       });
+      clearInteractionDraft(lease.account, "review", grade.courseKey);
       if (!isSessionLeaseCurrent(lease)) return;
       this.setData({
         reviewSubmitting: false,
+        selectedGrade: null,
+        reviewText: "",
         reviewVisible: false,
         activeTab: "browse",
       });

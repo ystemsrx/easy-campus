@@ -37,7 +37,10 @@ assert.match(page, /segment-indicator--physical/);
 assert.match(page, /至少 8 个字/);
 assert.match(page, /wx:if="\{\{!reviewVisible\}\}" class="assistant-tabbar"/);
 assert.match(page, /safe-area="\{\{false\}\}"/);
-assert.match(page, /<button slot="footer" class="review-submit/);
+assert.match(
+  page,
+  /<view slot="footer" class="review-footer">[\s\S]*<button class="review-submit/,
+);
 assert.match(page, /item\.visibleKeywords/);
 assert.match(
   page,

@@ -24,7 +24,8 @@
   line-height: 1.12;
 }
 
-.schedule-header-actions { display: flex; flex-direction: row; gap: 14rpx; padding-bottom: 5rpx; }
+.schedule-header-copy { flex: 1; min-width: 0; }
+.schedule-header-actions { display: flex; flex: none; flex-direction: row; flex-wrap: nowrap; gap: 14rpx; padding-bottom: 5rpx; }
 
 .round-action {
   display: flex;
@@ -41,10 +42,13 @@
 .round-action--dark { color: #fff; background: #2b2620; }
 
 .week-strip {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   flex-direction: row;
-  margin-top: 36rpx;
+  width: 100%;
+  flex: none;
 }
 
 .week-day {
@@ -67,19 +71,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(100% / 7);
+  width: 14.2857142857%;
   height: 64rpx;
   pointer-events: none;
-  transform: translateX(0);
-  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.week-selection--2 { transform: translateX(100%); }
-.week-selection--3 { transform: translateX(200%); }
-.week-selection--4 { transform: translateX(300%); }
-.week-selection--5 { transform: translateX(400%); }
-.week-selection--6 { transform: translateX(500%); }
-.week-selection--7 { transform: translateX(600%); }
 
 .week-selection-circle {
   width: 64rpx;
@@ -92,8 +88,13 @@
 .week-day-name { height: 30rpx; font-size: 20rpx; font-weight: 600; line-height: 30rpx; }
 .week-day-number { position: relative; display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx; margin-top: 6rpx; }
 .week-day-today-ring { position: absolute; width: 72rpx; height: 72rpx; border: 2rpx solid #d97757; border-radius: 50%; }
-.week-day-date { position: relative; z-index: 1; color: var(--color-text); font-size: 27rpx; font-weight: 750; transition: color 200ms ease; }
-.week-day--active .week-day-date { color: #fff; }
+/* Worklet crossfades fixed-color glyph layers from the selector's position.
+   No CSS transition: a second timeline would lag behind or resist a reversal. */
+.week-day-date-layer { position: absolute; top: 0; left: 0; z-index: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; pointer-events: none; }
+.week-day-date-layer--normal { opacity: 1; }
+.week-day-date-layer--selected { opacity: 0; }
+.week-day-date { color: var(--color-text); font-size: 27rpx; font-weight: 750; white-space: nowrap; }
+.week-day-date--selected { color: #fff; }
 .week-day-dot { position: absolute; bottom: 1rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #d97757; }
 
 .schedule-page.theme-style-minimal .week-day-today-ring {
@@ -101,15 +102,12 @@
   border-radius: 0;
 }
 
-.motion-reduced .week-selection,
-.motion-reduced .week-day-date { transition-duration: 1ms; }
-
 .timeline-heading {
   display: flex;
   flex-direction: row;
   align-items: flex-end;
   justify-content: space-between;
-  margin: 48rpx 2rpx 20rpx;
+  margin: 12rpx 2rpx 20rpx;
 }
 
 .timeline-title { display: block; color: var(--color-text); font-size: 34rpx; font-weight: 750; }
@@ -342,6 +340,25 @@
 .creator-grid { display: flex; flex-direction: row; gap: 18rpx; }
 .creator-grid picker { flex: 1; min-width: 0; }
 .creator-value { display: flex; align-items: center; min-height: 88rpx; padding: 0 26rpx; border-radius: 28rpx; color: var(--color-text); background: rgba(43, 38, 32, 0.05); font-size: 27rpx; font-weight: 650; }
-.creator-footer { display: flex; flex-direction: row; gap: 16rpx; width: 100%; }
+.creator-footer { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 16rpx; width: 100%; }
 .danger-button.creator-delete { flex: none; width: 154rpx; }
 .primary-button.creator-submit { flex: 1; width: 0; background: #d97757; }
+
+.schedule-page { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.schedule-top { flex: none; padding-top: 20rpx; padding-bottom: 0; }
+.week-viewport { margin-top: 28rpx; overflow: hidden; width: 100%; }
+.week-track { position: relative; width: 100%; height: 116rpx; opacity: 0; }
+.week-track--ready { opacity: 1; }
+.day-swiper { flex: 1; min-height: 0; height: 0; width: 100%; }
+.day-scroll { width: 100%; height: 100%; }
+.schedule-day-content { padding-top: 12rpx; }
+.outside-card { padding: 24rpx; margin-bottom: 20rpx; }
+.outside-label { display: block; color: var(--color-text-tertiary); font-size: 22rpx; margin-bottom: 12rpx; }
+.outside-entry { display: flex; flex-direction: row; align-items: center; padding: 10rpx 0; }
+.outside-copy { flex: 1; min-width: 0; }
+.outside-title { display: block; color: var(--color-text); font-size: 28rpx; font-weight: 650; }
+.outside-meta { display: block; color: var(--color-text-secondary); font-size: 22rpx; margin-top: 6rpx; }
+.outside-check { display: flex; flex: none; align-items: center; justify-content: center; width: 88rpx; min-height: 88rpx; }
+.outside-check .plan-check { margin: 0; }
+.outside-entry--done .outside-title { text-decoration: line-through; }
+.outside-entry--done .outside-copy { opacity: 0.55; }

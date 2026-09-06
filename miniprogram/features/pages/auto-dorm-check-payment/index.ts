@@ -36,6 +36,7 @@ const ORDER_POLL_INTERVAL_MILLISECONDS = 900;
 const ORDER_POLL_ATTEMPTS = 45;
 const CAPSULE_TOAST_HOLD_MILLISECONDS = 3000;
 const CAPSULE_TOAST_EXIT_MILLISECONDS = 180;
+const PAYMENT_PROGRESS_TRANSITION_MS = 260;
 const SAFE_ORDER_CREATION_FAILURE_CODES = new Set([
   "AUTO_DORM_CHECK_ACADEMIC_PERIOD_UNAVAILABLE",
 ]);
@@ -67,6 +68,10 @@ const activeFlowAccounts = new WeakMap<object, string>();
 const activePendingPayments = new WeakMap<object, AccountPendingPayment>();
 const loadedPaymentAccounts = new WeakMap<object, string>();
 const capsuleToastTimers = new WeakMap<object, CapsuleToastTimers>();
+const progressTransitions = new WeakMap<
+  object,
+  { close?: ReturnType<typeof setTimeout> }
+>();
 
 function activePendingPayment(
   instance: object,
@@ -241,6 +246,15 @@ Page({
     loaded: false,
     processing: false,
     pendingResult: false,
+    pendingPlanName: "",
+    pendingPriceLabel: "",
+    pendingOrderId: "",
+    progressMounted: false,
+    progressExpanded: false,
+    progressHeight: 0,
+    progressBusy: false,
+    progressPlanName: "",
+    progressPriceLabel: "",
     confirmingPlanId: "",
     paymentEnabled: false,
     accessGranted: true,
@@ -278,7 +292,7 @@ Page({
       nextFlowRevision(instance);
       activeFlowAccounts.delete(instance);
       activePendingPayments.delete(instance);
-      this.setData({
+      this.setPaymentView({
         processing: false,
         pendingResult: false,
         confirmingPlanId: "",
@@ -288,7 +302,7 @@ Page({
     if (loadedAccount && loadedAccount !== lease.account) {
       loadedPaymentAccounts.delete(instance);
       this.dismissCapsuleToast();
-      this.setData({
+      this.setPaymentView({
         loaded: false,
         loading: false,
         paymentEnabled: false,
@@ -306,7 +320,7 @@ Page({
     const cachedPayment = getCachedAutoDormCheckPayment();
     if (cachedPayment) {
       loadedPaymentAccounts.set(instance, lease.account);
-      this.setData({
+      this.setPaymentView({
         ...paymentDataViewData(cachedPayment),
         loaded: true,
         loading: false,
@@ -338,34 +352,120 @@ Page({
     loadedPaymentAccounts.delete(instance);
     nextFlowRevision(instance);
     clearCapsuleToastTimers(instance);
+    const transition = progressTransitions.get(instance);
+    if (transition?.close !== undefined) clearTimeout(transition.close);
+    progressTransitions.delete(instance);
+  },
+  onResize() {
+    if (this.data.processing || this.data.pendingResult)
+      this.setPaymentView({ processing: this.data.processing });
+  },
+  setPaymentView(patch: Record<string, unknown>, callback?: () => void) {
+    const changesProgress = [
+      "processing",
+      "pendingResult",
+      "pendingPlanName",
+      "pendingPriceLabel",
+    ].some((key) => Object.prototype.hasOwnProperty.call(patch, key));
+    if (!changesProgress) {
+      this.setData(patch, callback);
+      return;
+    }
+    const instance = this as unknown as object;
+    const previous = progressTransitions.get(instance);
+    if (previous?.close !== undefined) clearTimeout(previous.close);
+    const transition: { close?: ReturnType<typeof setTimeout> } = {};
+    progressTransitions.set(instance, transition);
+    const current = () =>
+      activePages.has(instance) &&
+      progressTransitions.get(instance) === transition;
+    const busy = Boolean(patch.processing ?? this.data.processing);
+    const visible =
+      busy || Boolean(patch.pendingResult ?? this.data.pendingResult);
+    if (visible) {
+      // Mount into a zero-height region first. Measuring after this render
+      // accounts for actual wrapping, font size and the pending-result actions.
+      this.setData(
+        {
+          ...patch,
+          progressMounted: true,
+          progressBusy: busy,
+          progressPlanName: String(
+            patch.pendingPlanName ?? this.data.pendingPlanName,
+          ),
+          progressPriceLabel: String(
+            patch.pendingPriceLabel ?? this.data.pendingPriceLabel,
+          ),
+        },
+        () => {
+          if (current()) {
+            this.createSelectorQuery()
+              .select(".payment-progress-inner")
+              .boundingClientRect()
+              .exec(
+                (
+                  rects: WechatMiniprogram.BoundingClientRectCallbackResult[],
+                ) => {
+                  if (!current() || !rects[0]?.height) return;
+                  this.setData({
+                    progressHeight: rects[0].height,
+                    progressExpanded: true,
+                  });
+                },
+              );
+          }
+          callback?.();
+        },
+      );
+      return;
+    }
+    // Keep the last visible content throughout collapse. A fast success must
+    // not replace the spinner with pending-result copy just before removing it.
+    this.setData(
+      { ...patch, progressHeight: 0, progressExpanded: false },
+      () => {
+        if (current() && this.data.progressMounted) {
+          const unmount = () => {
+            if (current()) this.setData({ progressMounted: false });
+          };
+          if (this.data.motionClass === "motion-reduced") unmount();
+          else
+            transition.close = setTimeout(
+              unmount,
+              PAYMENT_PROGRESS_TRANSITION_MS,
+            );
+        }
+        callback?.();
+      },
+    );
   },
   applyAppearance() {
     const preferences = getApp<IAppOption>().globalData.preferences;
     const appearance = resolveAppearance(preferences);
     syncWindowBackground(appearance);
-    this.setData(appearance);
+    this.setPaymentView({ ...appearance });
   },
   async loadPayment(preloaded?: Promise<AutoDormCheckPaymentData>) {
     if (this.data.processing || (this.data.loading && !this.data.loaded))
       return;
     const lease = captureSessionLease();
     if (!lease) return;
-    this.setData({ loading: true, errorMessage: "" });
+    this.setPaymentView({ loading: true, errorMessage: "" });
     try {
       const payment = await (preloaded || getAutoDormCheckPayment());
       if (!isSessionLeaseCurrent(lease)) return;
       loadedPaymentAccounts.set(this as unknown as object, lease.account);
-      this.setData({
+      this.setPaymentView({
         ...paymentDataViewData(payment),
         loaded: true,
       });
     } catch (error) {
       if (!isSessionLeaseCurrent(lease)) return;
-      this.setData({
+      this.setPaymentView({
         errorMessage: getErrorMessage(error, "打卡套餐读取失败。"),
       });
     } finally {
-      if (isSessionLeaseCurrent(lease)) this.setData({ loading: false });
+      if (isSessionLeaseCurrent(lease)) this.setPaymentView({ loading: false });
     }
   },
   retryPayment() {
@@ -392,7 +492,7 @@ Page({
       loadPendingAutoDormCheckPayment(lease.account) ||
       activePendingPayment(instance, lease.account);
     if (pending) {
-      this.setData({ pendingResult: true });
+      this.setPaymentView({ pendingResult: true });
       this.showCapsuleToast("支付结果确认中");
       void this.runPaymentFlow(lease, pending);
       return;
@@ -401,7 +501,7 @@ Page({
     const plan = this.data.plans.find((item) => item.id === planId);
     if (!plan) return;
     haptic("light");
-    this.setData({ confirmingPlanId: plan.id });
+    this.setPaymentView({ confirmingPlanId: plan.id });
     let purchaseAccepted = false;
     wx.showModal({
       title: "确认购买",
@@ -412,7 +512,7 @@ Page({
       success: (result) => {
         if (!activePages.has(this as unknown as object)) return;
         if (!isSessionLeaseCurrent(lease)) {
-          this.setData({ confirmingPlanId: "" });
+          this.setPaymentView({ confirmingPlanId: "" });
           return;
         }
         if (!result.confirm) return;
@@ -429,7 +529,7 @@ Page({
           !purchaseAccepted &&
           !this.data.processing
         ) {
-          this.setData({ confirmingPlanId: "" });
+          this.setPaymentView({ confirmingPlanId: "" });
         }
       },
     });
@@ -440,9 +540,17 @@ Page({
     if (!lease) return;
     this.dismissCapsuleToast();
     const instance = this as unknown as object;
+    const existing =
+      loadPendingAutoDormCheckPayment(lease.account) ||
+      activePendingPayment(instance, lease.account);
+    if (existing) {
+      await this.runPaymentFlow(lease, existing);
+      return;
+    }
+    this.showPendingOrder(planId);
     const preparationRevision = nextFlowRevision(instance);
     activeFlowAccounts.set(instance, lease.account);
-    this.setData({
+    this.setPaymentView({
       processing: true,
       loading: false,
       pendingResult: false,
@@ -457,7 +565,7 @@ Page({
     if (!preparationStillActive || !isSessionLeaseCurrent(lease)) {
       if (preparationStillActive) {
         activeFlowAccounts.delete(instance);
-        this.setData({ processing: false, confirmingPlanId: "" });
+        this.setPaymentView({ processing: false, confirmingPlanId: "" });
       }
       return;
     }
@@ -469,7 +577,7 @@ Page({
     };
     if (!savePendingAutoDormCheckPayment(lease.account, pending)) {
       activeFlowAccounts.delete(instance);
-      this.setData({ processing: false, confirmingPlanId: "" });
+      this.setPaymentView({ processing: false, confirmingPlanId: "" });
       this.showCapsuleToast("订单保存失败，请稍后重试");
       return;
     }
@@ -481,10 +589,11 @@ Page({
     pending: PendingAutoDormCheckPayment,
     processingAlreadyVisible = false,
   ) {
+    this.showPendingOrder(pending.planId, pending.orderId || "");
     if (!processingAlreadyVisible) {
       if (this.data.processing) return;
       this.dismissCapsuleToast();
-      this.setData({
+      this.setPaymentView({
         processing: true,
         loading: false,
         pendingResult: false,
@@ -505,6 +614,10 @@ Page({
             pending.idempotencyKey,
           );
       if (!isFlowCurrent(instance, revision, lease)) return;
+      this.setPaymentView({
+        pendingOrderId: initialResult.order.id,
+        pendingPriceLabel: `¥${(initialResult.order.amountCents / 100).toFixed(2)}`,
+      });
       if (
         initialResult.order.id &&
         initialResult.order.id !== pending.orderId
@@ -521,7 +634,7 @@ Page({
       );
       if (!isFlowCurrent(instance, revision, lease)) return;
       if (!result) {
-        this.setData({
+        this.setPaymentView({
           processing: false,
           loading: false,
           pendingResult: true,
@@ -543,7 +656,7 @@ Page({
         savePendingAutoDormCheckPayment(lease.account, trackedPending);
       }
       activeFlowAccounts.delete(instance);
-      this.setData({
+      this.setPaymentView({
         processing: false,
         loading: false,
         pendingResult: keepPending,
@@ -562,7 +675,7 @@ Page({
         !isSessionLeaseCurrent(lease)
       ) {
         activeFlowAccounts.delete(instance);
-        this.setData({
+        this.setPaymentView({
           processing: false,
           loading: false,
           confirmingPlanId: "",
@@ -579,12 +692,20 @@ Page({
       loadPendingAutoDormCheckPayment(lease.account) ||
       activePendingPayment(instance, lease.account);
     if (!pending) {
-      this.setData({ pendingResult: false });
+      this.setPaymentView({ pendingResult: false });
       void this.loadPayment();
       return;
     }
     haptic("light");
     void this.runPaymentFlow(lease, pending);
+  },
+  showPendingOrder(planId: string, orderId = "") {
+    const plan = this.data.plans.find((item) => item.id === planId);
+    this.setPaymentView({
+      pendingPlanName: plan?.name || "打卡套餐",
+      pendingPriceLabel: plan?.priceLabel || "",
+      pendingOrderId: orderId,
+    });
   },
   async pollPaymentOrder(
     initial: AutoDormCheckPaymentOrderResult,
@@ -625,7 +746,7 @@ Page({
     };
     activeFlowAccounts.delete(instance);
     loadedPaymentAccounts.set(instance, lease.account);
-    this.setData(
+    this.setPaymentView(
       {
         ...(freshPayment ? paymentDataViewData(freshPayment) : fallback),
         processing: false,
@@ -651,7 +772,7 @@ Page({
   showCapsuleToast(message: string) {
     const instance = this as unknown as object;
     clearCapsuleToastTimers(instance);
-    this.setData(
+    this.setPaymentView(
       {
         capsuleToastMounted: true,
         capsuleToastVisible: false,
@@ -661,14 +782,14 @@ Page({
         const timers: CapsuleToastTimers = {};
         timers.reveal = setTimeout(() => {
           if (!activePages.has(instance)) return;
-          this.setData({ capsuleToastVisible: true });
+          this.setPaymentView({ capsuleToastVisible: true });
           timers.hide = setTimeout(() => {
             if (!activePages.has(instance)) return;
-            this.setData({ capsuleToastVisible: false });
+            this.setPaymentView({ capsuleToastVisible: false });
             timers.unmount = setTimeout(() => {
               capsuleToastTimers.delete(instance);
               if (activePages.has(instance) && !this.data.capsuleToastVisible) {
-                this.setData({ capsuleToastMounted: false });
+                this.setPaymentView({ capsuleToastMounted: false });
               }
             }, CAPSULE_TOAST_EXIT_MILLISECONDS);
           }, CAPSULE_TOAST_HOLD_MILLISECONDS);
@@ -681,7 +802,7 @@ Page({
     const instance = this as unknown as object;
     clearCapsuleToastTimers(instance);
     if (!this.data.capsuleToastMounted) return;
-    this.setData({
+    this.setPaymentView({
       capsuleToastMounted: false,
       capsuleToastVisible: false,
       capsuleToastMessage: "",

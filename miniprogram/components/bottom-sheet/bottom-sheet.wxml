@@ -22,10 +22,7 @@
         <lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon>
       </view>
     </view>
-    <scroll-view wx:if="{{scrollable}}" class="sheet-content" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
-      <slot></slot>
-    </scroll-view>
-    <view wx:else class="sheet-content sheet-content--static">
+    <view class="sheet-content sheet-content--static">
       <slot></slot>
     </view>
     <view class="sheet-footer">

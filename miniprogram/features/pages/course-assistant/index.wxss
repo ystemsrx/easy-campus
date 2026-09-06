@@ -1314,3 +1314,9 @@
 .motion-reduced .course-sort-popover {
   transition-duration: 1ms;
 }
+
+.review-scroll-shell { flex: 1; min-height: 0; width: 100%; }
+.review-scroll { width: 100%; height: 100%; }
+.review-scroll-bottom { height: 104rpx; }
+.review-footer { padding-bottom: env(safe-area-inset-bottom); }
+.favorites-error { padding: 20rpx 0; color: var(--color-text-secondary); font-size: 24rpx; }

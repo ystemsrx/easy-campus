@@ -39,6 +39,7 @@ interface ScheduleEntryBase {
   done: boolean;
   top: number;
   height: number;
+  placement: "timeline" | "early" | "late";
 }
 
 export interface ScheduleEntry extends ScheduleEntryBase, ScheduleColumnLayout {
@@ -52,6 +53,9 @@ export interface ScheduleDayView {
   teachingWeekLabel: string;
   selectedDateLabel: string;
   entries: ScheduleEntry[];
+  timelineEntries: ScheduleEntry[];
+  earlyEntries: ScheduleEntry[];
+  lateEntries: ScheduleEntry[];
 }
 
 export interface ScheduleWeekView extends ScheduleDayView {
@@ -90,17 +94,46 @@ function mondayOf(date: Date): Date {
 }
 
 function entryGeometry(startTime: string, endTime: string) {
-  const start = Math.max(DAY_START, timeToMinutes(startTime));
-  const end = Math.min(DAY_END, Math.max(start + 30, timeToMinutes(endTime)));
+  const start = Math.max(
+    DAY_START,
+    Math.min(DAY_END, timeToMinutes(startTime)),
+  );
+  const end = Math.min(DAY_END, Math.max(start, timeToMinutes(endTime)));
+  const height = Math.max(74, Math.round((end - start) * RPX_PER_MINUTE));
   return {
-    top: Math.round((start - DAY_START) * RPX_PER_MINUTE),
-    height: Math.max(74, Math.round((end - start) * RPX_PER_MINUTE)),
+    top: Math.min(
+      SCHEDULE_TIMELINE_HEIGHT - height,
+      Math.round((start - DAY_START) * RPX_PER_MINUTE),
+    ),
+    height,
+    placement:
+      timeToMinutes(endTime) <= DAY_START
+        ? ("early" as const)
+        : timeToMinutes(startTime) >= DAY_END
+          ? ("late" as const)
+          : ("timeline" as const),
   };
 }
 
 export function scheduleDateFromKey(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day, 12);
+}
+
+export function shiftScheduleDate(value: string, offset: number): string {
+  const date = scheduleDateFromKey(value);
+  date.setDate(date.getDate() + offset);
+  return toDateString(date);
+}
+
+export function planOccursOnDate(
+  plan: LocalSchedulePlan,
+  date: string,
+): boolean {
+  return (
+    plan.date <= date &&
+    (plan.endDate > date || (plan.endDate === date && plan.endTime > "00:00"))
+  );
 }
 
 export function buildScheduleEntries(
@@ -126,24 +159,42 @@ export function buildScheduleEntries(
     ...entryGeometry(course.startTime, course.endTime),
   }));
   const planEntries: ScheduleEntryBase[] = plans
-    .filter((plan) => plan.date === date)
+    .filter((plan) => planOccursOnDate(plan, date))
     .map((plan) => ({
       id: plan.id,
       kind: "plan" as const,
       title: plan.title,
       subtitle:
-        plan.endDate === plan.date ? "日程" : `日程 · 延续至 ${plan.endDate}`,
-      startTime: plan.startTime,
-      endTime: plan.endTime,
-      timeLabel: `${plan.startTime}–${plan.endDate === plan.date ? "" : "次日 "}${plan.endTime}`,
+        plan.date < date
+          ? "日程 · 延续"
+          : plan.endDate === plan.date
+            ? "日程"
+            : `日程 · 延续至 ${plan.endDate}`,
+      startTime: plan.date < date ? "00:00" : plan.startTime,
+      endTime: plan.endDate > date ? "24:00" : plan.endTime,
+      timeLabel:
+        plan.date === plan.endDate
+          ? `${plan.startTime}–${plan.endTime}`
+          : `${plan.date} ${plan.startTime}–${plan.endDate} ${plan.endTime}`,
       tone: "plan" as const,
       done: plan.done,
       ...entryGeometry(
-        plan.startTime,
-        plan.endDate === plan.date ? plan.endTime : "22:30",
+        plan.date < date ? "00:00" : plan.startTime,
+        plan.endDate > date ? "24:00" : plan.endTime,
       ),
     }));
-  return layoutScheduleOverlaps([...courses, ...planEntries]).map((entry) => ({
+  const allEntries = [...courses, ...planEntries];
+  const timeline = layoutScheduleOverlaps(
+    allEntries.filter((entry) => entry.placement === "timeline"),
+  );
+  const outside = allEntries
+    .filter((entry) => entry.placement !== "timeline")
+    .sort(
+      (a, b) =>
+        a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id),
+    )
+    .map((entry) => layoutScheduleOverlaps([entry])[0]);
+  return [...timeline, ...outside].map((entry) => ({
     ...entry,
     displayMeta: entry.compact
       ? entry.timeLabel
@@ -161,16 +212,20 @@ export function buildScheduleDayView(
   if (!selected) return null;
   const selectedDate = scheduleDateFromKey(selected.date);
   const teachingWeek = teachingWeekForDate(timetable, selectedDate);
+  const entries = buildScheduleEntries(timetable, selected.date, plans);
   return {
     selectedWeekday: weekday,
     selectedDate: selected.date,
-    monthLabel: `${selectedDate.getMonth() + 1} 月`,
+    monthLabel: `${selectedDate.getFullYear()} 年 ${selectedDate.getMonth() + 1} 月`,
     teachingWeekLabel:
       teachingWeek === null
         ? vacationLabelForDate(timetable, selected.date) || ""
         : `第 ${teachingWeek} 教学周`,
     selectedDateLabel: `${formatFriendlyDate(selected.date)}${selected.isToday ? " · 今天" : ""}`,
-    entries: buildScheduleEntries(timetable, selected.date, plans),
+    entries,
+    timelineEntries: entries.filter((entry) => entry.placement === "timeline"),
+    earlyEntries: entries.filter((entry) => entry.placement === "early"),
+    lateEntries: entries.filter((entry) => entry.placement === "late"),
   };
 }
 
@@ -179,8 +234,9 @@ export function buildScheduleWeekView(
   plans: LocalSchedulePlan[],
   selectedWeekday: ScheduleDayOption["weekday"] = currentIsoWeekday(),
   now = new Date(),
+  anchorDate = now,
 ): ScheduleWeekView {
-  const monday = mondayOf(now);
+  const monday = mondayOf(anchorDate);
   const todayKey = toDateString(now);
   const days = DAY_LABELS.map((shortLabel, index) => {
     const date = new Date(monday);
@@ -193,7 +249,7 @@ export function buildScheduleWeekView(
       dateLabel: String(date.getDate()),
       date: dateKey,
       isToday: dateKey === todayKey,
-      hasPlan: plans.some((plan) => plan.date === dateKey),
+      hasPlan: plans.some((plan) => planOccursOnDate(plan, dateKey)),
     };
   });
   const selected =
@@ -206,6 +262,72 @@ export function buildScheduleWeekView(
     currentTime: formatClock(now),
     days,
     ...selected,
+  };
+}
+
+export function buildScheduleDateView(
+  timetable: TimetableData | null,
+  plans: LocalSchedulePlan[],
+  date: string,
+  now = new Date(),
+): ScheduleWeekView {
+  const anchor = scheduleDateFromKey(date);
+  return buildScheduleWeekView(
+    timetable,
+    plans,
+    currentIsoWeekday(anchor),
+    now,
+    anchor,
+  );
+}
+
+// Calendar arithmetic uses UTC fields, independent of local DST. The offset
+// makes every Monday divisible by seven; it is only an animation coordinate.
+export function scheduleDayIndex(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+  return Date.UTC(year, month - 1, day) / 86400000 + 3;
+}
+
+export function buildSchedulePager(
+  timetable: TimetableData | null,
+  plans: LocalSchedulePlan[],
+  date: string,
+  windowStart?: string,
+  now = new Date(),
+) {
+  const weekday = currentIsoWeekday(scheduleDateFromKey(date)) - 1;
+  const firstDate = windowStart || shiftScheduleDate(date, -weekday - 7);
+  // Native indices always follow calendar order. Never replace an adjacent
+  // date with a tap target or recycle an item during a native transition.
+  const dayPages = Array.from({ length: 21 }, (_, slot) => {
+    return {
+      slot,
+      ...buildScheduleDateView(
+        timetable,
+        plans,
+        shiftScheduleDate(firstDate, slot),
+        now,
+      ),
+    };
+  });
+  const weekIndex = Math.floor(scheduleDayIndex(date) / 7);
+  const weekPages = [0, 1, 2].map((slot) => {
+    const offset = (slot - (weekIndex % 3) + 3) % 3;
+    const relativeWeek = offset === 2 ? -1 : offset;
+    return {
+      slot,
+      days: buildScheduleDateView(
+        timetable,
+        plans,
+        shiftScheduleDate(date, relativeWeek * 7),
+        now,
+      ).days,
+    };
+  });
+  return {
+    dayPages,
+    weekPages,
+    dayCurrent: dayPages.findIndex((day) => day.selectedDate === date),
   };
 }
 

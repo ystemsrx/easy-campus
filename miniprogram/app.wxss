@@ -1276,7 +1276,7 @@ page {
   box-shadow: none;
 }
 
-.page.theme-style-minimal .week-day--active .week-day-date,
+.page.theme-style-minimal .week-day-date--selected,
 .page.theme-style-minimal .campus-option--active,
 .page.theme-style-minimal .quick-date-option--active,
 .page.theme-style-minimal .date-choice--active,

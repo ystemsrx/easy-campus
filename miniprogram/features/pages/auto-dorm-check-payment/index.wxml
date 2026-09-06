@@ -1,22 +1,24 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
 <view class="page page--quick-entry auto-dorm-check-payment-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
-  <view wx:if="{{processing}}" class="payment-processing" aria-role="alert" aria-label="正在确认付款结果">
-    <image
-      class="payment-processing-spinner"
-      src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}"
-      mode="aspectFit"
-      draggable="{{false}}"
-    ></image>
-  </view>
-
-  <scroll-view wx:else class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="打卡套餐" back transparent theme="{{theme}}"></navigation-bar>
 
-    <view class="payment-content page-content page-enter">
-      <loading-view wx:if="{{loading && !loaded}}" label="正在读取套餐"></loading-view>
+    <view class="payment-content page-content">
+      <view class="payment-progress-region" style="height: {{progressHeight}}px;" aria-hidden="{{!processing && !pendingResult}}">
+        <view wx:if="{{progressMounted}}" class="payment-progress-inner {{progressExpanded ? 'payment-progress-inner--expanded' : ''}}">
+          <view class="payment-processing card" aria-role="status">
+            <view wx:if="{{progressBusy}}" class="payment-spinner-enter"><image class="payment-processing-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit"></image></view>
+            <text class="payment-progress-title">{{progressBusy ? '正在确认支付结果' : '支付结果待确认'}}</text>
+            <text class="payment-progress-plan">{{progressPlanName}} {{progressPriceLabel}}</text>
+            <button wx:if="{{!progressBusy}}" class="primary-button" bindtap="retryPendingPayment">重新确认</button>
+            <button class="payment-return" bindtap="returnToAutoDormCheck">返回</button>
+          </view>
+        </view>
+      </view>
+      <loading-view wx:if="{{loading && !loaded && !processing && !pendingResult}}" label="正在读取套餐"></loading-view>
 
       <empty-state
-        wx:elif="{{errorMessage && !loaded}}"
+        wx:elif="{{errorMessage && !loaded && !processing && !pendingResult}}"
         icon="circle-alert"
         icon-tone="danger"
         title="读取失败"
@@ -26,17 +28,7 @@
       ></empty-state>
 
       <empty-state
-        wx:elif="{{pendingResult}}"
-        icon="clock-3"
-        icon-tone="amber"
-        title="支付结果确认中"
-        description="请重新确认上一笔订单结果"
-        action-text="重新确认"
-        bindaction="retryPendingPayment"
-      ></empty-state>
-
-      <empty-state
-        wx:elif="{{!paymentEnabled}}"
+        wx:elif="{{!paymentEnabled && !processing && !pendingResult}}"
         icon="circle-check-big"
         icon-tone="sage"
         title="当前免费使用"
@@ -45,7 +37,7 @@
         bindaction="returnToAutoDormCheck"
       ></empty-state>
 
-      <view wx:else class="payment-sections">
+      <view wx:elif="{{loaded}}" class="payment-sections">
         <view class="payment-balance-card card stagger-item stagger-1">
           <view class="payment-balance-heading">
             <view>
@@ -91,13 +83,13 @@
             <view
               wx:for="{{timePlans}}"
               wx:key="id"
-              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading ? 'payment-plan-card--disabled' : ''}}"
+              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
               data-id="{{item.id}}"
               bindtap="onPlanTap"
-              hover-class="{{loading ? 'none' : 'payment-plan-card--pressed'}}"
+              hover-class="{{loading || processing || pendingResult ? 'none' : 'payment-plan-card--pressed'}}"
               hover-stay-time="80"
               aria-role="button"
-              aria-disabled="{{loading}}"
+              aria-disabled="{{loading || processing || pendingResult}}"
               aria-label="购买{{item.name}}，{{item.priceLabel}}"
             >
               <view class="payment-plan-icon payment-plan-icon--time">
@@ -126,13 +118,13 @@
             <view
               wx:for="{{countPlans}}"
               wx:key="id"
-              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading ? 'payment-plan-card--disabled' : ''}}"
+              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
               data-id="{{item.id}}"
               bindtap="onPlanTap"
-              hover-class="{{loading ? 'none' : 'payment-plan-card--pressed'}}"
+              hover-class="{{loading || processing || pendingResult ? 'none' : 'payment-plan-card--pressed'}}"
               hover-stay-time="80"
               aria-role="button"
-              aria-disabled="{{loading}}"
+              aria-disabled="{{loading || processing || pendingResult}}"
               aria-label="购买{{item.name}}，{{item.priceLabel}}"
             >
               <view class="payment-plan-icon payment-plan-icon--count">

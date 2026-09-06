@@ -235,7 +235,7 @@ assert(
       "if (!savePendingAutoDormCheckPayment(lease.account, pending))",
     ) &&
     startPurchaseSource.indexOf("savePendingAutoDormCheckPayment(") <
-      startPurchaseSource.indexOf("await this.runPaymentFlow("),
+      startPurchaseSource.lastIndexOf("await this.runPaymentFlow("),
   "支付 pending 必须先可靠落盘，保存失败不得发起订单请求",
 );
 assert(
@@ -245,17 +245,26 @@ assert(
   "pending 写入后必须读回核对幂等键和订单号",
 );
 assert(
-  paymentTemplate.indexOf('wx:if="{{processing}}"') <
-    paymentTemplate.indexOf("<scroll-view") &&
+  paymentTemplate.indexOf("<navigation-bar") <
+    paymentTemplate.indexOf('class="payment-progress-region"') &&
+    !paymentTemplate.includes("<scroll-view wx:else") &&
     paymentTemplate.includes('class="payment-processing-spinner"') &&
+    paymentTemplate.includes("{{progressPlanName}} {{progressPriceLabel}}") &&
+    !paymentTemplate.includes("{{pendingOrderId}}") &&
+    !paymentTemplate.includes("可以先返回，稍后继续确认") &&
+    paymentTemplate.includes('bindtap="returnToAutoDormCheck"') &&
     paymentScript.includes("wx.showModal({") &&
-    paymentTemplate.includes('bindaction="retryPendingPayment"'),
-  "确认购买须使用弹窗，付款处理中须用整页超大加载状态替换内容",
+    paymentTemplate.includes('bindtap="retryPendingPayment"'),
+  "付款确认只展示套餐和金额，保留导航、返回及重试入口，不展示订单号和冗余说明",
 );
 assert(
   paymentScript.includes("this.data.loading ||") &&
-    paymentTemplate.includes('aria-disabled="{{loading}}"') &&
-    paymentTemplate.includes("{{loading ? 'none'"),
+    paymentTemplate.includes(
+      'aria-disabled="{{loading || processing || pendingResult}}"',
+    ) &&
+    paymentTemplate.includes(
+      "{{loading || processing || pendingResult ? 'none'",
+    ),
   "静默刷新付费开关期间必须禁止点击旧套餐",
 );
 assert(
@@ -446,6 +455,10 @@ async function checkPaymentPrefetch() {
 function loadPaymentPageRuntime(options) {
   let pageDefinition;
   let timerId = 0;
+  const renders = [];
+  const measurements = [];
+  const timers = new Map();
+  let panelHeight = 320;
   const calls = {
     create: 0,
     get: 0,
@@ -562,17 +575,43 @@ function loadPaymentPageRuntime(options) {
     () => ({ globalData: { preferences: {} } }),
     (callback) => {
       const id = ++timerId;
-      callback();
+      if (options.deferMotion) timers.set(id, callback);
+      else callback();
       return id;
     },
-    () => undefined,
+    (id) => timers.delete(id),
   );
   const instance = {
     ...pageDefinition,
     data: JSON.parse(JSON.stringify(pageDefinition.data)),
+    renderedData: JSON.parse(JSON.stringify(pageDefinition.data)),
     setData(patch, callback) {
       Object.assign(this.data, patch);
-      callback?.();
+      const submitted = structuredClone(patch);
+      const render = () => {
+        Object.assign(this.renderedData, submitted);
+        callback?.();
+      };
+      if (options.deferMotion) renders.push(render);
+      else render();
+    },
+    createSelectorQuery() {
+      return {
+        select() {
+          return this;
+        },
+        boundingClientRect() {
+          return this;
+        },
+        exec(callback) {
+          const height = instance.renderedData.progressMounted
+            ? panelHeight
+            : 0;
+          if (options.deferMotion)
+            measurements.push(() => callback([{ height }]));
+          else callback([{ height }]);
+        },
+      };
     },
   };
   instance.onLoad();
@@ -581,7 +620,101 @@ function loadPaymentPageRuntime(options) {
   instance.data.paymentEnabled = true;
   instance.showCapsuleToast = (message) => calls.toasts.push(message);
   instance.dismissCapsuleToast = () => undefined;
-  return { instance, calls, lease };
+  return {
+    instance,
+    calls,
+    lease,
+    flushRenders() {
+      while (renders.length) renders.shift()();
+    },
+    flushMeasurements() {
+      while (measurements.length) measurements.shift()();
+    },
+    flushTimers() {
+      const pending = [...timers.values()];
+      timers.clear();
+      pending.forEach((callback) => callback());
+    },
+    setPanelHeight(height) {
+      panelHeight = height;
+    },
+  };
+}
+
+function checkProgressTransition() {
+  const runtime = loadPaymentPageRuntime({ deferMotion: true });
+  const page = runtime.instance;
+  runtime.flushRenders();
+  page.setPaymentView({
+    processing: true,
+    pendingPlanName: "测试套餐",
+    pendingPriceLabel: "¥1.00",
+  });
+  assert(
+    page.data.progressMounted && page.data.progressHeight === 0,
+    "加载内容先在零高度区域挂载，不能直接挤开下方卡片",
+  );
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  runtime.flushRenders();
+  assert(
+    page.data.progressHeight === 320 && page.data.progressExpanded,
+    "渲染完成后按实际内容高度展开",
+  );
+  page.setPaymentView({ processing: false });
+  runtime.flushRenders();
+  assert(
+    page.data.progressHeight === 0 &&
+      page.data.progressMounted &&
+      page.data.progressBusy,
+    "结束时收起高度，但保留原加载内容直到退出动画完成",
+  );
+  page.setPaymentView({ processing: true });
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  runtime.flushTimers();
+  runtime.flushRenders();
+  assert(
+    page.data.progressMounted && page.data.progressHeight === 320,
+    "收起中重新加载时，旧卸载回调不能移除新加载区域",
+  );
+  runtime.setPanelHeight(284);
+  page.setPaymentView({ processing: false, pendingResult: true });
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  runtime.flushRenders();
+  assert(
+    page.data.progressHeight === 284 && !page.data.progressBusy,
+    "待确认状态按重试按钮实际高度调整占位",
+  );
+  runtime.setPanelHeight(400);
+  page.onResize();
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  assert(page.data.progressHeight === 400, "窄屏或文字换行后重新测量");
+  page.setPaymentView({ processing: true, pendingResult: false });
+  runtime.flushRenders();
+  page.setPaymentView({ processing: false });
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  assert(page.data.progressHeight === 0, "快速完成后晚到的测量不得重新展开");
+  runtime.flushTimers();
+  runtime.flushRenders();
+  assert(!page.data.progressMounted, "收起完成后卸载加载内容");
+  page.setPaymentView({ processing: true });
+  runtime.flushRenders();
+  runtime.flushMeasurements();
+  page.setPaymentView({ motionClass: "motion-reduced", processing: false });
+  runtime.flushRenders();
+  assert(
+    !page.data.progressMounted && page.data.progressHeight === 0,
+    "减少动态效果时立即完成布局变化",
+  );
+  page.setPaymentView({ processing: true });
+  runtime.flushRenders();
+  page.onUnload();
+  runtime.flushMeasurements();
+  assert(page.data.progressHeight === 0, "页面退出后忽略未完成的测量回调");
 }
 
 async function checkStateMachine() {
@@ -680,6 +813,12 @@ async function checkStateMachine() {
     });
     await runtime.instance.runPaymentFlow(runtime.lease, pendingPayment);
     assert(
+      runtime.instance.data.pendingOrderId === "order-pending" &&
+        runtime.instance.data.pendingPlanName &&
+        runtime.instance.data.pendingPriceLabel,
+      "订单超时后仍须保留订单号、套餐与金额上下文",
+    );
+    assert(
       runtime.calls.get === 46 &&
         runtime.calls.clear === 0 &&
         runtime.calls.toasts.includes("支付结果确认中") &&
@@ -731,6 +870,7 @@ async function checkStateMachine() {
 }
 
 async function main() {
+  checkProgressTransition();
   await checkPaymentPrefetch();
   await checkStateMachine();
   if (failures.length) {

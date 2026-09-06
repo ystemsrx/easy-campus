@@ -11,14 +11,14 @@
   </view>
 
   <view wx:else class="assistant-shell">
-    <scroll-view wx:if="{{activeTab === 'browse'}}" class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="160" bindscroll="onCourseScroll" bindscrolltolower="loadMoreCatalog">
-        <view class="assistant-content page-enter">
+    <scroll-view wx:if="{{activeTab === 'browse'}}" class="assistant-scroll" data-tab="browse" scroll-top="{{browseScrollTop}}" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="160" bindscroll="onCourseScroll" bindscrolltolower="loadMoreCatalog">
+        <view class="assistant-content">
           <view class="masthead">
             <view class="masthead-meta"><text class="kicker">COURSE GUIDE</text></view>
             <text class="masthead-title display-title">选课助手<text class="title-dot">。</text></text>
           </view>
 
-          <view class="guide-hero stagger-item stagger-1">
+          <view class="guide-hero">
             <view class="guide-ring guide-ring--one"></view><view class="guide-ring guide-ring--two"></view>
             <text class="guide-kicker">通识选修 · 体育课程</text>
             <view class="guide-title display-title"><text class="guide-title-line">前人栽树，</text><text class="guide-title-line">后来选课不踩坑。</text></view>
@@ -35,12 +35,12 @@
             <lucide-icon name="chevron-right" tone="muted" size="25"></lucide-icon>
           </view>
 
-          <view class="course-search {{searchQuery ? 'course-search--active' : ''}} stagger-item stagger-2">
+          <view class="course-search {{searchQuery ? 'course-search--active' : ''}}">
             <lucide-icon name="search" tone="muted" size="30"></lucide-icon>
             <input class="course-search-input" value="{{searchQuery}}" placeholder="搜索课程名或任课老师…" placeholder-class="course-search-placeholder" bindinput="onSearchInput" confirm-type="search" maxlength="100" />
           </view>
 
-          <view class="course-tools stagger-item stagger-2">
+          <view class="course-tools">
             <view class="course-segment">
               <view class="segment-indicator {{courseType === 'physical_education' ? 'segment-indicator--physical' : ''}}"></view>
               <view class="segment-option {{courseType === 'general_elective' ? 'segment-option--active' : ''}}" data-type="general_elective" bindtap="selectCourseType" hover-class="segment-option--pressed"><text>通识选修</text></view>
@@ -67,9 +67,11 @@
 
           <view class="course-section-head"><text class="course-section-title display-title">{{favoritesOnly ? '我的收藏' : '课程榜'}}</text><view class="course-sort-control"><view id="course-sort-trigger" class="course-sort-trigger {{sortMenuOpen ? 'course-sort-trigger--open' : ''}}" catchtap="toggleSortMenu" hover-class="none"><text>按{{catalogSortLabel}}排序</text><image class="course-sort-icon" src="{{sortMenuOpen ? '/assets/icons/arrow-up-down-coral.svg' : '/assets/icons/arrow-up-down-muted.svg'}}" mode="aspectFit"></image></view></view></view>
 
-          <loading-view wx:if="{{catalogLoading && !courses.length}}" label="正在整理匿名成绩"></loading-view>
-          <empty-state wx:elif="{{catalogError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="课程列表加载失败" description="{{catalogError}}" action-text="重新加载" bindaction="retryCatalog"></empty-state>
-          <empty-state wx:elif="{{!courses.length}}" icon="book-open" icon-tone="amber" title="暂无匹配课程" description="{{favoritesOnly ? '收藏课程后会显示在这里' : '换个课程类型或关键词试试'}}"></empty-state>
+          <view wx:if="{{favoritesOnly && favoritesError && courses.length}}" class="favorites-error" bindtap="retryFavorites" aria-role="button"><text>{{favoritesError}}</text></view>
+          <loading-view wx:if="{{(favoritesOnly ? favoritesLoading : catalogLoading) && !courses.length}}" label="正在整理匿名成绩"></loading-view>
+          <empty-state wx:elif="{{favoritesOnly && favoritesError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="收藏读取失败" action-text="重试" bindaction="retryFavorites"></empty-state>
+          <empty-state wx:elif="{{!favoritesOnly && catalogError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="课程列表加载失败" description="{{catalogError}}" action-text="重新加载" bindaction="retryCatalog"></empty-state>
+          <empty-state wx:elif="{{!courses.length}}" icon="book-open" icon-tone="amber" title="暂无匹配课程" description="{{favoritesOnly ? '试试切换课程类型或清除筛选' : '换个课程类型或关键词试试'}}"></empty-state>
           <view wx:else class="course-list">
             <view wx:for="{{courses}}" wx:key="courseKey" class="course-card pressable" data-key="{{item.courseKey}}" bindtouchstart="onCourseTouchStart" bindtouchmove="onCourseTouchMove" bindtouchend="onCourseTouchEnd" bindtouchcancel="onCourseTouchCancel" bindtap="openCourse" hover-class="course-card--pressed">
               <view class="course-card-top">
@@ -95,13 +97,13 @@
               </view>
             </view>
           </view>
-          <view wx:if="{{catalogLoadingMore}}" class="catalog-more"><text>读取中</text></view>
+          <view wx:if="{{favoritesOnly ? favoritesLoading && courses.length : catalogLoadingMore}}" class="catalog-more"><text>读取中</text></view>
           <view class="assistant-bottom-space"></view>
         </view>
     </scroll-view>
 
-    <scroll-view wx:else class="assistant-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onCourseScroll">
-        <view class="assistant-content publish-content page-enter">
+    <scroll-view wx:else class="assistant-scroll" data-tab="publish" scroll-top="{{publishScrollTop}}" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onCourseScroll">
+        <view class="assistant-content publish-content">
           <view class="masthead">
             <view class="masthead-meta"><text class="kicker">WRITE A REVIEW</text><text class="semester-badge">匿名发布</text></view>
             <text class="masthead-title display-title">写想法<text class="title-dot">。</text></text>
@@ -145,8 +147,10 @@
     <view class="course-sort-popover" style="top: {{sortMenuTop}}px; right: {{sortMenuRight}}px;" catchtap="noop"><view class="course-sort-option {{catalogSort === 'average_score' ? 'course-sort-option--active' : ''}}" data-sort="average_score" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">历史均分</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{catalogSort === 'average_score'}}" name="check" tone="coral" size="23"></lucide-icon></view><view class="course-sort-option {{catalogSort === 'rating' ? 'course-sort-option--active' : ''}} {{reviewAccess.ownReviewCount === 0 ? 'course-sort-option--locked' : ''}}" data-sort="rating" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">学生评价</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{reviewAccess.ownReviewCount === 0}}" name="lock-keyhole" tone="muted" size="22"></lucide-icon><lucide-icon wx:elif="{{catalogSort === 'rating'}}" name="check" tone="coral" size="23"></lucide-icon></view></view>
   </view>
 
-  <bottom-sheet visible="{{reviewVisible}}" title="{{selectedGrade ? selectedGrade.displayName : '发表课程想法'}}" theme="{{theme}}" expanded="{{true}}" expanded-height="86" safe-area="{{false}}" close-on-mask="{{!reviewSubmitting}}" bindclose="closeReview">
+  <bottom-sheet visible="{{reviewVisible}}" scrollable="{{false}}" title="{{selectedGrade ? selectedGrade.displayName : '发表课程想法'}}" theme="{{theme}}" expanded="{{true}}" expanded-height="86" safe-area="{{false}}" close-on-mask="{{!reviewSubmitting}}" bindclose="closeReview">
     <view slot="subtitle" class="review-sheet-subtitle"><text wx:if="{{selectedGrade}}" class="course-type course-type--{{selectedGrade.type}}">{{selectedGrade.typeLabel}}</text><text wx:if="{{selectedGrade}}" class="review-sheet-meta">{{selectedGrade.termLabel}} · 成绩 {{selectedGrade.scoreLabel}}</text></view>
+    <view class="review-scroll-shell">
+    <scroll-view class="review-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="review-form">
       <view class="review-block"><view class="review-label"><text class="review-label-title display-title">总体评分 <text class="required-mark">*</text></text><text class="review-label-note">5 星制</text></view><view class="rating-stars"><view wx:for="{{ratingStars}}" wx:key="value" class="rating-star-button" data-rating="{{item.value}}" bindtap="selectRating"><image class="rating-star" src="{{item.active ? '/features/assets/course-assistant/star-coral.svg' : '/features/assets/course-assistant/star-muted.svg'}}" mode="aspectFit"></image></view></view><text class="rating-hint">{{ratingHint}}</text></view>
       <view class="review-block"><view class="review-label"><text class="review-label-title display-title">印象关键词</text><text class="review-label-note">可多选 · 最多 5 个</text></view>
@@ -154,9 +158,14 @@
         <view class="keyword-group"><view class="keyword-group-head"><view class="keyword-dot keyword-dot--neutral"></view><text>中性 · 看个人</text></view><view class="keyword-row"><view wx:for="{{keywordOptions}}" wx:key="text" wx:if="{{item.sentiment === 'neutral'}}" class="keyword-option keyword-option--neutral {{item.active ? 'keyword-option--active' : ''}}" data-keyword="{{item.text}}" bindtap="toggleReviewKeyword"><text>{{item.text}}</text></view></view></view>
         <view class="keyword-group"><view class="keyword-group-head"><view class="keyword-dot keyword-dot--negative"></view><text>负向 · 提个醒</text></view><view class="keyword-row"><view wx:for="{{keywordOptions}}" wx:key="text" wx:if="{{item.sentiment === 'negative'}}" class="keyword-option keyword-option--negative {{item.active ? 'keyword-option--active' : ''}}" data-keyword="{{item.text}}" bindtap="toggleReviewKeyword"><text>{{item.text}}</text></view></view></view>
       </view>
-      <view class="review-block"><view class="review-label"><text class="review-label-title display-title">真心话 <text class="required-mark">*</text></text><text class="review-label-note">至少 8 个字</text></view><textarea class="review-textarea" value="{{reviewText}}" maxlength="200" placeholder="例：期末考核是开卷论文，老师不考勤但内容很值得听……" placeholder-class="review-placeholder" auto-height="{{false}}" bindinput="onReviewTextInput"></textarea><text class="character-count tnum">{{reviewCharacterCount}}/200</text></view>
+      <view class="review-block"><view class="review-label"><text class="review-label-title display-title">真心话 <text class="required-mark">*</text></text><text class="review-label-note">至少 8 个字</text></view><textarea class="review-textarea" disabled="{{reviewSubmitting}}" cursor-spacing="24" value="{{reviewText}}" maxlength="200" placeholder="例：期末考核是开卷论文，老师不考勤但内容很值得听……" placeholder-class="review-placeholder" auto-height="{{false}}" bindinput="onReviewTextInput"></textarea><text class="character-count tnum">{{reviewCharacterCount}}/200</text></view>
     </view>
-    <button slot="footer" class="review-submit {{!reviewCanSubmit || reviewSubmitting ? 'review-submit--disabled' : ''}}" disabled="{{!reviewCanSubmit || reviewSubmitting}}" loading="{{reviewSubmitting}}" bindtap="submitReview">匿名发布</button>
+    <view class="review-scroll-bottom"></view>
+    </scroll-view>
+    </view>
+    <view slot="footer" class="review-footer">
+    <button class="review-submit {{!reviewCanSubmit || reviewSubmitting ? 'review-submit--disabled' : ''}}" disabled="{{!reviewCanSubmit || reviewSubmitting}}" loading="{{reviewSubmitting}}" bindtap="submitReview">匿名发布</button>
+    </view>
   </bottom-sheet>
 </view>
 <screen-watermark></screen-watermark>
