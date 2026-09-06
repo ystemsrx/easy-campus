@@ -387,8 +387,15 @@ function displayGradeAverage(value: number | null, digits: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(digits);
 }
 
+function cachedHomeGrades(account: string, preferences: AppPreferences) {
+  return (
+    loadGradesSnapshotForPreference(account, preferences.showGradesBelow60) ||
+    loadGradesSnapshot(account)
+  );
+}
+
 function gradePreviewPatch(
-  data: GradesData,
+  data: GradesData | null,
   animate: boolean,
 ): {
   gradeRingSource: string;
@@ -396,7 +403,7 @@ function gradePreviewPatch(
   gradePointAverageLabel: string;
   gradeCourseCount: number;
 } {
-  const summary = summarizeGrades(highestGradesByCourseName(data.items));
+  const summary = summarizeGrades(highestGradesByCourseName(data?.items || []));
   return {
     gradeRingSource: progressRingSource(
       gradePointRingValue(summary.gradePointAverage),
@@ -633,9 +640,7 @@ function cachedDashboardState(
   const cached =
     cleanupTeachingPreview(account) || loadTeachingPreview(account);
   const timetable = loadTimetableSnapshot(account);
-  const grades =
-    loadGradesSnapshotForPreference(account, preferences.showGradesBelow60) ||
-    loadGradesSnapshot(account);
+  const grades = cachedHomeGrades(account, preferences);
   const semesterBoundary = startedCurrentSemester(timetable?.data || null);
   const messages = (cached?.messages || [])
     .filter((message) =>
@@ -652,7 +657,7 @@ function cachedDashboardState(
     patch: {
       messages,
       notices,
-      ...(grades ? gradePreviewPatch(grades.data, animateGrades) : {}),
+      ...gradePreviewPatch(grades?.data || null, animateGrades),
       loaded:
         messages.length > 0 ||
         notices.length > 0 ||
@@ -797,10 +802,14 @@ Page({
     electricityCardRadius: getFeatureCardRadius(
       INITIAL_HOME_APPEARANCE.visualTheme,
     ),
-    gradeRingSource: progressRingSource(null),
-    gradeAverageLabel: "—",
-    gradePointAverageLabel: "—",
-    gradeCourseCount: 0,
+    // 首帧直接使用本地成绩，避免等待 onLoad 的 setData 才替换占位符。
+    ...gradePreviewPatch(
+      cachedHomeGrades(
+        getSession()?.user.account || "",
+        INITIAL_HOME_PREFERENCES,
+      )?.data || null,
+      INITIAL_HOME_APPEARANCE.motionClass !== "motion-reduced",
+    ),
     showGradesOnHome: INITIAL_HOME_PREFERENCES.showGradesOnHome,
     hiddenGradeRingSource: progressRingSource(null),
     electricityBound: false,

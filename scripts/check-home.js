@@ -552,7 +552,7 @@ assert(
 );
 assert(
   homeScript.includes(
-    "summarizeGrades(highestGradesByCourseName(data.items))",
+    "summarizeGrades(highestGradesByCourseName(data?.items || []))",
   ) && !homeScript.includes("latestSemesterGrades(data).summary"),
   "首页成绩卡必须汇总全历史成绩，并按课程名只采用最高分",
 );
