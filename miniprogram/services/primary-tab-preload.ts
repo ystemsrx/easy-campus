@@ -98,6 +98,7 @@ async function preloadTimetable(
     current =
       saveTimetableSnapshot(state.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
+        deleted: result.meta.deleted,
       }) || local;
   }
   const timetable = current?.data || result.data;
@@ -111,6 +112,7 @@ async function preloadTimetable(
       saveTimetableSnapshot(state.account, result.data, {
         semesterId,
         serverFetchedAt: result.meta.fetchedAt,
+        deleted: result.meta.deleted,
       });
     }
   }
@@ -133,6 +135,7 @@ async function backfillMissingTimetableSemesters(
         saveTimetableSnapshot(state.account, result.data, {
           semesterId: semester.id,
           serverFetchedAt: result.meta.fetchedAt,
+          deleted: result.meta.deleted,
         });
       }
     } catch {
@@ -149,9 +152,24 @@ async function preloadSchedule(
 
   const local = loadScheduleData(state.account);
   let resolved = local;
-  if (local.clientUpdatedAt) {
+  if (
+    result.meta.deleted &&
+    new Date(result.meta.fetchedAt || "").getTime() >=
+      new Date(local.clientUpdatedAt || 0).getTime()
+  ) {
+    resolved = storeScheduleData(state.account, {
+      plans: [],
+      clientUpdatedAt: result.meta.fetchedAt || null,
+    });
+  } else if (local.clientUpdatedAt) {
     if (JSON.stringify(local) !== JSON.stringify(result.data)) {
-      await putLocalSchedule(local);
+      const saved = await putLocalSchedule(local);
+      if (isActive(state) && saved.meta.deleted) {
+        resolved = storeScheduleData(state.account, {
+          plans: [],
+          clientUpdatedAt: saved.meta.fetchedAt || null,
+        });
+      }
     }
   } else if (result.data.clientUpdatedAt || result.data.plans.length) {
     resolved = storeScheduleData(state.account, result.data);

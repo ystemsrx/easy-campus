@@ -158,7 +158,7 @@ async function refreshGrades(
     if (!isSessionLeaseCurrent(lease)) {
       return { succeeded: false, input, result: null, errorMessage: "" };
     }
-    if (!isUpstreamRefreshResult(refreshed.meta)) {
+    if (!isUpstreamRefreshResult(refreshed.meta) && !refreshed.meta.deleted) {
       return {
         succeeded: false,
         showFailureFeedback: refreshed.meta.stale === true,
@@ -177,7 +177,11 @@ async function refreshGrades(
         refreshed.data,
         refreshed.meta.fetchedAt,
         input.includeUnsuccessful,
+        refreshed.meta.deleted,
       );
+    }
+    if (refreshed.meta.deleted) {
+      return { succeeded: false, input, result: refreshed, errorMessage: "" };
     }
     let result = refreshed;
     if (input.queryText || input.sort !== "default" || input.order !== "desc") {
@@ -481,6 +485,17 @@ Page({
         void this.loadGrades(true, false);
         return;
       }
+      if (
+        outcome.result?.meta.deleted &&
+        loadGradesSnapshot(lease.account)?.serverFetchedAt ===
+          outcome.result.meta.fetchedAt
+      ) {
+        this.applyGradesData(
+          outcome.result.data,
+          outcome.result.meta.fetchedAt,
+        );
+        return;
+      }
       if (!outcome.succeeded || !outcome.result) {
         if (outcome.showFailureFeedback) showRefreshFailure(this);
         if (outcome.errorMessage) {
@@ -634,13 +649,23 @@ Page({
         account,
         this.data.includeUnsuccessful,
       );
-      if (canonical && shouldStoreServerSnapshot(local, result.meta, refresh)) {
+      if (
+        (canonical || result.meta.deleted) &&
+        shouldStoreServerSnapshot(local, result.meta, refresh)
+      ) {
         saveGradesSnapshot(
           account,
           result.data,
           result.meta.fetchedAt,
           this.data.includeUnsuccessful,
+          result.meta.deleted,
         );
+      }
+      if (result.meta.deleted) {
+        const current = loadGradesSnapshot(account);
+        if (current && current.serverFetchedAt === result.meta.fetchedAt)
+          this.applyGradesData(current.data, result.meta.fetchedAt);
+        return false;
       }
       if (refresh) {
         reloadAfterAutomaticRefresh = isUpstreamRefreshResult(result.meta);

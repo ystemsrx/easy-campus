@@ -51,6 +51,7 @@ export function loadGradesSnapshot(account: string): GradesSnapshot | null {
     schemaVersion: SCHEMA_VERSION,
     data: value.data,
     includeUnsuccessful: value.includeUnsuccessful === true,
+    ...(value.deleted ? { deleted: true } : {}),
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || 0,
   };
@@ -78,12 +79,14 @@ export function saveGradesSnapshot(
   data: GradesData,
   serverFetchedAt = "",
   includeUnsuccessful = true,
+  deleted = false,
 ): GradesSnapshot | null {
   if (!account.trim()) return null;
   const snapshot: GradesSnapshot = {
     schemaVersion: SCHEMA_VERSION,
     data,
     includeUnsuccessful,
+    ...(deleted ? { deleted: true } : {}),
     serverFetchedAt,
     localStoredAt: Date.now(),
   };

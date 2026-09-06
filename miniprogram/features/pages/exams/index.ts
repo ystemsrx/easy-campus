@@ -150,7 +150,10 @@ async function refreshExams(
       saveExamsSnapshot(lease.account, result.data, {
         semesterId: storageSemester,
         serverFetchedAt: result.meta.fetchedAt,
-        lastAutomaticRefreshAt: local?.lastAutomaticRefreshAt || 0,
+        deleted: result.meta.deleted,
+        lastAutomaticRefreshAt: result.meta.deleted
+          ? 0
+          : local?.lastAutomaticRefreshAt || 0,
       });
     }
     const succeeded = isUpstreamRefreshResult(result.meta);
@@ -388,6 +391,14 @@ Page({
         loadingMore: false,
         observedRefreshFlightId: 0,
       });
+      if (
+        outcome.result?.meta.deleted &&
+        loadExamsSnapshot(lease.account, outcome.input.semesterId || "default")
+          ?.serverFetchedAt === outcome.result.meta.fetchedAt
+      ) {
+        this.applyExamsData(outcome.result.data);
+        return;
+      }
       if (!outcome.succeeded || !outcome.result) {
         if (outcome.showFailureFeedback) showRefreshFailure(this);
         if (outcome.errorMessage) {
@@ -468,12 +479,25 @@ Page({
       const account = lease.account;
       const storageSemester = query.semester || "default";
       const local = loadExamsSnapshot(account, storageSemester);
+      if (result.meta.deleted) {
+        if (shouldStoreServerSnapshot(local, result.meta, refresh)) {
+          saveExamsSnapshot(account, result.data, {
+            semesterId: storageSemester,
+            serverFetchedAt: result.meta.fetchedAt,
+            deleted: result.meta.deleted,
+            lastAutomaticRefreshAt: 0,
+          });
+          this.applyExamsData(result.data);
+        }
+        return false;
+      }
       if (!reset || shouldStoreServerSnapshot(local, result.meta, refresh)) {
         const lastAutomaticRefreshAt = local?.lastAutomaticRefreshAt || 0;
         if (reset) {
           saveExamsSnapshot(account, result.data, {
             semesterId: storageSemester,
             serverFetchedAt: result.meta.fetchedAt,
+            deleted: result.meta.deleted,
             lastAutomaticRefreshAt,
           });
           this.applyExamsData(result.data);

@@ -51,6 +51,7 @@ export function loadExamsSnapshot(
   return {
     schemaVersion: SCHEMA_VERSION,
     data: value.data,
+    ...(value.deleted ? { deleted: true } : {}),
     serverFetchedAt: String(value.serverFetchedAt || ""),
     localStoredAt: Number(value.localStoredAt) || 0,
     lastAutomaticRefreshAt:
@@ -65,22 +66,44 @@ export function saveExamsSnapshot(
     semesterId?: string;
     serverFetchedAt?: string;
     lastAutomaticRefreshAt?: number;
+    deleted?: boolean;
   } = {},
 ): ExamsSnapshot | null {
   if (!account.trim()) return null;
   const snapshot: ExamsSnapshot = {
     schemaVersion: SCHEMA_VERSION,
     data,
+    ...(options.deleted ? { deleted: true } : {}),
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),
-    lastAutomaticRefreshAt: options.lastAutomaticRefreshAt || 0,
+    lastAutomaticRefreshAt: options.deleted
+      ? 0
+      : options.lastAutomaticRefreshAt || 0,
   };
   try {
     const semesterId = options.semesterId || "default";
     wx.setStorageSync(storageKey(account, semesterId), snapshot);
+    if (options.deleted && semesterId !== "default") {
+      const current = loadExamsSnapshot(account);
+      if (
+        current?.data.semester?.id === semesterId &&
+        new Date(current.serverFetchedAt || 0).getTime() <=
+          new Date(snapshot.serverFetchedAt).getTime()
+      ) {
+        wx.setStorageSync(storageKey(account), snapshot);
+        examsRevision += 1;
+      }
+    }
     if (semesterId === "default") examsRevision += 1;
     if (semesterId === "default" && data.semester?.id) {
-      wx.setStorageSync(storageKey(account, data.semester.id), snapshot);
+      const current = loadExamsSnapshot(account, data.semester.id);
+      if (
+        !options.deleted ||
+        new Date(current?.serverFetchedAt || 0).getTime() <=
+          new Date(snapshot.serverFetchedAt).getTime()
+      ) {
+        wx.setStorageSync(storageKey(account, data.semester.id), snapshot);
+      }
     }
   } catch {
     // 服务端快照仍可作为恢复来源。

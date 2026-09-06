@@ -300,6 +300,7 @@ Page({
         saveTimetableSnapshot(lease.account, result.data, {
           semesterId,
           serverFetchedAt: result.meta.fetchedAt,
+          deleted: result.meta.deleted,
         });
       }
       this.setData({

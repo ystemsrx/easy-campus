@@ -320,7 +320,9 @@ assert(
     !appScript
       .slice(appScript.indexOf("onLaunch()"), appScript.indexOf("onShow()"))
       .includes("refreshExamsOnForeground") &&
-    cacheRefreshScript.includes("lastAutomaticRefreshAt: Date.now()") &&
+    /lastAutomaticRefreshAt:\s*isUpstreamRefreshResult\(result.meta\)\s*\?\s*Date.now\(\)\s*:\s*0/.test(
+      cacheRefreshScript,
+    ) &&
     examsScript.includes("lastAutomaticRefreshAt,") &&
     !examsScript.includes("lastAutomaticRefreshAt: Date.now()"),
   "考试应在每次进入前台检查自动刷新，且手动刷新不得被 24 小时间隔拦截或重置自动刷新时间",
@@ -402,9 +404,7 @@ assert(
     examsScript.includes(
       "movementExceedsTapThreshold(examTouchStart, current)",
     ) &&
-    examsScript.includes(
-      "canActivateTap(examTouchMoved, lastExamScrollAt)",
-    ) &&
+    examsScript.includes("canActivateTap(examTouchMoved, lastExamScrollAt)") &&
     /onExamScroll\(\)\s*\{[\s\S]*?lastExamScrollAt = Date\.now\(\);[\s\S]*?examTouchMoved = true;/.test(
       examsScript,
     ),

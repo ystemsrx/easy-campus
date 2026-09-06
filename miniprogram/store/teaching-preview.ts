@@ -1,4 +1,4 @@
-import type { Notice, TeachingMessage } from "../types/api";
+import type { Notice, TeachingMessage, QueryMeta } from "../types/api";
 
 const PREFIX = "easy-swu:teaching-preview:";
 const MESSAGE_ITEM_LIMIT = 15;
@@ -19,6 +19,8 @@ export interface TeachingPreview {
   notices: Notice[];
   updatedAt: number;
   lastCleanupAt: number;
+  messageFetchedAt?: string;
+  noticeFetchedAt?: string;
 }
 
 function storageKey(account: string): string {
@@ -59,12 +61,19 @@ export function loadTeachingPreview(account: string): TeachingPreview | null {
         : [],
     updatedAt: Number(value.updatedAt) || 0,
     lastCleanupAt: Number(value.lastCleanupAt) || 0,
+    ...(value.messageFetchedAt
+      ? { messageFetchedAt: value.messageFetchedAt }
+      : {}),
+    ...(value.noticeFetchedAt
+      ? { noticeFetchedAt: value.noticeFetchedAt }
+      : {}),
   };
 }
 
 export function saveTeachingPreview(
   account: string,
   patch: Partial<Pick<TeachingPreview, "messages" | "notices">>,
+  meta?: Pick<QueryMeta, "fetchedAt" | "deleted">,
 ): void {
   if (!account.trim()) return;
   const current = loadTeachingPreview(account) || {
@@ -75,17 +84,35 @@ export function saveTeachingPreview(
     updatedAt: 0,
     lastCleanupAt: 0,
   };
+  const incomingAt = new Date(meta?.fetchedAt || 0).getTime();
+  const accept = (timestamp?: string) =>
+    !timestamp || incomingAt >= new Date(timestamp).getTime();
+  const messages =
+    patch.messages && accept(current.messageFetchedAt)
+      ? patch.messages
+      : current.messages;
+  const notices =
+    patch.notices && accept(current.noticeFetchedAt)
+      ? patch.notices
+      : current.notices;
+  const messageFetchedAt =
+    messages === patch.messages && meta?.fetchedAt
+      ? meta.fetchedAt
+      : current.messageFetchedAt;
+  const noticeFetchedAt =
+    notices === patch.notices && meta?.fetchedAt
+      ? meta.fetchedAt
+      : current.noticeFetchedAt;
   try {
     wx.setStorageSync(storageKey(account), {
       messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
       noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
-      messages: (patch.messages || current.messages).slice(
-        0,
-        MESSAGE_ITEM_LIMIT,
-      ),
-      notices: (patch.notices || current.notices).slice(0, NOTICE_ITEM_LIMIT),
+      messages: messages.slice(0, MESSAGE_ITEM_LIMIT),
+      notices: notices.slice(0, NOTICE_ITEM_LIMIT),
       updatedAt: Date.now(),
       lastCleanupAt: current.lastCleanupAt,
+      ...(messageFetchedAt ? { messageFetchedAt } : {}),
+      ...(noticeFetchedAt ? { noticeFetchedAt } : {}),
     } satisfies TeachingPreview);
     teachingPreviewRevision += 1;
   } catch {
@@ -100,6 +127,7 @@ export function cleanupTeachingPreview(
   const current = loadTeachingPreview(account);
   if (!current || now - current.lastCleanupAt < WEEK_MS) return current;
   const cleaned: TeachingPreview = {
+    ...current,
     messageSchemaVersion: MESSAGE_SCHEMA_VERSION,
     noticeSchemaVersion: NOTICE_SCHEMA_VERSION,
     messages: current.messages.slice(0, MESSAGE_ITEM_LIMIT),

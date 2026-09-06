@@ -285,6 +285,7 @@ Page({
       if (shouldStoreServerSnapshot(local, result.meta)) {
         saveTimetableSnapshot(lease.account, result.data, {
           serverFetchedAt: result.meta.fetchedAt,
+          deleted: result.meta.deleted,
         });
       }
       this.applyPrewarmedSchedule();
@@ -332,6 +333,7 @@ Page({
       activeTimetable = result.data;
       const snapshot = saveTimetableSnapshot(lease.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
+        deleted: result.meta.deleted,
       });
       activeTimetableStoredAt = snapshot?.localStoredAt || Date.now();
       if (scheduleVisible) this.rebuildWeek();

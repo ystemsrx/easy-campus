@@ -53,6 +53,20 @@ const localSnapshot = {
   localStoredAt: 1_000,
 };
 assert(
+  shouldStoreServerSnapshot(
+    localSnapshot,
+    { cached: true, deleted: true, fetchedAt: "2026-08-31T00:00:00.000Z" },
+    true,
+  ) &&
+    !shouldStoreServerSnapshot(
+      localSnapshot,
+      { cached: true, deleted: true, fetchedAt: "2026-08-29T00:00:00.000Z" },
+      true,
+    ) &&
+    !isUpstreamRefreshResult({ cached: false, deleted: true }),
+  "删除标记必须越过刷新限流覆盖旧缓存，旧删除响应不能清除新快照，也不能计作成功刷新",
+);
+assert(
   !isUpstreamRefreshResult({ cached: true }) &&
     !isUpstreamRefreshResult({ cached: false, stale: true }) &&
     isUpstreamRefreshResult({ cached: false }) &&

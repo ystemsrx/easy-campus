@@ -155,7 +155,10 @@ export function refreshExamsOnForeground(
         if (shouldStoreServerSnapshot(local, result.meta, true)) {
           latest = saveExamsSnapshot(account, result.data, {
             serverFetchedAt: result.meta.fetchedAt,
-            lastAutomaticRefreshAt: Date.now(),
+            deleted: result.meta.deleted,
+            lastAutomaticRefreshAt: isUpstreamRefreshResult(result.meta)
+              ? Date.now()
+              : 0,
           });
         }
       } catch {
@@ -178,6 +181,7 @@ export function refreshExamsOnForeground(
           ? saveExamsSnapshot(account, result.data, {
               semesterId: isLatest ? "default" : semester.id,
               serverFetchedAt: result.meta.fetchedAt,
+              deleted: result.meta.deleted,
               lastAutomaticRefreshAt: isLatest
                 ? latest?.lastAutomaticRefreshAt || 0
                 : stored?.lastAutomaticRefreshAt || 0,

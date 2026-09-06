@@ -4,6 +4,7 @@ export const FIFTEEN_DAYS_MS = 15 * DAY_MS;
 const automaticRefreshClaims = new Set<string>();
 
 export interface CacheMetadata {
+  deleted?: boolean;
   serverFetchedAt: string;
   localStoredAt: number;
 }
@@ -12,6 +13,7 @@ export interface ServerSnapshotMetadata {
   cached: boolean;
   fetchedAt?: string;
   stale?: boolean;
+  deleted?: boolean;
 }
 
 export function timestampValue(value: string | number | undefined): number {
@@ -34,9 +36,9 @@ export function shouldUseServerSnapshot(
 
 /** 只有真正完成上游访问的刷新，才能被记为一次成功刷新。 */
 export function isUpstreamRefreshResult(
-  meta: Pick<ServerSnapshotMetadata, "cached" | "stale">,
+  meta: Pick<ServerSnapshotMetadata, "cached" | "stale" | "deleted">,
 ): boolean {
-  return meta.cached === false && meta.stale !== true;
+  return meta.cached === false && meta.stale !== true && meta.deleted !== true;
 }
 
 /**
@@ -48,6 +50,9 @@ export function shouldStoreServerSnapshot(
   meta: ServerSnapshotMetadata,
   refreshRequested = false,
 ): boolean {
+  if (meta.deleted === true) {
+    return shouldUseServerSnapshot(local, meta.fetchedAt);
+  }
   if (meta.stale === true) return false;
   if (refreshRequested && !isUpstreamRefreshResult(meta)) return false;
   return !local || shouldUseServerSnapshot(local, meta.fetchedAt);
@@ -59,6 +64,7 @@ export function isCacheStale(
   now = Date.now(),
 ): boolean {
   if (!snapshot) return true;
+  if (snapshot.deleted) return true;
   const refreshedAt =
     timestampValue(snapshot.serverFetchedAt) || snapshot.localStoredAt;
   return !refreshedAt || now - refreshedAt >= maxAgeMs;

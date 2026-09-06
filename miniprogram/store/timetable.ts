@@ -117,9 +117,12 @@ export function loadTimetableSnapshot(
   );
   const cachedWeekDates = value.weekDates;
   const hasCachedWeekDates = isWeekDateCache(cachedWeekDates);
-  const data = mergeTimetableSemesterCatalog(account, value.data);
+  const data = value.deleted
+    ? value.data
+    : mergeTimetableSemesterCatalog(account, value.data);
   const snapshot: TimetableSnapshot = {
     data,
+    ...(value.deleted ? { deleted: true } : {}),
     weekDates: hasCachedWeekDates
       ? cachedWeekDates
       : buildTimetableWeekDateCache(data),
@@ -142,18 +145,41 @@ export function loadTimetableSnapshot(
 export function saveTimetableSnapshot(
   account: string,
   data: TimetableData,
-  options: { semesterId?: string; serverFetchedAt?: string } = {},
+  options: {
+    semesterId?: string;
+    serverFetchedAt?: string;
+    deleted?: boolean;
+  } = {},
 ): TimetableSnapshot | null {
   if (!account.trim()) return null;
-  const cachedData = mergeTimetableSemesterCatalog(account, data);
+  const cachedData = options.deleted
+    ? data
+    : mergeTimetableSemesterCatalog(account, data);
   const snapshot: TimetableSnapshot = {
     data: cachedData,
+    ...(options.deleted ? { deleted: true } : {}),
     weekDates: buildTimetableWeekDateCache(cachedData),
     serverFetchedAt: options.serverFetchedAt || "",
     localStoredAt: Date.now(),
   };
   try {
     wx.setStorageSync(storageKey(account, options.semesterId), snapshot);
+    if (options.deleted) {
+      if (!options.semesterId)
+        wx.removeStorageSync(semesterCatalogKey(account));
+      const alias = options.semesterId ? undefined : data.semester?.id;
+      const other = wx.getStorageSync(storageKey(account, alias)) as
+        Partial<TimetableSnapshot> | undefined;
+      if (
+        (!options.semesterId ||
+          other?.data?.semester?.id === options.semesterId) &&
+        new Date(other?.serverFetchedAt || 0).getTime() <=
+          new Date(snapshot.serverFetchedAt).getTime()
+      ) {
+        wx.setStorageSync(storageKey(account, alias), snapshot);
+        timetableRevision += 1;
+      }
+    }
     if (!options.semesterId) timetableRevision += 1;
   } catch {
     // 本地快照只是首屏加速层，服务端仍保存完整的用户课表。

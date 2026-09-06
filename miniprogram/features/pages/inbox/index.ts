@@ -134,8 +134,12 @@ async function refreshInboxMessages(
       };
     }
     const refreshed = isUpstreamRefreshResult(result.meta);
-    if (refreshed && !messageTypes.length) {
-      saveTeachingPreview(lease.account, { messages: result.data.items });
+    if (result.meta.deleted || (refreshed && !messageTypes.length)) {
+      saveTeachingPreview(
+        lease.account,
+        { messages: result.data.items },
+        result.meta,
+      );
     }
     return {
       succeeded: refreshed,
@@ -170,8 +174,12 @@ async function refreshInboxNotices(
       return { succeeded: false, query, result: null, errorMessage: "" };
     }
     const refreshed = isUpstreamRefreshResult(result.meta);
-    if (refreshed && !query) {
-      saveTeachingPreview(lease.account, { notices: result.data.items });
+    if (result.meta.deleted || (refreshed && !query)) {
+      saveTeachingPreview(
+        lease.account,
+        { notices: result.data.items },
+        result.meta,
+      );
     }
     return {
       succeeded: refreshed,
@@ -536,6 +544,10 @@ Page({
         messageRefreshing: false,
         observedMessageRefreshFlightId: 0,
       });
+      if (outcome.result?.meta.deleted) {
+        this.setData({ messageItems: [], messageLoaded: true });
+        return;
+      }
       if (!outcome.succeeded || !outcome.result) {
         if (outcome.showFailureFeedback && this.data.activeTab === 0) {
           showRefreshFailure(this);
@@ -608,6 +620,10 @@ Page({
         noticeRefreshing: false,
         observedNoticeRefreshFlightId: 0,
       });
+      if (outcome.result?.meta.deleted) {
+        this.setData({ noticeItems: [], noticeLoaded: true });
+        return;
+      }
       if (!outcome.succeeded || !outcome.result) {
         if (outcome.showFailureFeedback && this.data.activeTab === 1) {
           showRefreshFailure(this);
@@ -752,16 +768,22 @@ Page({
       }
       const incoming = result.data.items.map(toMessageView);
       if (
-        !this.data.messageTypes.length &&
-        (!refresh || isUpstreamRefreshResult(result.meta))
+        result.meta.deleted ||
+        (!this.data.messageTypes.length &&
+          (!refresh || isUpstreamRefreshResult(result.meta)))
       ) {
-        saveTeachingPreview(lease.account, {
-          messages: result.data.items,
-        });
+        saveTeachingPreview(
+          lease.account,
+          {
+            messages: result.data.items,
+          },
+          result.meta,
+        );
       }
-      const messageItems = mergeFresh
-        ? mergeMessages(incoming, this.data.messageItems)
-        : incoming.slice(0, MESSAGE_PAGE_SIZE);
+      const messageItems =
+        mergeFresh && !result.meta.deleted
+          ? mergeMessages(incoming, this.data.messageItems)
+          : incoming.slice(0, MESSAGE_PAGE_SIZE);
       this.setData({
         messageItems: decorateMessages(messageItems),
         messageLoaded: true,
@@ -822,16 +844,22 @@ Page({
       }
       const incoming = result.data.items.map(toNoticeView);
       if (
-        !this.data.noticeQuery.trim() &&
-        (!refresh || isUpstreamRefreshResult(result.meta))
+        result.meta.deleted ||
+        (!this.data.noticeQuery.trim() &&
+          (!refresh || isUpstreamRefreshResult(result.meta)))
       ) {
-        saveTeachingPreview(lease.account, {
-          notices: result.data.items,
-        });
+        saveTeachingPreview(
+          lease.account,
+          {
+            notices: result.data.items,
+          },
+          result.meta,
+        );
       }
-      const noticeItems = mergeFresh
-        ? mergeNotices(incoming, this.data.noticeItems)
-        : incoming.slice(0, NOTICE_PAGE_SIZE);
+      const noticeItems =
+        mergeFresh && !result.meta.deleted
+          ? mergeNotices(incoming, this.data.noticeItems)
+          : incoming.slice(0, NOTICE_PAGE_SIZE);
       const latestNoticeSemesterId = this.data.noticeQuery.trim()
         ? this.data.latestNoticeSemesterId ||
           latestSchoolNoticeSemesterId(noticeItems) ||

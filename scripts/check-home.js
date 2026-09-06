@@ -539,10 +539,10 @@ assert(
   "首页必须在服务器成绩快照返回时立即缓存并渲染，不能等待其他首页请求",
 );
 assert(
-  /const messageRequest = getMessages\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(account, \{ messages:[\s\S]*?this\.setData\(\{[\s\S]*?messages: mergeMessagePreviews/.test(
+  /const messageRequest = getMessages\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(\s*account,\s*\{\s*messages:[\s\S]*?this\.setData\(\{[\s\S]*?messages:\s*result.meta.deleted\s*\?\s*\[\]\s*:\s*mergeMessagePreviews/.test(
     homeScript,
   ) &&
-    /const noticeRequest = getNotices\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(account, \{ notices:[\s\S]*?this\.setData\(\{[\s\S]*?notices: mergeNoticePreviews/.test(
+    /const noticeRequest = getNotices\([\s\S]*?\.then\(\(result\) => \{[\s\S]*?saveTeachingPreview\(\s*account,\s*\{\s*notices:[\s\S]*?this\.setData\(\{[\s\S]*?notices:\s*result.meta.deleted\s*\?\s*\[\]\s*:\s*mergeNoticePreviews/.test(
       homeScript,
     ) &&
     /const timetableRequest = includeStableData[\s\S]*?\.then\(\(result\) => \{[\s\S]*?this\.hydrateServerTimetable\(account, result, refreshStable\)/.test(

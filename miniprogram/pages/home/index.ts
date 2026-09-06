@@ -1358,6 +1358,7 @@ Page({
         result.data,
         result.meta.fetchedAt,
         includeUnsuccessful,
+        result.meta.deleted,
       );
     }
     if (useServer && homeVisible && getSession()?.user.account === account) {
@@ -1380,6 +1381,7 @@ Page({
       activeTimetable = result.data;
       saveTimetableSnapshot(account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
+        deleted: result.meta.deleted,
       });
     }
     activeTimetable = loadTimetableSnapshot(account)?.data || result.data;
@@ -1996,15 +1998,25 @@ Page({
       automatic: true,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
-        if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {
-          saveTeachingPreview(account, { messages: result.data.items });
+        if (
+          result.meta.deleted ||
+          !refreshTeaching ||
+          isUpstreamRefreshResult(result.meta)
+        ) {
+          saveTeachingPreview(
+            account,
+            { messages: result.data.items },
+            result.meta,
+          );
         }
         this.setData({
-          messages: mergeMessagePreviews(
-            result.data.items.map(toMessagePreview),
-            this.data.messages,
-            startedCurrentSemester(activeTimetable),
-          ),
+          messages: result.meta.deleted
+            ? []
+            : mergeMessagePreviews(
+                result.data.items.map(toMessagePreview),
+                this.data.messages,
+                startedCurrentSemester(activeTimetable),
+              ),
         });
       }
       return result;
@@ -2016,15 +2028,25 @@ Page({
       automatic: true,
     }).then((result) => {
       if (homeVisible && isSessionLeaseCurrent(lease)) {
-        if (!refreshTeaching || isUpstreamRefreshResult(result.meta)) {
-          saveTeachingPreview(account, { notices: result.data.items });
+        if (
+          result.meta.deleted ||
+          !refreshTeaching ||
+          isUpstreamRefreshResult(result.meta)
+        ) {
+          saveTeachingPreview(
+            account,
+            { notices: result.data.items },
+            result.meta,
+          );
         }
         this.setData({
-          notices: mergeNoticePreviews(
-            result.data.items.map(toNoticePreview),
-            this.data.notices,
-            startedCurrentSemester(activeTimetable),
-          ),
+          notices: result.meta.deleted
+            ? []
+            : mergeNoticePreviews(
+                result.data.items.map(toNoticePreview),
+                this.data.notices,
+                startedCurrentSemester(activeTimetable),
+              ),
         });
       }
       return result;
@@ -2108,33 +2130,47 @@ Page({
     );
     if (messageResult.status === "fulfilled") {
       if (
+        messageResult.value.meta.deleted ||
         !refreshTeaching ||
         isUpstreamRefreshResult(messageResult.value.meta)
       ) {
-        saveTeachingPreview(account, {
-          messages: messageResult.value.data.items,
-        });
+        saveTeachingPreview(
+          account,
+          {
+            messages: messageResult.value.data.items,
+          },
+          messageResult.value.meta,
+        );
       }
-      patch.messages = mergeMessagePreviews(
-        messageResult.value.data.items.map(toMessagePreview),
-        this.data.messages,
-        semesterBoundary,
-      );
+      patch.messages = messageResult.value.meta.deleted
+        ? []
+        : mergeMessagePreviews(
+            messageResult.value.data.items.map(toMessagePreview),
+            this.data.messages,
+            semesterBoundary,
+          );
     }
     if (noticeResult.status === "fulfilled") {
       if (
+        noticeResult.value.meta.deleted ||
         !refreshTeaching ||
         isUpstreamRefreshResult(noticeResult.value.meta)
       ) {
-        saveTeachingPreview(account, {
-          notices: noticeResult.value.data.items,
-        });
+        saveTeachingPreview(
+          account,
+          {
+            notices: noticeResult.value.data.items,
+          },
+          noticeResult.value.meta,
+        );
       }
-      patch.notices = mergeNoticePreviews(
-        noticeResult.value.data.items.map(toNoticePreview),
-        this.data.notices,
-        semesterBoundary,
-      );
+      patch.notices = noticeResult.value.meta.deleted
+        ? []
+        : mergeNoticePreviews(
+            noticeResult.value.data.items.map(toNoticePreview),
+            this.data.notices,
+            semesterBoundary,
+          );
     }
     if (
       messageResult.status === "rejected" &&

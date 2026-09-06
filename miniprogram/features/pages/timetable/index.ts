@@ -1354,6 +1354,7 @@ async function refreshTimetableSnapshot(
           saveTimetableSnapshot(lease.account, result.data, {
             semesterId: semester,
             serverFetchedAt: result.meta.fetchedAt,
+            deleted: result.meta.deleted,
           });
         }
         succeeded = isUpstreamRefreshResult(result.meta);
@@ -2134,7 +2135,10 @@ Page({
         return;
       }
       this.setData({ refreshing: false, observedRefreshFlightId: 0 });
-      if (!outcome.succeeded) {
+      if (
+        !outcome.succeeded &&
+        !loadTimetableSnapshot(lease.account, outcome.semester)?.deleted
+      ) {
         if (outcome.showFailureFeedback) showRefreshFailure(this);
         return;
       }
@@ -2145,7 +2149,7 @@ Page({
         if (!outcome.semester) defaultSemesterId = snapshot.data.semester.id;
         this.applyTimetable(snapshot.data, true);
       }
-      showRefreshConfirmation(this);
+      if (outcome.succeeded) showRefreshConfirmation(this);
     });
   },
   syncTimetableIfNeeded(semester?: string) {
@@ -2214,6 +2218,7 @@ Page({
         stored = saveTimetableSnapshot(requestAccount, result.data, {
           semesterId: semester,
           serverFetchedAt: result.meta.fetchedAt,
+          deleted: result.meta.deleted,
         });
       }
       const stillViewingResult = activate

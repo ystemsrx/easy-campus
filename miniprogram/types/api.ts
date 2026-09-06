@@ -11,6 +11,7 @@ export interface TeachingSuccess<T> extends ApiSuccess<T> {
     fetchedAt?: string;
     refreshing?: boolean;
     stale?: boolean;
+    deleted?: boolean;
   };
 }
 
@@ -889,6 +890,7 @@ export interface TimetableData {
 }
 
 export interface QueryMeta {
+  deleted?: boolean;
   cached: boolean;
   fetchedAt?: string;
   refreshing?: boolean;
