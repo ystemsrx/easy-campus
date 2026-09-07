@@ -530,7 +530,7 @@ assert(
 );
 
 assert(
-  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?includeUnsuccessful,[\s\S]*?refresh: refreshStable[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\([\s\S]*?account,[\s\S]*?result,[\s\S]*?refreshStable,[\s\S]*?includeUnsuccessful,[\s\S]*?\)/.test(
+  /const gradeRequest = includeStableData[\s\S]*?getGrades\([\s\S]*?includeUnsuccessful,[\s\S]*?refresh: refreshGrades[\s\S]*?\.then\([\s\S]*?\(result\) => \{[\s\S]*?this\.hydrateServerGrade\([\s\S]*?account,[\s\S]*?result,[\s\S]*?refreshGrades,[\s\S]*?includeUnsuccessful,[\s\S]*?\)/.test(
     homeScript,
   ) &&
     /hydrateServerGrade\([\s\S]*?saveGradesSnapshot\([\s\S]*?this\.setData\([\s\S]*?gradePreviewPatch\(/.test(

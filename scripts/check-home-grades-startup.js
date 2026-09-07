@@ -6,7 +6,7 @@ const ts = require("typescript");
 const root = path.resolve(__dirname, "../miniprogram");
 const compiled = new Map();
 
-function bootHome(values, account = "student") {
+function bootHome(values, account = "student", extraOverrides = []) {
   const modules = new Map();
   const app = { globalData: { session: null, preferences: null } };
   const wx = {
@@ -34,6 +34,7 @@ function bootHome(values, account = "student") {
         ensureAuthenticated: () => Boolean(app.globalData.session),
       },
     ],
+    ...extraOverrides,
   ]);
   function load(relative) {
     const filename = path.resolve(root, relative);
@@ -94,6 +95,7 @@ function bootHome(values, account = "student") {
       token: `test-${nextAccount}`,
       tokenType: "Bearer",
       sliding: true,
+      credential: { status: "verified", checkedAt: null, errorCode: null },
       user: { id: nextAccount, account: nextAccount, name: "测试" },
     });
   }
@@ -107,7 +109,14 @@ function bootHome(values, account = "student") {
     callback?.();
   };
   page.getTabBar = () => ({ setData: () => {} });
-  return { page, initialData, grades, preferences, signIn };
+  return {
+    page,
+    initialData,
+    grades,
+    preferences,
+    signIn,
+    lease: session.captureSessionLease(),
+  };
 }
 
 const storedAt = "2026-08-01T00:00:00.000Z";
@@ -282,4 +291,91 @@ const deletedStartup = bootHome(deletedValues);
 assert.equal(deletedStartup.initialData.gradeAverageLabel, "—");
 assert.equal(deletedStartup.initialData.gradeCourseCount, 0);
 
-console.log("Home grade startup checks passed.");
+async function checkServerCacheThenDailySync(outcome) {
+  let finishSync;
+  let failSync;
+  const synced = new Promise((resolve, reject) => {
+    finishSync = resolve;
+    failSync = reject;
+  });
+  const otherDashboardRequests = new Promise(() => {});
+  const requests = [];
+  const runtime = bootHome(new Map(), "student", [
+    [
+      "services/primary-tab-preload.ts",
+      {
+        getPreloadedCurrentUser: () => otherDashboardRequests,
+        getPreloadedTimetable: () => otherDashboardRequests,
+      },
+    ],
+    [
+      "services/teaching.ts",
+      {
+        getMessages: () => otherDashboardRequests,
+        getNotices: () => otherDashboardRequests,
+        getGrades: (query) => {
+          requests.push(query);
+          return query.waitForSync
+            ? synced
+            : Promise.resolve({
+                data: gradeData,
+                meta: { cached: true, fetchedAt: storedAt, refreshing: true },
+              });
+        },
+      },
+    ],
+  ]);
+  runtime.page.onLoad();
+  runtime.page.onShow();
+  assert.equal(runtime.page.data.gradeAverageLabel, "—");
+  void runtime.page.loadDashboard(false);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(
+    runtime.page.data.gradeAverageLabel,
+    "73.3",
+    "no local cache must show server grades before daily sync or other dashboard requests finish",
+  );
+  assert.equal(
+    runtime.grades.loadGradesSnapshot("student").serverFetchedAt,
+    storedAt,
+  );
+  const completion = runtime.page.waitForSyncedGrades(runtime.lease, true);
+  assert.equal(
+    requests.length,
+    2,
+    "pending daily sync is shared rather than starting duplicate waits",
+  );
+  assert.equal(requests[0].refresh, false);
+  assert.equal(requests[1].waitForSync, true);
+  assert.equal(runtime.page.data.loading, false);
+  if (outcome === "switched") {
+    runtime.signIn("another-student");
+    runtime.page.onShow();
+  }
+  if (outcome === "failed") failSync(new Error("upstream unavailable"));
+  else
+    finishSync({
+      data: { ...gradeData, items: [gradeData.items[1]] },
+      meta: { cached: false, fetchedAt: updatedAt },
+    });
+  await completion;
+  assert.equal(
+    runtime.page.data.gradeAverageLabel,
+    outcome === "switched" ? "—" : outcome === "failed" ? "73.3" : "90",
+  );
+  assert.equal(runtime.page.data.loading, false);
+  assert.equal(runtime.page.data.errorMessage, "");
+  assert.equal(
+    runtime.grades.loadGradesSnapshot("student").serverFetchedAt,
+    outcome === "success" ? updatedAt : storedAt,
+  );
+}
+
+Promise.all(
+  ["success", "failed", "switched"].map(checkServerCacheThenDailySync),
+)
+  .then(() => console.log("Home grade startup and daily sync checks passed."))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

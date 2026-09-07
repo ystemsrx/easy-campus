@@ -153,7 +153,8 @@ assert(
 );
 assert(
   homeSource.includes("refresh: refreshTeaching") &&
-    homeSource.includes("refresh: refreshStable") &&
+    homeSource.includes("refresh: refreshGrades") &&
+    homeSource.includes("getTimetable({ refresh: true, automatic: true })") &&
     homeSource.includes("this.loadDashboard(false, false, false, false)") &&
     !homeSource.includes("this.loadDashboard(true, includeStableRefresh)") &&
     inboxSource.includes("this.loadMessages(false, true, false, false)") &&

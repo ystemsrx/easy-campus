@@ -917,6 +917,7 @@ export interface NoticesQuery {
 }
 
 export interface GradesQuery {
+  waitForSync?: boolean;
   page?: number;
   pageSize?: number;
   academicYear?: number;

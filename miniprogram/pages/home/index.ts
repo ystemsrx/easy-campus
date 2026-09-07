@@ -274,6 +274,7 @@ let announcementPresentationGeneration = 0;
 let announcementPresentationPending = false;
 let pendingAnnouncementId = "";
 let dashboardRequestLease: SessionLease | null = null;
+let gradeSyncRequest: { key: string; completion: Promise<void> } | null = null;
 let dashboardTeachingRefreshQueued = false;
 let dashboardStableRefreshQueued = false;
 let dashboardTeachingFollowupTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1386,6 +1387,35 @@ Page({
       );
     }
   },
+  waitForSyncedGrades(lease: SessionLease, includeUnsuccessful: boolean) {
+    const key = `${sessionLeaseKey(lease)}:${includeUnsuccessful}`;
+    if (gradeSyncRequest?.key === key) return gradeSyncRequest.completion;
+    const completion = getGrades({
+      page: 1,
+      pageSize: 5000,
+      includeUnsuccessful,
+      waitForSync: true,
+    })
+      .then((result) => {
+        if (isSessionLeaseCurrent(lease)) {
+          this.hydrateServerGrade(
+            lease.account,
+            result,
+            false,
+            includeUnsuccessful,
+          );
+        }
+      })
+      .catch(() => {
+        // 静默同步失败时保留已经显示的本地或服务端缓存。
+      })
+      .finally(() => {
+        if (gradeSyncRequest?.completion === completion)
+          gradeSyncRequest = null;
+      });
+    gradeSyncRequest = { key, completion };
+    return completion;
+  },
   hydrateServerTimetable(
     account: string,
     result: Awaited<ReturnType<typeof getTimetable>>,
@@ -2066,21 +2096,28 @@ Page({
       }
       return result;
     });
+    const refreshGrades =
+      refreshStable &&
+      gradeSyncRequest?.key !==
+        `${sessionLeaseKey(lease)}:${includeUnsuccessful}`;
     const gradeRequest = includeStableData
       ? getGrades({
           page: 1,
           pageSize: 5000,
           includeUnsuccessful,
-          refresh: refreshStable,
-          automatic: refreshStable,
+          refresh: refreshGrades,
+          automatic: refreshGrades,
         }).then((result) => {
           if (isSessionLeaseCurrent(lease)) {
             this.hydrateServerGrade(
               account,
               result,
-              refreshStable,
+              refreshGrades,
               includeUnsuccessful,
             );
+            if (result.meta.refreshing) {
+              void this.waitForSyncedGrades(lease, includeUnsuccessful);
+            }
           }
           return result;
         })
@@ -2213,7 +2250,9 @@ Page({
           noticeResult.value.meta.refreshing));
     if (!refreshStable && includeStableData) {
       const stableDataStale =
-        (isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
+        (gradeResult.status === "fulfilled" &&
+          gradeResult.value?.meta.refreshing !== true &&
+          isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
           claimAutomaticRefresh("grades", account)) ||
         (isCacheStale(loadTimetableSnapshot(account), FIFTEEN_DAYS_MS) &&
           claimAutomaticRefresh("timetable", account));

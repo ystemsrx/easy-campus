@@ -584,7 +584,11 @@ Page({
       filterLabel: this.buildFilterLabel(data.semesters),
     });
   },
-  async loadGrades(reset: boolean, refresh: boolean): Promise<boolean> {
+  async loadGrades(
+    reset: boolean,
+    refresh: boolean,
+    waitForSync = false,
+  ): Promise<boolean> {
     if (
       !reset &&
       (this.data.loading || this.data.loadingMore || this.data.refreshing)
@@ -612,7 +616,7 @@ Page({
       reset && !refresh && !queryText && sort === "default" && order === "desc";
     const sequence = ++requestSequence;
     this.setData({
-      loading: reset && !this.data.gradeItems.length,
+      loading: !waitForSync && reset && !this.data.gradeItems.length,
       refreshing: refresh,
       loadingMore: !reset,
       errorMessage: "",
@@ -621,6 +625,7 @@ Page({
     let shouldRefreshAfterward = false;
     let loadInitializedSemester = false;
     let reloadAfterAutomaticRefresh = false;
+    let dailySyncPending = false;
     try {
       const result = await getGrades({
         page,
@@ -638,12 +643,14 @@ Page({
         includeUnsuccessful: this.data.includeUnsuccessful,
         refresh,
         automatic: refresh,
+        waitForSync,
       });
       if (sequence !== requestSequence || !isSessionLeaseCurrent(lease)) {
         return false;
       }
 
       const account = lease.account;
+      dailySyncPending = !waitForSync && result.meta.refreshing === true;
       const canonical = page === 1 && (refresh || loadCanonical);
       const local = loadGradesSnapshotForPreference(
         account,
@@ -697,11 +704,16 @@ Page({
 
       shouldRefreshAfterward =
         !refresh &&
+        !dailySyncPending &&
         isCacheStale(loadGradesSnapshot(account), FIFTEEN_DAYS_MS) &&
         claimAutomaticRefresh("grades", account);
       return true;
     } catch (error) {
-      if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
+      if (
+        !waitForSync &&
+        sequence === requestSequence &&
+        isSessionLeaseCurrent(lease)
+      ) {
         this.setData({
           errorMessage: getErrorMessage(error, "成绩加载失败。"),
         });
@@ -710,7 +722,13 @@ Page({
     } finally {
       if (sequence === requestSequence && isSessionLeaseCurrent(lease)) {
         this.setData({ loading: false, refreshing: false, loadingMore: false });
-        if (reloadAfterAutomaticRefresh) {
+        if (dailySyncPending) {
+          setTimeout(() => {
+            if (isSessionLeaseCurrent(lease)) {
+              void this.loadGrades(true, false, true);
+            }
+          }, 0);
+        } else if (reloadAfterAutomaticRefresh) {
           setTimeout(() => {
             if (isSessionLeaseCurrent(lease)) {
               void this.loadGrades(true, false);
