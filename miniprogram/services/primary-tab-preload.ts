@@ -1,4 +1,8 @@
-import { prewarmScheduleFirstScreen } from "../data/schedule-render";
+import {
+  prewarmScheduleFirstScreen,
+  prewarmSchedulePager,
+} from "../data/schedule-render";
+import { prewarmProfileFirstScreen } from "../data/profile-render";
 import {
   shouldStoreServerSnapshot,
   timestampValue,
@@ -59,6 +63,15 @@ function isActive(state: PrimaryTabPreloadState): boolean {
   return activeState === state && isSessionLeaseCurrent(state.lease);
 }
 
+function warmProfile(state: PrimaryTabPreloadState): void {
+  if (!isActive(state)) return;
+  try {
+    prewarmProfileFirstScreen(state.account);
+  } catch {
+    // The profile page can still prepare its local state when opened.
+  }
+}
+
 function warmSchedule(
   state: PrimaryTabPreloadState,
   refreshStoredSources = true,
@@ -79,9 +92,17 @@ function warmSchedule(
         state.schedule = schedule;
       }
     }
-    prewarmScheduleFirstScreen(state.account, state.timetable, state.schedule, {
-      timetableStoredAt: state.timetableStoredAt,
-    });
+    const firstScreen = prewarmScheduleFirstScreen(
+      state.account,
+      state.timetable,
+      state.schedule,
+      {
+        timetableStoredAt: state.timetableStoredAt,
+      },
+    );
+    void prewarmSchedulePager(firstScreen, () => isActive(state)).catch(
+      () => undefined,
+    );
   } catch {
     // 预构建失败时，日程页仍会使用相同的本地数据即时构建。
   }
@@ -204,11 +225,12 @@ function startPreload(session: Session): PrimaryTabPreloadState {
   };
   activeState = state;
   warmSchedule(state, false);
+  warmProfile(state);
 
   state.userPromise = getCurrentUser();
   state.timetablePromise = preloadTimetable(state);
   state.schedulePromise = preloadSchedule(state);
-  void state.userPromise.catch(() => undefined);
+  void state.userPromise.then(() => warmProfile(state)).catch(() => undefined);
   void state.timetablePromise.catch(() => undefined);
   void state.schedulePromise.catch(() => undefined);
   return state;

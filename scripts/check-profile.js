@@ -27,7 +27,8 @@ function loadTypeScriptModule(relativePath) {
 
 const { identityCardTone, singleSelectionOptions } =
   loadTypeScriptModule("utils/profile.ts");
-const profileScript = read("pages/profile/index.ts");
+const profileScript =
+  read("pages/profile/index.ts") + "\n" + read("data/profile-render.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
 const profilePageConfig = JSON.parse(read("app.json"));

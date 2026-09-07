@@ -1,4 +1,5 @@
 import { APP_NAME } from "../../config/app";
+import { prewarmProfileFirstScreen } from "../../data/profile-render";
 import { getCredentialStatus } from "../../services/auth";
 import { preloadAutoDormCheckStatus } from "../../services/auto-dorm-check";
 import {
@@ -1091,7 +1092,12 @@ Page({
       if (!homeVisible) return;
       const lease = captureSessionLease();
       if (!lease) return;
-      void preloadAutoDormCheckStatus().catch(() => undefined);
+      void preloadAutoDormCheckStatus()
+        .then(() => {
+          if (isSessionLeaseCurrent(lease))
+            prewarmProfileFirstScreen(lease.account);
+        })
+        .catch(() => undefined);
       void this.loadDashboard(false);
       void this.loadPublicationFeed();
       void getPreloadedSchedule()

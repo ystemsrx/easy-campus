@@ -20,7 +20,10 @@ const statusTypes = read("miniprogram/types/api.ts");
 const service = read("miniprogram/services/auto-dorm-check.ts");
 const request = read("miniprogram/services/request.ts");
 const store = read("miniprogram/store/auto-dorm-check.ts");
-const profile = read("miniprogram/pages/profile/index.ts");
+const profile =
+  read("miniprogram/pages/profile/index.ts") +
+  "\n" +
+  read("miniprogram/data/profile-render.ts");
 const autoScript = read("miniprogram/features/pages/auto-dorm-check/index.ts");
 const autoTemplate = read(
   "miniprogram/features/pages/auto-dorm-check/index.wxml",

@@ -316,7 +316,8 @@ const pickerStyles = read(
 const homeScript = read("pages/home/index.ts");
 const homeTemplate = read("pages/home/index.wxml");
 const homeStyles = read("pages/home/index.wxss");
-const profileScript = read("pages/profile/index.ts");
+const profileScript =
+  read("pages/profile/index.ts") + "\n" + read("data/profile-render.ts");
 const profileTemplate = read("pages/profile/index.wxml");
 const profileStyles = read("pages/profile/index.wxss");
 const petStore = read("store/pet.ts");

@@ -379,7 +379,15 @@ Page({
       Object.assign(patch, resolveAppearance(loadPreferences()));
     }
     if (contentChanged) {
-      const prewarmed = force ? getPrewarmedScheduleFirstScreen(account) : null;
+      const timetable = loadTimetableSnapshot(account);
+      const schedule = loadScheduleData(account);
+      const candidate = force ? getPrewarmedScheduleFirstScreen(account) : null;
+      const prewarmed =
+        candidate &&
+        candidate.timetableStoredAt === (timetable?.localStoredAt || 0) &&
+        candidate.scheduleUpdatedAt === schedule.clientUpdatedAt
+          ? candidate
+          : null;
       activeAccount = account;
       if (prewarmed) {
         activeTimetable = prewarmed.timetable;
@@ -388,8 +396,6 @@ Page({
         activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
         Object.assign(patch, prewarmed.view);
       } else {
-        const timetable = loadTimetableSnapshot(account);
-        const schedule = loadScheduleData(account);
         activeTimetable = timetable?.data || null;
         activeSchedulePrewarmRevision = 0;
         activeTimetableStoredAt = timetable?.localStoredAt || 0;
@@ -403,8 +409,6 @@ Page({
           ),
         );
       }
-    }
-    if (contentChanged) {
       if (accountChanged) {
         dayScrollPositions.clear();
         pagerMoving = false;
@@ -421,11 +425,8 @@ Page({
       const date = String(patch.selectedDate || this.data.selectedDate);
       Object.assign(
         patch,
-        buildSchedulePager(
-          activeTimetable,
-          loadScheduleData(account).plans,
-          date,
-        ),
+        prewarmed?.pager ||
+          buildSchedulePager(activeTimetable, schedule.plans, date),
       );
     }
     hydratedScheduleSources = readScheduleSourceRevisions(account);

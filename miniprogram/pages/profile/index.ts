@@ -1,3 +1,12 @@
+import {
+  autoDormCheckPresentationPatch,
+  getPrewarmedProfileFirstScreen,
+  prewarmProfileFirstScreen,
+  profileUserPatch,
+  PROFILE_SOURCE_NAMES,
+  readProfileSourceRevisions,
+  type ProfileSourceRevisions,
+} from "../../data/profile-render";
 import { APP_NAME } from "../../config/app";
 import { logout as logoutSession } from "../../services/auth";
 import { getPendingAutoDormCheckStatus } from "../../services/auto-dorm-check";
@@ -13,29 +22,14 @@ import {
   isFeedbackDailyLimitError,
 } from "../../services/request";
 import type { PetShapeId } from "../../components/geometric-pet/engine-data";
-import {
-  getPetPreferencesRevision,
-  loadPetPreferences,
-  shouldShowPet,
-} from "../../store/pet";
-import {
-  getAutoDormCheckRevision,
-  loadAutoDormCheckSnapshot,
-  type AutoDormCheckSnapshot,
-} from "../../store/auto-dorm-check";
+import type { AutoDormCheckSnapshot } from "../../store/auto-dorm-check";
 import {
   captureSessionLease,
-  getSessionRevision,
   getSession,
   isSessionLeaseCurrent,
-  loadCurrentUser,
 } from "../../store/session";
-import {
-  getPreferencesRevision,
-  loadPreferences,
-} from "../../store/preferences";
+import { loadPreferences } from "../../store/preferences";
 import type {
-  AutoDormCheckState,
   AutoDormCheckStatus,
   CurrentUserData,
   FeedbackType,
@@ -51,23 +45,9 @@ import {
   navigateTo,
 } from "../../utils/navigation";
 import {
-  identityCardTone,
   singleSelectionOptions,
   type IdentityCardTone,
 } from "../../utils/profile";
-
-function classLabel(user: CurrentUserData): string {
-  const grade = (user.profile.grade || "").trim().replace(/级$/, "");
-  const className = (user.profile.className || "").trim();
-  if (!className) return "";
-  return grade && !className.includes(grade)
-    ? `${grade}${className}`
-    : className;
-}
-
-function enrollmentDateLabel(value?: string): string {
-  return /^(\d{4}-\d{2}-\d{2})/.exec((value || "").trim())?.[1] || "";
-}
 
 type ProfileSettingKey =
   | "course-assistant"
@@ -95,51 +75,12 @@ function feedbackTypeOptions(selected: FeedbackType | "" = "") {
   return singleSelectionOptions(FEEDBACK_TYPES, selected);
 }
 
-const AUTO_DORM_CHECK_STATUS: Record<
-  AutoDormCheckState,
-  { label: string; tone: "success" | "warning" | "danger" | "muted" }
-> = {
-  checked_in: { label: "已打卡", tone: "success" },
-  pending: { label: "待打卡", tone: "warning" },
-  skipped: { label: "已跳过", tone: "muted" },
-  failed: { label: "已失败", tone: "danger" },
-  unavailable: { label: "不可用", tone: "danger" },
-  disabled: { label: "已关闭", tone: "muted" },
-  agreement_required: { label: "待同意", tone: "warning" },
-  payment_required: { label: "额度不足", tone: "warning" },
-};
+type ProfileSourceName = Exclude<keyof ProfileSourceRevisions, "account">;
 
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
 let hydratedProfileSources: ProfileSourceRevisions | null = null;
 let profileRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let profileVisible = false;
-
-interface ProfileSourceRevisions {
-  account: string;
-  preferences: number;
-  session: number;
-  pet: number;
-  autoDormCheck: number;
-}
-
-type ProfileSourceName = Exclude<keyof ProfileSourceRevisions, "account">;
-
-const PROFILE_SOURCE_NAMES: readonly ProfileSourceName[] = [
-  "preferences",
-  "session",
-  "pet",
-  "autoDormCheck",
-];
-
-function readProfileSourceRevisions(account: string): ProfileSourceRevisions {
-  return {
-    account,
-    preferences: getPreferencesRevision(),
-    session: getSessionRevision(),
-    pet: getPetPreferencesRevision(),
-    autoDormCheck: getAutoDormCheckRevision(),
-  };
-}
 
 function profileSourcesAreCurrent(account: string): boolean {
   if (!hydratedProfileSources || hydratedProfileSources.account !== account) {
@@ -174,109 +115,6 @@ function clearAuthenticationExitTimer(): void {
   if (authenticationExitTimer === undefined) return;
   clearTimeout(authenticationExitTimer);
   authenticationExitTimer = undefined;
-}
-
-export function autoDormCheckSettingTitle(
-  status: Pick<
-    AutoDormCheckSnapshot,
-    "paymentEnabled" | "remainingDays" | "remainingUses"
-  >,
-): string {
-  if (status.paymentEnabled === false) return "自动查寝（限免）";
-  if (status.paymentEnabled !== true) return "自动查寝";
-  if (status.remainingDays > 0) {
-    return `自动查寝（${status.remainingDays}天）`;
-  }
-  if (status.remainingUses > 0) {
-    return `自动查寝（${status.remainingUses}次）`;
-  }
-  return "自动查寝";
-}
-
-function profileUserPatch(user: CurrentUserData | null) {
-  const name = user?.name || "同学";
-  return {
-    userName: name,
-    avatarText: user ? name.slice(0, 1) : "易",
-    account: user?.account || "",
-    organizationName: user?.profile.organizationName || "西南大学",
-    classLabel: user ? classLabel(user) : "",
-    enrollmentDate: user
-      ? enrollmentDateLabel(user.profile.enrollmentDate)
-      : "",
-    identityCardTone: user
-      ? identityCardTone(user.profile.gender)
-      : ("neutral" as IdentityCardTone),
-  };
-}
-
-function autoDormCheckPresentationPatch(
-  status:
-    | Pick<
-        AutoDormCheckSnapshot,
-        | "entryEnabled"
-        | "checkInStatus"
-        | "paymentEnabled"
-        | "remainingDays"
-        | "remainingUses"
-      >
-    | AutoDormCheckStatus
-    | null,
-) {
-  if (!status) {
-    return {
-      autoDormCheckVisible: false,
-      autoDormCheckTitle: "自动查寝",
-      autoDormCheckStatusLabel: "已关闭",
-      autoDormCheckStatusTone: "muted" as const,
-    };
-  }
-  const presentation = AUTO_DORM_CHECK_STATUS[status.checkInStatus];
-  const quota =
-    "remainingDays" in status
-      ? status
-      : {
-          paymentEnabled: status.paymentEnabled,
-          remainingDays: Math.max(
-            0,
-            Math.floor(Number(status.entitlement.time.remainingDays) || 0),
-          ),
-          remainingUses: Math.max(
-            0,
-            Math.floor(Number(status.entitlement.uses.remaining) || 0),
-          ),
-        };
-  return {
-    autoDormCheckVisible: status.entryEnabled,
-    autoDormCheckTitle: autoDormCheckSettingTitle(quota),
-    autoDormCheckStatusLabel: presentation.label,
-    autoDormCheckStatusTone: presentation.tone,
-  };
-}
-
-function cachedProfileRenderState(account: string) {
-  const preferences = loadPreferences();
-  const appearance = resolveAppearance(preferences);
-  const pet = loadPetPreferences(account);
-  const cachedUser = getApp<IAppOption>().globalData.user || loadCurrentUser();
-  const user = cachedUser?.account === account ? cachedUser : null;
-  return {
-    appearance,
-    sourceRevisions: readProfileSourceRevisions(account),
-    patch: {
-      ...appearance,
-      reducedMotion: preferences.reducedMotion,
-      ...profileUserPatch(user),
-      petShape: pet.shape,
-      petColor: pet.color,
-      petEnhanced: pet.enhanced,
-      petSelected: pet.selected,
-      petEnabled: pet.enabled,
-      petVisible: shouldShowPet(pet),
-      ...autoDormCheckPresentationPatch(loadAutoDormCheckSnapshot(account)),
-      errorMessage: "",
-    },
-  };
 }
 
 Page({
@@ -368,7 +206,9 @@ Page({
   },
   hydrateCachedProfileIfNeeded(account: string, force = false): boolean {
     if (!force && profileSourcesAreCurrent(account)) return false;
-    const state = cachedProfileRenderState(account);
+    const state =
+      getPrewarmedProfileFirstScreen(account) ||
+      prewarmProfileFirstScreen(account);
     hydratedProfileSources = state.sourceRevisions;
     const appearance = state.appearance;
     syncWindowBackground(appearance);

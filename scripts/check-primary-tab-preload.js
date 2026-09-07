@@ -39,6 +39,7 @@ const profileStyles = source("pages", "profile", "index.wxss");
 const homePage = source("pages", "home", "index.ts");
 const loginPage = source("pages", "login", "index.ts");
 const iconPreload = source("utils", "icon-preload.ts");
+const profileRender = source("data", "profile-render.ts");
 const sessionStore = source("store", "session.ts");
 
 const storedSession = {
@@ -132,12 +133,24 @@ assert(
 );
 assert(
   scheduleRender.includes("prewarmScheduleFirstScreen(") &&
+    preload.includes(
+      "prewarmSchedulePager(firstScreen, () => isActive(state))",
+    ) &&
+    schedulePage.includes("prewarmed?.pager ||") &&
     scheduleRender.includes("buildScheduleWeekView(") &&
     schedulePage.includes("getPrewarmedScheduleFirstScreen(account)") &&
     schedulePage.includes("Object.assign(patch, prewarmed.view)") &&
     schedulePage.includes("getPreloadedTimetable()") &&
     schedulePage.includes("getPreloadedSchedule()"),
   "日程页必须直接消费启动阶段准备好的首屏和共享请求",
+);
+assert(
+  preload.includes("warmProfile(state)") &&
+    homePage.includes("prewarmProfileFirstScreen(lease.account)") &&
+    profilePage.includes("getPrewarmedProfileFirstScreen(account)") &&
+    profileRender.includes("PROFILE_SOURCE_NAMES.some(") &&
+    profileRender.includes("getSession()?.user.account !== account"),
+  "我的页面必须消费首页准备的显示状态，并按账号和源数据版本失效",
 );
 assert(
   profilePage.includes("getPreloadedCurrentUser(refresh)") &&

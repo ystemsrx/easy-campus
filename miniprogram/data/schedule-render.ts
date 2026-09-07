@@ -72,6 +72,7 @@ export interface PrewarmedScheduleFirstScreen {
   timetable: TimetableData | null;
   schedule: LocalScheduleData;
   view: ScheduleWeekView;
+  pager?: ReturnType<typeof buildSchedulePager>;
 }
 
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -310,6 +311,16 @@ export function buildSchedulePager(
       ),
     };
   });
+  return assembleSchedulePager(dayPages, timetable, plans, date, now);
+}
+
+function assembleSchedulePager(
+  dayPages: Array<ScheduleWeekView & { slot: number }>,
+  timetable: TimetableData | null,
+  plans: LocalSchedulePlan[],
+  date: string,
+  now: Date,
+) {
   const weekIndex = Math.floor(scheduleDayIndex(date) / 7);
   const weekPages = [0, 1, 2].map((slot) => {
     const offset = (slot - (weekIndex % 3) + 3) % 3;
@@ -329,6 +340,40 @@ export function buildSchedulePager(
     weekPages,
     dayCurrent: dayPages.findIndex((day) => day.selectedDate === date),
   };
+}
+
+/** Yield between small batches so preparation can run while the home page is visible. */
+export async function prewarmSchedulePager(
+  firstScreen: PrewarmedScheduleFirstScreen,
+  isCurrent: () => boolean,
+  now = new Date(),
+): Promise<void> {
+  const date = firstScreen.builtForDate;
+  const weekday = currentIsoWeekday(scheduleDateFromKey(date)) - 1;
+  const firstDate = shiftScheduleDate(date, -weekday - 7);
+  const dayPages: Array<ScheduleWeekView & { slot: number }> = [];
+  for (let slot = 0; slot < 21; slot += 1) {
+    if (slot % 3 === 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (prewarmedFirstScreen !== firstScreen || !isCurrent()) return;
+    }
+    dayPages.push({
+      slot,
+      ...buildScheduleDateView(
+        firstScreen.timetable,
+        firstScreen.schedule.plans,
+        shiftScheduleDate(firstDate, slot),
+        now,
+      ),
+    });
+  }
+  firstScreen.pager = assembleSchedulePager(
+    dayPages,
+    firstScreen.timetable,
+    firstScreen.schedule.plans,
+    date,
+    now,
+  );
 }
 
 export function prewarmScheduleFirstScreen(

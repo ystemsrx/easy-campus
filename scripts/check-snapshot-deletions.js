@@ -168,7 +168,11 @@ const session = {
 };
 const lease = { account: "a", userId: "1", token: "synthetic", signedInAt: 1 };
 const preload = load("services/primary-tab-preload.ts", {
-  "../data/schedule-render": { prewarmScheduleFirstScreen: () => undefined },
+  "../data/schedule-render": {
+    prewarmScheduleFirstScreen: () => ({}),
+    prewarmSchedulePager: async () => undefined,
+  },
+  "../data/profile-render": { prewarmProfileFirstScreen: () => undefined },
   "../store/cache-policy": policy,
   "../store/schedule": schedule,
   "../store/session": {
