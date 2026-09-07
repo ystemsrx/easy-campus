@@ -1,3 +1,5 @@
+import { cancelPresence, setPresence } from "../../utils/motion";
+
 Component({
   options: {
     multipleSlots: true,
@@ -18,25 +20,29 @@ Component({
     scrollable: { type: Boolean, value: false },
     safeArea: { type: Boolean, value: true },
     closeOnMask: { type: Boolean, value: true },
+    reducedMotion: { type: Boolean, value: false },
   },
   data: {
     mounted: false,
     active: false,
   },
+  lifetimes: {
+    detached() {
+      cancelPresence(this);
+    },
+  },
+  pageLifetimes: {
+    hide() {
+      cancelPresence(this);
+      this.setData({ mounted: false, active: false });
+    },
+    show() {
+      this.syncVisibility(this.data.visible);
+    },
+  },
   methods: {
     syncVisibility(visible: boolean) {
-      if (visible) {
-        this.setData({ mounted: true });
-        wx.nextTick(() => this.setData({ active: true }));
-        return;
-      }
-
-      this.setData({ active: false });
-      setTimeout(() => {
-        if (!this.data.visible) {
-          this.setData({ mounted: false });
-        }
-      }, 380);
+      setPresence(this, visible, { reducedMotion: this.data.reducedMotion });
     },
     onMaskTap() {
       if (this.data.closeOnMask) {

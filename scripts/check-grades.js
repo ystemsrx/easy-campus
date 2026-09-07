@@ -688,7 +688,7 @@ assert(
 assert(
   gradesPageTemplate.includes('data-key="{{item.renderKey}}"') &&
     gradesPageScript.includes("item.renderKey === key") &&
-    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}:${index}`"),
+    gradesPageScript.includes("`${course.id}:${index}`"),
   "同一学期的同名或同教学班成绩必须分别渲染并能打开各自详情",
 );
 assert(
@@ -804,22 +804,10 @@ assert(
   "成绩列表滑动及惯性滚动结束前不得打开课程详情",
 );
 assert(
-  gradesPageTemplate.includes(
-    "class=\"grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}\"",
-  ) &&
-    gradesPageTemplate.includes(
-      'style="animation-delay: {{item.animationDelay}}ms;"',
-    ) &&
-    gradesPageScript.includes("let gradeListAnimationRequested = true;") &&
-    gradesPageScript.includes(
-      "const animateEntries = gradeListAnimationRequested;",
-    ) &&
-    gradesPageScript.includes("`${gradeRenderBatch}:${course.id}:${index}`") &&
-    gradesPageScript.includes("animateEntries || animatedIds.has(course.id)") &&
-    (gradesPageScript.match(/^\s+gradeListAnimationRequested = true;/gm) || [])
-      .length === 2 &&
-    !gradesPageScript.includes("gradeAnimationTimer"),
-  "成绩卡片只应在首次进入和切换排序时整批播放逐步进入动效",
+  gradesPageTemplate.includes('class="grade-card-motion"') &&
+    !gradesPageTemplate.includes("stagger-item") &&
+    !gradesPageScript.includes("gradeListAnimationRequested"),
+  "成绩排序和刷新只更新列表，不重播逐行入场",
 );
 
 const semesterSelectionBlock =

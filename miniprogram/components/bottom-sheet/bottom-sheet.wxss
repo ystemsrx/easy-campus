@@ -1,3 +1,5 @@
+@import "../../motion.wxss";
+
 .sheet-layer {
   position: fixed;
   top: 0;
@@ -19,12 +21,8 @@
   right: 0;
   bottom: 0;
   left: 0;
-  opacity: 0;
   background: rgba(24, 21, 18, 0.36);
-  transition: opacity 300ms ease;
 }
-
-.sheet-scrim--active { opacity: 1; }
 
 .sheet-card {
   position: relative;
@@ -41,9 +39,6 @@
   border-radius: var(--visual-component-hero-radius, 56rpx) var(--visual-component-hero-radius, 56rpx) 0 0;
   background-color: var(--visual-component-elevated, #fbf9f4);
   box-shadow: var(--visual-component-pop-shadow, 0 -22rpx 80rpx rgba(20, 20, 30, 0.18));
-  transform: translateY(105%);
-  transition: height 280ms cubic-bezier(0.32, 0.72, 0, 1),
-    transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .sheet-layer--dark .sheet-card {
@@ -52,7 +47,6 @@
 .sheet-card--no-safe-area { padding-bottom: 0; }
 .sheet-card--expanded { height: 86vh; }
 .sheet-card--expanded .sheet-content { height: 0; }
-.sheet-card--active { transform: translateY(0); }
 
 .sheet-handle {
   position: absolute;
@@ -143,6 +137,3 @@
 }
 
 .sheet-footer:empty { display: none; }
-
-.motion-reduced .sheet-scrim,
-.motion-reduced .sheet-card { transition-duration: 1ms; }

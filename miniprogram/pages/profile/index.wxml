@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page profile-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{authenticationExitClass}}">
   <scroll-view
     class="page-scroll"
@@ -8,13 +8,13 @@
     show-scrollbar="{{false}}"
   >
     <navigation-bar transparent theme="{{theme}}"></navigation-bar>
-    <view class="profile-content page-content page-content--tab page-enter">
+    <view class="profile-content page-content page-content--tab">
       <view class="profile-header">
         <text class="profile-eyebrow">个人中心</text>
         <text class="profile-title display-title">我的</text>
       </view>
 
-      <view class="identity-card identity-card--{{identityCardTone}} stagger-item stagger-1">
+      <view class="identity-card identity-card--{{identityCardTone}}">
         <view class="ambient-blob identity-blob identity-blob--one"></view>
         <view class="ambient-blob identity-blob identity-blob--two"></view>
         <view class="identity-main">
@@ -40,7 +40,7 @@
       </view>
 
       <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
-      <view class="settings-card card stagger-item">
+      <view class="settings-card card">
         <view class="setting-row {{autoDormCheckVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
           <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
           <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
@@ -52,7 +52,7 @@
       </view>
 
       <view class="section-header"><view><text class="section-title">设置</text></view></view>
-      <view class="settings-card card stagger-item">
+      <view class="settings-card card">
         <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'pet' ? 'setting-row--pressed' : ''}}" bindtap="openPetSetup" aria-role="button" aria-label="设置校园伙伴">
           <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
           <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
@@ -68,7 +68,7 @@
       </view>
 
       <view class="section-header"><view><text class="section-title">协议与隐私</text></view></view>
-      <view class="settings-card card stagger-item">
+      <view class="settings-card card">
         <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'terms' ? 'setting-row--pressed' : ''}}" data-document="terms" bindtap="openLegalDocument" aria-role="link" aria-label="查看用户协议">
           <view class="setting-copy"><text class="setting-title">用户协议</text><text class="setting-caption">服务规则与使用约定</text></view>
           <view class="legal-setting-value"><text>查看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
@@ -80,7 +80,7 @@
       </view>
 
       <view class="section-header"><view><text class="section-title">成为开发者</text></view></view>
-      <view class="developer-card card stagger-item">
+      <view class="developer-card card">
         <text class="developer-copy">克隆仓库开始开发：</text>
         <view class="terminal-card">
           <view class="terminal-head"><view class="terminal-dot terminal-dot--red"></view><view class="terminal-dot terminal-dot--yellow"></view><view class="terminal-dot terminal-dot--green"></view><text>bash</text></view>
@@ -89,7 +89,7 @@
       </view>
 
       <view class="section-header"><view><text class="section-title">帮助</text></view></view>
-      <view class="settings-card card stagger-item">
+      <view class="settings-card card">
         <view class="setting-row setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
           <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
           <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
@@ -116,7 +116,7 @@
     </view>
   </view>
 
-  <bottom-sheet visible="{{feedbackVisible}}" scrollable="{{false}}" title="反馈" theme="{{theme}}" close-on-mask="{{!feedbackSubmitting}}" bindclose="closeFeedback">
+  <bottom-sheet visible="{{feedbackVisible}}" scrollable="{{false}}" title="反馈" theme="{{theme}}" close-on-mask="{{!feedbackSubmitting}}" bindclose="closeFeedback" reduced-motion="{{motionClass === 'motion-reduced'}}">
     <view class="feedback-form">
       <view class="feedback-label-line"><text class="feedback-label">类型</text><text class="feedback-required" aria-hidden="true">*</text></view>
       <view class="feedback-type-grid" aria-label="选择反馈类型">

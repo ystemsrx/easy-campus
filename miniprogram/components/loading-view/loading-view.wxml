@@ -1,4 +1,4 @@
-<view class="loading-wrap {{compact ? 'loading-wrap--compact' : ''}}" aria-role="alert">
+<view class="loading-wrap {{reducedMotion ? 'loading-wrap--reduced' : ''}} {{compact ? 'loading-wrap--compact' : ''}}" aria-role="alert">
   <view class="loading-orb"></view>
   <text class="loading-label">{{label}}</text>
   <view class="skeleton-list">

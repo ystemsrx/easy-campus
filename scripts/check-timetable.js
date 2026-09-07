@@ -1576,21 +1576,11 @@ assert(
     timetablePageScript.includes(
       'walking: "/features/assets/timetable/timetable-theme-clawd-walking.gif"',
     ) &&
-    timetablePageScript.includes(
-      'lurking: "/assets/login/lurking.gif"',
-    ) &&
-    timetablePageScript.includes(
-      'waving: "/assets/login/waving.gif"',
-    ) &&
-    timetablePageScript.includes(
-      'dancing: "/assets/login/dancing.gif"',
-    ) &&
-    timetablePageScript.includes(
-      'laptop: "/assets/login/laptop.gif"',
-    ) &&
-    timetablePageScript.includes(
-      'magnifier: "/assets/login/magnifier.gif"',
-    ) &&
+    timetablePageScript.includes('lurking: "/assets/login/lurking.gif"') &&
+    timetablePageScript.includes('waving: "/assets/login/waving.gif"') &&
+    timetablePageScript.includes('dancing: "/assets/login/dancing.gif"') &&
+    timetablePageScript.includes('laptop: "/assets/login/laptop.gif"') &&
+    timetablePageScript.includes('magnifier: "/assets/login/magnifier.gif"') &&
     timetablePageScript.includes(
       'jumping: "/features/assets/timetable/timetable-theme-clawd-jumping.gif"',
     ) &&
@@ -3152,9 +3142,7 @@ assert(
       timetablePageStyles,
     ) &&
     !/\.header-week\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles) &&
-    /\.week-popover\s*\{[^}]*background:\s*#fff;/s.test(
-      timetablePageStyles,
-    ) &&
+    /\.week-popover\s*\{[^}]*background:\s*#fff;/s.test(timetablePageStyles) &&
     !/\.week-popover\s*\{[^}]*backdrop-filter:/s.test(timetablePageStyles),
   "顶部周次及其弹出菜单必须使用不透明实体表面，不能模糊中间课表",
 );
@@ -3318,8 +3306,8 @@ assert(
   ) &&
     refreshConfirmationTemplate.includes('wx:if="{{mounted}}"') &&
     refreshConfirmationScript.includes("mounted: false") &&
-    refreshConfirmationScript.includes("this.setData({ mounted: false })") &&
-    /},\s*3000\)/.test(refreshConfirmationScript) &&
+    refreshConfirmationScript.includes("clearFeedback(this)") &&
+    refreshConfirmationScript.includes("showFeedback(this,") &&
     timetablePageScript.includes("showRefreshConfirmation(this)") &&
     timetablePageScript.includes("startRefreshFlight(") &&
     timetablePageScript.includes("this.observeTimetableRefresh(flight, lease)"),

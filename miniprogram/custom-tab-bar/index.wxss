@@ -93,7 +93,7 @@
   border-radius: 999rpx;
   background-color: var(--tab-pill);
   transform: translateX(0);
-  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .tabbar-indicator--1 { transform: translateX(100%); }
@@ -110,14 +110,15 @@
   gap: 10rpx;
   color: var(--tab-text);
   transform: scale(1);
-  transition: color 260ms ease, transform 110ms ease-out;
+  transition: transform 110ms ease-out;
 }
 
 .tabbar-item--active { color: var(--tab-active); }
 .tabbar-item--pressed { transform: scale(0.94); }
 
 .motion-reduced .tabbar-indicator,
-.motion-reduced .tabbar-item { transition-duration: 1ms; }
+.motion-reduced .tabbar-indicator,
+.motion-reduced .tabbar-item { transition-duration: 0ms; }
 
 .tabbar-label {
   font-size: 25rpx;

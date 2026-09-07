@@ -1,3 +1,4 @@
+import { cancelPresence, setPresence } from "../../../utils/motion";
 import { getPassRates } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
 import type {
@@ -51,14 +52,6 @@ interface ComponentView {
 
 let requestSequence = 0;
 let activePassRateSessionKey = "";
-let pickerTransitionTimer: number | undefined;
-
-function clearPickerTransitionTimer() {
-  if (pickerTransitionTimer !== undefined) {
-    clearTimeout(pickerTransitionTimer);
-    pickerTransitionTimer = undefined;
-  }
-}
 
 function toCourseView(course: PassRateCourse): CourseView {
   const creditsLabel = formatCredits(course.credits);
@@ -208,7 +201,7 @@ Page({
       activePassRateSessionKey !== currentSessionKey
     ) {
       requestSequence += 1;
-      clearPickerTransitionTimer();
+      cancelPresence(this);
       this.setData({
         loading: true,
         updating: false,
@@ -237,9 +230,17 @@ Page({
     this.setData(resolveAppearance());
     if (!this.data.loaded) void this.loadPassRates();
   },
+  onHide() {
+    cancelPresence(this);
+    this.setData({
+      pickerVisible: false,
+      pickerMounted: false,
+      pickerActive: false,
+    });
+  },
   onUnload() {
+    cancelPresence(this);
     requestSequence += 1;
-    clearPickerTransitionTimer();
   },
   async loadPassRates(courseKey = "") {
     const lease = captureSessionLease();
@@ -314,30 +315,24 @@ Page({
   openPicker() {
     if (this.data.courses.length < 2) return;
     haptic("light");
-    clearPickerTransitionTimer();
     const groups = courseGroups(this.data.courses);
-    this.setData(
-      {
-        pickerVisible: true,
-        pickerMounted: true,
-        pickerActive: false,
-        courseGroups: groups,
-        ...coursePickerState(groups, this.data.selectedSemesterId),
-      },
-      () => {
-        wx.nextTick(() => {
-          if (this.data.pickerVisible) this.setData({ pickerActive: true });
-        });
-      },
-    );
+    this.setData({
+      pickerVisible: true,
+      courseGroups: groups,
+      ...coursePickerState(groups, this.data.selectedSemesterId),
+    });
+    setPresence(this, true, {
+      mounted: "pickerMounted",
+      active: "pickerActive",
+    });
   },
   closePicker() {
-    clearPickerTransitionTimer();
     this.setData({ pickerVisible: false, pickerActive: false });
-    pickerTransitionTimer = setTimeout(() => {
-      if (!this.data.pickerVisible) this.setData({ pickerMounted: false });
-      pickerTransitionTimer = undefined;
-    }, 380);
+    setPresence(this, false, {
+      mounted: "pickerMounted",
+      active: "pickerActive",
+      reducedMotion: this.data.motionClass === "motion-reduced",
+    });
   },
   selectSemester(event: WechatMiniprogram.TouchEvent) {
     const semesterId = String(event.currentTarget.dataset.semester || "");

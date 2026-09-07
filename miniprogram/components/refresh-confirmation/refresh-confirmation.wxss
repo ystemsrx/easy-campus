@@ -19,22 +19,23 @@
   box-shadow: 0 16rpx 46rpx rgba(0, 16, 42, 0.18);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.9);
+  transform: translate(-50%, -50%) scale(0.97);
   transform-origin: center;
   backdrop-filter: blur(16px) saturate(1.15);
   transition:
-    opacity 220ms ease,
-    transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 160ms ease-out,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .refresh-confirmation--visible {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
+  transition-duration: 220ms;
 }
 
 .refresh-confirmation--reduced-motion {
   transform: translate(-50%, -50%);
-  transition: opacity 160ms ease;
+  transition: opacity 120ms ease-out;
 }
 
 .refresh-confirmation--soft {

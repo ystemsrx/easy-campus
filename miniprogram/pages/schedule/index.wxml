@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page schedule-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar transparent theme="{{theme}}"></navigation-bar>
   <view class="schedule-top page-content">
@@ -123,7 +123,7 @@
     </swiper-item>
   </swiper>
 
-  <bottom-sheet visible="{{creating}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator">
+  <bottom-sheet visible="{{creating}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator" reduced-motion="{{motionClass === 'motion-reduced'}}">
     <view class="creator-form">
       <input class="creator-title" value="{{title}}" placeholder="要做什么？" placeholder-class="creator-placeholder" maxlength="80" bindinput="onTitleInput" />
       <text class="creator-label">开始</text>

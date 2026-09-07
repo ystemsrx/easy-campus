@@ -1,13 +1,13 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
-    <view class="rooms-content page-content page-enter {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
+    <view class="rooms-content page-content {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
       <view wx:if="{{optionsLoading && !campuses.length}}" class="rooms-loading" aria-role="alert">
         <view class="rooms-loading-spinner"></view>
         <text class="rooms-loading-label">读取中</text>
       </view>
-      <view wx:else class="query-card card stagger-item stagger-1">
+      <view wx:else class="query-card card">
         <view wx:if="{{campuses.length}}" class="campus-switch">
           <view class="campus-indicator" style="{{campusIndicatorStyle}}"></view>
           <view wx:for="{{campuses}}" wx:key="value" class="campus-option {{campusId === item.value ? 'campus-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectCampusInline" hover-class="campus-option--pressed" hover-stay-time="90" aria-role="button" aria-label="选择{{item.label}}">
@@ -45,9 +45,9 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{pickerMounted}}" class="period-picker-layer">
-    <view class="period-picker-scrim {{pickerActive ? 'period-picker-scrim--active' : ''}}" bindtap="closePeriodPicker" catchtouchmove="noop"></view>
-    <view class="period-picker-card {{pickerActive ? 'period-picker-card--active' : ''}}">
+  <view wx:if="{{pickerMounted}}" class="motion-layer {{pickerVisible ? 'motion-layer--active' : ''}} period-picker-layer">
+    <view class="motion-scrim {{pickerActive ? 'motion-scrim--active' : ''}} period-picker-scrim" bindtap="closePeriodPicker" catchtouchmove="noop"></view>
+    <view class="motion-sheet {{pickerActive ? 'motion-sheet--active' : ''}} period-picker-card">
       <view class="period-picker-handle"></view>
       <view class="period-picker-header">
         <view><text class="period-picker-title">选择节次</text><text class="period-picker-count">{{draftPeriods.length ? '已选 ' + draftPeriods.length + ' 节' : '请选择'}}</text></view>
@@ -81,9 +81,9 @@
     </view>
   </view>
 
-  <view wx:if="{{resultMounted}}" class="room-results-layer">
-    <view class="room-results-scrim {{resultActive ? 'room-results-scrim--active' : ''}}" bindtap="closeResultDrawer" catchtouchmove="noop"></view>
-    <view class="room-results-card {{resultActive ? 'room-results-card--active' : ''}}">
+  <view wx:if="{{resultMounted}}" class="motion-layer {{resultVisible ? 'motion-layer--active' : ''}} room-results-layer">
+    <view class="motion-scrim {{resultActive ? 'motion-scrim--active' : ''}} room-results-scrim" bindtap="closeResultDrawer" catchtouchmove="noop"></view>
+    <view class="motion-sheet {{resultActive ? 'motion-sheet--active' : ''}} room-results-card">
       <view class="room-results-handle"></view>
       <view class="room-results-header">
         <view class="room-results-heading">
@@ -98,7 +98,7 @@
       <view class="room-results-body">
         <scroll-view class="room-results-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="180">
           <view class="room-results-content">
-            <loading-view wx:if="{{querying && !roomItems.length}}" compact label="读取中"></loading-view>
+            <loading-view wx:if="{{querying && !roomItems.length}}" compact label="读取中" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
             <empty-state wx:elif="{{errorMessage}}" icon="circle-alert" icon-tone="danger" title="查询失败" description="{{errorMessage}}" action-text="重试" bindaction="retry"></empty-state>
             <block wx:elif="{{roomGroups.length}}">
               <view wx:for="{{roomGroups}}" wx:key="id" wx:for-item="roomGroup" class="room-floor-group">

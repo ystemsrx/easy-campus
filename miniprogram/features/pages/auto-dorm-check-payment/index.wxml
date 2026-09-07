@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page page--quick-entry auto-dorm-check-payment-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="打卡套餐" back transparent theme="{{theme}}"></navigation-bar>
@@ -15,7 +15,7 @@
           </view>
         </view>
       </view>
-      <loading-view wx:if="{{loading && !loaded && !processing && !pendingResult}}" label="正在读取套餐"></loading-view>
+      <loading-view wx:if="{{loading && !loaded && !processing && !pendingResult}}" label="正在读取套餐" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
 
       <empty-state
         wx:elif="{{errorMessage && !loaded && !processing && !pendingResult}}"
@@ -38,7 +38,7 @@
       ></empty-state>
 
       <view wx:elif="{{loaded}}" class="payment-sections">
-        <view class="payment-balance-card card stagger-item stagger-1">
+        <view class="payment-balance-card card">
           <view class="payment-balance-heading">
             <view>
               <text class="payment-balance-kicker">当前额度</text>
@@ -72,7 +72,7 @@
           <text>重试</text>
         </view>
 
-        <view wx:if="{{timePlans.length}}" class="payment-plan-section stagger-item stagger-2">
+        <view wx:if="{{timePlans.length}}" class="payment-plan-section">
           <view class="payment-section-heading">
             <view>
               <text class="payment-section-title">按时间</text>
@@ -107,7 +107,7 @@
           </view>
         </view>
 
-        <view wx:if="{{countPlans.length}}" class="payment-plan-section stagger-item stagger-3">
+        <view wx:if="{{countPlans.length}}" class="payment-plan-section">
           <view class="payment-section-heading">
             <view>
               <text class="payment-section-title">按次数</text>

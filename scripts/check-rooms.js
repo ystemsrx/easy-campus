@@ -213,7 +213,7 @@ assert(
 );
 
 assert(
-  template.includes('class="period-picker-layer"') &&
+  template.includes(' period-picker-layer"') &&
     template.includes('bindtap="openPeriodPicker"') &&
     template.includes('bindtap="togglePeriodGroup"') &&
     template.includes('bindtap="toggleDraftPeriod"') &&
@@ -224,14 +224,14 @@ assert(
   "节次必须在具有完整高度链的抽屉内选择，并支持时段快捷多选",
 );
 
+const closePickerSource = script.match(/  closePeriodPicker\(\) \{[\s\S]*?\n  \},/)?.[0] || "";
+const applyPickerSource = script.match(/  applyPeriodPicker\(\) \{[\s\S]*?\n  \},/)?.[0] || "";
 assert(
-  /closePeriodPicker\(\)[\s\S]*?const periods = \[\.\.\.this\.data\.draftPeriods\][\s\S]*?selectedPeriods: periods[\s\S]*?periodLabel: selectedPeriodLabel\(periods\)/.test(
-    script,
-  ) &&
-    !/closePeriodPicker\(\)[\s\S]*?const selectedPeriods = this\.data\.selectedPeriods/.test(
-      script,
-    ),
-  "关闭节次抽屉时必须提交当前草稿，不得用旧选择回滚",
+  closePickerSource.includes("const periods = [...this.data.selectedPeriods]") &&
+    !closePickerSource.includes("selectedPeriods: periods") &&
+    applyPickerSource.includes("if (!this.data.draftPeriods.length)") &&
+    applyPickerSource.includes("selectedPeriods: periods"),
+  "关闭取消草稿，只有确定才能提交节次，空选择不能提交",
 );
 
 const floorGroups = groupRoomsByFloor([
@@ -260,7 +260,7 @@ assert(
 const roomViewSource =
   script.match(/function toRoomView\(room: EmptyRoom\)[\s\S]*?\n\}/)?.[0] || "";
 assert(
-  template.includes('class="room-results-layer"') &&
+  template.includes(' room-results-layer"') &&
     template.includes('wx:for="{{roomGroups}}"') &&
     template.includes('wx:for="{{roomGroup.rooms}}"') &&
     template.includes('bindscrolltolower="loadMore"') &&

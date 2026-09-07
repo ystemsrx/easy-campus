@@ -1,10 +1,10 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
 
     <view class="auto-dorm-check-content page-content page-enter">
-      <loading-view wx:if="{{loading && !loaded}}" label="正在读取"></loading-view>
+      <loading-view wx:if="{{loading && !loaded}}" label="正在读取" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
 
       <empty-state
         wx:elif="{{errorMessage && !loaded}}"
@@ -17,7 +17,7 @@
       ></empty-state>
 
       <view wx:else class="auto-dorm-check-sections">
-        <view class="auto-dorm-check-card card stagger-item stagger-1">
+        <view class="auto-dorm-check-card card">
           <view class="auto-dorm-check-row">
             <view class="auto-dorm-check-copy">
               <text class="auto-dorm-check-title">自动查寝打卡</text>
@@ -50,7 +50,7 @@
           </view>
         </view>
 
-        <view class="auto-dorm-check-detail-card card stagger-item stagger-2">
+        <view class="auto-dorm-check-detail-card card">
           <text class="auto-dorm-check-detail-title">打卡状态</text>
           <view class="auto-dorm-check-status-row">
             <view class="auto-dorm-check-status">
@@ -64,7 +64,7 @@
           </view>
         </view>
 
-        <view class="auto-dorm-check-detail-card card stagger-item stagger-3">
+        <view class="auto-dorm-check-detail-card card">
           <text class="auto-dorm-check-detail-title">打卡地点</text>
           <view class="auto-dorm-check-location">
             <lucide-icon name="map-pin" tone="sage" size="{{24}}"></lucide-icon>
@@ -76,7 +76,7 @@
 
         <view
           wx:if="{{paymentEnabled}}"
-          class="auto-dorm-check-package-card card stagger-item stagger-4 {{openingPayment ? 'auto-dorm-check-package-card--opening' : ''}}"
+          class="auto-dorm-check-package-card card {{openingPayment ? 'auto-dorm-check-package-card--opening' : ''}}"
           bindtap="openPayment"
           hover-class="{{openingPayment ? 'none' : 'auto-dorm-check-package-card--pressed'}}"
           hover-stay-time="80"
@@ -94,7 +94,7 @@
           <lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{26}}"></lucide-icon>
         </view>
 
-        <view class="auto-dorm-check-agreement-footer stagger-item">
+        <view class="auto-dorm-check-agreement-footer">
           <view
             class="auto-dorm-check-agreement-row {{agreementAccepted ? 'auto-dorm-check-agreement-row--accepted' : ''}}"
             bindtap="onAgreementTap"

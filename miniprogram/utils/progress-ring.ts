@@ -8,16 +8,12 @@ export function progressRingSource(
       : Math.max(0, Math.min(100, value));
   const progress = Number(clampedValue.toFixed(2));
   const circumference = 2 * Math.PI * 42;
-  const progressLength = Number(
-    ((circumference * progress) / 100).toFixed(2),
-  );
-  const remainderLength = Number(
-    (circumference - progressLength).toFixed(2),
-  );
+  const progressLength = Number(((circumference * progress) / 100).toFixed(2));
+  const remainderLength = Number((circumference - progressLength).toFixed(2));
   const progressOpacity = progress > 0 ? 1 : 0;
   const animation =
     animate && progress > 0
-      ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".72s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
+      ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".24s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
       : "";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +

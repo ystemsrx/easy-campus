@@ -177,10 +177,6 @@ assert(
   "首页通知详情必须使用微信标准右侧页面转场",
 );
 
-const homePageSettle =
-  homeStyles.match(/@keyframes home-page-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
-const homeItemSettle =
-  homeStyles.match(/@keyframes home-item-settle\s*\{[\s\S]*?\n\}/)?.[0] || "";
 assert(
   homeScript.includes(
     "const INITIAL_HOME_APPEARANCE = resolveAppearance(INITIAL_HOME_PREFERENCES);",
@@ -203,14 +199,8 @@ assert(
     tabBarScript.includes(
       "visualThemeClass: INITIAL_TAB_APPEARANCE.visualThemeClass",
     ) &&
-    homeStyles.includes(".home-page .page-enter {") &&
-    homeStyles.includes("animation-name: home-page-settle;") &&
-    homeStyles.includes(".home-page .stagger-item {") &&
-    homeStyles.includes("animation-name: home-item-settle;") &&
-    homePageSettle.length > 0 &&
-    homeItemSettle.length > 0 &&
-    !homePageSettle.includes("opacity") &&
-    !homeItemSettle.includes("opacity"),
+    !homeTemplate.includes("page-enter") &&
+    !homeTemplate.includes("stagger-item"),
   "首页、窗口和底栏必须从首帧使用同一主题，首页入场不得从全透明状态开始",
 );
 
@@ -376,21 +366,19 @@ assert(
     planListStyle.includes("justify-content: flex-start;") &&
     planListStyle.includes("height: 100%;") &&
     planListStyle.includes("min-height: 0;") &&
-    planCardStyle.includes("transition: height 360ms") &&
-    leavingPlanStyle.includes("height: 0;") &&
-    leavingPlanStyle.includes("min-height: 0;") &&
+    !planCardStyle.includes("transition: height") &&
+    !leavingPlanStyle.includes("height: 0;") &&
+    !leavingPlanStyle.includes("min-height: 0;") &&
     leavingPlanStyle.includes("opacity: 0;") &&
-    leavingPlanStyle.includes("transform: translateX(30rpx) scale(0.98);") &&
-    homeStyles.includes("@keyframes plan-row-enter") &&
-    homeScript.includes("const PLAN_COMPLETION_ACK_MS = 140;") &&
-    homeScript.includes("const PLAN_REMOVAL_TRANSITION_MS = 360;") &&
+    leavingPlanStyle.includes("transform: translateX(8rpx);") &&
+    !homeStyles.includes("@keyframes plan-row-enter") &&
+    homeScript.includes("const PLAN_COMPLETION_ACK_MS = 100;") &&
+    homeScript.includes("const PLAN_REMOVAL_TRANSITION_MS = 160;") &&
     homeScript.includes("saveScheduleData(") &&
     homeScript.includes("void putLocalSchedule(saved)") &&
-    /completePlan\(event: WechatMiniprogram\.TouchEvent\)[\s\S]*?done: true[\s\S]*?completingPlanId: id[\s\S]*?removingPlanId: id[\s\S]*?plans: nextPlans/.test(
-      homeScript,
-    ) &&
-    homeScript.includes("planCardHeight: planCardHeight(nextPlans.length)"),
-  "主页待办必须从首行排列，圆圈可完成日程，并平滑收起行与卡片高度",
+    homeScript.includes("planCompletionTimers") &&
+    homeScript.includes("planCardHeight: planCardHeight(plans.length)"),
+  "主页待办必须从首行排列，圆圈可完成日程，逐项淡出后再移除，不阻塞其他行",
 );
 
 const semesterContext = {

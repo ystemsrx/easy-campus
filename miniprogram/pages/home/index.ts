@@ -1,3 +1,4 @@
+import { MOTION } from "../../utils/motion";
 import { APP_NAME } from "../../config/app";
 import { prewarmProfileFirstScreen } from "../../data/profile-render";
 import { getCredentialStatus } from "../../services/auth";
@@ -203,9 +204,8 @@ const PUBLICATION_REFRESH_THROTTLE_MS = 8_000;
 const TEACHING_BACKGROUND_FOLLOWUP_MS = 1_500;
 const PLAN_CARD_MIN_HEIGHT_RPX = 224;
 const PLAN_ROW_HEIGHT_RPX = 104;
-const PLAN_COMPLETION_ACK_MS = 140;
-const PLAN_REMOVAL_TRANSITION_MS = 360;
-const PLAN_ENTRY_TRANSITION_MS = 280;
+const PLAN_COMPLETION_ACK_MS = 100;
+const PLAN_REMOVAL_TRANSITION_MS = 160;
 const CREDENTIAL_POLL_DELAYS_MS = [1_800, 3_000, 5_000, 8_000, 12_000];
 const MODAL_QUICK_ACTION_ROUTES = new Set([
   "/features/pages/pass-rates/index",
@@ -283,9 +283,7 @@ let credentialPollAttempt = 0;
 let credentialProfileRefreshPending = false;
 let hydratedAccount = "";
 let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
-let planCompletionTimer: ReturnType<typeof setTimeout> | undefined;
-let planRemovalTimer: ReturnType<typeof setTimeout> | undefined;
-let planEntryTimer: ReturnType<typeof setTimeout> | undefined;
+const planCompletionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let activeTimetable: TimetableData | null = null;
 const CODE_COPY_FEEDBACK_MS = 1_600;
 
@@ -569,18 +567,8 @@ function planPreviewPatch(account: string): {
 }
 
 function clearPlanTransitionTimers(): void {
-  if (planCompletionTimer !== undefined) {
-    clearTimeout(planCompletionTimer);
-    planCompletionTimer = undefined;
-  }
-  if (planRemovalTimer !== undefined) {
-    clearTimeout(planRemovalTimer);
-    planRemovalTimer = undefined;
-  }
-  if (planEntryTimer !== undefined) {
-    clearTimeout(planEntryTimer);
-    planEntryTimer = undefined;
-  }
+  planCompletionTimers.forEach((timer) => clearTimeout(timer));
+  planCompletionTimers.clear();
 }
 
 function mergeMessagePreviews(
@@ -821,9 +809,7 @@ Page({
     examEmptyLabel: "暂时没有考试安排",
     plans: [] as PlanPreview[],
     planCardHeight: PLAN_CARD_MIN_HEIGHT_RPX,
-    completingPlanId: "",
-    removingPlanId: "",
-    enteringPlanId: "",
+    planCompletion: {} as Record<string, "checked" | "leaving">,
     messages: [] as MessagePreview[],
     notices: [] as NoticePreview[],
     publications: [] as PublicationPreview[],
@@ -979,9 +965,7 @@ Page({
         examEmptyLabel: "暂时没有考试安排",
         plans: [],
         planCardHeight: PLAN_CARD_MIN_HEIGHT_RPX,
-        completingPlanId: "",
-        removingPlanId: "",
-        enteringPlanId: "",
+        planCompletion: {} as Record<string, "checked" | "leaving">,
         messages: [],
         notices: [],
         publications: [],
@@ -1182,23 +1166,16 @@ Page({
   },
   settlePlanTransition() {
     if (
-      planCompletionTimer === undefined &&
-      planRemovalTimer === undefined &&
-      planEntryTimer === undefined &&
-      !this.data.completingPlanId &&
-      !this.data.removingPlanId &&
-      !this.data.enteringPlanId
-    ) {
+      !planCompletionTimers.size &&
+      !Object.keys(this.data.planCompletion).length
+    )
       return;
-    }
     clearPlanTransitionTimers();
     const account = getSession()?.user.account || "";
     this.setData(
       {
         ...planPreviewPatch(account),
-        completingPlanId: "",
-        removingPlanId: "",
-        enteringPlanId: "",
+        planCompletion: {} as Record<string, "checked" | "leaving">,
       },
       () => markHomeSourcesHydrated(account, ["schedule"]),
     );
@@ -1329,12 +1306,17 @@ Page({
     if (petSetupDrawerTimer !== undefined) {
       clearTimeout(petSetupDrawerTimer);
     }
-    petSetupDrawerTimer = setTimeout(() => {
-      this.setData({ petSetupDrawerMounted: false });
-      this.setTabBarHidden(false);
-      petSetupDrawerTimer = undefined;
-      if (homeVisible) this.showNextQueuedAnnouncement();
-    }, 420);
+    petSetupDrawerTimer = setTimeout(
+      () => {
+        this.setData({ petSetupDrawerMounted: false });
+        this.setTabBarHidden(false);
+        petSetupDrawerTimer = undefined;
+        if (homeVisible) this.showNextQueuedAnnouncement();
+      },
+      this.data.motionClass === "motion-reduced"
+        ? MOTION.fade
+        : MOTION.sheetExit,
+    );
   },
   hydrateIdentity(user?: CurrentUserData) {
     const identity = resolveHomeIdentity(
@@ -2348,74 +2330,78 @@ Page({
   },
   completePlan(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    if (!id || this.data.completingPlanId || this.data.removingPlanId) return;
+    if (!id || this.data.planCompletion[id]) return;
     const lease = captureSessionLease();
     if (!lease) return;
     const schedule = loadScheduleData(lease.account);
-    const target = schedule.plans.find((plan) => plan.id === id && !plan.done);
-    if (!target) {
-      this.hydratePlanPreviews(lease.account);
-      return;
-    }
-
+    if (!schedule.plans.some((plan) => plan.id === id && !plan.done)) return;
     const saved = saveScheduleData(
       lease.account,
       schedule.plans.map((plan) =>
         plan.id === id ? { ...plan, done: true } : plan,
       ),
     );
-    const nextPlans = loadPlanPreviews(lease.account);
-    const retainedIds = new Set(
-      this.data.plans.filter((plan) => plan.id !== id).map((plan) => plan.id),
-    );
-    const enteringPlanId =
-      nextPlans.find((plan) => !retainedIds.has(plan.id))?.id || "";
-    const reducedMotion = this.data.motionClass === "motion-reduced";
-    clearPlanTransitionTimers();
     haptic("light");
-    this.setData({ completingPlanId: id, enteringPlanId: "" });
     void putLocalSchedule(saved).catch(() => {
       // 本地状态已经生效，服务端会在下一次日程同步时追平。
     });
-
-    planCompletionTimer = setTimeout(
+    const reduced = this.data.motionClass === "motion-reduced";
+    const finish = () => {
+      if (!isSessionLeaseCurrent(lease)) return;
+      planCompletionTimers.delete(id);
+      const planCompletion = { ...this.data.planCompletion };
+      delete planCompletion[id];
+      // Read current storage rather than an earlier click's preview snapshot.
+      // Keep other rows that are still acknowledging their own completion.
+      const latest = loadPlanPreviews(lease.account);
+      const latestIds = new Set(latest.map((plan) => plan.id));
+      const retained = this.data.plans.filter(
+        (plan) => planCompletion[plan.id] || latestIds.has(plan.id),
+      );
+      const retainedIds = new Set(retained.map((plan) => plan.id));
+      const plans = [
+        ...retained,
+        ...latest.filter((plan) => !retainedIds.has(plan.id)),
+      ].slice(0, Math.max(this.data.plans.length, latest.length));
+      this.setData(
+        { plans, planCardHeight: planCardHeight(plans.length), planCompletion },
+        () => markHomeSourcesHydrated(lease.account, ["schedule"]),
+      );
+    };
+    if (reduced) {
+      finish();
+      return;
+    }
+    this.setData(
+      { planCompletion: { ...this.data.planCompletion, [id]: "checked" } },
       () => {
-        planCompletionTimer = undefined;
-        if (!isSessionLeaseCurrent(lease)) return;
-        this.setData({
-          removingPlanId: id,
-          planCardHeight: planCardHeight(nextPlans.length),
-        });
-        planRemovalTimer = setTimeout(
-          () => {
-            planRemovalTimer = undefined;
-            if (!isSessionLeaseCurrent(lease)) return;
-            this.setData(
-              {
-                plans: nextPlans,
-                planCardHeight: planCardHeight(nextPlans.length),
-                completingPlanId: "",
-                removingPlanId: "",
-                enteringPlanId: reducedMotion ? "" : enteringPlanId,
-              },
-              () => markHomeSourcesHydrated(lease.account, ["schedule"]),
-            );
-            if (!reducedMotion && enteringPlanId) {
-              planEntryTimer = setTimeout(() => {
-                planEntryTimer = undefined;
-                if (
-                  isSessionLeaseCurrent(lease) &&
-                  this.data.enteringPlanId === enteringPlanId
-                ) {
-                  this.setData({ enteringPlanId: "" });
-                }
-              }, PLAN_ENTRY_TRANSITION_MS);
-            }
-          },
-          reducedMotion ? 16 : PLAN_REMOVAL_TRANSITION_MS,
-        );
+        if (
+          !homeVisible ||
+          !isSessionLeaseCurrent(lease) ||
+          !this.data.planCompletion[id]
+        )
+          return;
+        const acknowledgement = setTimeout(() => {
+          if (
+            planCompletionTimers.get(id) !== acknowledgement ||
+            !isSessionLeaseCurrent(lease)
+          )
+            return;
+          this.setData(
+            {
+              planCompletion: { ...this.data.planCompletion, [id]: "leaving" },
+            },
+            () => {
+              if (planCompletionTimers.get(id) !== acknowledgement) return;
+              const removal = setTimeout(() => {
+                if (planCompletionTimers.get(id) === removal) finish();
+              }, PLAN_REMOVAL_TRANSITION_MS);
+              planCompletionTimers.set(id, removal);
+            },
+          );
+        }, PLAN_COMPLETION_ACK_MS);
+        planCompletionTimers.set(id, acknowledgement);
       },
-      reducedMotion ? 0 : PLAN_COMPLETION_ACK_MS,
     );
   },
   openSchedule() {

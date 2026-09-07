@@ -1,3 +1,4 @@
+import { cancelPresence, setPresence } from "../../../utils/motion";
 import { getRoomOptions, getRooms } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
 import type {
@@ -48,11 +49,8 @@ interface RoomView extends EmptyRoom {
 const PAGE_SIZE = 30;
 const MAX_BUILDINGS = 30;
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-const PICKER_TRANSITION_MS = 380;
 let optionsSequence = 0;
 let roomsSequence = 0;
-let pickerTransitionTimer: ReturnType<typeof setTimeout> | undefined;
-let resultTransitionTimer: ReturnType<typeof setTimeout> | undefined;
 
 function parseLocalDate(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -130,20 +128,6 @@ function selectedPeriodLabel(periods: number[]): string {
   return `第 ${periods.join("、")} 节`;
 }
 
-function clearPickerTransitionTimer() {
-  if (pickerTransitionTimer) {
-    clearTimeout(pickerTransitionTimer);
-    pickerTransitionTimer = undefined;
-  }
-}
-
-function clearResultTransitionTimer() {
-  if (resultTransitionTimer) {
-    clearTimeout(resultTransitionTimer);
-    resultTransitionTimer = undefined;
-  }
-}
-
 function toRoomView(room: EmptyRoom): RoomView {
   return {
     ...room,
@@ -209,9 +193,19 @@ Page({
       this.syncLateDateDefault();
     }
   },
+  onHide() {
+    cancelPresence(this);
+    this.setData({
+      pickerVisible: false,
+      pickerMounted: false,
+      pickerActive: false,
+      resultVisible: false,
+      resultMounted: false,
+      resultActive: false,
+    });
+  },
   onUnload() {
-    clearPickerTransitionTimer();
-    clearResultTransitionTimer();
+    cancelPresence(this);
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -362,32 +356,25 @@ Page({
   },
   openPeriodPicker() {
     haptic("light");
-    clearPickerTransitionTimer();
     const draftPeriods = [...this.data.selectedPeriods];
-    this.setData(
-      {
-        pickerVisible: true,
-        pickerMounted: true,
-        pickerActive: false,
+    this.setData({
+      pickerVisible: true,
+      draftPeriods,
+      periods: this.data.periods.map((item) => ({
+        ...item,
+        selected: draftPeriods.includes(item.period),
+      })),
+      periodGroups: periodGroupsWithSelection(
+        this.data.periodGroups,
         draftPeriods,
-        periods: this.data.periods.map((item) => ({
-          ...item,
-          selected: draftPeriods.includes(item.period),
-        })),
-        periodGroups: periodGroupsWithSelection(
-          this.data.periodGroups,
-          draftPeriods,
-        ),
-      },
-      () => {
-        wx.nextTick(() => {
-          if (this.data.pickerVisible) this.setData({ pickerActive: true });
-        });
-      },
-    );
+      ),
+    });
+    setPresence(this, true, {
+      mounted: "pickerMounted",
+      active: "pickerActive",
+    });
   },
   closePeriodPicker() {
-    clearPickerTransitionTimer();
     const periods = [...this.data.selectedPeriods];
     this.setData({
       pickerVisible: false,
@@ -399,10 +386,11 @@ Page({
       })),
       periodGroups: periodGroupsWithSelection(this.data.periodGroups, periods),
     });
-    pickerTransitionTimer = setTimeout(() => {
-      if (!this.data.pickerVisible) this.setData({ pickerMounted: false });
-      pickerTransitionTimer = undefined;
-    }, PICKER_TRANSITION_MS);
+    setPresence(this, false, {
+      mounted: "pickerMounted",
+      active: "pickerActive",
+      reducedMotion: this.data.motionClass === "motion-reduced",
+    });
   },
   toggleDraftPeriod(event: WechatMiniprogram.TouchEvent) {
     const period = Number(event.currentTarget.dataset.period);
@@ -459,27 +447,21 @@ Page({
     this.closePeriodPicker();
   },
   openResultDrawer() {
-    clearResultTransitionTimer();
-    this.setData(
-      {
-        resultVisible: true,
-        resultMounted: true,
-        resultActive: false,
-      },
-      () => {
-        wx.nextTick(() => {
-          if (this.data.resultVisible) this.setData({ resultActive: true });
-        });
-      },
-    );
+    this.setData({
+      resultVisible: true,
+    });
+    setPresence(this, true, {
+      mounted: "resultMounted",
+      active: "resultActive",
+    });
   },
   closeResultDrawer() {
-    clearResultTransitionTimer();
     this.setData({ resultVisible: false, resultActive: false });
-    resultTransitionTimer = setTimeout(() => {
-      if (!this.data.resultVisible) this.setData({ resultMounted: false });
-      resultTransitionTimer = undefined;
-    }, PICKER_TRANSITION_MS);
+    setPresence(this, false, {
+      mounted: "resultMounted",
+      active: "resultActive",
+      reducedMotion: this.data.motionClass === "motion-reduced",
+    });
   },
   noop() {
     // 用于阻止遮罩层手势穿透。

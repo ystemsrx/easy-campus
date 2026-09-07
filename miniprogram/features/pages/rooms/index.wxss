@@ -77,7 +77,7 @@
   border-radius: 999rpx;
   background: #d97757;
   box-shadow: 0 12rpx 30rpx rgba(185, 92, 56, 0.2);
-  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .campus-option {
@@ -171,7 +171,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease;
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease;
 }
 
 .quick-date-indicator {
@@ -336,12 +336,8 @@
   right: 0;
   bottom: 0;
   left: 0;
-  opacity: 0;
   background: rgba(24, 21, 18, 0.36);
-  transition: opacity 300ms ease;
 }
-
-.room-results-scrim--active { opacity: 1; }
 
 .room-results-card {
   position: relative;
@@ -354,11 +350,7 @@
   border-radius: 56rpx 56rpx 0 0;
   background: #f7f5ef;
   box-shadow: 0 -22rpx 80rpx rgba(20, 20, 30, 0.18);
-  transform: translateY(105%);
-  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-
-.room-results-card--active { transform: translateY(0); }
 
 .room-results-handle {
   position: absolute;
@@ -554,12 +546,8 @@
   right: 0;
   bottom: 0;
   left: 0;
-  opacity: 0;
   background: rgba(24, 21, 18, 0.36);
-  transition: opacity 300ms ease;
 }
-
-.period-picker-scrim--active { opacity: 1; }
 
 .period-picker-card {
   position: relative;
@@ -572,11 +560,7 @@
   border-radius: 56rpx 56rpx 0 0;
   background: #fbf9f4;
   box-shadow: 0 -22rpx 80rpx rgba(20, 20, 30, 0.18);
-  transform: translateY(105%);
-  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-
-.period-picker-card--active { transform: translateY(0); }
 
 .period-picker-handle {
   position: absolute;
@@ -783,13 +767,9 @@
   color: var(--color-text);
   background: transparent;
 }
-
-.motion-reduced .campus-indicator,
-.motion-reduced .quick-date-indicator-slot,
-.motion-reduced .room-results-scrim,
-.motion-reduced .room-results-card,
-.motion-reduced .period-picker-scrim,
-.motion-reduced .period-picker-card { transition-duration: 1ms; }
 .motion-reduced .rooms-loading-spinner { animation-name: none; }
 
 @keyframes rooms-spin { to { transform: rotate(360deg); } }
+
+.motion-reduced .campus-indicator,
+.motion-reduced .quick-date-indicator-slot { transition-duration: 0ms; }

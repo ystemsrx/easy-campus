@@ -53,8 +53,15 @@ const loginScript = fs.readFileSync(
 );
 const failures = [];
 
-if (!/const VISIBLE_DURATION_MS = 3000;/.test(componentScript)) {
-  failures.push("429 胶囊必须在渐入完成后完整显示 3 秒");
+if (
+  !fs
+    .readFileSync(
+      path.join(miniprogramRoot, "utils/transient-feedback.ts"),
+      "utf8",
+    )
+    .includes("}, 3000);")
+) {
+  failures.push("429 胶囊必须保留 3 秒阅读时间");
 }
 if (
   !/message:\s*"访问速度太快了"/.test(componentScript) ||
@@ -80,7 +87,7 @@ if (
   !/top:\s*50%/.test(componentStyles) ||
   !/left:\s*50%/.test(componentStyles) ||
   !/background:\s*rgba\(8, 10, 14, 0\.58\)/.test(componentStyles) ||
-  !/opacity 220ms/.test(componentStyles)
+  !/opacity 160ms/.test(componentStyles)
 ) {
   failures.push("429 胶囊必须在屏幕正中以半透明黑色渐入渐出");
 }
@@ -128,7 +135,7 @@ for (const page of declaredPages) {
     "utf8",
   );
   if (
-    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s*>/.test(
+    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s+reduced-motion="\{\{motionClass === 'motion-reduced'\}\}"\s*>/.test(
       template,
     )
   ) {

@@ -1,0 +1,21 @@
+/* Shared presentation only: each drawer keeps its own content/scroll template. */
+.motion-layer { pointer-events: none; }
+.motion-layer--active { pointer-events: auto; }
+.motion-scrim {
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.motion-scrim--active { opacity: 1; transition-duration: 260ms; }
+.motion-sheet {
+  opacity: 1;
+  transform: translateY(105%);
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1), opacity 200ms ease-out;
+}
+.motion-sheet--active { transform: translateY(0); transition-duration: 260ms; }
+.motion-reduced .motion-scrim { transition-duration: 120ms; }
+.motion-reduced .motion-sheet {
+  opacity: 0;
+  transform: translateY(0);
+  transition: opacity 120ms ease-out;
+}
+.motion-reduced .motion-sheet--active { opacity: 1; }

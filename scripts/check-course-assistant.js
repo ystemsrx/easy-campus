@@ -142,12 +142,12 @@ assert.match(
   styles,
   /\.assistant-tabbar\s*\{[^}]*background-color:\s*rgba\(247, 245, 239, 0\.94\)/s,
 );
-assert.match(styles, /\.filter-panel-shell\s*\{[^}]*max-height:\s*0/s);
+assert.match(styles, /\.filter-panel-shell\s*\{[^}]*display:\s*none/s);
 assert.match(
   styles,
-  /\.filter-panel-shell--open\s*\{[^}]*max-height:\s*260rpx/s,
+  /\.filter-panel-shell--open\s*\{[^}]*display:\s*block/s,
 );
-assert.match(styles, /transform:\s*translateY\(-18rpx\)/);
+assert.doesNotMatch(styles, /transition:\s*max-height/);
 assert.match(styles, /\.course-search\s*\{[^}]*border-radius:\s*999rpx/s);
 assert.match(styles, /\.segment-indicator\s*\{[^}]*transition:\s*transform/s);
 assert.match(styles, /\.review-textarea\s*\{[^}]*box-sizing:\s*border-box/s);

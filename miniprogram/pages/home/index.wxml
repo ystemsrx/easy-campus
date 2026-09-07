@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page home-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view
     class="page-scroll home-framework {{authenticated ? '' : 'home-framework--guarded'}}"
@@ -9,7 +9,7 @@
     aria-hidden="{{!authenticated}}"
   >
     <navigation-bar transparent theme="{{theme}}"></navigation-bar>
-    <view class="home-content page-content page-content--tab page-enter">
+    <view class="home-content page-content page-content--tab">
       <view class="welcome-row">
         <view class="welcome-copy">
           <text class="welcome-date">{{dateLabel}}</text>
@@ -55,12 +55,12 @@
         open-elevation="{{0}}"
         open-border-radius="{{0}}"
         transition-type="fadeThrough"
-        transition-duration="{{380}}"
+        transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
         bind:tap="openTimetable"
         aria-role="button"
         aria-label="展开完整课表"
       >
-        <view class="today-card pressable stagger-item stagger-1" hover-class="today-card--pressed">
+        <view class="today-card pressable" hover-class="today-card--pressed">
           <view class="ambient-blob today-blob today-blob--one"></view>
           <view class="ambient-blob today-blob today-blob--two"></view>
           <view class="today-content">
@@ -72,7 +72,7 @@
               <view class="timetable-pill"><text>完整课表</text><lucide-icon name="chevron-right" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{24}}"></lucide-icon></view>
             </view>
             <view wx:if="{{todayCourses.length}}" class="today-course-list">
-              <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row stagger-item" style="animation-delay: {{index * 70}}ms;">
+              <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row">
                 <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text></view>
                 <view class="today-course-copy">
                   <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
@@ -88,7 +88,7 @@
         </view>
       </open-container>
 
-      <view class="feature-grid stagger-item stagger-2">
+      <view class="feature-grid">
         <open-container
           class="feature-open-container"
           closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#a77935' : '#f4d995') : '#c98a2d')}}"
@@ -99,7 +99,7 @@
           open-elevation="{{0}}"
           open-border-radius="{{0}}"
           transition-type="fadeThrough"
-          transition-duration="{{380}}"
+          transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
           bind:tap="openGrades"
           aria-role="button"
           aria-label="展开成绩页"
@@ -121,7 +121,7 @@
           open-elevation="{{0}}"
           open-border-radius="{{0}}"
           transition-type="fadeThrough"
-          transition-duration="{{380}}"
+          transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
           bind:tap="openElectricity"
           aria-role="button"
           aria-label="展开寝室电费"
@@ -137,7 +137,7 @@
         </open-container>
       </view>
 
-      <view class="exam-layout stagger-item stagger-2">
+      <view class="exam-layout">
         <open-container
           class="exam-open-container"
           closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}"
@@ -148,7 +148,7 @@
           open-elevation="{{0}}"
           open-border-radius="{{0}}"
           transition-type="fadeThrough"
-          transition-duration="{{380}}"
+          transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
           bind:tap="openExams"
           aria-role="button"
           aria-label="展开考试安排"
@@ -176,17 +176,17 @@
         </view>
       </view>
 
-      <view class="section-header stagger-item stagger-3">
+      <view class="section-header">
         <view><text class="section-title">接下来</text></view>
         <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
-      <view class="plan-card card stagger-item stagger-3" style="height: {{planCardHeight}}rpx;">
+      <view class="plan-card card" style="height: {{planCardHeight}}rpx;">
         <view wx:if="{{plans.length}}" class="plan-list">
-          <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}} {{item.id === completingPlanId ? 'plan-row--completing' : ''}} {{item.id === removingPlanId ? 'plan-row--leaving' : ''}} {{item.id === enteringPlanId ? 'plan-row--entering' : ''}}">
+          <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}} {{planCompletion[item.id] ? 'plan-row--completing' : ''}} {{planCompletion[item.id] === 'leaving' ? 'plan-row--leaving' : ''}}">
             <view class="plan-row-content">
-              <view class="plan-check pressable" data-id="{{item.id}}" catchtap="completePlan" hover-class="plan-check--pressed" aria-role="button" aria-label="标记{{item.title}}为已完成" aria-disabled="{{completingPlanId !== ''}}">
-                <view class="plan-circle {{item.id === completingPlanId ? 'plan-circle--checked' : ''}}">
-                  <lucide-icon wx:if="{{item.id === completingPlanId}}" name="check" tone="white" size="{{23}}"></lucide-icon>
+              <view class="plan-check pressable" data-id="{{item.id}}" catchtap="completePlan" hover-class="plan-check--pressed" aria-role="button" aria-label="标记{{item.title}}为已完成" aria-disabled="{{!!planCompletion[item.id]}}">
+                <view class="plan-circle {{planCompletion[item.id] ? 'plan-circle--checked' : ''}}">
+                  <lucide-icon wx:if="{{planCompletion[item.id]}}" name="check" tone="white" size="{{23}}"></lucide-icon>
                 </view>
               </view>
               <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
@@ -199,17 +199,17 @@
         </view>
       </view>
 
-      <view class="section-header stagger-item stagger-4">
+      <view class="section-header">
         <view><text class="section-title">校园消息</text></view>
         <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
       </view>
-      <view class="campus-stack stagger-item stagger-4">
+      <view class="campus-stack">
         <view class="campus-group">
           <view class="campus-card-head pressable" bindtap="openMessages" hover-class="pressing">
             <view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view>
             <text class="campus-card-title">教务消息</text>
           </view>
-          <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{380}}" bind:tap="openMessagesFromCard" aria-role="button" aria-label="从卡片展开教务消息">
+          <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}" bind:tap="openMessagesFromCard" aria-role="button" aria-label="从卡片展开教务消息">
             <view class="campus-card card pressable" hover-class="pressing">
               <view class="ambient-blob campus-blob campus-blob--message"></view>
               <view wx:if="{{messages.length}}" class="campus-list">
@@ -224,7 +224,7 @@
             <view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'blue'}}" size="{{29}}"></lucide-icon></view>
             <text class="campus-card-title">学校通知</text>
           </view>
-          <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{380}}" bind:tap="openNoticesFromCard" aria-role="button" aria-label="从卡片展开学校通知">
+          <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}" bind:tap="openNoticesFromCard" aria-role="button" aria-label="从卡片展开学校通知">
             <view class="campus-card card pressable" hover-class="pressing">
               <view class="ambient-blob campus-blob campus-blob--notice"></view>
               <view wx:if="{{notices.length}}" class="campus-list">

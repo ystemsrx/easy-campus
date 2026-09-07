@@ -421,18 +421,13 @@
 }
 
 .filter-panel-shell {
-  max-height: 0;
-  margin-top: 0;
+  display: none;
+  margin-top: 20rpx;
   overflow: hidden;
-  opacity: 0;
-  transition: max-height 350ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 250ms ease, margin-top 300ms ease;
 }
 
 .filter-panel-shell--open {
-  max-height: 260rpx;
-  margin-top: 20rpx;
-  opacity: 1;
+  display: block;
 }
 
 .filter-panel {
@@ -441,12 +436,6 @@
   border-radius: 30rpx;
   background-color: var(--guide-card);
   box-shadow: var(--shadow-card);
-  transform: translateY(-18rpx);
-  transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.filter-panel-shell--open .filter-panel {
-  transform: translateY(0);
 }
 
 .filter-panel-head {

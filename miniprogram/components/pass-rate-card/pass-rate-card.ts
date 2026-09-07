@@ -142,6 +142,7 @@ function passRateRingSource(
   value: number,
   theme: string,
   visualTheme: VisualTheme = "default",
+  animate = true,
 ): string {
   const progress = Math.max(0, Math.min(100, Number(value) || 0));
   const circumference = 2 * Math.PI * 42;
@@ -160,9 +161,10 @@ function passRateRingSource(
           ? "#8fc79e"
           : "#5e9a73"
         : "#7d8f6e";
-  const animation = progress
-    ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".65s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
-    : "";
+  const animation =
+    animate && progress
+      ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".24s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
+      : "";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
     `<circle cx="50" cy="50" r="42" fill="none" stroke="${trackColor}" stroke-opacity="${trackOpacity}" stroke-width="9.24"/>` +
@@ -173,6 +175,11 @@ function passRateRingSource(
 
 Component({
   properties: {
+    reducedMotion: {
+      type: Boolean,
+      value: false,
+      observer: "refreshStatistics",
+    },
     statistics: {
       type: Object,
       value: null,
@@ -250,6 +257,7 @@ Component({
           statistics.passRate,
           String(this.data.theme),
           this.data.visualTheme as VisualTheme,
+          !this.data.reducedMotion,
         ),
         passedLabel: percentageOnly
           ? percentageLabel(

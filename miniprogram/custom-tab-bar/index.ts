@@ -11,6 +11,10 @@ interface TabItem {
 
 const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());
 const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token);
+const pendingSelections = new WeakMap<
+  object,
+  { previous: number; target: number }
+>();
 
 Component({
   data: {
@@ -30,6 +34,9 @@ Component({
     ] as TabItem[],
   },
   lifetimes: {
+    detached() {
+      pendingSelections.delete(this);
+    },
     attached() {
       const appearance = resolveAppearance();
       this.setData({
@@ -42,6 +49,8 @@ Component({
   },
   methods: {
     setSelected(index: number) {
+      // The visible page is authoritative, including platform back/switch events.
+      pendingSelections.delete(this);
       const appearance = resolveAppearance();
       this.setData({
         selected: index,
@@ -53,13 +62,36 @@ Component({
     onSelect(event: WechatMiniprogram.TouchEvent) {
       const index = Number(event.currentTarget.dataset.index);
       const item = this.data.items[index];
-      if (!item || index === this.data.selected) {
+      if (
+        !item ||
+        index === this.data.selected ||
+        pendingSelections.has(this)
+      ) {
         return;
       }
 
       haptic("light");
+      const intent = { previous: this.data.selected, target: index };
+      pendingSelections.set(this, intent);
       this.setData({ selected: index });
-      wx.switchTab({ url: item.pagePath });
+      const fail = () => {
+        if (pendingSelections.get(this) !== intent) return;
+        pendingSelections.delete(this);
+        this.setData({ selected: intent.previous });
+        wx.showToast({ title: "暂时无法打开，请重试", icon: "none" });
+      };
+      try {
+        wx.switchTab({
+          url: item.pagePath,
+          success: () => {
+            if (pendingSelections.get(this) === intent)
+              pendingSelections.delete(this);
+          },
+          fail,
+        });
+      } catch {
+        fail();
+      }
     },
   },
 });

@@ -46,7 +46,7 @@
   background: #fff;
   box-shadow: var(--shadow-card);
   transform: translateX(0);
-  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .appearance-indicator--dark {
@@ -411,3 +411,5 @@
 .theme-style-minimal .appearance-option--active {
   color: var(--color-on-accent);
 }
+
+.motion-reduced .appearance-indicator { transition-duration: 0ms; }

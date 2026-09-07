@@ -46,11 +46,13 @@
 
 .skeleton-row--short { width: 68%; }
 .skeleton-shimmer {
-  animation-name: shimmer;
+  animation-name: loading-pulse;
   animation-duration: 1.5s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
 
 @keyframes loading-spin { to { transform: rotate(360deg); } }
-@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes loading-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.loading-wrap--reduced .loading-orb,
+.loading-wrap--reduced .skeleton-shimmer { animation-name: none; }

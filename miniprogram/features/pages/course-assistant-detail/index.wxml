@@ -1,11 +1,11 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page detail-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar back="{{true}}" transparent="{{true}}" theme="{{theme}}">
     <view slot="center" class="detail-nav-label"><text>COURSE PROFILE</text></view>
   </navigation-bar>
 
   <view wx:if="{{loading && !detail}}" class="detail-state">
-    <loading-view label="正在整理课程档案"></loading-view>
+    <loading-view label="正在整理课程档案" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
   </view>
   <view wx:elif="{{error && !detail}}" class="detail-state">
     <empty-state icon="circle-alert" icon-tone="danger" title="课程详情加载失败" description="{{error}}" action-text="重新加载" bindaction="retry"></empty-state>

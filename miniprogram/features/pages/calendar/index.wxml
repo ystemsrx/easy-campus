@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page calendar-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view
     class="page-scroll"
@@ -14,7 +14,7 @@
       </view>
     </navigation-bar>
     <view class="calendar-content page-content page-enter">
-      <view class="calendar-hero stagger-item stagger-1">
+      <view class="calendar-hero">
         <view class="ambient-blob calendar-blob calendar-blob--one"></view>
         <view class="ambient-blob calendar-blob calendar-blob--two"></view>
         <text class="calendar-kicker">ACADEMIC CALENDAR</text>
@@ -23,7 +23,7 @@
       </view>
 
       <view
-        class="year-switch card pressable stagger-item stagger-2"
+        class="year-switch card pressable"
         bindtap="openYearPicker"
         hover-class="pressing"
         aria-role="button"
@@ -34,8 +34,8 @@
         <view class="year-switch-action"><text>切换</text><lucide-icon name="chevron-right" tone="sage" size="{{23}}"></lucide-icon></view>
       </view>
 
-      <loading-view wx:if="{{loading || imageLoading}}" label="正在下载校历"></loading-view>
-      <view wx:elif="{{imagePath}}" class="calendar-image-card card stagger-item stagger-3">
+      <loading-view wx:if="{{loading || imageLoading}}" label="正在下载校历" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
+      <view wx:elif="{{imagePath}}" class="calendar-image-card card">
         <view class="image-toolbar">
           <view class="image-action pressable" bindtap="saveImage" hover-class="pressing" aria-role="button" aria-label="保存校历到相册">
             <lucide-icon name="download" tone="sage" size="{{21}}"></lucide-icon>

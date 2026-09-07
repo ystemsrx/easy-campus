@@ -1,9 +1,9 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page page--quick-entry personalization-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar title="个性化" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="personalization-content page-content page-enter">
-    <view class="personalization-card card stagger-item stagger-1">
+    <view class="personalization-card card">
       <view class="appearance-setting">
         <text class="personalization-title">外观</text>
         <view class="appearance-control">
@@ -23,7 +23,7 @@
       </view>
     </view>
 
-    <view class="theme-setting-card card stagger-item stagger-2">
+    <view class="theme-setting-card card">
       <text class="personalization-title">主题</text>
       <view class="visual-theme-options" aria-label="主题样式">
         <view
@@ -53,7 +53,7 @@
       </view>
     </view>
 
-    <view class="personalization-card interaction-setting-card card stagger-item stagger-3">
+    <view class="personalization-card interaction-setting-card card">
       <view class="personalization-row personalization-row--divided">
         <view class="personalization-copy">
           <text class="personalization-title">减少动态效果</text>

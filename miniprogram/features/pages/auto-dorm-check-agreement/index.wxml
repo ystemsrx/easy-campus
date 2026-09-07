@@ -1,10 +1,10 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page agreement-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="使用须知" back transparent theme="{{theme}}"></navigation-bar>
 
     <view class="agreement-content page-content page-enter">
-      <view class="agreement-hero stagger-item stagger-1">
+      <view class="agreement-hero">
         <view class="agreement-hero-icon">
           <lucide-icon name="shield-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{31}}"></lucide-icon>
         </view>
@@ -12,7 +12,7 @@
         <text class="agreement-intro">请在首次启用前完整阅读。自动查寝是一项辅助能力，提交过程不校验本人实时位置，不能替代本人按学校要求完成查寝打卡。</text>
       </view>
 
-      <view class="agreement-document card stagger-item stagger-2">
+      <view class="agreement-document card">
         <view class="agreement-section">
           <text class="agreement-section-index">01</text>
           <view class="agreement-section-copy">

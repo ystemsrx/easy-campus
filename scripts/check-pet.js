@@ -475,7 +475,7 @@ assert(
     ) &&
     setupTemplate.includes('wx:for="{{shapeOptions}}"') &&
     setupTemplate.includes('class="shape-pet-frame"') &&
-    setupTemplate.includes('class="pet-drawer-card') &&
+    setupTemplate.includes(' pet-drawer-card') &&
     setupTemplate.includes('class="setup-nav-skip') &&
     setupTemplate.includes("跳过选择") &&
     setupTemplate.includes('bindchange="onPetEnabledChange"') &&
@@ -515,7 +515,7 @@ assert(
     setupStyles.includes("width: 50rpx; height: 50rpx") &&
     setupStyles.includes("box-sizing: border-box") &&
     setupTemplate.indexOf('class="partner-toggle-list') <
-      setupTemplate.indexOf('class="pet-drawer-layer') &&
+      setupTemplate.indexOf(' pet-drawer-layer') &&
     !setupTemplate.includes("保存设置") &&
     !setupTemplate.includes("当前选择会完整播放动效") &&
     !setupTemplate.includes("关闭后保留当前形状与颜色") &&
@@ -600,7 +600,8 @@ assert(
     pickerStyles.includes(".pet-picker-layer scroll-view") &&
     pickerStyles.includes("box-sizing: border-box") &&
     pickerStyles.includes("font-size: 40rpx") &&
-    pickerStyles.includes("transform: translateY(104%)") &&
+    pickerStyles.includes('@import "../../motion.wxss"') &&
+    pickerTemplate.includes("motion-sheet--active") &&
     navigationScript.includes("let loginRouteOpening = false") &&
     navigationScript.includes("if (loginRouteOpening) {") &&
     navigationScript.includes("page.prepareForAuthenticationRequired();") &&

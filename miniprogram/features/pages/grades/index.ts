@@ -69,8 +69,6 @@ interface GradeComponentPreview {
 
 interface GradeView extends GradeCourse {
   renderKey: string;
-  animateEntry: boolean;
-  animationDelay: number;
   displayScore: string;
   scoreTone: string;
   compactScore: boolean;
@@ -134,8 +132,6 @@ const SORT_CONFIG: Record<GradeSortMode, SortConfig> = {
 
 let requestSequence = 0;
 let hydratedGradesAccount = "";
-let gradeRenderBatch = 0;
-let gradeListAnimationRequested = true;
 let gradeTouchStart: TapPoint | null = null;
 let gradeTouchMoved = false;
 let lastGradeScrollAt = 0;
@@ -228,20 +224,13 @@ function isCompactScore(value: string): boolean {
   return Array.from(normalized).length > 2;
 }
 
-function toGradeView(
-  course: GradeCourse,
-  renderKey: string,
-  animateEntry: boolean,
-  animationDelay: number,
-): GradeView {
+function toGradeView(course: GradeCourse, renderKey: string): GradeView {
   const displayScore = formatScore(course.finalScore);
   const components = isMakeupOrDeferredGrade(course) ? [] : course.components;
   return {
     ...course,
     components,
     renderKey,
-    animateEntry,
-    animationDelay,
     displayScore,
     scoreTone: scoreTone(course.finalScore, isUnsuccessfulGrade(course)),
     compactScore: isCompactScore(displayScore),
@@ -334,8 +323,6 @@ Page({
   onLoad() {
     hydratedGradesAccount = "";
     requestSequence += 1;
-    gradeRenderBatch = 0;
-    gradeListAnimationRequested = true;
     gradeTouchStart = null;
     gradeTouchMoved = false;
     lastGradeScrollAt = 0;
@@ -401,7 +388,6 @@ Page({
     if (!account || hydratedGradesAccount === account) return;
     if (hydratedGradesAccount && hydratedGradesAccount !== account) {
       requestSequence += 1;
-      gradeRenderBatch += 1;
       this.setData({
         loading: false,
         refreshing: false,
@@ -542,23 +528,8 @@ Page({
   },
   applyGradesData(data: GradesData, fetchedAtValue = "", append = false) {
     const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
-    const animateEntries = gradeListAnimationRequested;
-    if (animateEntries) {
-      gradeRenderBatch += 1;
-      gradeListAnimationRequested = false;
-    }
-    const animatedIds = new Set(
-      this.data.gradeItems
-        .filter((item) => item.animateEntry)
-        .map((item) => item.id),
-    );
     const incoming = data.items.map((course, index) =>
-      toGradeView(
-        course,
-        `${gradeRenderBatch}:${course.id}:${index}`,
-        animateEntries || animatedIds.has(course.id),
-        index < 8 ? index * 45 : 0,
-      ),
+      toGradeView(course, `${course.id}:${index}`),
     );
     this.setData({
       gradeItems: append ? [...this.data.gradeItems, ...incoming] : incoming,
@@ -834,7 +805,6 @@ Page({
     const mode = String(event.detail.value) as GradeSortMode;
     const config = SORT_CONFIG[mode];
     if (!config || mode === this.data.sortMode) return;
-    gradeListAnimationRequested = true;
     this.setData({
       sortMode: mode,
       sort: config.sort,

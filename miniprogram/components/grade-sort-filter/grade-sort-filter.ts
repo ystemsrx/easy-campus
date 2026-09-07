@@ -1,4 +1,5 @@
 import { haptic } from "../../utils/haptics";
+import { cancelPresence, MOTION, setPresence } from "../../utils/motion";
 
 type GradeSortMode = "default" | "score-desc" | "score-asc";
 
@@ -6,9 +7,12 @@ Component({
   properties: {
     value: { type: String, value: "default" },
     theme: { type: String, value: "light" },
+    reducedMotion: { type: Boolean, value: false },
   },
   data: {
     visible: false,
+    mounted: false,
+    active: false,
     popoverTop: 0,
     popoverRight: 20,
     options: [
@@ -19,7 +23,13 @@ Component({
   },
   pageLifetimes: {
     hide() {
-      this.setData({ visible: false });
+      cancelPresence(this);
+      this.setData({ visible: false, mounted: false, active: false });
+    },
+  },
+  lifetimes: {
+    detached() {
+      cancelPresence(this);
     },
   },
   methods: {
@@ -40,21 +50,25 @@ Component({
           ? Math.max(16, windowInfo.windowWidth - right)
           : 20,
       });
+      setPresence(this, true);
     },
     close() {
       this.setData({ visible: false });
+      setPresence(this, false, {
+        exitMs: MOTION.popoverExit,
+        reducedMotion: this.data.reducedMotion,
+      });
     },
     select(event: WechatMiniprogram.TouchEvent) {
+      if (!this.data.visible) return;
       const value = String(event.currentTarget.dataset.value) as GradeSortMode;
       if (!this.data.options.some((option) => option.value === value)) return;
       haptic("light");
+      this.close();
       if (value === this.data.value) {
-        this.setData({ visible: false });
         return;
       }
-      this.setData({ visible: false }, () => {
-        this.triggerEvent("change", { value });
-      });
+      this.triggerEvent("change", { value });
     },
     noop() {},
   },

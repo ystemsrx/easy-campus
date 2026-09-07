@@ -131,12 +131,8 @@ async function main() {
     quickEntryTemplates.every(({ source }) =>
       source.includes("page page--quick-entry"),
     ) &&
-      appStyles.includes(
-        ".page--quick-entry .page-enter { animation-duration: 180ms; }",
-      ) &&
-      appStyles.includes(
-        ".page--quick-entry .stagger-item { animation-duration: 220ms; }",
-      ),
+      appStyles.includes("animation-duration: 200ms;") &&
+      appStyles.includes("animation-name: page-fade;"),
     `我的页面关联子页必须使用快速入场：${quickEntryTemplates
       .filter(({ source }) => !source.includes("page page--quick-entry"))
       .map(({ label }) => label)

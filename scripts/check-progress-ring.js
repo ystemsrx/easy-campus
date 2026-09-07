@@ -53,7 +53,7 @@ assert(
 assert(
   decimalRing.includes(
     '<animate attributeName="stroke-dasharray" from="0 263.89" to="231.96 31.93"',
-  ) && decimalRing.includes('dur=".72s"'),
+  ) && decimalRing.includes('dur=".24s"'),
   "圆环必须沿轨迹从零平滑绘制到当前成绩",
 );
 assert(
@@ -62,9 +62,7 @@ assert(
 );
 
 assert(
-  decodeSource(progressRingSource(120)).includes(
-    'stroke-dasharray="263.89 0"',
-  ),
+  decodeSource(progressRingSource(120)).includes('stroke-dasharray="263.89 0"'),
   "超过 100 分时进度弧不得超过满环",
 );
 

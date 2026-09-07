@@ -1,9 +1,9 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page page--quick-entry assistant-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <navigation-bar back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
 
   <view wx:if="{{statusLoading}}" class="assistant-state page-content">
-    <loading-view label="正在打开选课助手"></loading-view>
+    <loading-view label="正在打开选课助手" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
   </view>
 
   <view wx:elif="{{statusError}}" class="assistant-state page-content">
@@ -68,7 +68,7 @@
           <view class="course-section-head"><text class="course-section-title display-title">{{favoritesOnly ? '我的收藏' : '课程榜'}}</text><view class="course-sort-control"><view id="course-sort-trigger" class="course-sort-trigger {{sortMenuOpen ? 'course-sort-trigger--open' : ''}}" catchtap="toggleSortMenu" hover-class="none"><text>按{{catalogSortLabel}}排序</text><image class="course-sort-icon" src="{{sortMenuOpen ? '/assets/icons/arrow-up-down-coral.svg' : '/assets/icons/arrow-up-down-muted.svg'}}" mode="aspectFit"></image></view></view></view>
 
           <view wx:if="{{favoritesOnly && favoritesError && courses.length}}" class="favorites-error" bindtap="retryFavorites" aria-role="button"><text>{{favoritesError}}</text></view>
-          <loading-view wx:if="{{(favoritesOnly ? favoritesLoading : catalogLoading) && !courses.length}}" label="正在整理匿名成绩"></loading-view>
+          <loading-view wx:if="{{(favoritesOnly ? favoritesLoading : catalogLoading) && !courses.length}}" label="正在整理匿名成绩" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
           <empty-state wx:elif="{{favoritesOnly && favoritesError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="收藏读取失败" action-text="重试" bindaction="retryFavorites"></empty-state>
           <empty-state wx:elif="{{!favoritesOnly && catalogError && !courses.length}}" icon="circle-alert" icon-tone="danger" title="课程列表加载失败" description="{{catalogError}}" action-text="重新加载" bindaction="retryCatalog"></empty-state>
           <empty-state wx:elif="{{!courses.length}}" icon="book-open" icon-tone="amber" title="暂无匹配课程" description="{{favoritesOnly ? '试试切换课程类型或清除筛选' : '换个课程类型或关键词试试'}}"></empty-state>
@@ -111,7 +111,7 @@
           </view>
 
           <view class="course-section-head publish-section-head"><text class="course-section-title display-title">我修过的课</text><text class="course-section-note">{{takenCourses.length}} 门</text></view>
-          <loading-view wx:if="{{mineLoading && !takenCourses.length}}" label="正在整理可评价课程"></loading-view>
+          <loading-view wx:if="{{mineLoading && !takenCourses.length}}" label="正在整理可评价课程" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
           <empty-state wx:elif="{{mineError && !takenCourses.length}}" icon="circle-alert" icon-tone="danger" title="课程加载失败" description="{{mineError}}" action-text="重新加载" bindaction="retryMine"></empty-state>
           <empty-state wx:elif="{{!takenCourses.length}}" icon="book-open" icon-tone="amber" title="暂无可评价课程" description="仅通识选修课和体育课会显示在这里"></empty-state>
           <view wx:else class="taken-list">
@@ -147,7 +147,7 @@
     <view class="course-sort-popover" style="top: {{sortMenuTop}}px; right: {{sortMenuRight}}px;" catchtap="noop"><view class="course-sort-option {{catalogSort === 'average_score' ? 'course-sort-option--active' : ''}}" data-sort="average_score" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">历史均分</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{catalogSort === 'average_score'}}" name="check" tone="coral" size="23"></lucide-icon></view><view class="course-sort-option {{catalogSort === 'rating' ? 'course-sort-option--active' : ''}} {{reviewAccess.ownReviewCount === 0 ? 'course-sort-option--locked' : ''}}" data-sort="rating" catchtap="selectCatalogSort" hover-class="none"><view class="course-sort-option-copy"><text class="course-sort-option-title">学生评价</text><text class="course-sort-option-note">从高到低</text></view><lucide-icon wx:if="{{reviewAccess.ownReviewCount === 0}}" name="lock-keyhole" tone="muted" size="22"></lucide-icon><lucide-icon wx:elif="{{catalogSort === 'rating'}}" name="check" tone="coral" size="23"></lucide-icon></view></view>
   </view>
 
-  <bottom-sheet visible="{{reviewVisible}}" scrollable="{{false}}" title="{{selectedGrade ? selectedGrade.displayName : '发表课程想法'}}" theme="{{theme}}" expanded="{{true}}" expanded-height="86" safe-area="{{false}}" close-on-mask="{{!reviewSubmitting}}" bindclose="closeReview">
+  <bottom-sheet visible="{{reviewVisible}}" scrollable="{{false}}" title="{{selectedGrade ? selectedGrade.displayName : '发表课程想法'}}" theme="{{theme}}" expanded="{{true}}" expanded-height="86" safe-area="{{false}}" close-on-mask="{{!reviewSubmitting}}" bindclose="closeReview" reduced-motion="{{motionClass === 'motion-reduced'}}">
     <view slot="subtitle" class="review-sheet-subtitle"><text wx:if="{{selectedGrade}}" class="course-type course-type--{{selectedGrade.type}}">{{selectedGrade.typeLabel}}</text><text wx:if="{{selectedGrade}}" class="review-sheet-meta">{{selectedGrade.termLabel}} · 成绩 {{selectedGrade.scoreLabel}}</text></view>
     <view class="review-scroll-shell">
     <scroll-view class="review-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">

@@ -1,10 +1,10 @@
-<view wx:if="{{mounted}}" class="sheet-layer sheet-layer--{{theme}}">
+<view wx:if="{{mounted}}" class="motion-layer {{visible ? 'motion-layer--active' : ''}} {{reducedMotion ? 'motion-reduced' : ''}} sheet-layer sheet-layer--{{theme}}">
   <view
-    class="sheet-scrim {{active ? 'sheet-scrim--active' : ''}}"
+    class="motion-scrim {{active ? 'motion-scrim--active' : ''}} sheet-scrim"
     bindtap="onMaskTap"
     catchtouchmove="noop"
   ></view>
-  <view class="sheet-card {{expanded ? 'sheet-card--expanded' : ''}} {{compactHeader ? 'sheet-card--compact-header' : ''}} {{safeArea ? '' : 'sheet-card--no-safe-area'}} {{active ? 'sheet-card--active' : ''}}" style="{{expanded ? 'height:' + expandedHeight + 'vh;' : ''}}">
+  <view class="motion-sheet {{active ? 'motion-sheet--active' : ''}} sheet-card {{expanded ? 'sheet-card--expanded' : ''}} {{compactHeader ? 'sheet-card--compact-header' : ''}} {{safeArea ? '' : 'sheet-card--no-safe-area'}}" style="{{expanded ? 'height:' + expandedHeight + 'vh;' : ''}}">
     <view class="sheet-handle"></view>
     <view class="sheet-header">
       <view class="sheet-title-wrap">

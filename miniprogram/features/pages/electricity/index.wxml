@@ -1,12 +1,12 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page electricity-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="宿舍用电与余额" back transparent theme="{{theme}}"></navigation-bar>
-    <view class="electricity-content page-content page-enter">
+    <view class="electricity-content page-content">
       <empty-state wx:if="{{serviceUnavailable && !account}}" icon="circle-alert" icon-tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" title="服务暂不可用" description="电费查询仅通过校园 Tailscale 服务访问，请稍后再试。" action-text="重新连接" bindaction="retryService"></empty-state>
 
       <block wx:else>
-        <view wx:if="{{bindingEditing || !account}}" class="query-card card stagger-item stagger-2">
+        <view wx:if="{{bindingEditing || !account}}" class="query-card card">
           <text class="query-title">绑定寝室以查询水电信息</text>
           <text class="field-label">宿舍楼</text>
           <view class="selector-field pressable {{optionsLoading ? 'selector-field--disabled' : ''}}" bindtap="openBuildingPicker" hover-class="pressing">
@@ -31,7 +31,7 @@
           <view wx:if="{{errorMessage}}" class="inline-error"><lucide-icon name="circle-alert" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'danger'}}" size="{{24}}"></lucide-icon><text>{{errorMessage}}</text></view>
         </view>
 
-        <view wx:if="{{account}}" class="result-section stagger-item stagger-3">
+        <view wx:if="{{account}}" class="result-section">
           <view class="section-header result-heading">
             <view class="result-copy"><text class="section-title">寝室电费</text><text class="section-caption" overflow="ellipsis" max-lines="1">{{boundBuildingName}} · {{boundRoomNumber}} · {{cacheLabel}}</text></view>
             <view class="result-actions"><view class="result-action pressable" bindtap="openRebind" hover-class="pressing"><lucide-icon name="home" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{21}}"></lucide-icon><text>换绑</text></view><view class="result-action result-action--icon pressable {{querying ? 'result-action--disabled' : ''}}" bindtap="onRefreshBoundAccount" hover-class="pressing" aria-role="button" aria-label="{{querying ? '正在刷新电费' : '刷新电费'}}" aria-disabled="{{querying}}"><image wx:if="{{querying}}" class="result-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image><lucide-icon wx:else name="refresh-cw" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{22}}"></lucide-icon></view></view>
@@ -70,7 +70,7 @@
     </view>
   </scroll-view>
 
-  <bottom-sheet visible="{{buildingPickerVisible}}" expanded="{{true}}" scrollable="{{false}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker">
+  <bottom-sheet visible="{{buildingPickerVisible}}" expanded="{{true}}" scrollable="{{false}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker" reduced-motion="{{motionClass === 'motion-reduced'}}">
     <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
     <scroll-view class="building-picker-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
       <view wx:for="{{buildingRows}}" wx:key="id" wx:for-item="row" class="building-row">

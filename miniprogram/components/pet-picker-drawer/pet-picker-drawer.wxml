@@ -1,8 +1,8 @@
 <view
-  class="pet-picker-layer {{themeClass}} {{visualThemeClass}} {{motionClass}} {{open ? 'pet-picker-layer--open' : ''}}"
+  class="motion-layer {{open ? 'motion-layer--active' : ''}} pet-picker-layer {{themeClass}} {{visualThemeClass}} {{motionClass}}"
 >
-  <view class="pet-picker-scrim" catchtap="noop" catchtouchmove="noop"></view>
-  <view class="pet-picker-card">
+  <view class="motion-scrim {{open ? 'motion-scrim--active' : ''}} pet-picker-scrim" catchtap="noop" catchtouchmove="noop"></view>
+  <view class="motion-sheet {{open ? 'motion-sheet--active' : ''}} pet-picker-card">
     <view class="pet-picker-handle"></view>
     <view class="pet-picker-header">
       <text class="pet-picker-title">选择一个伙伴</text>

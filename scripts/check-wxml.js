@@ -423,21 +423,15 @@ if (
   !gradesScript.includes("this.selectComponent(") ||
   !gradesScript.includes('"#grade-sort-filter",') ||
   !gradesTemplate.includes('wx:key="renderKey"') ||
-  !gradesTemplate.includes(
-    "class=\"grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}\"",
-  ) ||
+  !gradesTemplate.includes('class="grade-card-motion"') ||
   !gradesTemplate.includes('class="grade-card card pressable"') ||
   gradesTemplate.includes('class="grade-card card pressable stagger-item"') ||
-  !gradesScript.includes("let gradeRenderBatch = 0;") ||
-  !gradesScript.includes("`${gradeRenderBatch}:${course.id}:${index}`") ||
-  !gradesScript.includes("let gradeListAnimationRequested = true;") ||
-  !gradesScript.includes("animateEntries || animatedIds.has(course.id)") ||
   gradesScript.includes("gradeAnimationTimer") ||
-  !gradeSortTemplate.includes('class="grade-sort-popover"') ||
+  !gradeSortTemplate.includes('class="grade-sort-popover ') ||
   !gradeSortScript.includes("分数高→低") ||
   !gradeSortScript.includes("分数低→高") ||
   !gradeSortScript.includes("if (value === this.data.value) {") ||
-  !gradeSortScript.includes("this.setData({ visible: false }, () => {") ||
+  !gradeSortScript.includes("this.close();") ||
   !gradeSortScript.includes('this.triggerEvent("change", { value })') ||
   !gradeSortStyles.includes("background: transparent") ||
   !gradesTemplate.includes("extra-left") ||
@@ -449,7 +443,7 @@ if (
   gradesScript.includes("缓存更新于")
 ) {
   failures.push(
-    "features/pages/grades: 排序浮窗必须隔离页面状态，成绩卡片只在首次进入和切换排序时整批播放动画",
+    "features/pages/grades: 排序浮窗必须隔离页面状态，成绩筛选与排序不重播列表入场",
   );
 }
 if (
@@ -516,7 +510,7 @@ if (
 
 if (
   passRateTemplate.includes("<bottom-sheet") ||
-  !passRateTemplate.includes('class="pass-picker-layer"') ||
+  !passRateTemplate.includes(' pass-picker-layer"') ||
   !passRateTemplate.includes('class="semester-menu"') ||
   passRateTemplate.includes('class="semester-menu-scroll"') ||
   !passRateTemplate.includes('class="course-picker-body"') ||

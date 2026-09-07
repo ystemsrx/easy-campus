@@ -1,4 +1,4 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page grades-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onGradeScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="成绩" back extra-left transparent theme="{{theme}}">
@@ -8,14 +8,14 @@
       </view>
     </navigation-bar>
 
-    <view class="grades-content page-content page-enter">
+    <view class="grades-content page-content">
       <scroll-view class="semester-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
         <view class="semester-row">
           <view wx:for="{{semesterChips}}" wx:key="id" class="semester-chip pressable {{activeSemesterId === item.id ? 'semester-chip--active' : ''}}" data-id="{{item.id}}" bindtap="selectSemesterQuick" hover-class="semester-chip--pressed" hover-stay-time="0"><text>{{item.label}}</text></view>
         </view>
       </scroll-view>
 
-      <view class="grade-overview stagger-item stagger-1">
+      <view class="grade-overview">
         <view class="ambient-blob grade-blob grade-blob--one"></view><view class="ambient-blob grade-blob grade-blob--two"></view>
         <view class="grade-overview-main">
           <view class="average-ring"><image class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"></image><view class="average-inner"><text class="average-value tnum">{{averageLabel}}</text></view></view>
@@ -28,16 +28,16 @@
         <view class="overview-foot"><text>{{sourceLabel}}</text></view>
       </view>
 
-      <view class="grade-tools stagger-item stagger-2">
+      <view class="grade-tools">
         <view class="search-field grade-search {{searchFocused ? 'search-field--focus' : ''}}"><lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon><input class="search-input" value="{{queryText}}" placeholder="课程、成绩或分项" placeholder-class="grade-placeholder" bindinput="onQueryInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" bindconfirm="search" confirm-type="search" /><view wx:if="{{queryText}}" class="grade-clear" bindtap="clearSearch"><lucide-icon name="x" tone="muted" size="{{24}}"></lucide-icon></view></view>
         <view class="grade-filter-button pressable" bindtap="openFilter" hover-class="pressing" aria-role="button" aria-label="选择排序方式"><lucide-icon name="list-filter" tone="muted" size="{{31}}"></lucide-icon></view>
       </view>
 
       <view class="result-heading"><view><text class="result-title">各科成绩</text><text class="result-count">{{filterLabel}} · 共 {{total}} 门</text></view><text class="result-sort">{{sortLabel}}</text></view>
 
-      <loading-view wx:if="{{loading}}" label="正在整理成绩与分项"></loading-view>
+      <loading-view wx:if="{{loading}}" label="正在整理成绩与分项" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
       <view wx:elif="{{gradeItems.length}}" class="grade-list">
-        <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion {{item.animateEntry ? 'stagger-item' : ''}}" style="animation-delay: {{item.animationDelay}}ms;">
+        <view wx:for="{{gradeItems}}" wx:key="renderKey" class="grade-card-motion">
           <view class="grade-card card pressable" data-key="{{item.renderKey}}" bindtouchstart="onGradeTouchStart" bindtouchmove="onGradeTouchMove" bindtouchend="onGradeTouchEnd" bindtouchcancel="onGradeTouchCancel" bindtap="openGrade" hover-class="pressing">
             <view class="score-tile score-tile--{{item.scoreTone}} {{item.compactScore ? 'score-tile--compact' : ''}}"><text class="score-value" overflow="ellipsis" max-lines="2">{{item.displayScore}}</text></view>
             <view class="course-copy">
@@ -56,7 +56,7 @@
     </view>
   </scroll-view>
 
-  <grade-sort-filter id="grade-sort-filter" value="{{sortMode}}" theme="{{theme}}" bindchange="selectSortMode"></grade-sort-filter>
+  <grade-sort-filter id="grade-sort-filter" value="{{sortMode}}" theme="{{theme}}" bindchange="selectSortMode" reduced-motion="{{motionClass === 'motion-reduced'}}"></grade-sort-filter>
   <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>
 <screen-watermark></screen-watermark>

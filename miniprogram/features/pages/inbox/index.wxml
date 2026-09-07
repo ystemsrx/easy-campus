@@ -1,8 +1,8 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page inbox-page {{themeClass}} {{visualThemeClass}} {{motionClass}}" bindtap="onPageTap">
   <navigation-bar title="校园通知" back transparent theme="{{theme}}"></navigation-bar>
 
-  <view class="inbox-toolbar page-enter">
+  <view class="inbox-toolbar">
     <view class="segmented-control" aria-role="tablist">
       <view class="segment-indicator segment-indicator--{{activeTab}}"></view>
       <view class="segment-item {{activeTab === 0 ? 'segment-item--active' : ''}}" data-index="0" bindtap="onTabTap" hover-class="segment-item--pressed" aria-role="tab" aria-selected="{{activeTab === 0}}"><text>教务消息</text></view>
@@ -10,7 +10,7 @@
     </view>
   </view>
 
-  <swiper class="inbox-swiper" current="{{activeTab}}" duration="420" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
+  <swiper class="inbox-swiper" current="{{activeTab}}" duration="{{motionClass === 'motion-reduced' ? 0 : 240}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
       <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="{{theme === 'dark' ? 'white' : 'black'}}" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
         <view class="inbox-content page-content">
@@ -33,7 +33,7 @@
           <view wx:if="{{messageItems.length}}" class="message-list">
             <view wx:for="{{messageItems}}" wx:key="id" class="message-list-item">
               <view wx:if="{{item.showHistoryDivider}}" class="history-divider" aria-label="以下为历史消息"><view class="history-divider-line"></view><text>以下为历史消息</text><view class="history-divider-line"></view></view>
-              <view class="message-card card stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;">
+              <view class="message-card card">
               <view class="message-meta-row">
                 <text class="message-badge message-badge--{{item.tone}}">{{item.label}}</text>
                 <text class="message-time">{{item.createdAt}}</text>
@@ -69,7 +69,7 @@
               </view>
             </view>
           </view>
-          <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息"></loading-view>
+          <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
           <empty-state wx:elif="{{messageError}}" icon="circle-alert" icon-tone="danger" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
           <empty-state wx:elif="{{messageLoaded}}" icon="message-circle-more" title="没有符合条件的消息" description="更换筛选条件，或下拉刷新后再看看" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
         </view>
@@ -89,7 +89,7 @@
           <view wx:if="{{noticeItems.length}}" class="notice-list">
             <view wx:for="{{noticeItems}}" wx:key="link" class="notice-list-item">
               <view wx:if="{{item.showHistoryDivider}}" class="history-divider" aria-label="以下为历史消息"><view class="history-divider-line"></view><text>以下为历史消息</text><view class="history-divider-line"></view></view>
-              <view class="notice-item card pressable stagger-item" style="animation-delay: {{index < 7 ? index * 45 : 0}}ms;" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
+              <view class="notice-item card pressable" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
               <view class="notice-icon"><lucide-icon name="megaphone" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
                 <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">学校通知</text></view></view>
@@ -97,7 +97,7 @@
               </view>
             </view>
           </view>
-          <loading-view wx:elif="{{noticeLoading}}" label="正在读取学校通知"></loading-view>
+          <loading-view wx:elif="{{noticeLoading}}" label="正在读取学校通知" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
           <empty-state wx:elif="{{noticeError}}" icon="circle-alert" icon-tone="danger" title="通知加载失败" description="{{noticeError}}" action-text="重新加载" bindaction="refreshNotices"></empty-state>
           <empty-state wx:elif="{{noticeLoaded}}" icon="megaphone" title="没有找到通知" description="尝试更换关键词，或清空搜索条件" action-text="清空搜索" bindaction="clearNoticeQuery"></empty-state>
         </view>
