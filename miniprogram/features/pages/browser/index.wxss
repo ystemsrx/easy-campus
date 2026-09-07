@@ -5,6 +5,10 @@
 .notice-heading-title { display: block; margin-top: 24rpx; color: var(--color-text); font-size: 47rpx; font-weight: 700; line-height: 1.42; letter-spacing: -0.8rpx; }
 .notice-meta { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin-top: 14rpx; color: #a39e92; font-size: 21rpx; }.notice-meta view { width: 7rpx; height: 7rpx; border-radius: 50%; background: #c9c5b8; }
 .notice-article { padding: 36rpx; overflow: visible; }
+.notice-article-image { display: block; width: 100%; margin: 24rpx 0; border-radius: 16rpx; }
+.notice-attachment { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start; width: 100%; margin-bottom: 24rpx; font-size: 16px; line-height: 1.8; color: var(--color-primary); }
+.notice-attachment-icon { display: block; flex: none; width: 16px; height: 16px; margin: 6px 6px 0 0; }
+.notice-attachment-name { display: block; flex: 1; min-width: 0; font-size: 16px; line-height: 1.8; word-break: break-all; text-decoration: underline; }
 .notice-rich-text { display: block; color: #3a352d; font-size: 27rpx; line-height: 1.85; word-break: normal; }
 .notice-native-list { display: flex; flex-direction: column; width: 100%; margin: 0 0 32rpx; color: #3a352d; font-size: 27rpx; line-height: 1.75; }
 .notice-native-list-row { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start; width: 100%; margin: 0 0 18rpx; }

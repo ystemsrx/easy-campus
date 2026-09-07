@@ -11,12 +11,28 @@
 
       <view wx:if="{{contentHtml}}" class="notice-article card">
         <block wx:for="{{contentBlocks}}" wx:key="key" wx:for-item="contentBlock">
-          <rich-text wx:if="{{contentBlock.type === 'html'}}" class="notice-rich-text" nodes="{{contentBlock.contentHtml}}"></rich-text>
+          <block wx:if="{{contentBlock.type === 'html'}}">
+            <block wx:for="{{contentBlock.segments}}" wx:key="key" wx:for-item="segment">
+              <rich-text wx:if="{{segment.type === 'html'}}" class="notice-rich-text" mode="compat" nodes="{{segment.contentHtml}}"></rich-text>
+              <image wx:elif="{{segment.type === 'image'}}" class="notice-article-image pressable" src="{{segment.src}}" mode="widthFix" data-src="{{segment.src}}" bindtap="previewImage" aria-role="button" aria-label="{{segment.alt || '查看大图'}}"></image>
+              <view wx:else class="notice-attachment pressable" data-url="{{segment.url}}" bindtap="openAttachment" hover-class="pressing" aria-role="button" aria-label="{{segment.name}}">
+                <image wx:if="{{segment.iconSrc}}" class="notice-attachment-icon" src="{{segment.iconSrc}}" mode="aspectFit"></image><text class="notice-attachment-name">{{segment.name}}</text>
+              </view>
+            </block>
+          </block>
           <view wx:else class="notice-native-list">
             <view wx:for="{{contentBlock.items}}" wx:key="key" wx:for-item="listItem" class="notice-native-list-row">
               <view class="notice-native-list-marker" style="width: {{contentBlock.markerWidthEm}}em;"><text>{{listItem.marker}}</text></view>
               <view class="notice-native-list-spacer"></view>
-              <view class="notice-native-list-body"><rich-text class="notice-native-list-body-rich-text" nodes="{{listItem.contentHtml}}"></rich-text></view>
+              <view class="notice-native-list-body">
+                <block wx:for="{{listItem.segments}}" wx:key="key" wx:for-item="segment">
+                  <rich-text wx:if="{{segment.type === 'html'}}" class="notice-native-list-body-rich-text" mode="compat" nodes="{{segment.contentHtml}}"></rich-text>
+                  <image wx:elif="{{segment.type === 'image'}}" class="notice-article-image pressable" src="{{segment.src}}" mode="widthFix" data-src="{{segment.src}}" bindtap="previewImage" aria-role="button" aria-label="{{segment.alt || '查看大图'}}"></image>
+                  <view wx:else class="notice-attachment pressable" data-url="{{segment.url}}" bindtap="openAttachment" hover-class="pressing" aria-role="button" aria-label="{{segment.name}}">
+                    <image wx:if="{{segment.iconSrc}}" class="notice-attachment-icon" src="{{segment.iconSrc}}" mode="aspectFit"></image><text class="notice-attachment-name">{{segment.name}}</text>
+                  </view>
+                </block>
+              </view>
             </view>
           </view>
         </block>
@@ -28,4 +44,5 @@
     </view>
   </scroll-view>
 </view>
+<refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 <screen-watermark></screen-watermark>

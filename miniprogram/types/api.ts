@@ -317,12 +317,28 @@ export interface NoticeHtmlContentBlock {
   key: string;
   type: "html";
   contentHtml: string;
+  segments?: NoticeContentSegment[];
+}
+
+export type NoticeContentSegment =
+  | { key: string; type: "html"; contentHtml: string }
+  | { key: string; type: "image"; src: string; alt: string }
+  | NoticeAttachment;
+
+export interface NoticeAttachment {
+  key: string;
+  type: "attachment";
+  url: string;
+  name: string;
+  fileType: string;
+  iconSrc: string;
 }
 
 export interface NoticeListContentItem {
   key: string;
   marker: string;
   contentHtml: string;
+  segments?: NoticeContentSegment[];
 }
 
 export interface NoticeListContentBlock {

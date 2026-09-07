@@ -360,6 +360,12 @@ assert(
   "通知详情序号列表必须使用独立原生行、固定序号列和可换行正文列",
 );
 assert(
+  [...noticeDetailTemplate.matchAll(/<rich-text\b[^>]*>/g)].every(([tag]) =>
+    tag.includes('mode="compat"'),
+  ),
+  "通知正文和列表正文必须启用富文本兼容排版，避免加粗片段各自换行",
+);
+assert(
   source.includes('return value.trim().replace(/老师/g, "").trim();') &&
     !source.includes("`${normalized}老师`"),
   "课程消息教师名称不得额外添加老师后缀",
