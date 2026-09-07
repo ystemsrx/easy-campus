@@ -60,6 +60,8 @@
             <text wx:else class="consumption-empty">暂无消耗记录</text>
           </view>
           <view class="date-card card">
+            <view class="date-row"><view class="date-icon date-icon--settled"><lucide-icon name="zap" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view><view><text>可用电补助</text><text class="tnum">{{account.availableElectricitySubsidyLabel}}</text></view></view>
+            <view class="date-divider"></view>
             <view class="date-row"><view class="date-icon"><lucide-icon name="calendar-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{29}}"></lucide-icon></view><view><text>上次缴费日期</text><text class="tnum">{{account.lastPaymentDateLabel}}</text></view></view>
             <view class="date-divider"></view>
             <view class="date-row"><view class="date-icon date-icon--settled"><lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view><view><text>最后结算日期</text><text class="tnum">{{account.lastSettlementDateLabel}}</text></view></view>

@@ -8,6 +8,7 @@ export interface ApiSuccess<T> {
 export interface TeachingSuccess<T> extends ApiSuccess<T> {
   meta: {
     cached: boolean;
+    shared?: boolean;
     fetchedAt?: string;
     refreshing?: boolean;
     stale?: boolean;
@@ -690,6 +691,7 @@ export interface ElectricityAccount {
   billedElectricityKwh: number;
   electricityFeeYuan: number;
   remainingAmountYuan: number;
+  availableElectricitySubsidyKwh?: number | null;
   lastPaymentDate: string | null;
   lastSettlementDate: string | null;
   dailyElectricityFees?: ElectricityDailyFee[];
@@ -711,12 +713,14 @@ export interface ElectricityBinding {
 export interface ElectricityCachedData {
   binding: ElectricityBinding | null;
   account: ElectricityAccount | null;
+  accountFetchedAt?: string | null;
 }
 
 export interface ElectricityQuery {
   buildingId: string;
   buildingName?: string;
   roomNumber: string;
+  automatic?: boolean;
 }
 
 export interface LocalSchedulePlan {
@@ -892,6 +896,7 @@ export interface TimetableData {
 export interface QueryMeta {
   deleted?: boolean;
   cached: boolean;
+  shared?: boolean;
   fetchedAt?: string;
   refreshing?: boolean;
   stale?: boolean;

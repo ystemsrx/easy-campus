@@ -3,7 +3,10 @@ import {
   getErrorMessage,
   shouldShowRefreshFailureFeedback,
 } from "../../../services/request";
-import { queryElectricity } from "../../../services/electricity";
+import {
+  isElectricityQueryResult,
+  queryElectricity,
+} from "../../../services/electricity";
 import { getElectricityBuildings } from "../../services/utilities";
 import { refreshElectricityOnForeground } from "../../../services/cache-refresh";
 import {
@@ -11,7 +14,6 @@ import {
   saveElectricitySnapshot,
   type ElectricitySnapshot,
 } from "../../../store/electricity";
-import { isUpstreamRefreshResult } from "../../../store/cache-policy";
 import {
   captureSessionLease,
   getSession,
@@ -46,6 +48,7 @@ interface ElectricityView {
   billedElectricityLabel: string;
   electricityFeeLabel: string;
   remainingAmountLabel: string;
+  availableElectricitySubsidyLabel: string;
   balanceNegative: boolean;
   lastPaymentDateLabel: string;
   lastSettlementDateLabel: string;
@@ -223,6 +226,11 @@ function toView(account: ElectricityAccount): ElectricityView {
     billedElectricityLabel: formatDecimal(account.billedElectricityKwh),
     electricityFeeLabel: formatDecimal(account.electricityFeeYuan),
     remainingAmountLabel: formatDecimal(account.remainingAmountYuan),
+    availableElectricitySubsidyLabel:
+      typeof account.availableElectricitySubsidyKwh === "number" &&
+      Number.isFinite(account.availableElectricitySubsidyKwh)
+        ? `${formatDecimal(account.availableElectricitySubsidyKwh)} 度`
+        : "暂无记录",
     balanceNegative: account.remainingAmountYuan < 0,
     lastPaymentDateLabel: account.lastPaymentDate || "暂无记录",
     lastSettlementDateLabel: account.lastSettlementDate || "暂无记录",
@@ -270,7 +278,7 @@ async function refreshElectricity(
         unavailable: false,
       };
     }
-    const refreshed = isUpstreamRefreshResult(result.meta);
+    const refreshed = isElectricityQueryResult(result.meta);
     if (refreshed) {
       saveElectricitySnapshot(
         lease.account,
@@ -514,11 +522,12 @@ Page({
       boundBuildingName: binding?.buildingName || "",
       boundRoomNumber: binding?.roomNumber || "",
       account: data.account ? toView(data.account) : null,
-      cacheLabel: activeSnapshot?.serverFetchedAt
-        ? `更新于 ${formatDateTime(activeSnapshot.serverFetchedAt)}`
-        : data.account
-          ? "使用已保存电费"
-          : "尚未绑定寝室",
+      cacheLabel:
+        data.accountFetchedAt || activeSnapshot?.serverFetchedAt
+          ? `更新于 ${formatDateTime(data.accountFetchedAt || activeSnapshot?.serverFetchedAt || "")}`
+          : data.account
+            ? "使用已保存电费"
+            : "尚未绑定寝室",
     };
     if (this.data.bindingEditing && this.data.account) {
       this.setData(bindingFields);
@@ -787,7 +796,7 @@ Page({
       ) {
         return false;
       }
-      if (!isUpstreamRefreshResult(result.meta)) {
+      if (!isElectricityQueryResult(result.meta)) {
         activeSnapshot = loadElectricitySnapshot(activeAccount);
         if (activeSnapshot) this.applyElectricityData(activeSnapshot.data);
         return false;

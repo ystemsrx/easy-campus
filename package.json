@@ -23,7 +23,7 @@
     "check:home": "node scripts/check-home.js && node scripts/check-home-grades-startup.js",
     "check:profile": "node scripts/check-profile.js",
     "check:tab-preload": "node scripts/check-primary-tab-preload.js && node scripts/check-tab-preparation.js",
-    "check:refresh-policy": "node scripts/check-refresh-policy.js && node scripts/check-snapshot-deletions.js",
+    "check:refresh-policy": "node scripts/check-refresh-policy.js && node scripts/check-snapshot-deletions.js && node scripts/check-electricity.js",
     "check:rooms": "node scripts/check-rooms.js",
     "check:navigation": "node scripts/check-navigation.js",
     "check:login": "node scripts/check-login.js",

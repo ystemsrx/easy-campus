@@ -138,7 +138,7 @@ assert(
     !cacheRefreshSource.includes("features/services") &&
     electricityServiceSource.includes('"/utilities/electricity/account"') &&
     electricityServiceSource.includes('"/utilities/electricity/query"') &&
-    cacheRefreshSource.includes("isCacheStale(current, DAY_MS)") &&
+    cacheRefreshSource.includes("isCacheStale(accountSnapshot, DAY_MS)") &&
     !isCacheStale(
       { serverFetchedAt: "", localStoredAt: 1_000 },
       DAY_MS,

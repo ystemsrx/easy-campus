@@ -1,4 +1,8 @@
-import { getElectricityAccount, queryElectricity } from "./electricity";
+import {
+  getElectricityAccount,
+  isElectricityQueryResult,
+  queryElectricity,
+} from "./electricity";
 import {
   claimAutomaticRefresh,
   DAY_MS,
@@ -70,7 +74,19 @@ export function refreshElectricityOnForeground(
       // 服务端快照读取失败时仍可按本地绑定尝试到期刷新。
     }
 
-    if (!current?.data.binding || !isCacheStale(current, DAY_MS)) {
+    const accountSnapshot = current
+      ? {
+          ...current,
+          serverFetchedAt:
+            current.data.accountFetchedAt || current.serverFetchedAt,
+        }
+      : null;
+    const hasSubsidy =
+      current?.data.account?.availableElectricitySubsidyKwh !== undefined;
+    if (
+      !current?.data.binding ||
+      (hasSubsidy && !isCacheStale(accountSnapshot, DAY_MS))
+    ) {
       return current;
     }
     const binding = current.data.binding;
@@ -82,9 +98,10 @@ export function refreshElectricityOnForeground(
         buildingId: binding.buildingId,
         buildingName: binding.buildingName,
         roomNumber,
+        automatic: true,
       });
       if (!isSessionLeaseCurrent(lease)) return null;
-      if (!isUpstreamRefreshResult(result.meta)) {
+      if (!isElectricityQueryResult(result.meta)) {
         return loadElectricitySnapshot(lease.account);
       }
       return saveElectricitySnapshot(
