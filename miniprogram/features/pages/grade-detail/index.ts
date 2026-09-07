@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   getGradeClassDistribution,
   getTimetable,
@@ -170,6 +171,7 @@ function classDistributionChart(
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

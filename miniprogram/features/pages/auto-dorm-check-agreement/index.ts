@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -5,6 +6,7 @@ import {
 import { ensureAuthenticated } from "../../../utils/navigation";
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

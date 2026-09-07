@@ -162,6 +162,7 @@ async function main() {
   load(
     "features/pages/electricity/index.ts",
     {
+      "../../../utils/app-share": { buildAppShare() {} },
       "../../../services/request": {},
       "../../../services/electricity": electricity,
       "../../services/utilities": {},

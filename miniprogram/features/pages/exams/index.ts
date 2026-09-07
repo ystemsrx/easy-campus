@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { getExams } from "../../../services/teaching";
 import {
   getErrorMessage,
@@ -251,6 +252,7 @@ function makeExamDetail(exam: ExamView): SelectedExamDetail {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

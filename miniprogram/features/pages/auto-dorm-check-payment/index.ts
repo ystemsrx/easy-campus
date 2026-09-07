@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   createAutoDormCheckPaymentOrder,
   getCachedAutoDormCheckPayment,
@@ -236,6 +237,7 @@ async function createIdempotencyKey(): Promise<string> {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

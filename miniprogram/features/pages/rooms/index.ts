@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { cancelPresence, setPresence } from "../../../utils/motion";
 import { getRoomOptions, getRooms } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
@@ -138,6 +139,7 @@ function toRoomView(room: EmptyRoom): RoomView {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

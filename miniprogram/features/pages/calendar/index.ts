@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   ApiClientError,
   getErrorMessage,
@@ -123,6 +124,7 @@ async function refreshCalendar(
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

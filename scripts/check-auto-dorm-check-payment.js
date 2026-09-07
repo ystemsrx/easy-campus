@@ -524,6 +524,7 @@ function loadPaymentPageRuntime(options) {
     moduleRecord.exports,
     (specifier) => {
       if (specifier === "../../../services/auto-dorm-check") return api;
+      if (specifier === "../../../utils/app-share") return { buildAppShare() {} };
       if (specifier === "../../../services/request") {
         return {
           ApiClientError,

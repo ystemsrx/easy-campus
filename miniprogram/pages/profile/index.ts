@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../utils/app-share";
 import {
   autoDormCheckPresentationPatch,
   getPrewarmedProfileFirstScreen,
@@ -55,6 +56,7 @@ type ProfileSettingKey =
   | "pet"
   | "grades"
   | "personalization"
+  | "about"
   | "terms"
   | "privacy";
 
@@ -118,6 +120,7 @@ function clearAuthenticationExitTimer(): void {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     ...INITIAL_PROFILE_APPEARANCE,
     appName: APP_NAME,
@@ -343,6 +346,9 @@ Page({
       "personalization",
       "/features/pages/personalization/index",
     );
+  },
+  openAbout() {
+    this.openProfileRoute("about", "/features/pages/about/index");
   },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =

@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   PET_SHAPE_IDS,
   type PetShapeId,
@@ -41,6 +42,7 @@ const SHAPE_OPTIONS: readonly ShapeOption[] = PET_SHAPE_IDS.map(
 );
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

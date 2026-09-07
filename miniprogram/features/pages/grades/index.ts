@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { getGrades } from "../../../services/teaching";
 import {
   getErrorMessage,
@@ -283,6 +284,7 @@ function displayAverage(value: number | null): string {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../utils/app-share";
 import {
   loadInteractionDraft,
   saveInteractionDraft,
@@ -148,6 +149,7 @@ function clearScheduleRefreshTimer(): void {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   _motion: null as ScheduleMotion | null,
   _viewReady: false,
   _headerRendered: false,

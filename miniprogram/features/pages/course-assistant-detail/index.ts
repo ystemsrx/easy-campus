@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   getCourseAssistantCourse,
   toggleCourseAssistantReviewLike,
@@ -100,6 +101,7 @@ let activeSessionKey = "";
 let loadSequence = 0;
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     ...resolveAppearance(),
     loading: true,

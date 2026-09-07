@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../utils/app-share";
 import { MOTION } from "../../utils/motion";
 import { APP_NAME } from "../../config/app";
 import { prewarmProfileFirstScreen } from "../../data/profile-render";
@@ -767,6 +768,7 @@ function clearHomeRefreshTimer(): void {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     ...INITIAL_HOME_APPEARANCE,
     appName: APP_NAME,

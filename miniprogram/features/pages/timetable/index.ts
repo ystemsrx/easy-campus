@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   coursesForWeek,
   teachingWeekForDate,
@@ -1720,6 +1721,7 @@ function cancelCompanionGazeUpdate(): void {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     ...INITIAL_TIMETABLE_VISUAL_PREFERENCES,
     compactHeader: false,

@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../utils/app-share";
 import {
   resolveAppearance,
   syncWindowBackground,
@@ -13,6 +14,7 @@ function documentType(value?: string): LegalDocumentType {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

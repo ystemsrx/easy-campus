@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { getNoticeDetail } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
 import { resolveAppearance } from "../../../utils/appearance";
@@ -92,6 +93,7 @@ function collectImageUrls(blocks: NoticeContentBlock[]): string[] {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   attachmentFiles: {} as Record<string, string>,
   disposed: false,
   data: {

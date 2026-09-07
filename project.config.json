@@ -54,6 +54,10 @@
       },
       {
         "type": "folder",
+        "value": "assets/share"
+      },
+      {
+        "type": "folder",
         "value": "features/assets"
       }
     ]

@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   getAutoDormCheckLocation,
   getAutoDormCheckLocalStatus,
@@ -256,6 +257,7 @@ function cachedStatusForDisplay(
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

@@ -16,6 +16,7 @@ import type {
 } from "../types/api";
 import { synchronizeCompanionPreferences } from "./companion";
 import { syncHeartbeatSession } from "./heartbeat";
+import { syncVisitSession } from "./visits";
 import { getDevicePublicKey } from "./device-proof";
 
 let loginRequestRevision = 0;
@@ -45,6 +46,7 @@ export async function login(
     });
   }
   const session = saveSession(data);
+  syncVisitSession();
   syncHeartbeatSession();
   void synchronizeCompanionPreferences(
     data.user.account,

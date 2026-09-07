@@ -71,6 +71,7 @@ let cachedPreview = null;
 let cachedTimetable = null;
 const navigationCalls = [];
 const stubs = {
+  "../../../utils/app-share": { buildAppShare() {} },
   "../../../services/teaching": {
     getMessages: async () => ({ data: { items: [] }, meta: {} }),
     getNotices: async () => ({ data: { items: [] }, meta: {} }),

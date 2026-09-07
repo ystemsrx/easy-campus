@@ -195,6 +195,8 @@ function sanitizeCurrentUser(user: CurrentUserData): CurrentUserData {
     id: user.id,
     account: user.account,
     name: user.name,
+    registeredAt:
+      typeof user.registeredAt === "string" ? user.registeredAt : null,
     credential: user.credential,
     companion: user.companion ?? null,
     profile,

@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { cancelPresence, setPresence } from "../../../utils/motion";
 import { getPassRates } from "../../../services/teaching";
 import { getErrorMessage } from "../../../services/request";
@@ -159,6 +160,7 @@ function componentViews(course: PassRateCourse): ComponentView[] {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

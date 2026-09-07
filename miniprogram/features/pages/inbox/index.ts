@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { getMessages, getNotices } from "../../../services/teaching";
 import {
   getErrorMessage,
@@ -406,6 +407,7 @@ function noticeSourceIdFromLink(link: string): string {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

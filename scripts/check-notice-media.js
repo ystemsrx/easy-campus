@@ -100,6 +100,7 @@ const wx = {
   },
 };
 const stubs = {
+  "../../../utils/app-share": { buildAppShare() {} },
   "../../../services/teaching": {
     getNoticeDetail: async () => ({ data: detail, meta: {} }),
   },

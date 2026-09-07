@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import { loadPreferences, updatePreferences } from "../../../store/preferences";
 import type { ThemePreference, VisualTheme } from "../../../types/app";
 import {
@@ -34,6 +35,7 @@ function isVisualTheme(value: string): value is VisualTheme {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",

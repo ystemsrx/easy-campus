@@ -1,3 +1,4 @@
+import { buildAppShare } from "../../../utils/app-share";
 import {
   loadInteractionDraft,
   saveInteractionDraft,
@@ -167,6 +168,7 @@ function canActivateCourse() {
 }
 
 Page({
+  onShareAppMessage: buildAppShare,
   data: {
     ...resolveAppearance(),
     statusLoading: true,
