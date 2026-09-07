@@ -55,6 +55,7 @@ type ProfileSettingKey =
   | "pet"
   | "grades"
   | "personalization"
+  | "about"
   | "terms"
   | "privacy";
 
@@ -343,6 +344,9 @@ Page({
       "personalization",
       "/features/pages/personalization/index",
     );
+  },
+  openAbout() {
+    this.openProfileRoute("about", "/features/pages/about/index");
   },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =

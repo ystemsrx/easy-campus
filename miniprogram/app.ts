@@ -2,6 +2,7 @@ import { loadPreferences } from "./store/preferences";
 import { loadCurrentUser, loadSession } from "./store/session";
 import { refreshExamsOnForeground } from "./services/cache-refresh";
 import { startHeartbeat, stopHeartbeat } from "./services/heartbeat";
+import { startVisitTracking, stopVisitTracking } from "./services/visits";
 import { preloadPrimaryTabs } from "./services/primary-tab-preload";
 import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
@@ -36,6 +37,7 @@ App<IAppOption>({
   },
   onShow() {
     this.globalData.foregroundEntryId += 1;
+    startVisitTracking();
     beginAutomaticRefreshCycle();
     startHeartbeat();
     const session = this.globalData.session;
@@ -43,6 +45,7 @@ App<IAppOption>({
     setTimeout(() => preloadPrimaryTabs(session), 0);
   },
   onHide() {
+    stopVisitTracking();
     stopHeartbeat();
   },
 });

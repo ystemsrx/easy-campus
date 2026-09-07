@@ -1,0 +1,48 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<view class="page page--quick-entry about-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+  <navigation-bar title="关于" back transparent theme="{{theme}}"></navigation-bar>
+  <view class="about-scroll-region">
+    <scroll-view class="about-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="about-content page-enter">
+        <view class="about-heading">
+          <text class="about-name">{{appName}}</text>
+          <button size="mini" class="about-share {{shareBusy ? 'about-share--busy' : ''}}" hover-class="about-share--pressed" bindtap="sharePoster" disabled="{{shareBusy}}" aria-label="{{shareBusy ? '正在生成个人海报' : '分享个人海报'}}" aria-disabled="{{shareBusy}}">
+            <image wx:if="{{shareBusy}}" class="about-share-progress" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}" aria-hidden="true"></image>
+            <lucide-icon wx:else name="share" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="36"></lucide-icon>
+          </button>
+        </view>
+
+        <view class="poster-stage">
+          <view class="poster-sheet" aria-role="img" aria-label="西小易海报：take it easy. 校园生活，轻一点。舒展的绿色弯月与暖金色星点。">
+            <view class="poster-topline" aria-hidden="true"><text>EASY SWU</text><view class="poster-edition"><view class="poster-dot"></view><text>FOR CAMPUS LIFE</text></view></view>
+            <view class="poster-type" aria-hidden="true"><text class="poster-take">take it</text><text class="poster-easy">easy.</text></view>
+            <image class="poster-art" src="/features/assets/about-rest.svg" mode="aspectFit" aria-hidden="true"></image>
+            <view class="poster-footer" aria-hidden="true"><text class="poster-caption">校园生活，轻一点。</text><view class="poster-footer-mark"><text>LESS RUSH.</text><text>MORE LIFE.</text></view></view>
+          </view>
+          <view class="poster-margin-note" aria-hidden="true"><view class="poster-margin-line"></view><text>留一点空白，给正在发生的生活。</text></view>
+        </view>
+
+        <view class="visit-section">
+          <view class="visit-eyebrow"><view class="visit-live-dot"></view><text class="visit-tagline">与你一起，日复一日</text><text wx:if="{{accompaniedDays !== null}}" class="visit-period">已陪伴 {{accompaniedDays}} 天</text></view>
+          <view class="visit-wall" aria-label="每天上线次数，五档色阶按当前记录动态分配">
+            <view class="wall-months"><view wx:for="{{wall.months}}" wx:key="key" class="wall-month"><text>{{item.label}}</text></view></view>
+            <view wx:for="{{wall.rows}}" wx:for-item="row" wx:key="key" class="wall-row">
+              <text class="wall-weekday">{{row.label}}</text>
+              <view class="wall-bricks">
+                <view wx:for="{{row.days}}" wx:for-item="day" wx:key="date" class="wall-cell {{day.future ? 'wall-cell--future' : ''}}" aria-role="img" aria-label="{{day.label}}" aria-hidden="{{day.future}}">
+                  <view class="wall-brick wall-brick--{{day.level}}"></view>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <view class="wall-legend" aria-hidden="true"><view wx:for="{{legend}}" wx:key="*this" class="wall-legend-brick wall-brick--{{item}}"></view></view>
+        </view>
+
+        <view class="about-colophon"><text class="about-signoff">校园很大，日子慢慢来。</text><view class="about-footer"><text>{{appName}}</text><text wx:if="{{version}}">v{{version}}</text></view></view>
+      </view>
+      <view class="about-bottom-space"></view>
+    </scroll-view>
+  </view>
+</view>
+<screen-watermark></screen-watermark>

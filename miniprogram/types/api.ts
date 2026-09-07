@@ -162,6 +162,8 @@ export interface Session {
     id: string;
     account: string;
     name: string;
+    /** First account registration timestamp; older cached sessions may omit it. */
+    registeredAt?: string | null;
     companion: CompanionPreferencesData | null;
   };
   signedInAt: number;
@@ -197,6 +199,8 @@ export interface CurrentUserData {
   id: string;
   account: string;
   name: string;
+  /** First account registration timestamp, returned as ISO 8601 UTC. */
+  registeredAt?: string | null;
   credential: CredentialState;
   companion: CompanionPreferencesData | null;
   profile: {

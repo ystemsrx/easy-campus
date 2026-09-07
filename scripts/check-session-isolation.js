@@ -68,6 +68,7 @@ const localStorage = new Map([
       id: "user-a",
       account: "20260001",
       name: "A",
+      registeredAt: "2026-08-20T16:30:00.000Z",
       credential: { status: "verified", checkedAt: null, errorCode: null },
       companion: null,
       profile: {
@@ -91,6 +92,10 @@ global.wx = {
   },
 };
 const sanitizedUser = sessionModule.exports.loadCurrentUser();
+assert(
+  sanitizedUser?.registeredAt === "2026-08-20T16:30:00.000Z",
+  "本机资料缓存必须保留服务端首次注册时间",
+);
 assert(
   sanitizedUser?.profile.gender === "男" &&
     !("majorName" in sanitizedUser.profile) &&
