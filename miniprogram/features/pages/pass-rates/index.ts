@@ -290,11 +290,7 @@ Page({
       status: data.status,
       message: data.message || "统计中，请稍后查看",
       averageScoreLabel: statistics
-        ? `${
-            Number.isInteger(statistics.averageScore)
-              ? String(statistics.averageScore)
-              : statistics.averageScore.toFixed(1)
-          }${data.percentageOnly ? "%" : ""}`
+        ? `${statistics.averageScore.toFixed(1)}${data.percentageOnly ? "%" : ""}`
         : "—",
       averageScoreTitle: data.percentageOnly ? "全校平均" : "年级平均",
       percentageOnly: data.percentageOnly,

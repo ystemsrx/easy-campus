@@ -13,15 +13,15 @@
 .course-switch > text { display: block; flex: none; white-space: nowrap; }
 .course-switch--pressed { transform: scale(0.95); opacity: 0.82; }
 
-.pass-hero-lower { position: relative; display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 20rpx; margin-top: 30rpx; }
-.pass-metrics { display: flex; flex: 1; flex-direction: row; align-items: flex-end; gap: 16rpx; min-width: 0; }
+.pass-hero-lower { position: relative; display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20rpx; margin-top: 30rpx; }
+.pass-metrics { display: flex; flex: none; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 16rpx; }
 .pass-primary-score { flex: none; width: 132rpx; }
 .pass-score-value { display: block; max-width: 132rpx; font-size: 68rpx; font-weight: 800; line-height: 0.95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pass-score-value--text { font-size: 38rpx; line-height: 1.1; }
 .pass-score-label { display: block; margin-top: 8rpx; color: rgba(255, 255, 255, 0.72); font-size: 19rpx; }
-.pass-mini-stat { flex: none; width: 70rpx; padding-bottom: 4rpx; }
-.pass-mini-stat text:first-child { display: block; max-width: 70rpx; font-size: 30rpx; font-weight: 800; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pass-mini-stat text:last-child { display: block; margin-top: 8rpx; color: rgba(255, 255, 255, 0.72); font-size: 18rpx; white-space: nowrap; }
+.pass-mini-stat { display: flex; flex: none; flex-direction: column; align-items: flex-start; min-width: 70rpx; padding-bottom: 4rpx; }
+.pass-mini-value { display: block; flex: none; font-size: 30rpx; font-weight: 800; line-height: 1; white-space: nowrap; }
+.pass-mini-label { display: block; flex: none; margin-top: 8rpx; color: rgba(255, 255, 255, 0.72); font-size: 18rpx; white-space: nowrap; }
 .hero-composition { flex: none; width: 190rpx; padding-bottom: 3rpx; }
 .composition-title { display: block; color: rgba(255, 255, 255, 0.62); font-size: 20rpx; font-weight: 700; letter-spacing: 2rpx; }
 .composition-track { display: flex; flex-direction: row; width: 100%; height: 11rpx; margin-top: 12rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255, 255, 255, 0.18); }

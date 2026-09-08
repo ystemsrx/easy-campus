@@ -984,6 +984,53 @@ async function checkRoomsAndDraftStorage() {
   assert.deepEqual(page.data.periodRows, []);
 }
 
+function checkPassRateAverage() {
+  const page = runtime().page("features/pages/pass-rates/index");
+  const data = { courses: [], selectedCourse: null, status: "ready" };
+  for (const percentageOnly of [true, false]) {
+    for (const [averageScore, expected] of [
+      [0, "0.0"],
+      [80, "80.0"],
+      [87.64, "87.6"],
+      [99.96, "100.0"],
+      [100, "100.0"],
+    ]) {
+      page.applyData({
+        ...data,
+        percentageOnly,
+        statistics: { averageScore, cohorts: [] },
+      });
+      assert.equal(
+        page.data.averageScoreLabel,
+        expected + (percentageOnly ? "%" : ""),
+        "全校和年级平均都必须保留一位小数",
+      );
+    }
+    page.applyData({ ...data, percentageOnly, statistics: null });
+    assert.equal(
+      page.data.averageScoreLabel,
+      "—",
+      "无统计时不能残留上一门课程均分",
+    );
+  }
+  const styles = fs.readFileSync(
+    path.join(root, "features/pages/pass-rates/index.wxss"),
+    "utf8",
+  );
+  for (const selector of ["pass-mini-stat", "pass-mini-value"]) {
+    const rule = new RegExp(`\\.${selector}\\s*\\{([^}]*)\\}`).exec(
+      styles,
+    )?.[1];
+    assert.ok(rule);
+    assert.match(rule, /flex:\s*none;/);
+    assert.doesNotMatch(
+      rule,
+      /(?:^|[;\s])(?:width|max-width):|text-overflow:\s*ellipsis/,
+      "均分必须按内容占用宽度，不能固定宽度截成省略号",
+    );
+  }
+}
+
 async function checkCourseAssistant() {
   const key = "a".repeat(64),
     second = "b".repeat(64);
@@ -1137,10 +1184,11 @@ async function main() {
   checkScheduleSettling();
   checkSchedule();
   await checkRoomsAndDraftStorage();
+  checkPassRateAverage();
   await checkCourseAssistant();
   await checkFeedback();
   console.log(
-    "Interaction behavior checks passed: dates, 240 consecutive swipes, cancellation, rapid taps, drafts, favorites, room option rows and immediate period selection.",
+    "Interaction behavior checks passed: dates, 240 consecutive swipes, cancellation, rapid taps, drafts, favorites, room option rows, immediate period selection and pass-rate averages.",
   );
 }
 main().catch((error) => {
