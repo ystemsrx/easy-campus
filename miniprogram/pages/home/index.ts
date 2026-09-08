@@ -138,7 +138,10 @@ import {
   unregisterHomeAuthenticationHost,
 } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
-import { sortPublicationsNewestFirst } from "../../utils/publications";
+import {
+  resolvePublicationPanelHeight,
+  sortPublicationsNewestFirst,
+} from "../../utils/publications";
 import {
   isCurrentSemesterId,
   isCurrentSemesterTimestamp,
@@ -253,6 +256,10 @@ const HOME_SOURCE_NAMES: readonly HomeSourceName[] = [
 
 let courseClockTimer: number | undefined;
 let publicationPanelTimer: number | undefined;
+let publicationPanelMeasureTimer: ReturnType<typeof setTimeout> | undefined;
+let publicationBodyMeasureTimer: ReturnType<typeof setTimeout> | undefined;
+let publicationPanelMeasureGeneration = 0;
+let publicationPanelOpenAfterMeasure = false;
 let announcementModalTimer: number | undefined;
 let codeCopyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let publicationRequestLease: SessionLease | null = null;
@@ -287,6 +294,19 @@ let petSetupDrawerTimer: ReturnType<typeof setTimeout> | undefined;
 const planCompletionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let activeTimetable: TimetableData | null = null;
 const CODE_COPY_FEEDBACK_MS = 1_600;
+
+function cancelPublicationPanelMeasure() {
+  publicationPanelMeasureGeneration += 1;
+  publicationPanelOpenAfterMeasure = false;
+  if (publicationPanelMeasureTimer !== undefined) {
+    clearTimeout(publicationPanelMeasureTimer);
+    publicationPanelMeasureTimer = undefined;
+  }
+  if (publicationBodyMeasureTimer !== undefined) {
+    clearTimeout(publicationBodyMeasureTimer);
+    publicationBodyMeasureTimer = undefined;
+  }
+}
 
 function clearCodeCopyFeedbackTimer() {
   if (codeCopyFeedbackTimer === undefined) return;
@@ -830,6 +850,7 @@ Page({
     publicationPanelOpen: false,
     publicationPanelTop: 132,
     publicationPanelTransformOrigin: "318px -31px",
+    publicationPanelHeight: 0,
     publicationPanelScrollHeight: 0,
     announcementModalMounted: false,
     announcementModalOpen: false,
@@ -908,6 +929,7 @@ Page({
     }
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
+    cancelPublicationPanelMeasure();
     homeVisible = false;
     authenticationRevealPrepared = false;
     homeHasActivated = false;
@@ -1540,12 +1562,19 @@ Page({
           this.data.theme,
         ),
       );
-      this.setData({
-        publications,
-        publicationUnreadCount: feed.unreadCount,
-        publicationUnreadLabel:
-          feed.unreadCount > 99 ? "99+" : String(feed.unreadCount || ""),
-      });
+      this.setData(
+        {
+          publications,
+          publicationUnreadCount: feed.unreadCount,
+          publicationUnreadLabel:
+            feed.unreadCount > 99 ? "99+" : String(feed.unreadCount || ""),
+        },
+        () => {
+          if (this.data.publicationPanelMounted) {
+            this.measurePublicationPanel(false);
+          }
+        },
+      );
 
       if (homeVisible && !this.data.announcementModalMounted) {
         queuedAnnouncements = feed.announcements.filter(
@@ -1582,7 +1611,8 @@ Page({
     this.createSelectorQuery()
       .select(".publication-bell")
       .boundingClientRect((rect) => {
-        const windowWidth = wx.getWindowInfo().windowWidth || 375;
+        const windowInfo = wx.getWindowInfo();
+        const windowWidth = windowInfo.windowWidth || 375;
         const panelInset = (24 * windowWidth) / 750;
         const rectLeft = Number(rect?.left);
         const rectTop = Number(rect?.top);
@@ -1603,6 +1633,10 @@ Page({
             publicationPanelMounted: true,
             publicationPanelTop: panelTop,
             publicationPanelTransformOrigin: `${originX}px ${originY}px`,
+            publicationPanelHeight: resolvePublicationPanelHeight(
+              windowWidth,
+              windowInfo.windowHeight || 667,
+            ),
             publicationPanelScrollHeight: 1,
           },
           () => {
@@ -1613,33 +1647,75 @@ Page({
       .exec();
   },
   measurePublicationPanel(openAfterMeasure: boolean) {
-    setTimeout(() => {
+    if (!this.data.publicationPanelMounted) return;
+    publicationPanelOpenAfterMeasure ||= openAfterMeasure;
+    const generation = ++publicationPanelMeasureGeneration;
+    if (publicationPanelMeasureTimer !== undefined) {
+      clearTimeout(publicationPanelMeasureTimer);
+    }
+    publicationPanelMeasureTimer = setTimeout(() => {
+      publicationPanelMeasureTimer = undefined;
       if (!this.data.publicationPanelMounted) return;
       const windowInfo = wx.getWindowInfo();
       const windowWidth = windowInfo.windowWidth || 375;
       const windowHeight = windowInfo.windowHeight || 667;
-      const fixedPanelHeight = (680 * windowWidth) / 750;
-      const maxPanelHeight = windowHeight * 0.62;
-      const panelHeight = Math.min(fixedPanelHeight, maxPanelHeight);
       this.createSelectorQuery()
-        .select(".publication-popover-header")
+        .select(".publication-popover")
+        .boundingClientRect()
+        .select(".publication-popover-frame")
+        .boundingClientRect()
+        .select(".publication-popover-viewport")
+        .boundingClientRect()
+        .select(".publication-popover-content")
         .boundingClientRect()
         .exec((results) => {
-          if (!this.data.publicationPanelMounted) return;
-          const headerHeight =
-            Number(results?.[0]?.height) || (96 * windowWidth) / 750;
-          const publicationPanelScrollHeight = Math.ceil(
-            Math.max(1, panelHeight - headerHeight),
+          if (
+            !this.data.publicationPanelMounted ||
+            generation !== publicationPanelMeasureGeneration
+          )
+            return;
+          const [panel, frame, viewport, content] = results || [];
+          // All rectangles share the popover's opening scale. Normalize by its
+          // known layout width so opening mid-animation cannot shrink the list.
+          const layoutWidth = windowWidth - (48 * windowWidth) / 750;
+          const scale = Number(panel?.width) / layoutWidth || 1;
+          const currentHeight =
+            Number(panel?.height) / scale || this.data.publicationPanelHeight;
+          const frameChrome = Math.max(
+            0,
+            currentHeight - Number(frame?.height || 0) / scale,
           );
-          this.setData({ publicationPanelScrollHeight }, () => {
-            if (openAfterMeasure && homeVisible) {
-              this.setData({ publicationPanelOpen: true });
-            }
-          });
+          const contentChrome = Math.max(
+            0,
+            currentHeight - Number(viewport?.height || 0) / scale,
+          );
+          const contentHeight = this.data.publications.length
+            ? Number(content?.height || 0) / scale
+            : 0;
+          const publicationPanelHeight = resolvePublicationPanelHeight(
+            windowWidth,
+            windowHeight,
+            contentHeight,
+            contentChrome,
+          );
+          const publicationPanelScrollHeight = Math.ceil(
+            Math.max(1, publicationPanelHeight - frameChrome),
+          );
+          this.setData(
+            { publicationPanelHeight, publicationPanelScrollHeight },
+            () => {
+              if (generation !== publicationPanelMeasureGeneration) return;
+              if (publicationPanelOpenAfterMeasure && homeVisible) {
+                publicationPanelOpenAfterMeasure = false;
+                this.setData({ publicationPanelOpen: true });
+              }
+            },
+          );
         });
     }, 16);
   },
   closePublicationPanel() {
+    cancelPublicationPanelMeasure();
     if (!this.data.publicationPanelMounted) return;
     this.setData({ publicationPanelOpen: false });
     if (publicationPanelTimer !== undefined) {
@@ -1654,6 +1730,7 @@ Page({
     }, 260) as unknown as number;
   },
   resetPublicationLayers() {
+    cancelPublicationPanelMeasure();
     cancelPendingAnnouncementPresentation();
     clearCodeCopyFeedbackTimer();
     if (publicationPanelTimer !== undefined) {
@@ -1723,22 +1800,36 @@ Page({
     const publicationUnreadCount = wasUnread
       ? Math.max(0, this.data.publicationUnreadCount - 1)
       : this.data.publicationUnreadCount;
-    this.setData({
-      publications: this.data.publications.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              isRead: true,
-              expanded: item.isLong ? !item.expanded : item.expanded,
-            }
-          : item,
-      ),
-      publicationUnreadCount,
-      publicationUnreadLabel:
-        publicationUnreadCount > 99
-          ? "99+"
-          : String(publicationUnreadCount || ""),
-    });
+    this.setData(
+      {
+        publications: this.data.publications.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                isRead: true,
+                expanded: item.isLong ? !item.expanded : item.expanded,
+              }
+            : item,
+        ),
+        publicationUnreadCount,
+        publicationUnreadLabel:
+          publicationUnreadCount > 99
+            ? "99+"
+            : String(publicationUnreadCount || ""),
+      },
+      () => {
+        if (!publication.isLong) return;
+        if (publicationBodyMeasureTimer !== undefined) {
+          clearTimeout(publicationBodyMeasureTimer);
+        }
+        // Match the body's max-height transition before reading its final size.
+        const delay = publication.expanded ? 280 : 460;
+        publicationBodyMeasureTimer = setTimeout(() => {
+          publicationBodyMeasureTimer = undefined;
+          this.measurePublicationPanel(false);
+        }, delay);
+      },
+    );
     haptic("light");
     if (wasUnread) {
       void markPublicationRead(id).catch(() => undefined);

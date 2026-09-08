@@ -29,9 +29,8 @@ function loadTypeScriptModule(relativePath) {
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
 const { renderMarkdown, renderMarkdownBlocks } =
   loadTypeScriptModule("utils/markdown.ts");
-const { sortPublicationsNewestFirst } = loadTypeScriptModule(
-  "utils/publications.ts",
-);
+const { resolvePublicationPanelHeight, sortPublicationsNewestFirst } =
+  loadTypeScriptModule("utils/publications.ts");
 const {
   isCurrentSemesterId,
   isCurrentSemesterTimestamp,
@@ -577,13 +576,157 @@ const publicationPanelMeasure =
   /measurePublicationPanel\(openAfterMeasure: boolean\) \{([\s\S]*?)\n  \},\n  closePublicationPanel/.exec(
     homeScript,
   )?.[1] || "";
+
 assert(
-  !homeTemplate.includes("publication-popover--empty") &&
+  [0, 80, 145, 210, 500, 90, 0]
+    .map((height) => resolvePublicationPanelHeight(375, 667, height, 45))
+    .join(",") === "190,190,190,255,340,190,190",
+  "通知内容能放下时必须保持最低高度，溢出后增长至上限，减少内容后回落",
+);
+assert(
+  resolvePublicationPanelHeight(320, 568, 0, 40) === 163 &&
+    resolvePublicationPanelHeight(320, 568, 1000, 40) === 290 &&
+    resolvePublicationPanelHeight(375, 240, 1000, 45) === 148,
+  "窄屏必须按 rpx 换算高度，短屏必须优先遵守屏幕高度上限",
+);
+
+// Run the page's real measurement controller with scaled renderer rectangles.
+// This checks geometry and async ordering; it does not emulate Skyline rendering.
+function publicationMeasurementFixture(scale, chromeHeight) {
+  const timers = [];
+  const queries = [];
+  let contentHeight = 0;
+  const page = {
+    data: {
+      publicationPanelMounted: true,
+      publicationPanelOpen: false,
+      publicationPanelHeight: 190,
+      publications: [],
+    },
+    setData(patch, callback) {
+      Object.assign(this.data, patch);
+      callback?.();
+    },
+    createSelectorQuery() {
+      const selectors = [];
+      return {
+        select(selector) {
+          selectors.push(selector);
+          return this;
+        },
+        boundingClientRect() {
+          return this;
+        },
+        exec(callback) {
+          const height = page.data.publicationPanelHeight;
+          const rects = {
+            ".publication-popover": {
+              width: 351 * scale,
+              height: height * scale,
+            },
+            ".publication-popover-frame": { height: (height - 45) * scale },
+            ".publication-popover-viewport": {
+              height: (height - chromeHeight) * scale,
+            },
+            ".publication-popover-content": contentHeight
+              ? { height: contentHeight * scale }
+              : null,
+          };
+          const results = selectors.map((selector) => rects[selector]);
+          queries.push(() => callback(results));
+        },
+      };
+    },
+  };
+  page.measurePublicationPanel = new Function(
+    "resolvePublicationPanelHeight",
+    "wx",
+    "setTimeout",
+    "clearTimeout",
+    `let publicationPanelMeasureTimer;
+     let publicationPanelMeasureGeneration = 0;
+     let publicationPanelOpenAfterMeasure = false;
+     const homeVisible = true;
+     return function(openAfterMeasure) { ${publicationPanelMeasure} };`,
+  )(
+    resolvePublicationPanelHeight,
+    { getWindowInfo: () => ({ windowWidth: 375, windowHeight: 667 }) },
+    (callback) => {
+      const timer = { callback, cancelled: false };
+      timers.push(timer);
+      return timer;
+    },
+    (timer) => {
+      timer.cancelled = true;
+    },
+  );
+  return {
+    page,
+    content(height) {
+      contentHeight = height;
+      page.data.publications = height ? [{ id: "test" }] : [];
+    },
+    timers() {
+      while (timers.length) {
+        const timer = timers.shift();
+        if (!timer.cancelled) timer.callback();
+      }
+    },
+    queries() {
+      while (queries.length) queries.shift()();
+    },
+  };
+}
+for (const scale of [0.6, 0.83, 1]) {
+  for (const chromeHeight of [45, 67]) {
+    const fixture = publicationMeasurementFixture(scale, chromeHeight);
+    const heights = [0, 80, 145, 210, 500, 90, 0].map((height) => {
+      fixture.content(height);
+      fixture.page.measurePublicationPanel(false);
+      fixture.timers();
+      fixture.queries();
+      return fixture.page.data.publicationPanelHeight;
+    });
+    const expected =
+      chromeHeight === 45
+        ? "190,190,190,255,340,190,190"
+        : "190,190,212,277,340,190,190";
+    assert(
+      heights.join(",") === expected,
+      `动画缩放 ${scale} 和内框留白不得改变通知高度：${heights}`,
+    );
+  }
+}
+const publicationFixture = publicationMeasurementFixture(0.6, 45);
+publicationFixture.content(500);
+publicationFixture.page.measurePublicationPanel(true);
+publicationFixture.timers();
+publicationFixture.content(80);
+publicationFixture.page.measurePublicationPanel(false);
+publicationFixture.timers();
+publicationFixture.queries();
+assert(
+  publicationFixture.page.data.publicationPanelHeight === 190 &&
+    publicationFixture.page.data.publicationPanelOpen,
+  "连续更新必须丢弃过期测量，同时保留首次打开请求",
+);
+publicationFixture.content(500);
+publicationFixture.page.measurePublicationPanel(false);
+publicationFixture.timers();
+publicationFixture.page.data.publicationPanelMounted = false;
+publicationFixture.queries();
+assert(
+  publicationFixture.page.data.publicationPanelHeight === 190,
+  "弹窗卸载后不得应用异步测量结果",
+);
+
+assert(
+  homeTemplate.includes("height: {{publicationPanelHeight}}px;") &&
     publicationPopoverStyle.includes("display: flex;") &&
     publicationPopoverStyle.includes("flex-direction: column;") &&
-    publicationPopoverStyle.includes("height: 680rpx;") &&
+    publicationPopoverStyle.includes("height: 380rpx;") &&
     publicationPopoverStyle.includes("max-height: 62vh;") &&
-    publicationPopoverFrameStyle.includes("flex: none;") &&
+    publicationPopoverFrameStyle.includes("flex: 1;") &&
     publicationPopoverFrameStyle.includes("min-height: 0;") &&
     publicationPopoverScrollStyle.includes("min-height: 0;") &&
     publicationPopoverScrollStyle.includes("height: 100%;") &&
@@ -594,15 +737,28 @@ assert(
     ) &&
     /class="publication-popover-scroll"[^>]*type="custom"/.test(homeTemplate) &&
     publicationPanelMeasure.includes(
-      "const fixedPanelHeight = (680 * windowWidth) / 750;",
+      'select(".publication-popover-content")',
     ) &&
     publicationPanelMeasure.includes(
-      "const maxPanelHeight = windowHeight * 0.62;",
+      'select(".publication-popover-viewport")',
     ) &&
+    publicationPanelMeasure.includes("resolvePublicationPanelHeight(") &&
     publicationPanelMeasure.includes("publicationPanelScrollHeight") &&
     !publicationPanelMeasure.includes('selectAll(".publication-row")') &&
-    !publicationPanelMeasure.includes('select(".publication-empty")'),
-  "首页消息弹窗必须始终保持四条消息高度，展开正文时不得改变外层高度",
+    !publicationPanelMeasure.includes('select(".publication-empty")') &&
+    /<scroll-view wx:if="\{\{publications.length\}\}" class="publication-popover-scroll"/.test(
+      homeTemplate,
+    ) &&
+    /<\/scroll-view>\s*<view wx:else class="publication-empty"/.test(
+      homeTemplate,
+    ) &&
+    /\.publication-empty\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*height:\s*100%;/.test(
+      homeStyles,
+    ) &&
+    /if \(this\.data\.publicationPanelMounted\)\s*\{\s*this\.measurePublicationPanel\(false\);/.test(
+      homeScript,
+    ),
+  "首页消息弹窗必须保持最低高度并按实际内容增高，达到上限后滚动，空状态独立居中",
 );
 assert(
   /class="publication-popover-frame"[^>]*>[\s\S]*?class="publication-popover-viewport"[^>]*>[\s\S]*?class="publication-popover-scroll"[\s\S]*?class="publication-popover-outline"/s.test(
@@ -635,7 +791,7 @@ assert(
     publicationTapHandler.includes('publication.kind === "announcement"') &&
     publicationTapHandler.includes("isRead: true") &&
     publicationTapHandler.includes("expanded:") &&
-    !publicationTapHandler.includes("measurePublicationPanel") &&
+    publicationTapHandler.includes("this.measurePublicationPanel(false)") &&
     !publicationTapHandler.includes("markPublicationLocallyRead"),
   "首页消息点击必须立即合并更新已读和展开状态，且不得因未读背景切换产生深色按压闪变",
 );

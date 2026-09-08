@@ -1,5 +1,17 @@
 import type { Publication } from "../types/api";
 
+export function resolvePublicationPanelHeight(
+  windowWidth: number,
+  windowHeight: number,
+  contentHeight = 0,
+  chromeHeight = 0,
+): number {
+  const rpx = windowWidth / 750;
+  const maximum = Math.floor(Math.min(680 * rpx, windowHeight * 0.62));
+  const desired = Math.ceil(Math.max(380 * rpx, contentHeight + chromeHeight));
+  return Math.max(1, Math.min(maximum, desired));
+}
+
 function publicationTimestamp(publication: Publication): number {
   const startsAt = Date.parse(publication.startsAt);
   if (Number.isFinite(startsAt)) return startsAt;
