@@ -324,16 +324,24 @@ function clearBindingToastTimers(): void {
   }
 }
 
+function normalizeBuildingSearchText(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/g, "");
+}
+
 function filterBuildings(
   buildings: ElectricityBuilding[],
   query: string,
 ): ElectricityBuilding[] {
-  const normalized = query.trim().toLowerCase();
+  const normalized = normalizeBuildingSearchText(query).toLowerCase();
   if (!normalized) return buildings;
   return buildings.filter(
     (building) =>
-      building.name.toLowerCase().includes(normalized) ||
-      building.id.toLowerCase().includes(normalized),
+      normalizeBuildingSearchText(building.name)
+        .toLowerCase()
+        .includes(normalized) ||
+      normalizeBuildingSearchText(building.id)
+        .toLowerCase()
+        .includes(normalized),
   );
 }
 
@@ -675,14 +683,17 @@ Page({
   closeBuildingPicker() {
     this.setData({ buildingPickerVisible: false });
   },
-  onBuildingSearch(event: WechatMiniprogram.Input) {
-    const buildingQuery = String(event.detail.value || "");
+  onBuildingSearch(event: WechatMiniprogram.Input): string {
+    const buildingQuery = normalizeBuildingSearchText(
+      String(event.detail.value || ""),
+    );
     const buildings = filterBuildings(this.data.allBuildings, buildingQuery);
     this.setData({
       buildingQuery,
       buildings,
       buildingRows: toBuildingRows(buildings),
     });
+    return buildingQuery;
   },
   onBuildingSearchFocus() {
     this.setData({ buildingSearchFocused: true });

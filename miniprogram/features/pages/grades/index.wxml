@@ -18,7 +18,7 @@
       <view class="grade-overview">
         <view class="ambient-blob grade-blob grade-blob--one"></view><view class="ambient-blob grade-blob grade-blob--two"></view>
         <view class="grade-overview-main">
-          <view class="average-ring"><image class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"></image><view class="average-inner"><text class="average-value tnum">{{averageLabel}}</text></view></view>
+          <view class="average-ring"><image class="average-ring-image" src="{{averageRingSource}}" mode="aspectFit"></image><view class="average-inner"><text class="average-value tnum" max-lines="1">{{averageLabel}}</text></view></view>
           <view class="overview-stats">
             <view class="overview-stat"><text>平均绩点</text><text class="tnum">{{gradePointAverageLabel}}</text></view>
             <view class="overview-stat"><text>课程门数</text><text class="tnum">{{summary.courseCount}}</text></view>

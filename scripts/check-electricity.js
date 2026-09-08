@@ -189,6 +189,45 @@ async function main() {
       Object.assign(this.data, value);
     },
   };
+  const allBuildings = [
+    { id: "01", name: "桃园 １舍（Ａ区）" },
+    { id: "02", name: "桃园2舍(B区)" },
+    { id: "Ｃ ０３", name: "竹园\u00a03舍" },
+  ];
+  view.data.allBuildings = allBuildings;
+  const originalBuildings = structuredClone(allBuildings);
+  for (const [input, cleaned, expectedIds] of [
+    [" 桃 园　１ 舍（ａ 区） ", "桃园1舍(a区)", ["01"]],
+    ["桃园1舍(A区)", "桃园1舍(A区)", ["01"]],
+    ["桃园２舍（ｂ区）", "桃园2舍(b区)", ["02"]],
+    ["竹\t园\n３ 舍", "竹园3舍", ["Ｃ ０３"]],
+    [" ｃ ０３ ", "c03", ["Ｃ ０３"]],
+    ["０ １", "01", ["01"]],
+    ["桃 园", "桃园", ["01", "02"]],
+    ["不存在", "不存在", []],
+    [" \t\n　\u00a0", "", allBuildings.map((building) => building.id)],
+    ["", "", allBuildings.map((building) => building.id)],
+  ]) {
+    const returned = page.onBuildingSearch.call(view, {
+      detail: { value: input },
+    });
+    assert.equal(returned, cleaned, "输入框应立即显示去掉空白后的文字");
+    assert.equal(view.data.buildingQuery, cleaned);
+    assert.deepEqual(
+      view.data.buildings.map((building) => building.id),
+      expectedIds,
+      `宿舍楼搜索未正确匹配：${input}`,
+    );
+    assert.deepEqual(
+      view.data.buildingRows.flatMap((row) => row.items),
+      view.data.buildings,
+    );
+  }
+  assert.deepEqual(
+    allBuildings,
+    originalBuildings,
+    "搜索不得修改楼栋原始名称与编号",
+  );
   for (const [subsidy, expected] of [
     [0, "0.00 度"],
     [119.29, "119.29 度"],
@@ -219,7 +258,7 @@ async function main() {
   );
   assert.ok(card.indexOf("可用电补助") < card.indexOf("上次缴费日期"));
   assert.ok(card.indexOf("上次缴费日期") < card.indexOf("最后结算日期"));
-  console.log("电费寝室共享、刷新时间、旧缓存和补助显示检查通过");
+  console.log("电费寝室共享、刷新时间、旧缓存、补助显示和楼栋搜索检查通过");
 }
 main().catch((error) => {
   console.error(error);

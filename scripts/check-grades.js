@@ -646,6 +646,21 @@ assert(
   ),
   "默认成绩排序不得显式发送 sort=default，以兼容尚未重启的旧服务进程",
 );
+const averageValueStyles = /\.average-value\s*\{([^}]*)\}/.exec(
+  gradesPageStyles,
+)[1];
+assert(
+  /<text[^>]*class="average-value tnum"[^>]*max-lines="1"/.test(
+    gradesPageTemplate,
+  ) &&
+    /flex:\s*none;/.test(averageValueStyles) &&
+    /white-space:\s*nowrap;/.test(averageValueStyles) &&
+    !/max-width:/.test(averageValueStyles) &&
+    /\.average-inner\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*width:\s*100%;/.test(
+      gradesPageStyles,
+    ),
+  "成绩圆环均分必须按自然宽度居中且不可压缩、换行，不能因宽数字组合限制文本宽度",
+);
 const gradeComponentsPosition = gradeDetailTemplate.indexOf(">成绩组成<");
 const gradeComponentsBlockEndPosition = gradeDetailTemplate.indexOf(
   "</block>",
