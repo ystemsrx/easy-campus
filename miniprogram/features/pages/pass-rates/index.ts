@@ -48,7 +48,7 @@ interface ComponentView {
   score: string;
   weightLabel: string;
   width: number;
-  opacity: number;
+  tone: number;
 }
 
 let requestSequence = 0;
@@ -155,7 +155,7 @@ function componentViews(course: PassRateCourse): ComponentView[] {
         ? "占比未提供"
         : `${Number.isInteger(component.weightPercent) ? component.weightPercent : Number(component.weightPercent.toFixed(2))}%`,
     width: Number(((rawWeights[index] / totalWeight) * 100).toFixed(2)),
-    opacity: Math.max(0.35, 1 - index * 0.2),
+    tone: index % 4,
   }));
 }
 

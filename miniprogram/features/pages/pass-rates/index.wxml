@@ -27,7 +27,7 @@
             </view>
             <view wx:if="{{components.length}}" class="hero-composition">
               <text class="composition-title">成绩组成</text>
-              <view class="composition-track"><view wx:for="{{components}}" wx:key="name" class="composition-part" style="width: {{item.width}}%; opacity: {{item.opacity}};"></view></view>
+              <view class="composition-track"><view wx:for="{{components}}" wx:key="name" class="composition-part composition-part--{{item.tone}}" style="width: {{item.width}}%;"></view></view>
               <view class="composition-tags"><text wx:for="{{components}}" wx:key="name">{{item.name}} {{item.score}} ({{item.weightLabel}})</text></view>
             </view>
           </view>
