@@ -1,10 +1,18 @@
 import type {
+  AutoDormCheckStatus,
+  AutoDormCheckOrderHistoryItem,
   CompanionPreferencesData,
   CourseAssistantReview,
   ElectricityCachedData,
   LocalScheduleData,
 } from "../types/api";
-import { demoDate, demoElectricity, demoSchedule } from "./data";
+import {
+  demoDate,
+  demoDormStatus,
+  demoElectricity,
+  demoSchedule,
+} from "./data";
+import { demoDormOrders } from "./dorm";
 import { demoReviews, normalizeDemoCourseKey } from "./community";
 
 // This namespace belongs only to the local demo; no real account reads it.
@@ -16,6 +24,10 @@ export interface DemoState {
   companion: CompanionPreferencesData | null;
   reviews: CourseAssistantReview[];
   readPublications: string[];
+  dorm: {
+    status: AutoDormCheckStatus;
+    orders: AutoDormCheckOrderHistoryItem[];
+  };
 }
 
 let memory: DemoState | null = null;
@@ -43,8 +55,13 @@ export function loadDemoState(): DemoState {
           },
           reviews: demoReviews(),
           readPublications: [],
+          dorm: { status: demoDormStatus(), orders: demoDormOrders() },
         };
   let migrated = false;
+  if (!memory.dorm) {
+    memory.dorm = { status: demoDormStatus(), orders: demoDormOrders() };
+    migrated = true;
+  }
   memory.reviews = memory.reviews.map((review) => {
     const courseKey = normalizeDemoCourseKey(review.courseKey || "");
     if (!review.courseKey || courseKey === review.courseKey) return review;

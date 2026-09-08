@@ -109,9 +109,23 @@
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: -1rpx;
+  white-space: nowrap;
 }
 
 .nav-shell--dark .nav-title {
+  color: #f7f3e9;
+  color: var(--visual-component-text, #f7f3e9);
+}
+
+.nav-title-suffix {
+  color: #16161a;
+  color: var(--visual-component-text, #16161a);
+  font-size: 32rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-shell--dark .nav-title-suffix {
   color: #f7f3e9;
   color: var(--visual-component-text, #f7f3e9);
 }

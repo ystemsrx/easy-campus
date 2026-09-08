@@ -28,6 +28,7 @@
         "pages/auto-dorm-check/index",
         "pages/auto-dorm-check-agreement/index",
         "pages/auto-dorm-check-payment/index",
+        "pages/auto-dorm-check-orders/index",
         "pages/course-assistant/index",
         "pages/course-assistant-detail/index"
       ]

@@ -33,8 +33,8 @@
         icon-tone="sage"
         title="当前免费使用"
         description="无需购买打卡套餐"
-        action-text="返回"
-        bindaction="returnToAutoDormCheck"
+        action-text="历史订单"
+        bindaction="openOrders"
       ></empty-state>
 
       <view wx:elif="{{loaded}}" class="payment-sections">
@@ -44,9 +44,7 @@
               <text class="payment-balance-kicker">当前额度</text>
               <text class="payment-balance-title">{{hasTimeEntitlement || hasUseEntitlement ? '可用额度' : '暂无可用额度'}}</text>
             </view>
-            <view class="payment-balance-icon">
-              <lucide-icon name="shield-check" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{34}}"></lucide-icon>
-            </view>
+            <button class="payment-orders-button" bindtap="openOrders">订单</button>
           </view>
 
           <view wx:if="{{hasTimeEntitlement}}" class="payment-balance-row">

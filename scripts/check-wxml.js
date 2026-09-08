@@ -150,7 +150,10 @@ if (
   !navigationTemplate.includes(
     'class="nav-content" style="top: {{controlTop}}px; height: {{contentHeight}}px;"',
   ) ||
-  !navigationTemplate.includes('style="top: -{{backLift}}px;"') ||
+  !navigationTemplate.includes(
+    'class="nav-side nav-side--left" style="width: {{sideWidth}}px; top: -{{backLift}}px;"',
+  ) ||
+  navigationTemplate.includes('style="top: -{{backLift}}px;"') ||
   !navigationTemplate.includes("back && insetBack") ||
   navigationTemplate.includes("insetTitle") ||
   navigationTemplate.includes("backOffset") ||
@@ -199,7 +202,7 @@ if (
   !navigationStyles.includes(".nav-content {\n  position: absolute;")
 ) {
   failures.push(
-    "components/navigation-bar: 普通页面遮罩必须低于返回按钮，内嵌标题须与返回按钮保持同一行，且不得触发滚动状态重绘",
+    "components/navigation-bar: 普通页面遮罩必须低于返回按钮，内嵌标题、返回与附加按钮须保持同一行且不能重复抬升，且不得触发滚动状态重绘",
   );
 }
 

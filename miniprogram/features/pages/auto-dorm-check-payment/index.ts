@@ -34,7 +34,7 @@ import {
   syncWindowBackground,
 } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
-import { ensureAuthenticated } from "../../../utils/navigation";
+import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
 
 type PaymentFlowMode = "purchase" | "resume" | "restore";
 
@@ -243,6 +243,13 @@ async function createIdempotencyKey(): Promise<string> {
 }
 
 Page({
+  openOrders() {
+    haptic("light");
+    void navigateTo(
+      "/features/pages/auto-dorm-check-orders/index",
+      "wx://cupertino-modal",
+    );
+  },
   onShareAppMessage: buildAppShare,
   data: {
     theme: "light" as "light" | "dark",

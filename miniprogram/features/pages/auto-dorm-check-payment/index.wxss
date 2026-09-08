@@ -127,16 +127,33 @@
   white-space: nowrap;
 }
 
-.payment-balance-icon {
+.payment-orders-button {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 68rpx;
-  height: 68rpx;
+  align-self: flex-start;
+  margin: 0 0 0 auto;
+  padding: 0;
+  width: 84rpx;
+  min-width: 84rpx;
+  max-width: 84rpx;
+  height: 52rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.42);
-  border-radius: 24rpx;
+  border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+.payment-orders-button::after { border: 0; }
+.auto-dorm-check-payment-page.theme-style-minimal .payment-orders-button {
+  color: var(--color-text);
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  background-color: var(--color-bg-subtle);
 }
 
 .payment-balance-row {
@@ -425,7 +442,6 @@
   color: var(--color-text);
 }
 
-.auto-dorm-check-payment-page.theme-style-minimal .payment-balance-icon,
 .auto-dorm-check-payment-page.theme-style-minimal .payment-balance-row-icon,
 .auto-dorm-check-payment-page.theme-style-minimal .payment-plan-icon {
   border: 0;

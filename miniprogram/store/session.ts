@@ -169,10 +169,14 @@ export function assertSessionLeaseCurrent(
   }
 }
 
-export function saveCurrentUser(user: CurrentUserData): void {
+export function saveCurrentUser(
+  user: CurrentUserData,
+  app: IAppOption = getApp<IAppOption>(),
+): void {
   const sanitized = sanitizeCurrentUser(user);
   wx.setStorageSync(USER_KEY, sanitized);
-  getApp<IAppOption>().globalData.user = sanitized;
+  // Startup callbacks pass their instance before getApp becomes available.
+  app.globalData.user = sanitized;
   sessionRevision += 1;
 }
 

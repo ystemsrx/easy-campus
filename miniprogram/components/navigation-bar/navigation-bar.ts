@@ -8,6 +8,7 @@ Component({
   },
   properties: {
     title: { type: String, value: "" },
+    titleSuffix: { type: String, value: "" },
     subtitle: { type: String, value: "" },
     back: { type: Boolean, value: false },
     extraLeft: { type: Boolean, value: false },

@@ -1,5 +1,4 @@
 import { buildAppShare } from "../../utils/app-share";
-import { isDemoSession } from "../../demo/identity";
 import {
   autoDormCheckPresentationPatch,
   getPrewarmedProfileFirstScreen,
@@ -328,7 +327,6 @@ Page({
     );
   },
   openAutoDormCheck() {
-    if (isDemoSession(getSession())) return;
     this.openProfileRoute(
       "auto-dorm-check",
       "/features/pages/auto-dorm-check/index",

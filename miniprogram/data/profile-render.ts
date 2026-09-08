@@ -126,9 +126,10 @@ export function autoDormCheckPresentationPatch(
     | AutoDormCheckStatus
     | null,
 ) {
-  if (!status || isDemoSession(getSession())) {
+  const demoAccount = isDemoSession(getSession());
+  if (!status) {
     return {
-      autoDormCheckVisible: false,
+      autoDormCheckVisible: demoAccount,
       autoDormCheckTitle: "自动查寝",
       autoDormCheckStatusLabel: "已关闭",
       autoDormCheckStatusTone: "muted" as const,
@@ -150,7 +151,7 @@ export function autoDormCheckPresentationPatch(
           ),
         };
   return {
-    autoDormCheckVisible: status.entryEnabled,
+    autoDormCheckVisible: demoAccount || status.entryEnabled,
     autoDormCheckTitle: autoDormCheckSettingTitle(quota),
     autoDormCheckStatusLabel: presentation.label,
     autoDormCheckStatusTone: presentation.tone,

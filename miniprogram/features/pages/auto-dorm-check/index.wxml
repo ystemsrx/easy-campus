@@ -94,6 +94,11 @@
           <lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{26}}"></lucide-icon>
         </view>
 
+        <view wx:if="{{!paymentEnabled}}" class="auto-dorm-check-package-card card" bindtap="openOrders" aria-role="button" aria-label="历史订单">
+          <view class="auto-dorm-check-package-copy"><text class="auto-dorm-check-package-title">历史订单</text></view>
+          <lucide-icon name="chevron-right" tone="muted" size="{{26}}"></lucide-icon>
+        </view>
+
         <view class="auto-dorm-check-agreement-footer">
           <view
             class="auto-dorm-check-agreement-row {{agreementAccepted ? 'auto-dorm-check-agreement-row--accepted' : ''}}"

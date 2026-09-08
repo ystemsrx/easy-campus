@@ -27,6 +27,7 @@ function boot(storage = new Map()) {
   };
   const network = [];
   const platformCalls = [];
+  let appAvailable = true;
   let page;
   let route = "pages/home/index";
   const wx = {
@@ -102,6 +103,7 @@ function boot(storage = new Map()) {
       "getApp",
       "getCurrentPages",
       "Page",
+      "App",
       "Date",
       compiled.get(filename),
     )(
@@ -114,11 +116,12 @@ function boot(storage = new Map()) {
         return load(target);
       },
       wx,
-      () => app,
+      () => (appAvailable ? app : undefined),
       () => [{ route }],
       (definition) => {
         page = definition;
       },
+      (definition) => Object.assign(app, definition),
       ClockDate,
     );
     return module.exports;
@@ -140,6 +143,17 @@ function boot(storage = new Map()) {
     network,
     platformCalls,
     app,
+    launchApp: () => {
+      // WeChat can invoke initial lifecycle hooks before getApp is available.
+      appAvailable = false;
+      try {
+        load("app.ts");
+        app.onLaunch();
+        app.onShow();
+      } finally {
+        appAvailable = true;
+      }
+    },
     setRoute: (value) => {
       route = value;
     },
@@ -537,22 +551,84 @@ async function main() {
   assert.equal(await load("services/watermark.ts").getScreenWatermark(), null);
 
   const dorm = load("services/auto-dorm-check.ts");
-  assert.equal((await dorm.getAutoDormCheckStatus()).entryEnabled, false);
+  assert.equal((await dorm.getAutoDormCheckStatus()).entryEnabled, true);
   assert.equal(
     load("data/profile-render.ts").autoDormCheckPresentationPatch({
       ...data.demoDormStatus(),
-      entryEnabled: true,
+      entryEnabled: false,
     }).autoDormCheckVisible,
-    false,
+    true,
+  );
+  assert.equal(
+    load("data/profile-render.ts").autoDormCheckPresentationPatch(null)
+      .autoDormCheckVisible,
+    true,
   );
   const navigation = load("utils/navigation.ts");
-  assert.equal(
-    await navigation.navigateTo("/features/pages/auto-dorm-check/index"),
-    false,
+  runtime.setRoute("pages/profile/index");
+  const profilePage = runtime.loadPage("pages/profile/index.ts");
+  profilePage.onLoad();
+  assert.equal(profilePage.data.autoDormCheckVisible, true);
+  const callsBeforeDormEntry = runtime.platformCalls.length;
+  profilePage.openAutoDormCheck();
+  profilePage.openAutoDormCheck();
+  await new Promise(setImmediate);
+  assert.deepEqual(
+    runtime.platformCalls.slice(callsBeforeDormEntry),
+    ["/features/pages/auto-dorm-check/index"],
+    "Tapping the visible demo profile entry must open dorm check exactly once",
   );
+  profilePage.onUnload();
+
+  runtime.setRoute("features/pages/auto-dorm-check/index");
+  const dormPage = runtime.loadPage("features/pages/auto-dorm-check/index.ts");
+  try {
+    dormPage.onLoad();
+    dormPage.onShow();
+    await new Promise(setImmediate);
+    assert.equal(dormPage.data.loaded, true);
+    assert.equal(dormPage.data.loading, false);
+    assert.equal(dormPage.data.errorMessage, "");
+    assert.equal(dormPage.data.available, true);
+    assert.equal(dormPage.data.checkInLocationName, "示例宿舍");
+    assert.equal(dormPage.data.paymentEnabled, true);
+    const callsBeforePayment = runtime.platformCalls.length;
+    dormPage.openPayment();
+    await new Promise(setImmediate);
+    assert.deepEqual(runtime.platformCalls.slice(callsBeforePayment), [
+      "/features/pages/auto-dorm-check-payment/index",
+    ]);
+  } finally {
+    dormPage.onHide();
+    dormPage.onUnload();
+  }
   runtime.setRoute("features/pages/auto-dorm-check-payment/index");
-  assert.equal(navigation.ensureAuthenticated(), false);
-  assert.equal(runtime.platformCalls.at(-1), "/pages/profile/index");
+  assert.equal(navigation.ensureAuthenticated(), true);
+  assert.equal(
+    (await dorm.getAutoDormCheckLocation()).locationName,
+    "示例宿舍",
+  );
+  assert.equal((await dorm.setAutoDormCheckEnabled(false)).enabled, false);
+  assert.equal((await dorm.setAutoDormCheckEnabled(true)).enabled, true);
+  const demoPayment = await dorm.getAutoDormCheckPayment();
+  assert.ok(demoPayment.plans.length);
+  const history = await dorm.getAutoDormCheckPaymentOrders();
+  assert.equal(history.items.length, 20);
+  assert.equal((await dorm.getAutoDormCheckPaymentOrders(2)).items.length, 4);
+  const purchase = await dorm.createAutoDormCheckPaymentOrder(
+    demoPayment.plans[0].id,
+    "demo-purchase",
+  );
+  assert.equal(purchase.order.status, "paid");
+  assert.equal(purchase.payment, null);
+  assert.equal(
+    (await dorm.getAutoDormCheckPaymentOrders()).items[0].id,
+    purchase.order.id,
+  );
+  assert.equal(
+    (await dorm.getAutoDormCheckPaymentOrder(purchase.order.id)).order.credited,
+    true,
+  );
   await assert.rejects(dorm.createAutoDormCheckPaymentOrder("plan", "key"));
   assert.equal(await dorm.launchWechatPayment({}), "cancelled");
   await assert.rejects(
@@ -583,6 +659,11 @@ async function main() {
   ]) {
     instant = new Date(year, month, day, 23, 59).getTime();
     assert.equal(load("demo/bootstrap.ts").prepareDemoData(), true);
+    const currentOrders = await dorm.getAutoDormCheckPaymentOrders();
+    assert.ok(currentOrders.items.length);
+    assert.ok(
+      new ClockDate() - new Date(currentOrders.items[0].paidAt) < 4 * 86400000,
+    );
     const timetable =
       load("store/timetable.ts").loadTimetableSnapshot("demo").data;
     assert.equal(
@@ -638,10 +719,23 @@ async function main() {
     realSnapshot,
   );
   const restarted = boot(storage);
-  restarted.app.globalData.session = restarted
-    .load("store/session.ts")
-    .loadSession();
-  restarted.load("demo/bootstrap.ts").prepareDemoData();
+  try {
+    assert.doesNotThrow(
+      () => restarted.launchApp(),
+      "A saved demo session must cold-start before getApp becomes available",
+    );
+    assert.equal(restarted.app.globalData.session.user.account, "demo");
+    assert.deepEqual(
+      restarted.app.globalData.user,
+      restarted.load("store/session.ts").loadCurrentUser(),
+    );
+    assert.equal(restarted.app.globalData.user.name, data.demoUser().name);
+    assert.equal(restarted.app.globalData.foregroundEntryId, 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(restarted.network, []);
+  } finally {
+    restarted.app.onHide?.();
+  }
   assert.ok(
     restarted.load("store/schedule.ts").loadScheduleData("demo").plans.length,
   );
@@ -698,7 +792,7 @@ async function main() {
   assert.equal(load("demo/bootstrap.ts").prepareDemoData(), false);
   assert.equal(app.globalData.user, null);
   console.log(
-    "Demo account checks passed: offline reads/writes, rolling dates, cache isolation and hidden dorm entry.",
+    "Demo account checks passed: offline reads/writes, rolling dates, cache isolation, visible dorm entry and local orders.",
   );
 }
 

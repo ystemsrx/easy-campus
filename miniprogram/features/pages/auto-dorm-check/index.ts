@@ -508,6 +508,13 @@ Page({
       );
     });
   },
+  openOrders() {
+    haptic("light");
+    void navigateTo(
+      "/features/pages/auto-dorm-check-orders/index",
+      "wx://cupertino-modal",
+    );
+  },
   openAgreement() {
     if (this.data.openingAgreement) return;
     haptic("light");

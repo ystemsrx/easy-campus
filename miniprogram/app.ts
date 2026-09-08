@@ -24,7 +24,7 @@ App<IAppOption>({
     registerAuthenticationRoute();
     this.globalData.session = loadSession();
     this.globalData.user = loadCurrentUser();
-    prepareDemoData();
+    prepareDemoData(this);
     preloadPrimaryTabAssets();
     const timetableThemeId = loadTimetableThemeId();
     const account = this.globalData.session?.user.account || "";
@@ -38,7 +38,7 @@ App<IAppOption>({
     }
   },
   onShow() {
-    prepareDemoData();
+    prepareDemoData(this);
     this.globalData.foregroundEntryId += 1;
     startVisitTracking();
     beginAutomaticRefreshCycle();

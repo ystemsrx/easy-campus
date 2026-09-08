@@ -9,7 +9,6 @@ import type {
 } from "../types/api";
 import {
   demoCalendar,
-  demoDormStatus,
   demoExams,
   demoGrades,
   demoMessages,
@@ -29,6 +28,7 @@ import {
   demoPublications,
 } from "./community";
 import { loadDemoState, saveDemoState } from "./state";
+import { demoDormPayment } from "./dorm";
 
 function parsePath(path: string): {
   route: string;
@@ -233,7 +233,82 @@ export function demoRequest<T>(
     method === "POST"
   )
     return result({ recorded: true });
-  if (route === "/auto-dorm-check/status") return result(demoDormStatus());
+  if (route === "/auto-dorm-check/status") return result(state.dorm.status);
+  if (route === "/auto-dorm-check/location")
+    return result(state.dorm.status.checkInLocation);
+  if (
+    route === "/auto-dorm-check/preferences" ||
+    route === "/auto-dorm-check/agreement"
+  ) {
+    const input = body as { enabled?: boolean; accepted?: boolean };
+    const status = state.dorm.status;
+    if (typeof input.enabled === "boolean") status.enabled = input.enabled;
+    if (typeof input.accepted === "boolean") {
+      status.agreementAccepted = input.accepted;
+      status.agreementAcceptedAt = input.accepted ? now : null;
+    }
+    status.effectiveEnabled = status.enabled && status.agreementAccepted;
+    status.checkInStatus = !status.agreementAccepted
+      ? "agreement_required"
+      : status.enabled
+        ? "pending"
+        : "disabled";
+    status.updatedAt = now;
+    return save(status);
+  }
+  if (route === "/auto-dorm-check/payment")
+    return result(demoDormPayment(state.dorm.status.entitlement));
+  if (route === "/auto-dorm-check/payment/orders" && method === "GET") {
+    return result(
+      paginate(
+        state.dorm.orders.filter(
+          (order) =>
+            !query.status ||
+            query.status === "all" ||
+            order.status === query.status,
+        ),
+        query,
+      ),
+    );
+  }
+  if (route === "/auto-dorm-check/payment/orders" && method === "POST") {
+    const input = body as { planId: string };
+    const payment = demoDormPayment(state.dorm.status.entitlement);
+    const plan = payment.plans.find((item) => item.id === input.planId);
+    if (!plan) throw new Error("套餐不存在，请重新选择。");
+    const id = `demo-order-local-${Date.now()}-${state.dorm.orders.length}`;
+    const order = {
+      id,
+      planId: plan.id,
+      planName: plan.name,
+      outTradeNo: `DEMO${Date.now()}${state.dorm.orders.length}`,
+      status: "paid" as const,
+      credited: true,
+      amountCents: plan.priceCents,
+      refundedCents: 0,
+      createdAt: now,
+      paidAt: now,
+      refunds: [],
+    };
+    state.dorm.orders.unshift(order);
+    const entitlement = state.dorm.status.entitlement;
+    if (plan.billingType === "time") {
+      entitlement.time.remainingDays += plan.quotaAmount;
+      entitlement.time.remainingSeconds += plan.quotaAmount * 86400;
+    } else entitlement.uses.remaining += plan.quotaAmount;
+    return save({ order, entitlement, payment: null });
+  }
+  if (route.startsWith("/auto-dorm-check/payment/orders/")) {
+    const order = state.dorm.orders.find(
+      (item) => item.id === decodeURIComponent(route.split("/")[4]),
+    );
+    if (!order) throw new Error("订单不存在，请刷新后重试。");
+    return result({
+      order,
+      entitlement: state.dorm.status.entitlement,
+      payment: null,
+    });
+  }
   if (route === "/course-assistant/courses") {
     const items = demoAssistantCourses(state.reviews).filter(
       (item) =>

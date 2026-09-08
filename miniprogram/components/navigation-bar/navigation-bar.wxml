@@ -5,11 +5,10 @@
   style="height: {{totalHeight}}px;"
 >
   <view class="nav-content" style="top: {{controlTop}}px; height: {{contentHeight}}px;">
-    <view class="nav-side nav-side--left" style="width: {{sideWidth}}px;">
+    <view class="nav-side nav-side--left" style="width: {{sideWidth}}px; top: -{{backLift}}px;">
       <view
         wx:if="{{back}}"
         class="back-button"
-        style="top: -{{backLift}}px;"
         bindtap="onBack"
         hover-class="nav-button--pressed"
         hover-stay-time="90"
@@ -24,7 +23,7 @@
 
     <view class="nav-title-wrap {{back && extraLeft ? 'nav-title-wrap--extra-left' : ''}}" style="{{back && insetBack ? 'transform: translateY(-' + backLift + 'px);' : ''}}">
       <text wx:if="{{subtitle}}" class="nav-subtitle" overflow="ellipsis" max-lines="1">{{subtitle}}</text>
-      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}</text>
+      <text wx:if="{{title}}" class="nav-title" overflow="ellipsis" max-lines="1">{{title}}<text wx:if="{{titleSuffix}}" class="nav-title-suffix">{{titleSuffix}}</text></text>
       <slot wx:if="{{!title && !subtitle}}" name="center"></slot>
     </view>
 

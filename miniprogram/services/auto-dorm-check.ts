@@ -237,8 +237,7 @@ export async function createAutoDormCheckPaymentOrder(
 
 async function wechatPaymentLogin(): Promise<string> {
   const lease = captureSessionLease();
-  if (isDemoAccount(lease?.account))
-    throw new Error("示例账号暂不支持此操作。");
+  if (isDemoAccount(lease?.account)) return "demo-local-payment";
   const code = await new Promise<string>((resolve, reject) =>
     wx.login({
       success: (result) =>

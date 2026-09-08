@@ -12,7 +12,6 @@ import { saveTeachingPreview } from "../store/teaching-preview";
 import { saveTimetableSnapshot } from "../store/timetable";
 import {
   demoDate,
-  demoDormStatus,
   demoExams,
   demoGrades,
   demoMessages,
@@ -26,8 +25,9 @@ import { loadDemoState } from "./state";
 let preparedDay = "";
 
 /** Seed before any page hydrates its cache. Rebuild each local day and app launch. */
-export function prepareDemoData(): boolean {
-  if (!isDemoSession(getSession())) return false;
+export function prepareDemoData(app?: IAppOption): boolean {
+  const session = app ? app.globalData.session : getSession();
+  if (!isDemoSession(session)) return false;
   const day = demoDate();
   if (preparedDay === day) return false;
   const state = loadDemoState();
@@ -35,7 +35,7 @@ export function prepareDemoData(): boolean {
   if (!hasStoredPetPreferences("demo") && state.companion) {
     storeServerPetPreferences("demo", state.companion);
   }
-  saveCurrentUser({ ...demoUser(), companion: state.companion });
+  saveCurrentUser({ ...demoUser(), companion: state.companion }, app);
   const timetable = demoTimetable();
   saveTimetableSnapshot("demo", timetable, {
     serverFetchedAt: timestamp,
@@ -57,7 +57,7 @@ export function prepareDemoData(): boolean {
     { messages: demoMessages(), notices: demoNotices() },
     { fetchedAt: timestamp },
   );
-  saveAutoDormCheckSnapshot("demo", demoDormStatus());
+  saveAutoDormCheckSnapshot("demo", state.dorm.status);
   preparedDay = day;
   return true;
 }

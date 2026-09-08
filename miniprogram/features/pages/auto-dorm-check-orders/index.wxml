@@ -1,0 +1,35 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<view class="page orders-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+  <navigation-bar title="历史订单" title-suffix="{{loaded ? '（' + total + '）' : ''}}" back extra-left inset-back="{{true}}" transparent theme="{{theme}}">
+    <view slot="after-left" class="nav-refresh pressable {{loading || refreshing ? 'nav-refresh--loading' : ''}}" bindtap="refresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{loading || refreshing ? '正在刷新订单' : '刷新订单'}}" aria-disabled="{{loading || refreshing || loadingMore}}">
+      <image wx:if="{{loading || refreshing}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
+      <lucide-icon wx:else name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+    </view>
+  </navigation-bar>
+  <view wx:if="{{error && loaded}}" class="orders-notice" bindtap="refresh" aria-role="button"><text>{{error}}</text><text class="orders-notice-action">重试</text></view>
+  <view class="orders-scroll-shell">
+    <scroll-view class="orders-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" lower-threshold="100" bindscrolltolower="loadMore">
+      <view class="orders-content">
+        <loading-view wx:if="{{loading && !loaded}}" label="读取中" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
+        <empty-state wx:elif="{{error && !loaded}}" icon="circle-alert" icon-tone="danger" title="订单读取失败" description="{{error}}" action-text="重试" bindaction="refresh"></empty-state>
+        <empty-state wx:elif="{{loaded && !orders.length}}" icon="clipboard-check" icon-tone="sage" title="暂无购买记录" description="购买套餐后，可在这里查看订单"></empty-state>
+        <block wx:else>
+          <block wx:for="{{orders}}" wx:key="id">
+            <text wx:if="{{item.monthLabel}}" class="orders-month">{{item.monthLabel}}</text>
+            <view class="order-card">
+              <view class="order-card-head"><text class="order-plan" overflow="ellipsis" max-lines="2">{{item.planName}}</text><text class="order-status order-status--{{item.statusTone}}">{{item.statusLabel}}</text></view>
+              <view class="order-payment"><view class="order-payment-copy"><text class="order-method">微信支付</text><text class="order-date tnum">{{item.paidLabel}}</text></view><view class="order-amount-copy"><view class="order-amount"><text class="order-currency">¥</text><text class="order-value tnum">{{item.amountLabel}}</text></view><text wx:if="{{item.refundLabel}}" class="order-refund tnum">{{item.refundLabel}}</text></view></view>
+              <view class="order-receipt"><view class="order-number-copy"><text class="order-number-label">订单号</text><text class="order-number tnum" overflow="ellipsis" max-lines="1">{{item.outTradeNo}}</text></view><button class="order-copy" data-id="{{item.id}}" bindtap="copyOrder" aria-label="复制订单号">复制</button></view>
+            </view>
+          </block>
+          <button wx:if="{{moreError}}" class="orders-more" bindtap="retryMore">{{moreError}}</button>
+          <text wx:elif="{{loadingMore}}" class="orders-end">读取中…</text>
+          <button wx:elif="{{hasMore}}" class="orders-more" bindtap="loadMore">加载更多</button>
+          <text wx:elif="{{orders.length}}" class="orders-end">已显示全部订单</text>
+        </block>
+      </view>
+      <view class="orders-bottom-space"></view>
+    </scroll-view>
+  </view>
+</view>
+<screen-watermark></screen-watermark>
