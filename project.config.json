@@ -3,7 +3,9 @@
   "miniprogramRoot": "miniprogram/",
   "compileType": "miniprogram",
   "setting": {
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],
@@ -62,5 +64,6 @@
       }
     ]
   },
-  "appid": "wxb680a78dc73e6870"
+  "appid": "wxcdfc32ad2fd7931c",
+  "isGameTourist": false
 }
