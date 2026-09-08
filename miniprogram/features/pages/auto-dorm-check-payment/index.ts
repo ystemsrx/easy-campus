@@ -5,6 +5,9 @@ import {
   getAutoDormCheckPayment,
   getAutoDormCheckPaymentOrder,
   getPendingAutoDormCheckPayment,
+  resumeAutoDormCheckPaymentOrder,
+  cancelAutoDormCheckPaymentOrder,
+  launchWechatPayment,
 } from "../../../services/auto-dorm-check";
 import { ApiClientError, getErrorMessage } from "../../../services/request";
 import {
@@ -32,6 +35,8 @@ import {
 } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+
+type PaymentFlowMode = "purchase" | "resume" | "restore";
 
 const ORDER_POLL_INTERVAL_MILLISECONDS = 900;
 const ORDER_POLL_ATTEMPTS = 45;
@@ -68,6 +73,7 @@ const flowRevisions = new WeakMap<object, number>();
 const activeFlowAccounts = new WeakMap<object, string>();
 const activePendingPayments = new WeakMap<object, AccountPendingPayment>();
 const loadedPaymentAccounts = new WeakMap<object, string>();
+const paymentScrollPositions = new WeakMap<object, number>();
 const capsuleToastTimers = new WeakMap<object, CapsuleToastTimers>();
 const progressTransitions = new WeakMap<
   object,
@@ -251,6 +257,8 @@ Page({
     pendingPlanName: "",
     pendingPriceLabel: "",
     pendingOrderId: "",
+    paymentActionPending: false,
+    cancellingPayment: false,
     progressMounted: false,
     progressExpanded: false,
     progressHeight: 0,
@@ -258,6 +266,7 @@ Page({
     progressPlanName: "",
     progressPriceLabel: "",
     confirmingPlanId: "",
+    paymentScrollTop: 0,
     paymentEnabled: false,
     accessGranted: true,
     accessMode: "free" as AutoDormCheckAccessMode,
@@ -289,13 +298,15 @@ Page({
     const lease = captureSessionLease();
     if (!lease) return;
     const instance = this as unknown as object;
-    if (this.data.processing) {
+    if (this.data.paymentActionPending || this.data.processing) {
       if (activeFlowAccounts.get(instance) === lease.account) return;
       nextFlowRevision(instance);
       activeFlowAccounts.delete(instance);
       activePendingPayments.delete(instance);
       this.setPaymentView({
         processing: false,
+        paymentActionPending: false,
+        cancellingPayment: false,
         pendingResult: false,
         confirmingPlanId: "",
       });
@@ -313,6 +324,11 @@ Page({
         plans: [],
         timePlans: [],
         countPlans: [],
+        paymentActionPending: false,
+        cancellingPayment: false,
+        pendingOrderId: "",
+        pendingPlanName: "",
+        pendingPriceLabel: "",
         ...entitlementViewData(EMPTY_ENTITLEMENT),
         pendingResult: false,
         confirmingPlanId: "",
@@ -332,7 +348,7 @@ Page({
     const pending = loadPendingAutoDormCheckPayment(lease.account);
     if (pending) {
       rememberActivePendingPayment(instance, lease.account, pending);
-      void this.runPaymentFlow(lease, pending);
+      void this.runPaymentFlow(lease, pending, "restore");
       return;
     }
     activePendingPayments.delete(instance);
@@ -352,6 +368,7 @@ Page({
     activeFlowAccounts.delete(instance);
     activePendingPayments.delete(instance);
     loadedPaymentAccounts.delete(instance);
+    paymentScrollPositions.delete(instance);
     nextFlowRevision(instance);
     clearCapsuleToastTimers(instance);
     const transition = progressTransitions.get(instance);
@@ -479,12 +496,9 @@ Page({
     wx.navigateBack();
   },
   onPlanTap(event: WechatMiniprogram.TouchEvent) {
-    if (
-      this.data.processing ||
-      this.data.loading ||
-      this.data.confirmingPlanId ||
-      !this.data.paymentEnabled
-    ) {
+    if (this.data.processing || this.data.paymentActionPending) {
+      this.scrollToPayment();
+      if (this.data.pendingResult) this.showCapsuleToast("有未结束订单");
       return;
     }
     const lease = captureSessionLease();
@@ -494,9 +508,16 @@ Page({
       loadPendingAutoDormCheckPayment(lease.account) ||
       activePendingPayment(instance, lease.account);
     if (pending) {
-      this.setPaymentView({ pendingResult: true });
-      this.showCapsuleToast("支付结果确认中");
-      void this.runPaymentFlow(lease, pending);
+      this.showAwaitingPayment(pending);
+      this.scrollToPayment();
+      this.showCapsuleToast("有未结束订单");
+      return;
+    }
+    if (
+      this.data.loading ||
+      this.data.confirmingPlanId ||
+      !this.data.paymentEnabled
+    ) {
       return;
     }
     const planId = String(event.currentTarget.dataset.id || "");
@@ -536,8 +557,25 @@ Page({
       },
     });
   },
+  onPaymentScroll(event: WechatMiniprogram.CustomEvent<{ scrollTop: number }>) {
+    paymentScrollPositions.set(
+      this as unknown as object,
+      Math.max(0, event.detail.scrollTop),
+    );
+  },
+  scrollToPayment() {
+    const instance = this as unknown as object;
+    // Sync the actual scroll position first so every tap can animate to zero,
+    // including after the user scrolls down again without changing page data.
+    this.setData(
+      { paymentScrollTop: paymentScrollPositions.get(instance) || 0 },
+      () => {
+        if (activePages.has(instance)) this.setData({ paymentScrollTop: 0 });
+      },
+    );
+  },
   async startPurchase(planId: string) {
-    if (this.data.processing) return;
+    if (this.data.processing || this.data.paymentActionPending) return;
     const lease = captureSessionLease();
     if (!lease) return;
     this.dismissCapsuleToast();
@@ -546,7 +584,7 @@ Page({
       loadPendingAutoDormCheckPayment(lease.account) ||
       activePendingPayment(instance, lease.account);
     if (existing) {
-      await this.runPaymentFlow(lease, existing);
+      this.showAwaitingPayment(existing);
       return;
     }
     this.showPendingOrder(planId);
@@ -554,6 +592,7 @@ Page({
     activeFlowAccounts.set(instance, lease.account);
     this.setPaymentView({
       processing: true,
+      paymentActionPending: true,
       loading: false,
       pendingResult: false,
       confirmingPlanId: "",
@@ -567,7 +606,11 @@ Page({
     if (!preparationStillActive || !isSessionLeaseCurrent(lease)) {
       if (preparationStillActive) {
         activeFlowAccounts.delete(instance);
-        this.setPaymentView({ processing: false, confirmingPlanId: "" });
+        this.setPaymentView({
+          processing: false,
+          paymentActionPending: false,
+          confirmingPlanId: "",
+        });
       }
       return;
     }
@@ -579,37 +622,45 @@ Page({
     };
     if (!savePendingAutoDormCheckPayment(lease.account, pending)) {
       activeFlowAccounts.delete(instance);
-      this.setPaymentView({ processing: false, confirmingPlanId: "" });
+      this.setPaymentView({
+        processing: false,
+        paymentActionPending: false,
+        confirmingPlanId: "",
+      });
       this.showCapsuleToast("订单保存失败，请稍后重试");
       return;
     }
     rememberActivePendingPayment(instance, lease.account, pending);
-    await this.runPaymentFlow(lease, pending, true);
+    await this.runPaymentFlow(lease, pending, "purchase");
   },
   async runPaymentFlow(
     lease: SessionLease,
     pending: PendingAutoDormCheckPayment,
-    processingAlreadyVisible = false,
+    mode: PaymentFlowMode = "purchase",
   ) {
-    this.showPendingOrder(pending.planId, pending.orderId || "");
-    if (!processingAlreadyVisible) {
-      if (this.data.processing) return;
-      this.dismissCapsuleToast();
-      this.setPaymentView({
-        processing: true,
-        loading: false,
-        pendingResult: false,
-        confirmingPlanId: "",
-        errorMessage: "",
-      });
-    }
+    if (mode !== "purchase" && this.data.paymentActionPending) return;
+    const launchPayment = mode !== "restore";
+    this.dismissCapsuleToast();
+    if (
+      !this.data.pendingPlanName ||
+      this.data.pendingOrderId !== (pending.orderId || "")
+    )
+      this.showPendingOrder(pending.planId, pending.orderId || "");
+    this.setPaymentView({
+      processing: mode === "purchase",
+      paymentActionPending: true,
+      pendingResult: mode !== "purchase",
+      loading: false,
+      confirmingPlanId: "",
+      errorMessage: "",
+    });
     const instance = this as unknown as object;
     const revision = nextFlowRevision(instance);
     activeFlowAccounts.set(instance, lease.account);
     let trackedPending = pending;
     rememberActivePendingPayment(instance, lease.account, pending);
     try {
-      const initialResult = pending.orderId
+      let initialResult = pending.orderId
         ? await getAutoDormCheckPaymentOrder(pending.orderId)
         : await createAutoDormCheckPaymentOrder(
             pending.planId,
@@ -627,6 +678,40 @@ Page({
         trackedPending = { ...pending, orderId: initialResult.order.id };
         rememberActivePendingPayment(instance, lease.account, trackedPending);
         savePendingAutoDormCheckPayment(lease.account, trackedPending);
+      }
+      if (launchPayment && initialResult.order.status === "pending") {
+        if (!initialResult.payment)
+          initialResult = await resumeAutoDormCheckPaymentOrder(
+            initialResult.order.id,
+          );
+        if (!isFlowCurrent(instance, revision, lease)) return;
+        if (initialResult.payment && initialResult.order.status === "pending") {
+          const outcome = await launchWechatPayment(initialResult.payment);
+          if (!isFlowCurrent(instance, revision, lease)) return;
+          if (outcome === "cancelled") {
+            this.setPaymentView({ processing: false, pendingResult: true });
+            initialResult = await cancelAutoDormCheckPaymentOrder(
+              initialResult.order.id,
+            );
+          } else {
+            // Only a fresh payment attempt starts visible result polling.
+            this.setPaymentView({ processing: true, pendingResult: false });
+          }
+        }
+      }
+      if (!isFlowCurrent(instance, revision, lease)) return;
+      if (
+        (!launchPayment || !this.data.processing) &&
+        shouldPollOrder(initialResult.order)
+      ) {
+        activeFlowAccounts.delete(instance);
+        this.setPaymentView({
+          processing: false,
+          loading: false,
+          pendingResult: true,
+        });
+        if (!this.data.loaded) void this.loadPayment();
+        return;
       }
       const result = await this.pollPaymentOrder(
         initialResult,
@@ -670,6 +755,8 @@ Page({
         : getErrorMessage(error, "购买失败，请重试。");
       if (message) this.showCapsuleToast(message);
     } finally {
+      if (isFlowCurrent(instance, revision, lease))
+        this.setPaymentView({ paymentActionPending: false });
       if (
         activePages.has(instance) &&
         flowRevisions.get(instance) === revision &&
@@ -679,6 +766,7 @@ Page({
         activeFlowAccounts.delete(instance);
         this.setPaymentView({
           processing: false,
+          paymentActionPending: false,
           loading: false,
           confirmingPlanId: "",
         });
@@ -686,7 +774,7 @@ Page({
     }
   },
   retryPendingPayment() {
-    if (this.data.processing) return;
+    if (this.data.processing || this.data.paymentActionPending) return;
     const lease = captureSessionLease();
     if (!lease) return;
     const instance = this as unknown as object;
@@ -699,7 +787,88 @@ Page({
       return;
     }
     haptic("light");
-    void this.runPaymentFlow(lease, pending);
+    void this.runPaymentFlow(lease, pending, "resume");
+  },
+  showAwaitingPayment(pending: PendingAutoDormCheckPayment) {
+    if (
+      !this.data.pendingPlanName ||
+      this.data.pendingOrderId !== (pending.orderId || "")
+    )
+      this.showPendingOrder(pending.planId, pending.orderId || "");
+    this.setPaymentView({
+      processing: false,
+      pendingResult: true,
+      loading: false,
+      confirmingPlanId: "",
+    });
+  },
+  async cancelPendingPayment() {
+    if (this.data.cancellingPayment) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const instance = this as unknown as object;
+    const pending =
+      loadPendingAutoDormCheckPayment(lease.account) ||
+      activePendingPayment(instance, lease.account);
+    const revision = nextFlowRevision(instance);
+    activeFlowAccounts.set(instance, lease.account);
+    this.dismissCapsuleToast();
+    this.setPaymentView({
+      processing: false,
+      paymentActionPending: true,
+      cancellingPayment: true,
+      pendingResult: Boolean(pending),
+      loading: false,
+      confirmingPlanId: "",
+    });
+    try {
+      if (!pending) return;
+      // Recover a lost creation response with the original key before closing.
+      const resolved = pending.orderId
+        ? null
+        : await createAutoDormCheckPaymentOrder(
+            pending.planId,
+            pending.idempotencyKey,
+          );
+      if (!isFlowCurrent(instance, revision, lease)) return;
+      const tracked = {
+        ...pending,
+        orderId: pending.orderId || resolved!.order.id,
+      };
+      rememberActivePendingPayment(instance, lease.account, tracked);
+      savePendingAutoDormCheckPayment(lease.account, tracked);
+      this.setPaymentView({ pendingOrderId: tracked.orderId });
+      const result =
+        resolved && !shouldPollOrder(resolved.order)
+          ? resolved
+          : await cancelAutoDormCheckPaymentOrder(tracked.orderId);
+      if (!isFlowCurrent(instance, revision, lease)) return;
+      if (shouldPollOrder(result.order)) {
+        this.showAwaitingPayment(tracked);
+        this.showCapsuleToast("暂时无法取消，请重试");
+      } else {
+        await this.finishPaymentFlow(lease, revision, instance, result);
+      }
+    } catch (error) {
+      if (!isFlowCurrent(instance, revision, lease)) return;
+      const keepPending =
+        Boolean(pending?.orderId) || keepPendingAfterError(error);
+      if (!keepPending) {
+        clearPendingAutoDormCheckPayment(lease.account);
+        activePendingPayments.delete(instance);
+      }
+      this.setPaymentView({ pendingResult: keepPending });
+      this.showCapsuleToast(getErrorMessage(error, "取消失败，请重试"));
+    } finally {
+      if (isFlowCurrent(instance, revision, lease)) {
+        activeFlowAccounts.delete(instance);
+        this.setPaymentView({
+          paymentActionPending: false,
+          cancellingPayment: false,
+        });
+        if (!this.data.loaded) void this.loadPayment();
+      }
+    }
   },
   showPendingOrder(planId: string, orderId = "") {
     const plan = this.data.plans.find((item) => item.id === planId);

@@ -219,14 +219,14 @@ assert(
 );
 assert(
   service.includes('headers: { "Idempotency-Key": idempotencyKey }') &&
-    service.includes("data: { planId }") &&
+    service.includes("data: { planId, code }") &&
     !service.includes("data: { planId, price") &&
     paymentScript.includes("pending.planId") &&
     paymentTemplate.includes('data-id="{{item.id}}"') &&
     store.includes("planId: string") &&
     store.includes("planCode?: unknown") &&
     request.includes("...options.headers"),
-  "订单请求必须只提交套餐 ID、兼容迁移旧 pending，并通过 Idempotency-Key 防重复购买",
+  "订单请求必须只提交套餐 ID 和微信临时登录码、兼容迁移旧 pending，并通过 Idempotency-Key 防重复购买",
 );
 const startPurchaseSource = paymentScript.slice(
   paymentScript.indexOf("async startPurchase("),
@@ -255,10 +255,10 @@ assert(
     paymentTemplate.includes("{{progressPlanName}} {{progressPriceLabel}}") &&
     !paymentTemplate.includes("{{pendingOrderId}}") &&
     !paymentTemplate.includes("可以先返回，稍后继续确认") &&
-    paymentTemplate.includes('bindtap="returnToAutoDormCheck"') &&
+    paymentTemplate.includes('bindtap="cancelPendingPayment"') &&
     paymentScript.includes("wx.showModal({") &&
     paymentTemplate.includes('bindtap="retryPendingPayment"'),
-  "付款确认只展示套餐和金额，保留导航、返回及重试入口，不展示订单号和冗余说明",
+  "付款确认只展示套餐和金额，保留导航、取消及重试入口，不展示订单号和冗余说明",
 );
 assert(
   paymentScript.includes("this.data.loading ||") &&
@@ -389,8 +389,10 @@ function loadPaymentServiceRuntime() {
       }
       if (specifier === "./request") {
         return {
-          apiRequest: () => {
+          apiRequest: (url, options) => {
             const request = deferred();
+            request.url = url;
+            request.options = options;
             requests.push(request);
             return request.promise;
           },
@@ -470,12 +472,43 @@ function loadPaymentPageRuntime(options) {
     resumed: null,
     saved: [],
     toasts: [],
+    views: [],
+    creations: [],
   };
   let storedPending = options.storedPending || null;
   const orderQueue = [...(options.orderQueue || [])];
+  const createQueue = [...(options.createQueue || [])];
   const api = {
-    createAutoDormCheckPaymentOrder: async () => {
+    getCachedAutoDormCheckPayment: () => null,
+    getPendingAutoDormCheckPayment: () => null,
+    resumeAutoDormCheckPaymentOrder: async () => {
+      calls.resume = (calls.resume || 0) + 1;
+      return (
+        options.resumeResult ||
+        options.createResult ||
+        options.repeatedOrderResult
+      );
+    },
+    launchWechatPayment: async () => {
+      calls.native = (calls.native || 0) + 1;
+      options.onNative?.();
+      return options.nativeResult || "success";
+    },
+    cancelAutoDormCheckPaymentOrder: async (id) => {
+      calls.cancel = (calls.cancel || 0) + 1;
+      calls.cancelledOrderId = id;
+      if (options.cancelError) throw options.cancelError;
+      return options.cancelResult;
+    },
+    createAutoDormCheckPaymentOrder: async (planId, key) => {
       calls.create += 1;
+      calls.creations.push({ planId, key });
+      if (options.createError)
+        throw Object.assign(
+          new ApiClientError(options.createError.message),
+          options.createError,
+        );
+      if (createQueue.length) return createQueue.shift();
       if (!options.createResult) {
         throw new Error("Unexpected order creation");
       }
@@ -524,7 +557,10 @@ function loadPaymentPageRuntime(options) {
     moduleRecord.exports,
     (specifier) => {
       if (specifier === "../../../services/auto-dorm-check") return api;
-      if (specifier === "../../../utils/app-share") return { buildAppShare() {} };
+      if (specifier === "../../../utils/app-share")
+        return { buildAppShare() {} };
+      if (specifier === "../../../utils/date")
+        return { formatDateTime: (value) => value };
       if (specifier === "../../../services/request") {
         return {
           ApiClientError,
@@ -541,13 +577,14 @@ function loadPaymentPageRuntime(options) {
           savePendingAutoDormCheckPayment: (_account, value) => {
             calls.saved.push(value);
             storedPending = value;
+            return true;
           },
         };
       }
       if (specifier === "../../../store/session") {
         return {
           captureSessionLease: () => lease,
-          isSessionLeaseCurrent: () => true,
+          isSessionLeaseCurrent: () => options.isCurrent?.() ?? true,
         };
       }
       if (specifier === "../../../utils/appearance") {
@@ -591,6 +628,7 @@ function loadPaymentPageRuntime(options) {
     renderedData: JSON.parse(JSON.stringify(pageDefinition.data)),
     setData(patch, callback) {
       Object.assign(this.data, patch);
+      calls.views.push(structuredClone(this.data));
       const submitted = structuredClone(patch);
       const render = () => {
         Object.assign(this.renderedData, submitted);
@@ -837,8 +875,11 @@ async function checkStateMachine() {
     runtime.instance.onPlanTap({ currentTarget: { dataset: {} } });
     assert(
       runtime.calls.modal === 0 &&
-        runtime.calls.resumed?.orderId === "order-pending",
-      "存在 pending 时点击其他套餐必须继续原订单，不能打开新购买弹窗",
+        runtime.calls.resumed === null &&
+        !runtime.instance.data.processing &&
+        runtime.instance.data.pendingResult &&
+        runtime.calls.toasts.includes("有未结束订单"),
+      "存在 pending 时点击其他套餐保持待完成并提示，不能重启轮询或购买",
     );
     runtime.calls.resumed = null;
     runtime.instance.retryPendingPayment();
@@ -873,10 +914,359 @@ async function checkStateMachine() {
   }
 }
 
+async function checkNativePayment() {
+  const pending = {
+    order: order("pending", false, "native-order"),
+    entitlement: entitlement(0, 0),
+    payment: { signType: "RSA", package: "prepay_id=test" },
+  };
+  const paid = {
+    order: order("paid", true, "native-order"),
+    entitlement: entitlement(7, 0),
+  };
+  const saved = {
+    idempotencyKey: "00000000-0000-4000-8000-000000000011",
+    orderId: null,
+    planId: "time-7-days",
+    createdAt: Date.now(),
+  };
+  for (const nativeResult of ["success", "unknown"]) {
+    const r = loadPaymentPageRuntime({
+      createResult: pending,
+      nativeResult,
+      orderQueue: [paid],
+    });
+    await r.instance.runPaymentFlow(r.lease, saved);
+    assert(
+      r.calls.native === 1 &&
+        r.calls.get === 1 &&
+        r.calls.toasts.includes("购买成功"),
+      "原生成功或未知结果都必须经服务端查单确认入账",
+    );
+    assert(
+      r.calls.saved.some((item) => item.orderId === "native-order"),
+      "调起原生支付前必须保存可恢复的订单 ID",
+    );
+  }
+  const cancelled = {
+    order: order("cancelled", false, "native-order"),
+    entitlement: entitlement(0, 0),
+  };
+  const r = loadPaymentPageRuntime({
+    createResult: pending,
+    nativeResult: "cancelled",
+    cancelResult: cancelled,
+  });
+  await r.instance.runPaymentFlow(r.lease, saved);
+  assert(
+    r.calls.cancel === 1 &&
+      r.calls.clear === 1 &&
+      !r.calls.toasts.includes("购买成功"),
+    "用户取消后须由服务端关单确认，不能误报成功",
+  );
+  const reopened = loadPaymentPageRuntime({ repeatedOrderResult: pending });
+  await reopened.instance.runPaymentFlow(
+    reopened.lease,
+    { ...saved, orderId: "native-order" },
+    "restore",
+  );
+  assert(
+    !reopened.calls.native &&
+      reopened.calls.get === 1 &&
+      reopened.instance.data.pendingResult,
+    "页面恢复只查单，不自动弹出付款界面",
+  );
+  let current = true;
+  const switched = loadPaymentPageRuntime({
+    createResult: pending,
+    isCurrent: () => current,
+    onNative: () => {
+      current = false;
+    },
+  });
+  await switched.instance.runPaymentFlow(switched.lease, saved);
+  assert(
+    !switched.calls.get &&
+      !switched.calls.clear &&
+      !switched.calls.toasts.includes("购买成功"),
+    "原生支付期间切换账号不得污染新账号状态或清除原订单",
+  );
+}
+
+async function settle() {
+  for (let i = 0; i < 30; i += 1) await Promise.resolve();
+}
+
+async function checkPendingControls() {
+  const saved = {
+    idempotencyKey: "00000000-0000-4000-8000-000000000021",
+    orderId: "pending-controls",
+    planId: "count_10",
+    createdAt: Date.now(),
+  };
+  const pending = {
+    order: order("pending", false, saved.orderId),
+    entitlement: entitlement(0, 0),
+  };
+  const paid = {
+    order: order("paid", true, saved.orderId),
+    entitlement: entitlement(0, 10),
+  };
+  const cancelled = {
+    order: order("cancelled", false, saved.orderId),
+    entitlement: entitlement(0, 0),
+  };
+  {
+    const lookup = deferred();
+    const r = loadPaymentPageRuntime({
+      storedPending: saved,
+      orderQueue: [lookup.promise],
+    });
+    r.instance.onShow();
+    r.instance.onPaymentScroll({ detail: { scrollTop: 640 } });
+    assert(
+      r.instance.data.pendingResult &&
+        !r.instance.data.progressBusy &&
+        !r.instance.data.processing,
+      "重新进入时，查单尚未返回也必须立即显示订单待完成",
+    );
+    r.instance.onPlanTap({ currentTarget: { dataset: { id: "count_1" } } });
+    lookup.resolve(pending);
+    await settle();
+    r.instance.onPaymentScroll({ detail: { scrollTop: 820 } });
+    r.instance.data.loading = true;
+    r.instance.onPlanTap({ currentTarget: { dataset: { id: "count_1" } } });
+    assert(
+      r.calls.views.some((v) => v.paymentScrollTop === 640) &&
+        r.calls.views.some((v) => v.paymentScrollTop === 820) &&
+        r.instance.data.paymentScrollTop === 0,
+      "待付款时每次从下方点击套餐都应从当前滚动位置回到顶部",
+    );
+    assert(
+      paymentTemplate.includes('scroll-top="{{paymentScrollTop}}"') &&
+        paymentTemplate.includes(
+          "scroll-with-animation=\"{{motionClass !== 'motion-reduced'}}\"",
+        ),
+      "回到待付款卡片使用滚动动画并遵循减少动态效果设置",
+    );
+    assert(
+      r.calls.get === 1 &&
+        !r.calls.native &&
+        !r.calls.create &&
+        !r.calls.modal &&
+        !r.instance.data.paymentActionPending,
+      "恢复订单只静默查一次，下方购买按钮不得创建或继续支付",
+    );
+    assert(
+      r.calls.views.every((v) => !v.processing && !v.progressBusy) &&
+        r.instance.data.pendingResult,
+      "恢复和重复点击套餐的整个过程中都不能出现转圈",
+    );
+    assert(
+      r.calls.toasts.includes("有未结束订单"),
+      "已有订单时购买提示必须使用有未结束订单",
+    );
+  }
+  {
+    const r = loadPaymentPageRuntime({
+      repeatedOrderResult: {
+        ...paid,
+        order: { ...paid.order, credited: false },
+      },
+    });
+    await r.instance.runPaymentFlow(r.lease, saved, "restore");
+    assert(
+      r.calls.get === 1 &&
+        !r.instance.data.processing &&
+        r.instance.data.pendingResult,
+      "重新进入已付款待入账订单也不能自动启动长轮询",
+    );
+  }
+  {
+    const prepay = deferred();
+    const confirmation = deferred();
+    const r = loadPaymentPageRuntime({
+      storedPending: saved,
+      orderQueue: [pending, confirmation.promise],
+      resumeResult: prepay.promise,
+      freshEntitlement: paid.entitlement,
+    });
+    r.instance.showAwaitingPayment(saved);
+    r.instance.retryPendingPayment();
+    await settle();
+    r.instance.retryPendingPayment();
+    assert(
+      r.calls.resume === 1 &&
+        !r.instance.data.processing &&
+        r.instance.data.pendingResult,
+      "继续支付准备期间保留待完成卡片并阻止重复点击",
+    );
+    prepay.resolve({
+      ...pending,
+      payment: { package: "prepay_id=test", signType: "RSA" },
+    });
+    await settle();
+    assert(
+      r.calls.native === 1 &&
+        r.instance.data.processing &&
+        r.instance.data.progressBusy,
+      "只有一次新的微信付款尝试返回后才显示确认转圈",
+    );
+    confirmation.resolve(paid);
+    await settle();
+    assert(
+      r.calls.clear === 1 &&
+        !r.instance.data.paymentActionPending &&
+        r.calls.toasts.includes("购买成功"),
+      "继续支付成功后必须恢复操作并更新额度",
+    );
+  }
+  for (const [result, error, keep] of [
+    [cancelled, null, false],
+    [pending, null, true],
+    [null, new Error("取消失败，请重试"), true],
+    [paid, null, false],
+  ]) {
+    const r = loadPaymentPageRuntime({
+      storedPending: saved,
+      cancelResult: result,
+      cancelError: error,
+      freshEntitlement: result?.entitlement,
+    });
+    r.instance.showAwaitingPayment(saved);
+    await r.instance.cancelPendingPayment();
+    assert(
+      r.calls.cancel === 1 &&
+        r.calls.cancelledOrderId === saved.orderId &&
+        !r.instance.data.processing &&
+        !r.instance.data.paymentActionPending &&
+        !r.instance.data.cancellingPayment,
+      "取消支付必须关闭原订单并恢复按钮，不能持续转圈",
+    );
+    assert(
+      r.instance.data.pendingResult === keep &&
+        r.calls.clear === (keep ? 0 : 1),
+      "关单未确认时保留原订单，终态才清除",
+    );
+    assert(
+      r.calls.toasts.includes("购买成功") === (result === paid),
+      "关单与付款竞态以服务端实际终态为准",
+    );
+  }
+  {
+    const creation = deferred();
+    const closing = deferred();
+    const r = loadPaymentPageRuntime({
+      createQueue: [creation.promise, pending],
+      cancelResult: closing.promise,
+    });
+    const purchase = r.instance.startPurchase(saved.planId);
+    await settle();
+    assert(
+      r.calls.create === 1 && r.instance.data.processing,
+      "首次购买自动创建订单时显示转圈",
+    );
+    const cancel = r.instance.cancelPendingPayment();
+    await settle();
+    r.instance.cancelPendingPayment();
+    assert(
+      r.calls.create === 2 &&
+        r.calls.creations[0].key === r.calls.creations[1].key &&
+        r.calls.cancel === 1,
+      "创建响应丢失时取消必须复用原幂等键找回订单，重复取消不能再发请求",
+    );
+    closing.resolve(cancelled);
+    await cancel;
+    creation.resolve({
+      ...pending,
+      payment: { package: "prepay_id=test", signType: "RSA" },
+    });
+    await purchase;
+    assert(
+      !r.calls.native &&
+        !r.instance.data.pendingResult &&
+        !r.instance.data.paymentActionPending,
+      "取消完成后迟到的创建响应不得再拉起微信支付或恢复待付款状态",
+    );
+  }
+  {
+    const lookup = deferred();
+    const r = loadPaymentPageRuntime({
+      storedPending: saved,
+      orderQueue: [lookup.promise],
+      cancelResult: cancelled,
+    });
+    r.instance.onShow();
+    await r.instance.cancelPendingPayment();
+    lookup.resolve(pending);
+    await settle();
+    assert(
+      !r.instance.data.pendingResult && r.calls.clear === 1,
+      "恢复查单与取消竞态中，迟到查询不得复活已取消订单",
+    );
+  }
+  {
+    const r = loadPaymentPageRuntime({
+      createResult: {
+        ...pending,
+        payment: { package: "prepay_id=test", signType: "RSA" },
+      },
+      nativeResult: "cancelled",
+      cancelResult: pending,
+    });
+    await r.instance.runPaymentFlow(r.lease, { ...saved, orderId: null });
+    assert(
+      !r.calls.get &&
+        !r.instance.data.processing &&
+        r.instance.data.pendingResult,
+      "微信收银台取消但关单尚未确认时应保持待完成，不启动长轮询",
+    );
+  }
+  {
+    const r = loadPaymentPageRuntime({
+      createError: {
+        statusCode: 409,
+        code: "AUTO_DORM_CHECK_UNFINISHED_ORDER",
+        message: "有未结束订单",
+      },
+    });
+    await r.instance.startPurchase(saved.planId);
+    assert(
+      r.calls.toasts.includes("有未结束订单") &&
+        r.calls.clear === 1 &&
+        !r.instance.data.pendingResult &&
+        !r.instance.data.processing &&
+        !r.instance.data.paymentActionPending &&
+        !r.calls.native,
+      "其他设备已有订单时显示服务端提示并清理本机未创建的订单，不滞留转圈",
+    );
+  }
+}
+
 async function main() {
   checkProgressTransition();
   await checkPaymentPrefetch();
   await checkStateMachine();
+  await checkNativePayment();
+  await checkPendingControls();
+  const transport = loadPaymentServiceRuntime();
+  const cancellation =
+    transport.api.cancelAutoDormCheckPaymentOrder("order/with space");
+  const request = transport.requests[0];
+  assert(
+    request.url.endsWith("/payment/orders/order%2Fwith%20space/cancel") &&
+      request.options.method === "POST" &&
+      JSON.stringify(request.options.data) === "{}",
+    "取消订单必须发送有效的空 JSON 对象并编码订单号，不能只带 application/json 头而省略请求体",
+  );
+  request.resolve({
+    order: order("cancelled", false),
+    entitlement: entitlement(),
+  });
+  assert(
+    (await cancellation).order.status === "cancelled",
+    "取消接口应返回服务端确认的订单终态",
+  );
   if (failures.length) {
     console.error(failures.join("\n"));
     process.exitCode = 1;

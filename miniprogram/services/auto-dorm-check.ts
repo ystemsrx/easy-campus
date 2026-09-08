@@ -3,6 +3,8 @@ import type {
   AutoDormCheckPaymentOrderResult,
   AutoDormCheckLocation,
   AutoDormCheckStatus,
+  WechatPaymentParameters,
+  AutoDormCheckOrderHistoryItem,
 } from "../types/api";
 import {
   saveAutoDormCheckLocation,
@@ -13,7 +15,7 @@ import {
   isSessionLeaseCurrent,
   sessionLeaseKey,
 } from "../store/session";
-import { apiRequest } from "./request";
+import { apiRequest, ApiClientError } from "./request";
 
 const ROOT = "/auto-dorm-check";
 
@@ -220,15 +222,68 @@ export function getCachedAutoDormCheckPayment(): AutoDormCheckPaymentData | null
   return cachedPayment.data;
 }
 
-export function createAutoDormCheckPaymentOrder(
+export async function createAutoDormCheckPaymentOrder(
   planId: string,
   idempotencyKey: string,
 ): Promise<AutoDormCheckPaymentOrderResult> {
+  const code = await wechatPaymentLogin();
   return apiRequest<AutoDormCheckPaymentOrderResult>(`${ROOT}/payment/orders`, {
     method: "POST",
-    data: { planId },
+    data: { planId, code },
     headers: { "Idempotency-Key": idempotencyKey },
   });
+}
+
+async function wechatPaymentLogin(): Promise<string> {
+  const lease = captureSessionLease();
+  const code = await new Promise<string>((resolve, reject) =>
+    wx.login({
+      success: (result) =>
+        result.code
+          ? resolve(result.code)
+          : reject(new Error("微信登录失败，请重试")),
+      fail: () => reject(new Error("微信登录失败，请重试")),
+    }),
+  );
+  if (!lease || !isSessionLeaseCurrent(lease))
+    throw new ApiClientError({
+      message: "登录状态已变化，请重试",
+      code: "STALE_SESSION",
+      statusCode: 401,
+    });
+  return code;
+}
+
+export async function resumeAutoDormCheckPaymentOrder(
+  orderId: string,
+): Promise<AutoDormCheckPaymentOrderResult> {
+  const code = await wechatPaymentLogin();
+  return apiRequest(
+    `${ROOT}/payment/orders/${encodeURIComponent(orderId)}/pay`,
+    { method: "POST", data: { code } },
+  );
+}
+
+export function cancelAutoDormCheckPaymentOrder(
+  orderId: string,
+): Promise<AutoDormCheckPaymentOrderResult> {
+  return apiRequest(
+    `${ROOT}/payment/orders/${encodeURIComponent(orderId)}/cancel`,
+    { method: "POST", data: {} },
+  );
+}
+
+export function launchWechatPayment(
+  payment: WechatPaymentParameters,
+): Promise<"success" | "cancelled" | "unknown"> {
+  return new Promise((resolve) =>
+    wx.requestPayment({
+      ...payment,
+      success: () => resolve("success"),
+      fail: (error) =>
+        resolve(/cancel/i.test(error.errMsg || "") ? "cancelled" : "unknown"),
+    }),
+  );
 }
 
 export function getAutoDormCheckPaymentOrder(
@@ -237,4 +292,16 @@ export function getAutoDormCheckPaymentOrder(
   return apiRequest<AutoDormCheckPaymentOrderResult>(
     `${ROOT}/payment/orders/${encodeURIComponent(orderId)}`,
   );
+}
+
+export function getAutoDormCheckPaymentOrders(page = 1): Promise<{
+  items: AutoDormCheckOrderHistoryItem[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}> {
+  return apiRequest(`${ROOT}/payment/orders?page=${page}&pageSize=20`);
 }

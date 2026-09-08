@@ -143,11 +143,32 @@ export interface AutoDormCheckPaymentOrder {
   amountCents: number;
   createdAt: string;
   paidAt: string | null;
+  expiresAt?: string | null;
+  refundedCents?: number;
+}
+
+export interface WechatPaymentParameters {
+  timeStamp: string;
+  nonceStr: string;
+  package: string;
+  signType: "RSA";
+  paySign: string;
 }
 
 export interface AutoDormCheckPaymentOrderResult {
   order: AutoDormCheckPaymentOrder;
   entitlement: AutoDormCheckEntitlement;
+  payment?: WechatPaymentParameters | null;
+}
+
+export interface AutoDormCheckOrderHistoryItem extends AutoDormCheckPaymentOrder {
+  planName: string;
+  outTradeNo: string;
+  refunds: Array<{
+    id: string;
+    status: "pending" | "processing" | "success" | "closed" | "abnormal";
+    amountCents: number;
+  }>;
 }
 
 export interface Session {
