@@ -21,6 +21,45 @@ export interface DeviceProofHeaders extends Record<string, string> {
 
 let keyPromise: Promise<StoredDeviceKey> | null = null;
 let sessionHashCache: { token: string; hash: string } | null = null;
+let serverClock: { origin: string; offsetMs: number } | null = null;
+
+export function synchronizeDeviceProofClock(
+  headers: Record<string, unknown> | undefined,
+  requestStartedAt: number,
+  requestUrl: string,
+): void {
+  const receivedAt = Date.now();
+  const elapsed = receivedAt - requestStartedAt;
+  const origin = apiOrigin();
+  if (
+    !headers ||
+    requestUrl.split("/").slice(0, 3).join("/") !== origin ||
+    !Number.isFinite(elapsed) ||
+    elapsed < 0 ||
+    elapsed > 10_000
+  )
+    return;
+  const header = (name: string) => {
+    const key = Object.keys(headers).find((key) => key.toLowerCase() === name);
+    return key ? headers[key] : undefined;
+  };
+  const date = header("date");
+  const age = header("age");
+  const timestamp = typeof date === "string" ? Date.parse(date) : NaN;
+  if (
+    !Number.isFinite(timestamp) ||
+    timestamp <= 0 ||
+    (age !== undefined && Number(age) !== 0)
+  )
+    return;
+  // HTTP Date has second precision. Only use fresh, fast responses from the API;
+  // a suspended app or debugger must not turn a long pause into a clock offset.
+  serverClock = { origin, offsetMs: timestamp + elapsed / 2 - receivedAt };
+}
+
+function apiOrigin(): string {
+  return getApiUrl("/").split("/").slice(0, 3).join("/");
+}
 
 export async function getDevicePublicKey(): Promise<string> {
   return (await getOrCreateDeviceKey()).publicKey;
@@ -53,7 +92,9 @@ export async function createDeviceProofHeaders(input: {
   }
   const random = await wx.getRandomValues({ length: 32 });
   const nonce = toBase64Url(new Uint8Array(random.randomValues));
-  const timestamp = Date.now();
+  const offsetMs =
+    serverClock?.origin === apiOrigin() ? serverClock.offsetMs : 0;
+  const timestamp = Math.round(Date.now() + offsetMs);
   const sessionHash = hashSessionToken(input.sessionToken);
   const canonical = [
     DEVICE_PROOF_VERSION,

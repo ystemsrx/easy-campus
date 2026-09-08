@@ -78,6 +78,7 @@ new Function(
         createDeviceProofHeaders: async () => ({}),
         getDevicePublicKey: async () => "public-key",
         hashRequestData: () => "body-hash",
+        synchronizeDeviceProofClock: () => {},
       };
     }
     throw new Error(`Unexpected request dependency: ${specifier}`);

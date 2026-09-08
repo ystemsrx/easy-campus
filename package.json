@@ -35,7 +35,7 @@
     "check:course-assistant": "node scripts/check-course-assistant.js",
     "check:auto-dorm-check": "node scripts/check-auto-dorm-check-payment.js",
     "check:heartbeat": "node scripts/check-heartbeat.js",
-    "check:device-proof": "node scripts/check-device-proof.js",
+    "check:device-proof": "node scripts/check-device-proof.js && node scripts/check-request-clock.js",
     "check:session": "node scripts/check-session-isolation.js",
     "check:watermark": "node scripts/check-watermark.js",
     "check:packages": "node scripts/check-package-boundaries.js",

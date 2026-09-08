@@ -23,6 +23,7 @@ import {
   createDeviceProofHeaders,
   getDevicePublicKey,
   hashRequestData,
+  synchronizeDeviceProofClock,
 } from "./device-proof";
 import type { DeviceBinding } from "../types/api";
 
@@ -68,7 +69,10 @@ const CAMPUS_CREDENTIAL_INVALIDATION_CODES = new Set([
   "SWU_ACCOUNT_DISABLED",
   "SWU_AUTH_RESPONSE_UNEXPECTED",
 ]);
-const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
+const RETRYABLE_ERROR_CODES = new Set([
+  "SWU_SESSION_EXPIRED",
+  "DEVICE_TIMESTAMP_OUT_OF_RANGE",
+]);
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
 const STALE_SESSION_ERROR_CODE = "STALE_SESSION";
@@ -422,9 +426,11 @@ async function requestOnce<T>(
       ? await createRequestProof(path, options, lease)
       : ({} as Record<string, string>);
 
+  const requestUrl = getApiUrl(path);
+  const requestStartedAt = Date.now();
   return new Promise((resolve, reject) => {
     wx.request({
-      url: getApiUrl(path),
+      url: requestUrl,
       method: options.method || "GET",
       data: options.data,
       timeout: options.timeout || 30000,
@@ -442,6 +448,11 @@ async function requestOnce<T>(
           reject(staleSessionError());
           return;
         }
+        synchronizeDeviceProofClock(
+          response.header,
+          requestStartedAt,
+          requestUrl,
+        );
         if (response.statusCode >= 200 && response.statusCode < 300) {
           if (isSuccessEnvelope<T>(response.data)) {
             resolve(response.data);
@@ -523,10 +534,7 @@ async function requestEnvelope<T>(
     return await requestOnce<T>(path, options, context);
   } catch (error) {
     const apiError = error as ApiClientError;
-    if (
-      context.authenticated &&
-      isCredentialInvalidationCode(apiError.code)
-    ) {
+    if (context.authenticated && isCredentialInvalidationCode(apiError.code)) {
       throw notifyCredentialReauthRequired(
         context.lease,
         apiError.code,
@@ -558,11 +566,7 @@ async function requestEnvelope<T>(
       throw staleSessionError();
     }
     try {
-      return await requestOnce<T>(
-        path,
-        { ...options, retry: false },
-        context,
-      );
+      return await requestOnce<T>(path, { ...options, retry: false }, context);
     } catch (retryError) {
       const retryApiError = retryError as ApiClientError;
       if (
