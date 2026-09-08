@@ -10,36 +10,42 @@
       <view wx:else class="query-card card">
         <view wx:if="{{campuses.length}}" class="campus-switch">
           <view class="campus-indicator" style="{{campusIndicatorStyle}}"></view>
-          <view wx:for="{{campuses}}" wx:key="value" class="campus-option {{campusId === item.value ? 'campus-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectCampusInline" hover-class="campus-option--pressed" hover-stay-time="90" aria-role="button" aria-label="选择{{item.label}}">
+          <view wx:for="{{campuses}}" wx:key="value" class="campus-option {{campusId === item.value ? 'campus-option--active' : ''}}" data-value="{{item.value}}" bindtap="selectCampusInline" hover-class="none" aria-role="button" aria-label="选择{{item.label}}">
             <text overflow="ellipsis" max-lines="1">{{item.label}}</text>
           </view>
         </view>
 
         <text class="query-label query-label--spaced">教学楼 <text class="query-hint">· 可多选</text></text>
         <view wx:if="{{optionsLoading && !buildings.length}}" class="inline-placeholder"><text>正在读取教学楼…</text></view>
-        <view wx:elif="{{buildings.length}}" class="building-grid"><view wx:for="{{buildings}}" wx:key="value" class="building-pill pressable {{item.selected ? 'building-pill--active' : ''}}" data-value="{{item.value}}" bindtap="toggleBuildingInline" hover-class="pressing"><text overflow="ellipsis" max-lines="2">{{item.label}}</text></view></view>
+        <view wx:elif="{{buildings.length}}" class="building-grid">
+          <view wx:for="{{buildingRows}}" wx:for-item="row" wx:key="id" class="room-option-row">
+            <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="id" class="room-option-cell">
+              <view wx:if="{{cell.option}}" class="building-pill {{cell.option.selected ? 'building-pill--active' : ''}}" data-value="{{cell.option.value}}" bindtap="toggleBuildingInline" hover-class="none"><text overflow="ellipsis" max-lines="1">{{cell.option.label}}</text></view>
+            </view>
+          </view>
+        </view>
         <view wx:else class="inline-placeholder" bindtap="retry"><text>{{campusId ? '该校区暂未返回楼栋，点击重试' : '暂无可选校区'}}</text></view>
 
         <text class="query-label query-label--spaced">日期</text>
         <view class="quick-date-track">
           <view class="quick-date-indicator-slot" style="{{quickDateIndicatorStyle}}"><view class="quick-date-indicator"></view></view>
-          <view wx:for="{{quickDates}}" wx:key="date" class="quick-date-option {{item.selected ? 'quick-date-option--active' : ''}}" data-date="{{item.date}}" bindtap="selectQuickDate" hover-class="quick-date-option--pressed" hover-stay-time="90" aria-role="button" aria-label="选择{{item.weekdayLabel}}{{item.dayLabel}}日">
+          <view wx:for="{{quickDates}}" wx:key="date" class="quick-date-option {{item.selected ? 'quick-date-option--active' : ''}}" data-date="{{item.date}}" bindtap="selectQuickDate" hover-class="none" aria-role="button" aria-label="选择{{item.weekdayLabel}}{{item.dayLabel}}日">
             <text class="quick-date-weekday">{{item.weekdayLabel}}</text>
             <text class="quick-date-day tnum">{{item.dayLabel}}</text>
           </view>
         </view>
         <picker mode="date" value="{{date}}" start="{{minDate}}" end="{{maxDate}}" bindchange="onDateChange">
-          <view class="date-choice pressable" hover-class="pressing"><view class="date-icon"><lucide-icon name="calendar-days" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{35}}"></lucide-icon></view><text class="date-value">{{dateLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
+          <view class="date-choice" hover-class="none"><view class="date-icon"><lucide-icon name="calendar-days" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{35}}"></lucide-icon></view><text class="date-value">{{dateLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon></view>
         </picker>
 
         <text class="query-label query-label--spaced">节次 <text class="query-hint">· 可多选</text></text>
-        <view class="period-choice pressable" bindtap="openPeriodPicker" hover-class="pressing" aria-role="button" aria-label="选择节次">
+        <view class="period-choice" bindtap="openPeriodPicker" hover-class="none" aria-role="button" aria-label="选择节次">
           <view class="period-choice-icon"><lucide-icon name="clock-3" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{34}}"></lucide-icon></view>
           <view class="period-choice-copy"><text>{{periodLabel}}</text><text>{{selectedPeriods.length ? '已选 ' + selectedPeriods.length + ' 节' : '上午 · 中午 · 下午 · 晚上'}}</text></view>
           <lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
         </view>
 
-        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="room-query-button--pressed" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><lucide-icon wx:else name="search" tone="white" size="{{29}}"></lucide-icon><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
+        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="none" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><lucide-icon wx:else name="search" tone="white" size="{{29}}"></lucide-icon><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
       </view>
 
     </view>
@@ -50,14 +56,13 @@
     <view class="motion-sheet {{pickerActive ? 'motion-sheet--active' : ''}} period-picker-card">
       <view class="period-picker-handle"></view>
       <view class="period-picker-header">
-        <view><text class="period-picker-title">选择节次</text><text class="period-picker-count">{{draftPeriods.length ? '已选 ' + draftPeriods.length + ' 节' : '请选择'}}</text></view>
-        <view class="period-picker-close" bindtap="closePeriodPicker" hover-class="period-picker-close--pressed" hover-stay-time="90" aria-role="button" aria-label="关闭"><lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon></view>
+        <view><text class="period-picker-title">选择节次</text><text class="period-picker-count">{{selectedPeriods.length ? '已选 ' + selectedPeriods.length + ' 节' : '请选择'}}</text></view>
+        <view class="period-picker-close" bindtap="closePeriodPicker" hover-class="none" aria-role="button" aria-label="关闭"><lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon></view>
       </view>
 
       <view class="period-group-row">
-        <view wx:for="{{periodGroups}}" wx:key="id" class="period-group-option {{item.selected ? 'period-group-option--active' : ''}}" data-id="{{item.id}}" bindtap="togglePeriodGroup" hover-class="period-group-option--pressed" hover-stay-time="90" aria-role="button" aria-label="{{item.label}}节次">
+        <view wx:for="{{periodGroups}}" wx:key="id" class="period-group-option {{item.selected ? 'period-group-option--active' : ''}}" data-id="{{item.id}}" bindtap="togglePeriodGroup" hover-class="none" aria-role="button" aria-label="{{item.label}}节次">
           <text>{{item.label}}</text>
-          <lucide-icon wx:if="{{item.selected}}" name="check" tone="coral" size="{{20}}"></lucide-icon>
         </view>
       </view>
 
@@ -66,8 +71,12 @@
           <view class="period-picker-content">
             <text class="period-picker-section-title">具体节次</text>
             <view class="period-grid">
-              <view wx:for="{{periods}}" wx:key="period" class="period-pill {{item.selected ? 'period-pill--active' : ''}}" data-period="{{item.period}}" bindtap="toggleDraftPeriod" hover-class="period-pill--pressed" hover-stay-time="90" aria-role="button" aria-label="第{{item.period}}节 {{item.startTime}}至{{item.endTime}}">
-                <text class="period-number">第 {{item.period}} 节</text><text class="period-time tnum">{{item.startTime}}–{{item.endTime}}</text>
+              <view wx:for="{{periodRows}}" wx:for-item="row" wx:key="id" class="room-option-row">
+                <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="id" class="room-option-cell">
+                  <view wx:if="{{cell.option}}" class="period-pill {{cell.option.selected ? 'period-pill--active' : ''}}" data-period="{{cell.option.period}}" bindtap="togglePeriod" hover-class="none" aria-role="button" aria-label="第{{cell.option.period}}节 {{cell.option.startTime}}至{{cell.option.endTime}}">
+                    <text class="period-number" overflow="ellipsis" max-lines="1">第 {{cell.option.period}} 节</text><text class="period-time tnum" overflow="ellipsis" max-lines="1">{{cell.option.startTime}}–{{cell.option.endTime}}</text>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
@@ -76,7 +85,7 @@
       </view>
 
       <view class="period-picker-footer">
-        <button class="period-picker-confirm {{draftPeriods.length ? '' : 'period-picker-confirm--disabled'}}" disabled="{{!draftPeriods.length}}" bindtap="applyPeriodPicker" hover-class="period-picker-confirm--pressed">确定</button>
+        <button class="period-picker-confirm" bindtap="closePeriodPicker" hover-class="none">完成</button>
       </view>
     </view>
   </view>
@@ -89,7 +98,7 @@
         <view class="room-results-heading">
           <view class="room-results-top-row">
             <view class="room-results-title-row"><text class="room-results-title">查询结果</text><text class="room-results-total tnum">{{totalRooms}}</text><text class="room-results-unit">间</text></view>
-            <view class="room-results-close" bindtap="closeResultDrawer" hover-class="room-results-close--pressed" hover-stay-time="90" aria-role="button" aria-label="关闭"><lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon></view>
+            <view class="room-results-close" bindtap="closeResultDrawer" hover-class="none" aria-role="button" aria-label="关闭"><lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon></view>
           </view>
           <text class="room-results-caption">{{resultDateLabel}} · {{resultPeriodLabel}}</text>
         </view>

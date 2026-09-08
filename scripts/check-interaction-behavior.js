@@ -807,8 +807,22 @@ function checkScheduleSettling() {
   assert.equal(page.data.selectedDate, keptDate);
 }
 
-function checkRoomsAndDraftStorage() {
-  const env = runtime({ "features/services/rooms": {} });
+async function checkRoomsAndDraftStorage() {
+  const queries = [];
+  const env = runtime({
+    "services/teaching": {
+      async getRooms(query) {
+        queries.push(structuredClone(query));
+        return {
+          data: {
+            items: [],
+            summary: { totalRooms: 0 },
+            pagination: { page: 1, totalPages: 1 },
+          },
+        };
+      },
+    },
+  });
   const drafts = env.load("store/interaction-drafts");
   drafts.saveInteractionDraft(
     "a",
@@ -841,25 +855,133 @@ function checkRoomsAndDraftStorage() {
   drafts.clearInteractionDraft("a", "feedback");
   assert.equal(drafts.loadInteractionDraft("a", "feedback"), null);
   const page = env.page("features/pages/rooms/index");
-  page.setData({
-    selectedPeriods: [1, 2],
-    draftPeriods: [],
-    periods: [],
-    periodGroups: [],
-    hasQueried: true,
-    periodLabel: "第 1–2 节",
-  });
+  const buildings = Array.from({ length: 7 }, (_, index) => ({
+    value: String(index + 1),
+    label: `第${index + 1}教学楼`,
+  }));
+  const options = {
+    minDate: "2026-09-08",
+    maxDate: "2027-01-01",
+    campuses: [
+      { value: "a", label: "校区甲" },
+      { value: "b", label: "校区乙" },
+      { value: "empty", label: "无楼栋校区" },
+    ],
+    buildings,
+    buildingsByCampus: { a: buildings, b: buildings.slice(0, 2), empty: [] },
+    periods: Array.from({ length: 5 }, (_, index) => ({
+      period: index + 1,
+      startTime: "08:00",
+      endTime: "08:45",
+    })),
+    periodGroups: [
+      { id: "morning", label: "上午", periods: [1, 2, 3] },
+      { id: "afternoon", label: "下午", periods: [4, 5] },
+    ],
+  };
+  const tap = (dataset) => ({ currentTarget: { dataset } });
+  const cells = (rows) => rows.flatMap((row) => row.cells);
+  page.applyOptionData(options);
+  assert.equal(page.data.buildingRows.length, 3);
+  assert.equal(page.data.periodRows.length, 2);
+  for (const row of [...page.data.buildingRows, ...page.data.periodRows]) {
+    assert.equal(row.cells.length, 3, "每行必须固定三格，含尾行占位");
+  }
+  assert.deepEqual(
+    cells(page.data.buildingRows).map((cell) => cell.option?.value || null),
+    ["1", "2", "3", "4", "5", "6", "7", null, null],
+  );
+  assert.deepEqual(
+    cells(page.data.periodRows).map((cell) => cell.option?.period || null),
+    [1, 2, 3, 4, 5, null],
+  );
+  page.toggleBuildingInline(tap({ value: "7" }));
+  assert.equal(page.data.buildingRows[2].cells[0].option.selected, true);
+  page.toggleBuildingInline(tap({ value: "7" }));
+  assert.equal(page.data.buildingRows[2].cells[0].option.selected, false);
+  page.selectCampusInline(tap({ value: "b" }));
+  assert.equal(page.data.buildingRows.length, 1);
+  assert.deepEqual(page.data.selectedBuildingIds, []);
+  assert.equal(page.data.buildingRows[0].cells[2].option, null);
+  page.selectCampusInline(tap({ value: "empty" }));
+  assert.deepEqual(page.data.buildings, []);
+  assert.deepEqual(page.data.buildingRows, []);
+  page.selectCampusInline(tap({ value: "a" }));
+  page.toggleBuildingInline(tap({ value: "1" }));
+
+  page.openPeriodPicker();
+  page.togglePeriod(tap({ period: 4 }));
+  page.togglePeriod(tap({ period: 1 }));
+  assert.deepEqual(
+    page.data.selectedPeriods,
+    [1, 4],
+    "勾选应立即保存，无需完成",
+  );
+  assert.equal(page.data.periodLabel, "第 1、4 节");
+  assert.equal(page.data.pickerVisible, true, "多选时抽屉保持打开");
+  assert.deepEqual(
+    cells(page.data.periodRows)
+      .filter((cell) => cell.option?.selected)
+      .map((cell) => cell.option.period),
+    [1, 4],
+  );
   page.closePeriodPicker();
-  assert.deepEqual(page.data.selectedPeriods, [1, 2]);
+  page.openPeriodPicker();
+  assert.deepEqual(page.data.selectedPeriods, [1, 4], "关闭再打开不能丢失节次");
+  page.togglePeriod(tap({ period: 1 }));
+  page.onHide();
+  page.onShow();
+  page.openPeriodPicker();
+  assert.deepEqual(page.data.selectedPeriods, [4], "切到后台后仍保留最新选择");
+  page.closePeriodPicker();
+  await page.queryRooms(true);
+  assert.deepEqual(queries[0].periods, [4], "查询必须使用即时保存的节次");
+  assert.equal(page.data.resultPeriodLabel, "第 4 节");
   assert.equal(page.data.hasQueried, true);
-  page.setData({ draftPeriods: [], pickerVisible: true });
-  page.applyPeriodPicker();
-  assert.equal(page.data.pickerVisible, true);
-  assert.deepEqual(page.data.selectedPeriods, [1, 2]);
-  page.setData({ draftPeriods: [4, 3] });
-  page.applyPeriodPicker();
-  assert.deepEqual(page.data.selectedPeriods, [3, 4]);
+  page.closeResultDrawer();
+  page.openPeriodPicker();
+  page.closePeriodPicker();
+  assert.equal(page.data.hasQueried, true, "仅开关抽屉不得修改查询状态");
+
+  page.openPeriodPicker();
+  page.togglePeriodGroup(tap({ id: "morning" }));
+  assert.deepEqual(page.data.selectedPeriods, [1, 2, 3, 4]);
+  assert.equal(page.data.periodGroups[0].selected, true);
   assert.equal(page.data.hasQueried, false);
+  page.togglePeriod(tap({ period: 2 }));
+  assert.equal(page.data.periodGroups[0].selected, false);
+  page.togglePeriodGroup(tap({ id: "morning" }));
+  assert.deepEqual(
+    page.data.selectedPeriods,
+    [1, 2, 3, 4],
+    "部分选中时补齐整组",
+  );
+  page.togglePeriodGroup(tap({ id: "morning" }));
+  assert.deepEqual(page.data.selectedPeriods, [4], "取消整组时保留其他节次");
+  page.applyOptionData(options);
+  assert.equal(page.data.periodRows[1].cells[0].option.selected, true);
+  page.togglePeriod(tap({ period: 4 }));
+  page.closePeriodPicker();
+  page.openPeriodPicker();
+  assert.deepEqual(page.data.selectedPeriods, []);
+  assert.equal(page.data.periodLabel, "选择节次");
+  assert.equal(
+    page.data.periods.some((period) => period.selected),
+    false,
+  );
+  assert.equal(
+    page.data.periodGroups.some((group) => group.selected),
+    false,
+  );
+  const notices = [];
+  env.wx.showToast = (notice) => notices.push(notice);
+  await page.queryRooms(true);
+  assert.equal(queries.length, 1, "空节次不得请求接口");
+  assert.equal(notices.at(-1).title, "请选择节次");
+  page.closePeriodPicker();
+  assert.equal(page.data.pickerVisible, false, "清空选择后仍能完成并关闭");
+  page.applyOptionData({ ...options, periods: [], periodGroups: [] });
+  assert.deepEqual(page.data.periodRows, []);
 }
 
 async function checkCourseAssistant() {
@@ -1014,11 +1136,11 @@ async function main() {
   checkScheduleMotionMount();
   checkScheduleSettling();
   checkSchedule();
-  checkRoomsAndDraftStorage();
+  await checkRoomsAndDraftStorage();
   await checkCourseAssistant();
   await checkFeedback();
   console.log(
-    "Interaction behavior checks passed: dates, 240 consecutive swipes, cancellation, rapid taps, drafts, favorites, picker commit/cancel.",
+    "Interaction behavior checks passed: dates, 240 consecutive swipes, cancellation, rapid taps, drafts, favorites, room option rows and immediate period selection.",
   );
 }
 main().catch((error) => {

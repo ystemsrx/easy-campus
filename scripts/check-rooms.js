@@ -167,6 +167,45 @@ assert(
 );
 
 assert(
+  template.includes('wx:for="{{buildingRows}}"') &&
+    template.includes('wx:for="{{periodRows}}"') &&
+    (template.match(/wx:for="{{row.cells}}"/g) || []).length === 2 &&
+    /\.room-option-row\s*\{[^}]*flex-wrap:\s*nowrap;/.test(styles) &&
+    /\.room-option-cell\s*\{[^}]*flex:\s*1;[^}]*width:\s*0;[^}]*min-width:\s*0;/.test(
+      styles,
+    ) &&
+    !styles.includes("width: calc((100% - 24rpx) / 3)"),
+  "教学楼和节次必须使用三格等宽行，不依赖百分比宽度自动换行，尾行保留空格",
+);
+
+for (const selector of [
+  "building-pill",
+  "period-pill",
+  "period-group-option",
+]) {
+  const rule =
+    styles.match(new RegExp(`\\.${selector}\\s*\\{([^}]+)\\}`))?.[1] || "";
+  assert(
+    /transition:\s*color 220ms ease, background-color 220ms ease;/.test(rule),
+    `${selector} 选中和取消必须平滑过渡文字及背景颜色`,
+  );
+}
+assert(
+  !template.includes("pressable") &&
+    !/hover-class="(?!none")/.test(template) &&
+    !/scale\(/.test(styles) &&
+    !template.includes('wx:if="{{item.selected}}" name="check"') &&
+    /\.building-pill > text\s*\{[^}]*transition:\s*color 220ms ease;/.test(
+      styles,
+    ) &&
+    /\.period-group-option > text\s*\{[^}]*transition:\s*color 220ms ease;/.test(
+      styles,
+    ) &&
+    /\.period-time\s*\{[^}]*transition:\s*color 220ms ease;/.test(styles),
+  "选项文字必须直接声明颜色过渡，点击不得缩放、闪烁或因勾选图标移动文字",
+);
+
+assert(
   resolveInitialRoomDate(
     "2026-08-18",
     "",
@@ -216,7 +255,7 @@ assert(
   template.includes(' period-picker-layer"') &&
     template.includes('bindtap="openPeriodPicker"') &&
     template.includes('bindtap="togglePeriodGroup"') &&
-    template.includes('bindtap="toggleDraftPeriod"') &&
+    template.includes('bindtap="togglePeriod"') &&
     /\.period-picker-body\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;/.test(
       styles,
     ) &&
@@ -224,14 +263,14 @@ assert(
   "节次必须在具有完整高度链的抽屉内选择，并支持时段快捷多选",
 );
 
-const closePickerSource = script.match(/  closePeriodPicker\(\) \{[\s\S]*?\n  \},/)?.[0] || "";
-const applyPickerSource = script.match(/  applyPeriodPicker\(\) \{[\s\S]*?\n  \},/)?.[0] || "";
 assert(
-  closePickerSource.includes("const periods = [...this.data.selectedPeriods]") &&
-    !closePickerSource.includes("selectedPeriods: periods") &&
-    applyPickerSource.includes("if (!this.data.draftPeriods.length)") &&
-    applyPickerSource.includes("selectedPeriods: periods"),
-  "关闭取消草稿，只有确定才能提交节次，空选择不能提交",
+  !script.includes("draftPeriods") &&
+    !template.includes("draftPeriods") &&
+    (template.match(/bindtap="closePeriodPicker"/g) || []).length === 3 &&
+    template.includes(
+      'class="period-picker-confirm" bindtap="closePeriodPicker" hover-class="none">完成</button>',
+    ),
+  "节次即选即存，遮罩、关闭和完成均仅收起抽屉，不得还原选择或要求再次确认",
 );
 
 const floorGroups = groupRoomsByFloor([

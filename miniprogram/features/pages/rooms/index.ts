@@ -35,6 +35,11 @@ interface PeriodGroupView extends PeriodGroup {
   selected: boolean;
 }
 
+interface OptionRow<T> {
+  id: number;
+  cells: { id: number; option: T | null }[];
+}
+
 interface QuickDateView {
   date: string;
   weekdayLabel: string;
@@ -52,6 +57,33 @@ const MAX_BUILDINGS = 30;
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 let optionsSequence = 0;
 let roomsSequence = 0;
+
+function optionRows<T>(options: T[]): OptionRow<T>[] {
+  // Explicit rows avoid device-dependent wrapping from fractional rpx widths.
+  return Array.from({ length: Math.ceil(options.length / 3) }, (_, row) => ({
+    id: row,
+    cells: Array.from({ length: 3 }, (_, column) => ({
+      id: column,
+      option: options[row * 3 + column] || null,
+    })),
+  }));
+}
+
+function buildingSelection(buildings: SelectOption[], selectedIds: string[]) {
+  const options = buildings.map((building) => ({
+    ...building,
+    selected: selectedIds.includes(building.value),
+  }));
+  return { buildings: options, buildingRows: optionRows(options) };
+}
+
+function periodSelection(periods: PeriodOption[], selectedPeriods: number[]) {
+  const options = periods.map((period) => ({
+    ...period,
+    selected: selectedPeriods.includes(period.period),
+  }));
+  return { periods: options, periodRows: optionRows(options) };
+}
 
 function parseLocalDate(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -163,15 +195,16 @@ Page({
     campusIndicatorStyle: "",
     buildingsByCampus: {} as Record<string, SelectOption[]>,
     buildings: [] as BuildingView[],
+    buildingRows: [] as OptionRow<BuildingView>[],
     selectedBuildingIds: [] as string[],
     periods: [] as PeriodView[],
+    periodRows: [] as OptionRow<PeriodView>[],
     periodGroups: [] as PeriodGroupView[],
     selectedPeriods: [] as number[],
     periodLabel: "选择节次",
     pickerVisible: false,
     pickerMounted: false,
     pickerActive: false,
-    draftPeriods: [] as number[],
     resultVisible: false,
     resultMounted: false,
     resultActive: false,
@@ -242,15 +275,9 @@ Page({
       campusId,
       campusIndicatorStyle: campusIndicatorStyle(data.campuses, campusId),
       buildingsByCampus,
-      buildings: campusBuildings.map((building) => ({
-        ...building,
-        selected: selectedBuildingIds.includes(building.value),
-      })),
+      ...buildingSelection(campusBuildings, selectedBuildingIds),
       selectedBuildingIds,
-      periods: data.periods.map((period) => ({
-        ...period,
-        selected: selectedPeriods.includes(period.period),
-      })),
+      ...periodSelection(data.periods, selectedPeriods),
       periodGroups: periodGroupsWithSelection(
         data.periodGroups,
         selectedPeriods,
@@ -325,9 +352,7 @@ Page({
     this.setData({
       campusId,
       campusIndicatorStyle: campusIndicatorStyle(this.data.campuses, campusId),
-      buildings: (this.data.buildingsByCampus[campusId] || []).map(
-        (building) => ({ ...building, selected: false }),
-      ),
+      ...buildingSelection(this.data.buildingsByCampus[campusId] || [], []),
       selectedBuildingIds: [],
       hasQueried: false,
       roomItems: [],
@@ -349,44 +374,22 @@ Page({
     haptic("light");
     this.setData({
       selectedBuildingIds,
-      buildings: this.data.buildings.map((item) => ({
-        ...item,
-        selected: selectedBuildingIds.includes(item.value),
-      })),
+      ...buildingSelection(this.data.buildings, selectedBuildingIds),
       hasQueried: false,
     });
   },
   openPeriodPicker() {
     haptic("light");
-    const draftPeriods = [...this.data.selectedPeriods];
-    this.setData({
-      pickerVisible: true,
-      draftPeriods,
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: draftPeriods.includes(item.period),
-      })),
-      periodGroups: periodGroupsWithSelection(
-        this.data.periodGroups,
-        draftPeriods,
-      ),
-    });
+    this.setData({ pickerVisible: true });
     setPresence(this, true, {
       mounted: "pickerMounted",
       active: "pickerActive",
     });
   },
   closePeriodPicker() {
-    const periods = [...this.data.selectedPeriods];
     this.setData({
       pickerVisible: false,
       pickerActive: false,
-      draftPeriods: periods,
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: periods.includes(item.period),
-      })),
-      periodGroups: periodGroupsWithSelection(this.data.periodGroups, periods),
     });
     setPresence(this, false, {
       mounted: "pickerMounted",
@@ -394,59 +397,42 @@ Page({
       reducedMotion: this.data.motionClass === "motion-reduced",
     });
   },
-  toggleDraftPeriod(event: WechatMiniprogram.TouchEvent) {
-    const period = Number(event.currentTarget.dataset.period);
-    if (!period) return;
-    const next = this.data.draftPeriods.includes(period)
-      ? this.data.draftPeriods.filter((item) => item !== period)
-      : [...this.data.draftPeriods, period].sort((a, b) => a - b);
-    haptic("light");
+  updateSelectedPeriods(periods: number[]) {
+    const selectedPeriods = [...periods].sort((a, b) => a - b);
     this.setData({
-      draftPeriods: next,
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: next.includes(item.period),
-      })),
-      periodGroups: periodGroupsWithSelection(this.data.periodGroups, next),
+      selectedPeriods,
+      periodLabel: selectedPeriodLabel(selectedPeriods),
+      ...periodSelection(this.data.periods, selectedPeriods),
+      periodGroups: periodGroupsWithSelection(
+        this.data.periodGroups,
+        selectedPeriods,
+      ),
+      hasQueried: false,
     });
+  },
+  togglePeriod(event: WechatMiniprogram.TouchEvent) {
+    const period = Number(event.currentTarget.dataset.period);
+    if (!this.data.periods.some((item) => item.period === period)) return;
+    const next = this.data.selectedPeriods.includes(period)
+      ? this.data.selectedPeriods.filter((item) => item !== period)
+      : [...this.data.selectedPeriods, period];
+    haptic("light");
+    this.updateSelectedPeriods(next);
   },
   togglePeriodGroup(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id);
     const group = this.data.periodGroups.find((item) => item.id === id);
     if (!group) return;
     const containsAll = group.periods.every((period) =>
-      this.data.draftPeriods.includes(period),
+      this.data.selectedPeriods.includes(period),
     );
-    const set = new Set(this.data.draftPeriods);
+    const set = new Set(this.data.selectedPeriods);
     for (const period of group.periods) {
       if (containsAll) set.delete(period);
       else set.add(period);
     }
     haptic("light");
-    const next = [...set].sort((a, b) => a - b);
-    this.setData({
-      draftPeriods: next,
-      periods: this.data.periods.map((item) => ({
-        ...item,
-        selected: next.includes(item.period),
-      })),
-      periodGroups: periodGroupsWithSelection(this.data.periodGroups, next),
-    });
-  },
-  applyPeriodPicker() {
-    if (!this.data.draftPeriods.length) {
-      wx.showToast({ title: "请至少选择一个节次", icon: "none" });
-      return;
-    }
-    const periods = [...this.data.draftPeriods].sort((a, b) => a - b);
-    const selectionChanged =
-      periods.join(",") !== this.data.selectedPeriods.join(",");
-    this.setData({
-      selectedPeriods: periods,
-      periodLabel: selectedPeriodLabel(periods),
-      ...(selectionChanged ? { hasQueried: false } : {}),
-    });
-    this.closePeriodPicker();
+    this.updateSelectedPeriods([...set]);
   },
   openResultDrawer() {
     this.setData({
