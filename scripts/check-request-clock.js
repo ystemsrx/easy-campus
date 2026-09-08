@@ -91,7 +91,7 @@ function runtime(options = {}) {
       }
       if (options.switchSession) session.token = "session-b";
       request.success({
-        statusCode: code ? 401 : 200,
+        statusCode: options.statusCodes?.[index] || (code ? 401 : 200),
         header: { dAtE: new Date(serverNow).toUTCString() },
         data: code
           ? { success: false, error: { code, message: code } }
@@ -248,6 +248,79 @@ async function main() {
     lostResponse.requests[1].header["X-Device-Nonce"],
   );
 
+  const queryTargets = [
+    target,
+    "/teaching/timetable?refresh=false&automatic=false",
+    "/teaching/exams?page=1&pageSize=200&refresh=true&automatic=true",
+    "/teaching/exams/options",
+    "/teaching/grades?refresh=true&automatic=true",
+    "/teaching/notices?page=1&pageSize=20",
+    "/teaching/messages",
+    "/teaching/calendar",
+    "/auth/me",
+    "/utilities/electricity",
+    "/content/publications",
+  ];
+  for (const queryTarget of queryTargets) {
+    for (const failure of [
+      { dropFirstResponse: true },
+      { errors: ["DEVICE_REQUEST_RETRY_REQUIRED"], statusCodes: [503] },
+    ]) {
+      const retrying = runtime(failure);
+      await retrying.request.apiRequest(queryTarget);
+      assert.equal(retrying.requests.length, 2, queryTarget);
+      assert.notEqual(
+        retrying.requests[0].header["X-Device-Nonce"],
+        retrying.requests[1].header["X-Device-Nonce"],
+        queryTarget,
+      );
+      assert.equal(retrying.requests[0].url, retrying.requests[1].url);
+      assert.deepEqual(retrying.feedback, []);
+    }
+  }
+  const parallel = runtime();
+  await Promise.all(
+    queryTargets.flatMap((queryTarget) =>
+      Array.from({ length: 3 }, () => parallel.request.apiRequest(queryTarget)),
+    ),
+  );
+  const requestNonces = parallel.requests.map(
+    (request) => request.header["X-Device-Nonce"],
+  );
+  assert.equal(new Set(requestNonces).size, queryTargets.length * 3);
+  assert.deepEqual(parallel.feedback, []);
+
+  const downloadHeaders = await Promise.all(
+    [
+      "/teaching/calendar/image?academicYear=2026",
+      "/content/media/smoke-file",
+    ].flatMap((path) =>
+      Array.from({ length: 3 }, () =>
+        parallel.request.createAuthenticatedRequestHeaders(path, {
+          token: "session-a",
+        }),
+      ),
+    ),
+  );
+  assert.equal(
+    new Set(downloadHeaders.map((headers) => headers["X-Device-Nonce"])).size,
+    6,
+  );
+  assert.ok(
+    downloadHeaders.every(
+      (headers) => !requestNonces.includes(headers["X-Device-Nonce"]),
+    ),
+  );
+
+  const noRetry = runtime({
+    errors: ["DEVICE_REQUEST_RETRY_REQUIRED"],
+    statusCodes: [503],
+  });
+  await assert.rejects(noRetry.request.apiRequest(target, { retry: false }), {
+    code: "DEVICE_REQUEST_RETRY_REQUIRED",
+  });
+  assert.equal(noRetry.requests.length, 1);
+
   for (const [options, requestOptions, expected, code] of [
     [
       { offsetMs: -448_548 },
@@ -325,7 +398,7 @@ async function main() {
     "clock offsets cannot cross API origins",
   );
   console.log(
-    "Request clock recovery, fresh signatures, replay rejection and session isolation checks passed.",
+    "Request clock recovery, query transport retries, concurrent/download nonce isolation, replay rejection and session isolation checks passed.",
   );
 }
 
