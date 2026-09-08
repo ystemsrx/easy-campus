@@ -1,4 +1,6 @@
 import { getApiUrl } from "../config/index";
+import { isDemoAccount, isDemoSession } from "../demo/identity";
+import { demoRequest } from "../demo/request";
 import {
   captureSessionLease,
   clearSession,
@@ -350,6 +352,13 @@ async function createRequestProof(
   lease: SessionLease,
 ): Promise<Record<string, string>> {
   if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
+  if (isDemoAccount(lease.account)) {
+    throw new ApiClientError({
+      code: "DEMO_LOCAL_ONLY",
+      message: "示例账号暂不支持此操作。",
+      statusCode: 0,
+    });
+  }
   const session = getSession();
   const device = session?.device;
   if (!device) {
@@ -492,6 +501,14 @@ async function requestEnvelope<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<SuccessEnvelope<T>> {
+  // Route before credential checks, enrollment, signing, retries or transport.
+  // Explicit unauthenticated login still permits switching to a real account.
+  if (
+    isDemoSession(getSession()) &&
+    !(path === "/auth/login" && options.authenticated === false)
+  ) {
+    return demoRequest<T>(path, options.method, options.data);
+  }
   const showCredentialFeedback = options.credentialReauthFeedback === true;
   if (
     options.authenticated !== false &&

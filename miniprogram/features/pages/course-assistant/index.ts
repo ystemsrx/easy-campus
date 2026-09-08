@@ -1,4 +1,5 @@
 import { buildAppShare } from "../../../utils/app-share";
+import { isDemoAccount } from "../../../demo/identity";
 import {
   loadInteractionDraft,
   saveInteractionDraft,
@@ -125,8 +126,14 @@ function canSubmitReview(
   grade: GradeView | null,
   rating: number,
   content: string,
+  demoAccount = false,
+  keywordCount = 0,
 ) {
-  return Boolean(grade) && rating > 0 && reviewContentLength(content) >= 8;
+  return (
+    Boolean(grade) &&
+    rating > 0 &&
+    (demoAccount ? keywordCount > 0 : reviewContentLength(content) >= 8)
+  );
 }
 
 let activeSessionKey = "";
@@ -171,6 +178,7 @@ Page({
   onShareAppMessage: buildAppShare,
   data: {
     ...resolveAppearance(),
+    demoAccount: false,
     statusLoading: true,
     statusError: "",
     reviewAccess: DEFAULT_REVIEW_ACCESS,
@@ -285,7 +293,10 @@ Page({
   applyAppearance() {
     const appearance = resolveAppearance();
     syncWindowBackground(appearance);
-    this.setData(appearance);
+    this.setData({
+      ...appearance,
+      demoAccount: isDemoAccount(captureSessionLease()?.account),
+    });
   },
   async loadAssistant(pendingCourseKey = "") {
     const lease = captureSessionLease();
@@ -864,9 +875,11 @@ Page({
       grade.courseKey,
     );
     const rating = draft?.rating || 0;
-    const content = draft?.content || "";
+    const demoAccount = isDemoAccount(lease.account);
+    const content = demoAccount ? "" : draft?.content || "";
     selectedKeywords = new Set(draft?.keywords || []);
     this.setData({
+      demoAccount,
       reviewVisible: true,
       selectedGrade: grade,
       selectedRating: rating,
@@ -878,7 +891,13 @@ Page({
       })),
       reviewText: content,
       reviewCharacterCount: reviewContentLength(content),
-      reviewCanSubmit: canSubmitReview(grade, rating, content),
+      reviewCanSubmit: canSubmitReview(
+        grade,
+        rating,
+        content,
+        demoAccount,
+        selectedKeywords.size,
+      ),
     });
   },
   saveReviewDraft() {
@@ -889,7 +908,7 @@ Page({
       {
         rating: this.data.selectedRating,
         keywords: [...selectedKeywords],
-        content: this.data.reviewText,
+        content: isDemoAccount(reviewDraftAccount) ? "" : this.data.reviewText,
       },
       this.data.selectedGrade.courseKey,
     );
@@ -911,6 +930,8 @@ Page({
         this.data.selectedGrade,
         rating,
         this.data.reviewText,
+        this.data.demoAccount,
+        selectedKeywords.size,
       ),
     });
     this.saveReviewDraft();
@@ -933,11 +954,18 @@ Page({
         ...item,
         active: selectedKeywords.has(item.text),
       })),
+      reviewCanSubmit: canSubmitReview(
+        this.data.selectedGrade,
+        this.data.selectedRating,
+        this.data.reviewText,
+        this.data.demoAccount,
+        selectedKeywords.size,
+      ),
     });
     this.saveReviewDraft();
   },
   onReviewTextInput(event: WechatMiniprogram.Input) {
-    if (this.data.reviewSubmitting) return;
+    if (this.data.reviewSubmitting || this.data.demoAccount) return;
     const reviewText = event.detail.value;
     const reviewCharacterCount = reviewContentLength(reviewText);
     this.setData({
@@ -963,7 +991,9 @@ Page({
         courseKey: grade.courseKey,
         rating: this.data.selectedRating,
         keywords: [...selectedKeywords],
-        content: this.data.reviewText.trim(),
+        content: isDemoAccount(lease.account)
+          ? ""
+          : this.data.reviewText.trim(),
       });
       clearInteractionDraft(lease.account, "review", grade.courseKey);
       if (!isSessionLeaseCurrent(lease)) return;

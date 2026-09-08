@@ -20,6 +20,9 @@ export function resolveHomeIdentity(
   if (!session) {
     return { userName: "", organizationName: "" };
   }
+  if (session.user.account === "demo") {
+    return { userName: "同学", organizationName: "计算机与信息科学学院" };
+  }
 
   const user =
     currentUser?.account === session.user.account ? currentUser : null;

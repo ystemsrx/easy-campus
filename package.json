@@ -40,12 +40,13 @@
     "check:watermark": "node scripts/check-watermark.js",
     "check:packages": "node scripts/check-package-boundaries.js",
     "check:lf": "node scripts/check-lf.js",
-    "check": "npm run typecheck && npm run check:api-config && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:interactions && npm run check:motion && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:profile && npm run check:about && npm run check:tab-preload && npm run check:refresh-policy && npm run check:rooms && npm run check:navigation && npm run check:login && npm run check:legal && npm run check:rate-limit && npm run check:credential-reauth && npm run check:pet && npm run check:personalization && npm run check:course-assistant && npm run check:auto-dorm-check && npm run check:heartbeat && npm run check:device-proof && npm run check:session && npm run check:watermark && npm run check:packages && npm run check:lf && npm run check:wxss",
+    "check": "npm run typecheck && npm run check:api-config && npm run check:json && npm run check:wxml && npm run check:titles && npm run check:icons && npm run check:timezone && npm run check:grades && npm run check:exams && npm run check:ring && npm run check:timetable && npm run check:schedule && npm run check:interactions && npm run check:motion && npm run check:inbox && npm run check:calendar && npm run check:home && npm run check:profile && npm run check:about && npm run check:tab-preload && npm run check:refresh-policy && npm run check:rooms && npm run check:navigation && npm run check:login && npm run check:legal && npm run check:rate-limit && npm run check:credential-reauth && npm run check:pet && npm run check:personalization && npm run check:course-assistant && npm run check:auto-dorm-check && npm run check:heartbeat && npm run check:device-proof && npm run check:session && npm run check:demo && npm run check:watermark && npm run check:packages && npm run check:lf && npm run check:wxss",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\"",
     "check:interactions": "node scripts/check-interaction-behavior.js",
     "check:motion": "node scripts/check-motion.js",
-    "check:about": "node scripts/check-about.js && node scripts/check-about-share.js"
+    "check:about": "node scripts/check-about.js && node scripts/check-about-share.js",
+    "check:demo": "node scripts/check-demo.js"
   },
   "keywords": [
     "wechat-miniprogram",

@@ -3,6 +3,7 @@ import {
   loadPetPreferences,
   shouldShowPet,
 } from "../store/pet";
+import { isDemoSession } from "../demo/identity";
 import {
   getAutoDormCheckRevision,
   loadAutoDormCheckSnapshot,
@@ -125,7 +126,7 @@ export function autoDormCheckPresentationPatch(
     | AutoDormCheckStatus
     | null,
 ) {
-  if (!status) {
+  if (!status || isDemoSession(getSession())) {
     return {
       autoDormCheckVisible: false,
       autoDormCheckTitle: "自动查寝",

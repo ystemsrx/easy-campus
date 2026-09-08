@@ -373,6 +373,8 @@ function loadPaymentServiceRuntime() {
     moduleRecord,
     moduleRecord.exports,
     (specifier) => {
+      if (specifier === "../demo/identity")
+        return { isDemoAccount: () => false };
       if (specifier === "../store/auto-dorm-check") {
         return { saveAutoDormCheckSnapshot: () => undefined };
       }

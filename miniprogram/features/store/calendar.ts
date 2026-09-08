@@ -35,8 +35,7 @@ function isLatestCalendar(calendar: CalendarData): boolean {
 
 function readCache(): CalendarImageCache | null {
   const value = wx.getStorageSync(CACHE_KEY) as
-    | Partial<CalendarImageCache>
-    | undefined;
+    Partial<CalendarImageCache> | undefined;
   if (
     value?.schemaVersion !== 1 ||
     !Number.isInteger(value.startYear) ||
@@ -81,9 +80,9 @@ function persistFile(tempFilePath: string): Promise<string> {
 }
 
 async function cleanupLegacyCaches(): Promise<void> {
-  const keys = wx.getStorageInfoSync().keys.filter((key) =>
-    LEGACY_CACHE_KEY.test(key),
-  );
+  const keys = wx
+    .getStorageInfoSync()
+    .keys.filter((key) => LEGACY_CACHE_KEY.test(key));
   await Promise.all(
     keys.map(async (key) => {
       const filePath = wx.getStorageSync(key);
@@ -114,6 +113,8 @@ export async function getCachedCalendarImage(
   download: () => Promise<string>,
   forceDownload = false,
 ): Promise<string> {
+  // Demo images never replace or discard a real account's shared calendar file.
+  if (calendar.version.startsWith("demo-")) return download();
   await ensureLegacyCachesRemoved();
 
   if (!isLatestCalendar(calendar)) {

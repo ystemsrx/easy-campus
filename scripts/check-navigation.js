@@ -79,6 +79,8 @@ function loadNavigationRuntime(navigateTo) {
     moduleRecord,
     moduleRecord.exports,
     (specifier) => {
+      if (specifier === "../demo/identity")
+        return { isDemoSession: () => false };
       if (specifier === "../store/session") {
         return { getSession: () => null };
       }

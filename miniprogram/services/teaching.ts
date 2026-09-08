@@ -1,4 +1,6 @@
 import { getApiUrl } from "../config/index";
+import { isDemoSession } from "../demo/identity";
+import { renderDemoCalendar } from "../demo/calendar";
 import {
   captureSessionLease,
   getSession,
@@ -214,6 +216,8 @@ export async function downloadCalendarImage(
   calendar: Pick<CalendarData, "startYear" | "version">,
   refresh = false,
 ): Promise<string> {
+  if (isDemoSession(getSession()))
+    return renderDemoCalendar(calendar.startYear);
   const lease = captureSessionLease();
   if (!lease) {
     return Promise.reject(

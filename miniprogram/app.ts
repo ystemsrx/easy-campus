@@ -1,4 +1,5 @@
 import { loadPreferences } from "./store/preferences";
+import { prepareDemoData } from "./demo/bootstrap";
 import { loadCurrentUser, loadSession } from "./store/session";
 import { refreshExamsOnForeground } from "./services/cache-refresh";
 import { startHeartbeat, stopHeartbeat } from "./services/heartbeat";
@@ -23,6 +24,7 @@ App<IAppOption>({
     registerAuthenticationRoute();
     this.globalData.session = loadSession();
     this.globalData.user = loadCurrentUser();
+    prepareDemoData();
     preloadPrimaryTabAssets();
     const timetableThemeId = loadTimetableThemeId();
     const account = this.globalData.session?.user.account || "";
@@ -36,6 +38,7 @@ App<IAppOption>({
     }
   },
   onShow() {
+    prepareDemoData();
     this.globalData.foregroundEntryId += 1;
     startVisitTracking();
     beginAutomaticRefreshCycle();

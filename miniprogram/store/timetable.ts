@@ -149,9 +149,13 @@ export function saveTimetableSnapshot(
     semesterId?: string;
     serverFetchedAt?: string;
     deleted?: boolean;
+    replaceSemesterCatalog?: boolean;
   } = {},
 ): TimetableSnapshot | null {
   if (!account.trim()) return null;
+  if (options.replaceSemesterCatalog) {
+    wx.removeStorageSync(semesterCatalogKey(account));
+  }
   const cachedData = options.deleted
     ? data
     : mergeTimetableSemesterCatalog(account, data);

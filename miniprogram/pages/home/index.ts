@@ -1,4 +1,6 @@
 import { buildAppShare } from "../../utils/app-share";
+import { isDemoSession } from "../../demo/identity";
+import { prepareDemoData } from "../../demo/bootstrap";
 import { MOTION } from "../../utils/motion";
 import { APP_NAME } from "../../config/app";
 import { prewarmProfileFirstScreen } from "../../data/profile-render";
@@ -479,6 +481,7 @@ function todayCoursePreview(
 }
 
 function getGreeting(): string {
+  if (isDemoSession(getSession())) return "晚上好";
   const hour = currentLocalHour();
   if (hour < 6) return "夜深了";
   if (hour < 11) return "早上好";
@@ -1205,6 +1208,10 @@ Page({
     );
   },
   updateTodayCourses(force = false) {
+    if (prepareDemoData()) {
+      const account = getSession()?.user.account || "";
+      this.hydrateCachedHomeIfNeeded(account, true);
+    }
     const now = new Date();
     const clockKey = homeClockKey(now);
     if (!force && clockKey === lastHomeClockKey) return;

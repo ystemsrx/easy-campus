@@ -1,4 +1,5 @@
 import { getSession } from "../store/session";
+import { isDemoSession } from "../demo/identity";
 
 type SkylineRouteType =
   | "wx://bottom-sheet"
@@ -33,6 +34,12 @@ export function navigateTo(
   routeType?: SkylineRouteType,
 ): Promise<boolean> {
   const target = url.trim();
+  if (
+    isDemoSession(getSession()) &&
+    target.startsWith("/features/pages/auto-dorm-check")
+  ) {
+    return Promise.resolve(false);
+  }
   if (!target || ordinaryNavigationOpening) {
     return Promise.resolve(false);
   }
@@ -346,6 +353,13 @@ export function goToLogin(): void {
 }
 
 export function ensureAuthenticated(): boolean {
+  if (
+    isDemoSession(getSession()) &&
+    currentPage()?.route?.startsWith("features/pages/auto-dorm-check")
+  ) {
+    wx.switchTab({ url: "/pages/profile/index" });
+    return false;
+  }
   if (getSession()?.token) return true;
   goToLogin();
   return false;

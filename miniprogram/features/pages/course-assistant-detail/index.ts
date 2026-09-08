@@ -1,4 +1,5 @@
 import { buildAppShare } from "../../../utils/app-share";
+import { isDemoAccount } from "../../../demo/identity";
 import {
   getCourseAssistantCourse,
   toggleCourseAssistantReviewLike,
@@ -104,6 +105,7 @@ Page({
   onShareAppMessage: buildAppShare,
   data: {
     ...resolveAppearance(),
+    demoAccount: false,
     loading: true,
     error: "",
     detail: null as DetailView | null,
@@ -142,7 +144,10 @@ Page({
   applyAppearance() {
     const appearance = resolveAppearance();
     syncWindowBackground(appearance);
-    this.setData(appearance);
+    this.setData({
+      ...appearance,
+      demoAccount: isDemoAccount(captureSessionLease()?.account),
+    });
   },
   async loadDetail() {
     const lease = captureSessionLease();

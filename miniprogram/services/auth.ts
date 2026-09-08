@@ -18,6 +18,8 @@ import { synchronizeCompanionPreferences } from "./companion";
 import { syncHeartbeatSession } from "./heartbeat";
 import { syncVisitSession } from "./visits";
 import { getDevicePublicKey } from "./device-proof";
+import { DEMO_PASSWORD, demoLoginData, isDemoAccount } from "../demo/identity";
+import { prepareDemoData } from "../demo/bootstrap";
 
 let loginRequestRevision = 0;
 
@@ -30,14 +32,24 @@ export async function login(
   password: string,
 ): Promise<Session> {
   const revision = ++loginRequestRevision;
-  const devicePublicKey = await getDevicePublicKey();
-  const data = await apiRequest<LoginData>("/auth/login", {
-    method: "POST",
-    data: { account: account.trim(), password, devicePublicKey },
-    authenticated: false,
-    retry: false,
-    timeout: 70000,
-  });
+  const demo = isDemoAccount(account);
+  if (demo && password !== DEMO_PASSWORD) {
+    throw new ApiClientError({
+      code: "INVALID_CREDENTIALS",
+      message: "账号或密码错误",
+      statusCode: 401,
+    });
+  }
+  const devicePublicKey = demo ? undefined : await getDevicePublicKey();
+  const data = demo
+    ? demoLoginData()
+    : await apiRequest<LoginData>("/auth/login", {
+        method: "POST",
+        data: { account: account.trim(), password, devicePublicKey },
+        authenticated: false,
+        retry: false,
+        timeout: 70000,
+      });
   if (revision !== loginRequestRevision) {
     throw new ApiClientError({
       code: "STALE_LOGIN",
@@ -46,6 +58,7 @@ export async function login(
     });
   }
   const session = saveSession(data);
+  prepareDemoData();
   syncVisitSession();
   syncHeartbeatSession();
   void synchronizeCompanionPreferences(

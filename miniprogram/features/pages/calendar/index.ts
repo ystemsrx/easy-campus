@@ -1,4 +1,5 @@
 import { buildAppShare } from "../../../utils/app-share";
+import { isDemoSession } from "../../../demo/identity";
 import {
   ApiClientError,
   getErrorMessage,
@@ -19,6 +20,7 @@ import {
 } from "../../utils/refresh-feedback";
 import {
   captureSessionLease,
+  getSession,
   isSessionLeaseCurrent,
   sessionLeaseKey,
   type SessionLease,
@@ -157,6 +159,10 @@ Page({
     if (!ensureAuthenticated()) return;
     markRefreshPageVisible(this.data.refreshPageToken);
     this.applyAppearance();
+    if (isDemoSession(getSession())) {
+      void this.loadCalendar(undefined, false);
+      return;
+    }
     if (!this.syncActiveCalendarRefresh() && !this.data.calendar) {
       void this.loadCalendar(undefined, false);
     }

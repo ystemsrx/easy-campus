@@ -16,6 +16,7 @@ import {
   sessionLeaseKey,
 } from "../store/session";
 import { apiRequest, ApiClientError } from "./request";
+import { isDemoAccount } from "../demo/identity";
 
 const ROOT = "/auto-dorm-check";
 
@@ -236,6 +237,8 @@ export async function createAutoDormCheckPaymentOrder(
 
 async function wechatPaymentLogin(): Promise<string> {
   const lease = captureSessionLease();
+  if (isDemoAccount(lease?.account))
+    throw new Error("示例账号暂不支持此操作。");
   const code = await new Promise<string>((resolve, reject) =>
     wx.login({
       success: (result) =>
@@ -276,6 +279,8 @@ export function cancelAutoDormCheckPaymentOrder(
 export function launchWechatPayment(
   payment: WechatPaymentParameters,
 ): Promise<"success" | "cancelled" | "unknown"> {
+  if (isDemoAccount(captureSessionLease()?.account))
+    return Promise.resolve("cancelled");
   return new Promise((resolve) =>
     wx.requestPayment({
       ...payment,

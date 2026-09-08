@@ -2,6 +2,7 @@ import {
   prewarmScheduleFirstScreen,
   prewarmSchedulePager,
 } from "../data/schedule-render";
+import { prepareDemoData } from "../demo/bootstrap";
 import { prewarmProfileFirstScreen } from "../data/profile-render";
 import {
   shouldStoreServerSnapshot,
@@ -240,6 +241,7 @@ function ensurePreload(
   session: Session | null = getSession(),
 ): PrimaryTabPreloadState | null {
   if (!session) return null;
+  if (prepareDemoData()) activeState = null;
   const key = preloadKey(session);
   return activeState?.key === key ? activeState : startPreload(session);
 }

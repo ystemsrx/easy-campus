@@ -67,6 +67,14 @@ new Function(
   moduleRecord,
   moduleRecord.exports,
   (specifier) => {
+    if (specifier === "../demo/identity")
+      return { isDemoSession: () => false, isDemoAccount: () => false };
+    if (specifier === "../demo/request")
+      return {
+        demoRequest: () => {
+          throw new Error("Unexpected demo request");
+        },
+      };
     if (specifier === "../config/index") {
       return { getApiUrl: (value) => value };
     }

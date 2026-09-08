@@ -35,6 +35,14 @@ assert.doesNotMatch(page, /wx:if="\{\{filterOpen\}\}" class="filter-panel/);
 assert.doesNotMatch(page, /semester-badge">匿名互助/);
 assert.match(page, /segment-indicator--physical/);
 assert.match(page, /至少 8 个字/);
+assert.match(
+  page,
+  /<view wx:if="\{\{!demoAccount\}\}" class="review-block">[^\n]*真心话/,
+);
+assert.match(
+  page,
+  /wx:if="\{\{!demoAccount && item\.content\}\}" class="my-review-body"/,
+);
 assert.match(page, /wx:if="\{\{!reviewVisible\}\}" class="assistant-tabbar"/);
 assert.match(page, /safe-area="\{\{false\}\}"/);
 assert.match(
@@ -143,10 +151,7 @@ assert.match(
   /\.assistant-tabbar\s*\{[^}]*background-color:\s*rgba\(247, 245, 239, 0\.94\)/s,
 );
 assert.match(styles, /\.filter-panel-shell\s*\{[^}]*display:\s*none/s);
-assert.match(
-  styles,
-  /\.filter-panel-shell--open\s*\{[^}]*display:\s*block/s,
-);
+assert.match(styles, /\.filter-panel-shell--open\s*\{[^}]*display:\s*block/s);
 assert.doesNotMatch(styles, /transition:\s*max-height/);
 assert.match(styles, /\.course-search\s*\{[^}]*border-radius:\s*999rpx/s);
 assert.match(styles, /\.segment-indicator\s*\{[^}]*transition:\s*transform/s);
@@ -185,6 +190,10 @@ assert.doesNotMatch(styles, /\.consent-/);
 
 const detailPage = read(
   "miniprogram/features/pages/course-assistant-detail/index.wxml",
+);
+assert.match(
+  detailPage,
+  /<block wx:if="\{\{!demoAccount\}\}">\s*<view class="reviews-heading">[\s\S]*学长学姐说[\s\S]*<\/block>\s*<view wx:if="\{\{detail\.canReview\}\}"/,
 );
 assert.match(detailPage, /近 8 学期均分走势/);
 assert.match(detailPage, /class="history-segment"/);
