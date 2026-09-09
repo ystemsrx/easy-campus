@@ -57,7 +57,8 @@
     "refresh-confirmation": "/components/refresh-confirmation/refresh-confirmation",
     "rate-limit-toast": "/components/rate-limit-toast/rate-limit-toast",
     "geometric-pet": "/components/geometric-pet/geometric-pet",
-    "screen-watermark": "/components/screen-watermark/screen-watermark"
+    "screen-watermark": "/components/screen-watermark/screen-watermark",
+    "app-switch": "/components/app-switch/app-switch"
   },
   "window": {
     "navigationBarTextStyle": "black",

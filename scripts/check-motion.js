@@ -1,9 +1,10 @@
+const { readSource } = require("./read-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
 const root = path.resolve(__dirname, "../miniprogram");
-const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const read = (file) => readSource(path.join(root, file), "utf8");
 
 // Render commits, nextTick and timers are separate queues. These tests validate
 // ordering and cancellation, not Skyline frame rate or hit testing on a device.

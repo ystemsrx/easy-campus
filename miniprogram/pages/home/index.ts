@@ -1,3 +1,10 @@
+import {
+  attachCapsuleBackdrop,
+  detachCapsuleBackdrop,
+  invalidateCapsuleBackdrop,
+  initializeCapsuleBackdrop,
+  type CapsuleScrollHost,
+} from "../../utils/capsule-backdrop";
 import { buildAppShare } from "../../utils/app-share";
 import { isDemoSession } from "../../demo/identity";
 import { prepareDemoData } from "../../demo/bootstrap";
@@ -861,6 +868,7 @@ Page({
     activeAnnouncement: null as PublicationPreview | null,
   },
   onLoad() {
+    initializeCapsuleBackdrop(this);
     registerHomeAuthenticationHost(this);
     homeVisible = false;
     homeReady = false;
@@ -895,7 +903,20 @@ Page({
       this.prepareForAuthenticationRequired();
     }
   },
+  onGlassBackdropScroll(
+    this: CapsuleScrollHost,
+    event: { detail: { scrollTop: number } },
+  ) {
+    "worklet";
+    if (!this._capsuleOffset) return;
+    const offset = event.detail.scrollTop;
+    this._capsuleOffset.value = offset;
+  },
+  onResize() {
+    invalidateCapsuleBackdrop(this);
+  },
   onReady() {
+    attachCapsuleBackdrop(this, "home");
     homeReady = true;
     const delay = authenticationRevealPrepared
       ? HOME_LOGIN_REVEAL_SETTLE_MS
@@ -910,6 +931,7 @@ Page({
       return;
     }
     homeVisible = true;
+    attachCapsuleBackdrop(this, "home");
     if (this.data.authenticated) {
       const account = getSession()?.user.account || "";
       if (account) this.hydrateCachedHomeIfNeeded(account);
@@ -932,6 +954,7 @@ Page({
     }
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
+    detachCapsuleBackdrop(this);
     cancelPublicationPanelMeasure();
     homeVisible = false;
     authenticationRevealPrepared = false;
@@ -1159,6 +1182,7 @@ Page({
     preloadNextPrimaryTabFramework();
   },
   onHide() {
+    detachCapsuleBackdrop(this);
     homeVisible = false;
     this.settlePlanTransition();
     clearHomeActivationTimer();
@@ -1170,6 +1194,7 @@ Page({
     if (!getSession()?.token) this.setTabBarHidden(true);
   },
   onUnload() {
+    detachCapsuleBackdrop(this);
     unregisterHomeAuthenticationHost(this);
     homeVisible = false;
     homeReady = false;

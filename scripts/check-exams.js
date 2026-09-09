@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -7,7 +8,7 @@ function assert(condition, message) {
 }
 
 function loadTypeScriptModule(relativePath, dependencies = {}) {
-  const source = fs.readFileSync(
+  const source = readSource(
     path.resolve(__dirname, "..", "miniprogram", relativePath),
     "utf8",
   );
@@ -133,7 +134,7 @@ assert(
   "学期胶囊必须只显示数字学期",
 );
 
-const examsPage = fs.readFileSync(
+const examsPage = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -145,7 +146,7 @@ const examsPage = fs.readFileSync(
   ),
   "utf8",
 );
-const examsStyles = fs.readFileSync(
+const examsStyles = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -157,7 +158,7 @@ const examsStyles = fs.readFileSync(
   ),
   "utf8",
 );
-const examsScript = fs.readFileSync(
+const examsScript = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -169,15 +170,15 @@ const examsScript = fs.readFileSync(
   ),
   "utf8",
 );
-const apiTypes = fs.readFileSync(
+const apiTypes = readSource(
   path.resolve(__dirname, "..", "miniprogram", "types", "api.ts"),
   "utf8",
 );
-const examsStore = fs.readFileSync(
+const examsStore = readSource(
   path.resolve(__dirname, "..", "miniprogram", "store", "exams.ts"),
   "utf8",
 );
-const cacheRefreshScript = fs.readFileSync(
+const cacheRefreshScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "services", "cache-refresh.ts"),
   "utf8",
 );
@@ -190,11 +191,11 @@ assert(
     ),
   "考试自动刷新必须校验并补齐本机缺失或未完整保存的历史学期",
 );
-const appScript = fs.readFileSync(
+const appScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
 );
-const gradesPage = fs.readFileSync(
+const gradesPage = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -206,7 +207,7 @@ const gradesPage = fs.readFileSync(
   ),
   "utf8",
 );
-const gradesScript = fs.readFileSync(
+const gradesScript = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -218,7 +219,7 @@ const gradesScript = fs.readFileSync(
   ),
   "utf8",
 );
-const gradesStyles = fs.readFileSync(
+const gradesStyles = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -230,11 +231,11 @@ const gradesStyles = fs.readFileSync(
   ),
   "utf8",
 );
-const homePage = fs.readFileSync(
+const homePage = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxml"),
   "utf8",
 );
-const homeStyles = fs.readFileSync(
+const homeStyles = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );

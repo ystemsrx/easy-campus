@@ -7,6 +7,16 @@ import {
 
 const PREFERENCES_KEY = "easy-swu:preferences";
 let preferencesRevision = 0;
+const listeners = new Set<(preferences: AppPreferences) => void>();
+
+export function subscribePreferences(
+  listener: (preferences: AppPreferences) => void,
+): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 export function getPreferencesRevision(): number {
   return preferencesRevision;
@@ -50,6 +60,10 @@ export function loadPreferences(): AppPreferences {
       typeof stored.haptics === "boolean"
         ? stored.haptics
         : DEFAULT_PREFERENCES.haptics,
+    liquidGlass:
+      typeof stored.liquidGlass === "boolean"
+        ? stored.liquidGlass
+        : DEFAULT_PREFERENCES.liquidGlass,
   };
 }
 
@@ -57,6 +71,7 @@ export function savePreferences(preferences: AppPreferences): void {
   wx.setStorageSync(PREFERENCES_KEY, preferences);
   getApp<IAppOption>().globalData.preferences = preferences;
   preferencesRevision += 1;
+  listeners.forEach((listener) => listener(preferences));
 }
 
 export function updatePreferences(

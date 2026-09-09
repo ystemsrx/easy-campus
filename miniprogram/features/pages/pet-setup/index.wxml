@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page page--quick-entry pet-setup-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page page--quick-entry pet-setup-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <navigation-bar title="我的伙伴" transparent back theme="{{theme}}">
     <view
       wx:if="{{canSkip}}"
@@ -53,24 +53,24 @@
         <view class="partner-toggle-copy">
           <text class="partner-toggle-title">显示校园伙伴</text>
         </view>
-        <switch
+        <app-switch
           class="partner-toggle"
           checked="{{draftEnabled}}"
           color="#7d8f6e"
           bindchange="onPetEnabledChange"
-          aria-label="校园伙伴显示开关"
+          label="校园伙伴显示开关"
         />
       </view>
       <view class="partner-toggle-row partner-toggle-row--last">
         <view class="partner-toggle-copy">
           <text class="partner-toggle-title">增强状态</text>
         </view>
-        <switch
+        <app-switch
           class="partner-toggle"
           checked="{{draftEnhanced}}"
           color="#7d8f6e"
           bindchange="onPetEnhancedChange"
-          aria-label="增强校园伙伴状态"
+          label="增强校园伙伴状态"
         />
       </view>
     </view>

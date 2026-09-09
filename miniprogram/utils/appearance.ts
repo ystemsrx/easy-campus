@@ -6,6 +6,8 @@ export interface PageAppearance {
   visualTheme: VisualTheme;
   visualThemeClass: `theme-style-${VisualTheme}`;
   motionClass: "motion-normal" | "motion-reduced";
+  liquidGlass: boolean;
+  liquidGlassClass: "liquid-glass" | "";
 }
 
 const WINDOW_BACKGROUNDS: Record<
@@ -37,6 +39,8 @@ export function resolveAppearance(
     visualTheme: current.visualTheme,
     visualThemeClass: `theme-style-${current.visualTheme}`,
     motionClass: current.reducedMotion ? "motion-reduced" : "motion-normal",
+    liquidGlass: current.liquidGlass === true,
+    liquidGlassClass: current.liquidGlass === true ? "liquid-glass" : "",
   };
 }
 

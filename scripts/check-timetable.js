@@ -3257,7 +3257,7 @@ assert(
     timetablePageTemplate.includes('bindtap="openCoursePassRate"') &&
     timetablePageTemplate.includes("查看通过率") &&
     timetablePageTemplate.includes(
-      '<lucide-icon name="chevron-right" tone="white" size="{{28}}"',
+      `<lucide-icon name="chevron-right" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : ('white')}}" size="{{28}}"`,
     ) &&
     /\.course-sheet-hero-main\s*\{[^}]*align-items:\s*center/s.test(
       timetablePageStyles,

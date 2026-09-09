@@ -1,0 +1,7 @@
+<import src="./content.wxml"/>
+<view wx:if="{{liveGlass.mounted}}" id="capsule-live-root" class="capsule-live-root" style="{{liveGlass.rootStyle}}" aria-hidden="true">
+  <view id="capsule-live-scene" class="capsule-live-scene" style="width:{{liveGlass.sourceWidth}}px;min-height:{{liveGlass.sourceHeight}}px;">
+          <view wx:if="{{liveGlass.beforeHeight}}" class="capsule-live-spacer" style="height:{{liveGlass.beforeHeight}}px;"></view>
+          <template is="profile-content" data="{{account:account,appName:appName,autoDormCheckStatusLabel:autoDormCheckStatusLabel,autoDormCheckStatusTone:autoDormCheckStatusTone,autoDormCheckTitle:autoDormCheckTitle,autoDormCheckVisible:autoDormCheckVisible,avatarText:avatarText,classLabel:classLabel,enrollmentDate:enrollmentDate,errorMessage:errorMessage,identityCardTone:identityCardTone,loggingOut:loggingOut,openingSetting:openingSetting,organizationName:organizationName,petColor:petColor,petEnabled:petEnabled,petEnhanced:petEnhanced,petShape:petShape,petVisible:petVisible,reducedMotion:reducedMotion,userName:userName,capsuleReplica:true}}"/>
+  </view>
+</view>

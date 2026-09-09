@@ -1,0 +1,231 @@
+<template name="home-content">
+<view class="home-content page-content page-content--tab">
+  <view class="welcome-row">
+    <view class="welcome-copy">
+      <text class="welcome-date">{{dateLabel}}</text>
+      <view class="welcome-title-row">
+        <text class="welcome-title display-title">{{greeting}}，</text>
+        <text class="welcome-name display-title">{{userName}}</text>
+      </view>
+    </view>
+    <view
+      class="publication-bell {{petVisible ? '' : 'publication-bell--plain'}} pressable"
+      bindtap="togglePublicationPanel"
+      hover-class="publication-bell--pressed"
+      aria-role="button"
+      aria-label="公告与通知，{{publicationUnreadCount}} 条未读"
+    >
+      <view wx:if="{{petVisible}}" class="publication-pet-frame">
+        <geometric-pet
+          shape="{{petShape}}"
+          color="{{petColor}}"
+          enhanced="{{petEnhanced}}"
+          state="{{publicationUnreadCount ? 'notifying' : 'idle'}}"
+          badge-text="{{publicationUnreadLabel}}"
+          reduced-motion="{{capsuleReplica || petReducedMotion}}"
+          auto-cycle="{{!capsuleReplica && !publicationUnreadCount}}"
+          label="公告与通知"
+        ></geometric-pet>
+      </view>
+      <block wx:else>
+        <lucide-icon name="bell" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{40}}"></lucide-icon>
+        <view wx:if="{{publicationUnreadCount}}" class="publication-badge"><text>{{publicationUnreadLabel}}</text></view>
+      </block>
+    </view>
+  </view>
+
+  <open-container
+    id="{{capsuleReplica ? 'rim-' : ''}}timetable-open-container"
+    class="timetable-open-container"
+    closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#a96352' : '#f7beae') : '#d97757')}}"
+    middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#c17a66' : '#fbd8cc') : (theme === 'dark' ? '#8c5948' : '#eba97f'))}}"
+    open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}"
+    closed-elevation="{{0}}"
+    closed-border-radius="{{timetableCardRadius}}"
+    open-elevation="{{0}}"
+    open-border-radius="{{0}}"
+    transition-type="fadeThrough"
+    transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
+    bind:tap="openTimetable"
+    aria-role="button"
+    aria-label="展开完整课表"
+  >
+    <view class="today-card pressable" hover-class="today-card--pressed">
+      <view class="ambient-blob today-blob today-blob--one"></view>
+      <view class="ambient-blob today-blob today-blob--two"></view>
+      <view class="today-content">
+        <view class="today-head">
+          <view>
+            <text class="today-kicker">今日课程</text>
+            <view class="today-count-row"><text class="today-count tnum">{{todayCourses.length}}</text><text class="today-unit">节课</text></view>
+          </view>
+          <view class="timetable-pill"><text>完整课表</text><lucide-icon name="chevron-right" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{24}}"></lucide-icon></view>
+        </view>
+        <view wx:if="{{todayCourses.length}}" class="today-course-list">
+          <view wx:for="{{todayCourses}}" wx:key="id" class="today-course-row">
+            <view class="course-slot"><text class="course-slot-value tnum">{{item.periodLabel}}</text></view>
+            <view class="today-course-copy">
+              <text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.name}}</text>
+              <view class="today-course-meta"><lucide-icon name="map-pin" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{17}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}} · {{item.teacher}}</text></view>
+            </view>
+            <view class="course-status {{item.current ? 'course-status--current' : ''}}"><text>{{item.statusLabel}}</text></view>
+          </view>
+        </view>
+        <view wx:else class="today-empty">
+          <text class="today-empty-title">今日无课</text>
+        </view>
+      </view>
+    </view>
+  </open-container>
+
+  <view class="feature-grid">
+    <open-container
+      class="feature-open-container"
+      closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#a77935' : '#f4d995') : '#c98a2d')}}"
+      middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#c4944c' : '#fbe9bb') : (theme === 'dark' ? '#966c36' : '#e5b86e'))}}"
+      open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}"
+      closed-elevation="{{0}}"
+      closed-border-radius="{{gradeCardRadius}}"
+      open-elevation="{{0}}"
+      open-border-radius="{{0}}"
+      transition-type="fadeThrough"
+      transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
+      bind:tap="openGrades"
+      aria-role="button"
+      aria-label="展开成绩页"
+    >
+      <view class="feature-card feature-card--grades pressable" hover-class="feature-card--pressed">
+        <view class="ambient-blob feature-blob"></view>
+        <text class="feature-kicker">平均绩点</text>
+        <view class="score-ring"><image class="score-ring-image" src="{{showGradesOnHome ? gradeRingSource : hiddenGradeRingSource}}" mode="aspectFit"></image><text class="score-ring-value tnum">{{showGradesOnHome ? gradePointAverageLabel : '**'}}</text></view>
+        <text class="feature-caption">{{gradeCourseCount ? (showGradesOnHome ? gradeCourseCount + ' 门课程 · 均分 ' + gradeAverageLabel : '** 门课程 · 均分 **') : '查看成绩明细'}}</text>
+      </view>
+    </open-container>
+    <open-container
+      class="feature-open-container"
+      closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#537f60' : '#b5dbc0') : '#7d8f6e')}}"
+      middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#6d9a75' : '#d4ecd9') : (theme === 'dark' ? '#66735b' : '#acbe97'))}}"
+      open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}"
+      closed-elevation="{{0}}"
+      closed-border-radius="{{electricityCardRadius}}"
+      open-elevation="{{0}}"
+      open-border-radius="{{0}}"
+      transition-type="fadeThrough"
+      transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
+      bind:tap="openElectricity"
+      aria-role="button"
+      aria-label="展开寝室电费"
+    >
+      <view class="feature-card feature-card--utility pressable" hover-class="feature-card--pressed">
+        <view class="ambient-blob feature-blob feature-blob--utility"></view>
+        <view class="feature-kicker feature-kicker--icon"><lucide-icon name="zap" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{21}}"></lucide-icon><text>寝室电费</text></view>
+        <view wx:if="{{electricityBound}}" class="utility-balance"><text class="utility-currency">¥</text><text class="utility-value tnum">{{electricityBalanceLabel}}</text></view>
+        <text wx:else class="utility-unbound">未绑定</text>
+        <text class="utility-caption">{{electricityBound ? '剩余金额' : '选择宿舍与寝室号'}}</text>
+        <view class="utility-pill"><text>{{electricityUsageLabel}}</text></view>
+      </view>
+    </open-container>
+  </view>
+
+  <view class="exam-layout">
+    <open-container
+      class="exam-open-container"
+      closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}"
+      middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}"
+      open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}"
+      closed-elevation="{{0}}"
+      closed-border-radius="{{examCardRadius}}"
+      open-elevation="{{0}}"
+      open-border-radius="{{0}}"
+      transition-type="fadeThrough"
+      transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
+      bind:tap="openExams"
+      aria-role="button"
+      aria-label="展开考试安排"
+    >
+      <view class="exam-card card pressable" hover-class="pressing">
+      <view class="exam-card-head"><view class="exam-card-title"><lucide-icon name="clock-3" tone="rose" size="{{23}}"></lucide-icon><text>考试安排</text></view><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+      <view wx:if="{{examPreviews.length}}" class="exam-preview-list">
+        <view wx:for="{{examPreviews}}" wx:key="id" class="exam-preview-row {{index ? 'exam-preview-row--divided' : ''}}">
+          <view class="exam-badge exam-badge--{{item.badgeTone}}">
+            <view wx:if="{{item.badgeTone === 'current'}}" class="exam-badge-current-grid" aria-label="逢考必过"><view><text>逢</text><text>考</text></view><view><text>必</text><text>过</text></view></view>
+            <text wx:else class="exam-badge-value tnum">{{item.badgeText}}</text>
+          </view>
+          <view class="exam-preview-copy"><view class="exam-course-line"><text class="exam-course-name" overflow="ellipsis" max-lines="1">{{item.courseName}}</text><text wx:if="{{item.typeLabel !== '正常考试'}}" class="exam-type">{{item.typeLabel}}</text></view><view class="exam-location"><lucide-icon name="map-pin" tone="muted" size="{{16}}"></lucide-icon><text overflow="ellipsis" max-lines="1">{{item.location}}</text></view></view>
+          <view class="exam-time"><text class="exam-date tnum">{{item.dateLabel}}</text><text class="exam-clock tnum">{{item.timeLabel}}</text></view>
+        </view>
+      </view>
+      <view wx:else class="exam-empty">
+        <text>{{examEmptyLabel}}</text>
+      </view>
+      </view>
+    </open-container>
+    <view class="side-actions">
+      <view class="side-action card pressable" data-route="/features/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
+      <view class="side-action card pressable" data-route="/features/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'blue'}}" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
+    </view>
+  </view>
+
+  <view class="section-header">
+    <view><text class="section-title">接下来</text></view>
+    <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
+  </view>
+  <view class="plan-card card" style="height: {{planCardHeight}}rpx;">
+    <view wx:if="{{plans.length}}" class="plan-list">
+      <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}} {{planCompletion[item.id] ? 'plan-row--completing' : ''}} {{planCompletion[item.id] === 'leaving' ? 'plan-row--leaving' : ''}}">
+        <view class="plan-row-content">
+          <view class="plan-check pressable" data-id="{{item.id}}" catchtap="completePlan" hover-class="plan-check--pressed" aria-role="button" aria-label="标记{{item.title}}为已完成" aria-disabled="{{!!planCompletion[item.id]}}">
+            <view class="plan-circle {{planCompletion[item.id] ? 'plan-circle--checked' : ''}}">
+              <lucide-icon wx:if="{{planCompletion[item.id]}}" name="check" tone="white" size="{{23}}"></lucide-icon>
+            </view>
+          </view>
+          <view class="plan-copy"><text class="plan-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="plan-time tnum">{{item.dateLabel}} · {{item.timeLabel}}</text></view>
+          <text class="plan-tag">日程</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="plan-empty pressable" bindtap="openSchedule" hover-class="pressing">
+      <text>还没有待办，给今天留一点计划</text>
+    </view>
+  </view>
+
+  <view class="section-header">
+    <view><text class="section-title">校园消息</text></view>
+    <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
+  </view>
+  <view class="campus-stack">
+    <view class="campus-group">
+      <view class="campus-card-head pressable" bindtap="openMessages" hover-class="pressing">
+        <view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view>
+        <text class="campus-card-title">教务消息</text>
+      </view>
+      <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}" bind:tap="openMessagesFromCard" aria-role="button" aria-label="从卡片展开教务消息">
+        <view class="campus-card card pressable" hover-class="pressing">
+          <view class="ambient-blob campus-blob campus-blob--message"></view>
+          <view wx:if="{{messages.length}}" class="campus-list">
+            <view wx:for="{{messages}}" wx:key="id" class="campus-line"><text class="message-kind message-kind--{{item.tone}}">{{item.label}}</text><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text wx:if="{{item.dateLabel}}" class="campus-line-schedule">{{item.dateLabel}}</text></view>
+          </view>
+          <view wx:else class="campus-empty-copy"><text>暂时没有新消息</text></view>
+        </view>
+      </open-container>
+    </view>
+    <view class="campus-group">
+      <view class="campus-card-head pressable" bindtap="openNotices" hover-class="pressing">
+        <view class="campus-icon campus-icon--notice"><lucide-icon name="megaphone" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'blue'}}" size="{{29}}"></lucide-icon></view>
+        <text class="campus-card-title">学校通知</text>
+      </view>
+      <open-container class="campus-open-container" closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}" middle-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#27382e' : '#edf7f1') : (theme === 'dark' ? '#39352e' : '#f1eee6'))}}" open-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#16201b' : '#f7fcf8') : (theme === 'dark' ? '#171613' : '#f7f5ef'))}}" closed-elevation="{{0}}" closed-border-radius="{{campusCardRadius}}" open-elevation="{{0}}" open-border-radius="{{0}}" transition-type="fadeThrough" transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}" bind:tap="openNoticesFromCard" aria-role="button" aria-label="从卡片展开学校通知">
+        <view class="campus-card card pressable" hover-class="pressing">
+          <view class="ambient-blob campus-blob campus-blob--notice"></view>
+          <view wx:if="{{notices.length}}" class="campus-list">
+            <view wx:for="{{notices}}" wx:key="id" class="campus-line"><view class="campus-bullet"></view><text class="campus-line-title" overflow="ellipsis" max-lines="1">{{item.title}}</text><text class="campus-line-time">{{item.time}}</text></view>
+          </view>
+          <view wx:else class="campus-empty-copy"><text>暂时没有新通知</text></view>
+        </view>
+      </open-container>
+    </view>
+  </view>
+
+  <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="retryDashboard" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
+</view>
+</template>

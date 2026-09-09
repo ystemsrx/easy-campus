@@ -1,0 +1,77 @@
+<template name="schedule-day-content">
+    <view class="schedule-day-content page-content page-content--tab">
+  <view class="timeline-heading">
+    <view>
+      <text class="timeline-title">{{day.selectedDateLabel}}</text>
+      <text class="timeline-caption">{{day.entries.length ? day.entries.length + ' 项安排' : '没有安排'}}</text>
+    </view>
+    <view class="today-chip pressable" bindtap="goToday" hover-class="pressing"><text>今天</text></view>
+  </view>
+
+  <view wx:if="{{day.earlyEntries.length}}" class="outside-card card">
+    <text class="outside-label">08:00 之前</text>
+    <view wx:for="{{day.earlyEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+      <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
+      <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
+    </view>
+  </view>
+  <view wx:if="{{day.timelineEntries.length}}" class="timeline-card card">
+    <view class="timeline-scale" style="height: {{timelineHeight}}rpx;">
+      <view class="hour-line hour-line--9"><text>09:00</text><view></view></view>
+      <view class="hour-line hour-line--12"><text>12:00</text><view></view></view>
+      <view class="hour-line hour-line--15"><text>15:00</text><view></view></view>
+      <view class="hour-line hour-line--18"><text>18:00</text><view></view></view>
+      <view class="hour-line hour-line--21"><text>21:00</text><view></view></view>
+      <view
+        wx:for="{{day.timelineEntries}}"
+        wx:key="id"
+        class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}}"
+        style="top: {{item.top}}rpx; height: {{item.height}}rpx; left: calc({{item.leftPercent}}% + {{item.leftInset}}rpx); width: calc({{item.widthPercent}}% - {{item.widthInset}}rpx);"
+        id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}"
+        data-id="{{item.id}}"
+        data-kind="{{item.kind}}"
+        bindtap="openPlanEditor"
+      >
+        <view wx:if="{{item.kind === 'plan'}}" class="plan-dashed-border"></view>
+        <view wx:if="{{item.kind === 'plan'}}" class="plan-border-corners">
+          <image class="plan-border-corner plan-border-corner--top-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--top-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--bottom-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--bottom-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+        </view>
+        <view wx:if="{{item.kind === 'plan'}}" class="plan-check {{item.done ? 'plan-check--checked' : ''}}" data-id="{{item.id}}" catchtap="togglePlan">
+          <lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon>
+        </view>
+        <view class="entry-copy">
+          <view class="entry-line">
+            <text class="entry-title" overflow="ellipsis" max-lines="1">{{item.title}}</text>
+            <view wx:if="{{item.done}}" class="entry-strike entry-strike--title"></view>
+          </view>
+          <view class="entry-line entry-line--meta">
+            <text class="entry-meta" overflow="ellipsis" max-lines="1">{{item.displayMeta}}</text>
+            <view wx:if="{{item.done}}" class="entry-strike entry-strike--meta"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="timeline-legend">
+      <view><view class="legend-square legend-square--course"></view><text>课堂</text></view>
+      <view><view class="legend-square legend-square--plan"></view><text>我的安排</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{day.lateEntries.length}}" class="outside-card card">
+    <text class="outside-label">22:30 之后</text>
+    <view wx:for="{{day.lateEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+      <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
+      <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
+    </view>
+  </view>
+  <view wx:if="{{!day.entries.length}}" class="schedule-empty card">
+    <view class="empty-orbit"><lucide-icon name="sparkles" tone="rose" size="{{40}}"></lucide-icon></view>
+    <text class="schedule-empty-title">这一天还没有安排</text>
+    <text class="schedule-empty-caption">给自己留白，或添加一点计划</text>
+    <view class="schedule-empty-action pressable" bindtap="openCreator" hover-class="pressing"><text>添加待办</text></view>
+  </view>
+    </view>
+</template>

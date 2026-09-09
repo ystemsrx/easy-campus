@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page pass-rate-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page pass-rate-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="通过率" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="pass-rate-content page-content page-enter">
@@ -16,7 +16,7 @@
               <text class="pass-course-name display-title">{{course.courseName}}</text>
               <text class="pass-course-meta">{{course.academicYear}} · {{course.termLabel}}{{statistics && !percentageOnly ? ' · 共 ' + statistics.totalCount + ' 份成绩' : ''}}</text>
             </view>
-            <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}" size="{{22}}"></lucide-icon></view>
+            <view wx:if="{{courses.length > 1}}" class="course-switch pressable" bindtap="openPicker" hover-class="course-switch--pressed"><text>切换课程</text><lucide-icon name="chevron-right" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : (visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white')}}" size="{{22}}"></lucide-icon></view>
           </view>
 
           <view class="pass-hero-lower">

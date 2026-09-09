@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -10,7 +11,7 @@ function assert(condition, message) {
 }
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(miniprogramRoot, relativePath), "utf8");
+  return readSource(path.join(miniprogramRoot, relativePath), "utf8");
 }
 
 function loadGeneratedData() {
@@ -475,7 +476,7 @@ assert(
     ) &&
     setupTemplate.includes('wx:for="{{shapeOptions}}"') &&
     setupTemplate.includes('class="shape-pet-frame"') &&
-    setupTemplate.includes(' pet-drawer-card') &&
+    setupTemplate.includes(" pet-drawer-card") &&
     setupTemplate.includes('class="setup-nav-skip') &&
     setupTemplate.includes("跳过选择") &&
     setupTemplate.includes('bindchange="onPetEnabledChange"') &&
@@ -515,7 +516,7 @@ assert(
     setupStyles.includes("width: 50rpx; height: 50rpx") &&
     setupStyles.includes("box-sizing: border-box") &&
     setupTemplate.indexOf('class="partner-toggle-list') <
-      setupTemplate.indexOf(' pet-drawer-layer') &&
+      setupTemplate.indexOf(" pet-drawer-layer") &&
     !setupTemplate.includes("保存设置") &&
     !setupTemplate.includes("当前选择会完整播放动效") &&
     !setupTemplate.includes("关闭后保留当前形状与颜色") &&
@@ -626,7 +627,9 @@ assert(
     homeTemplate.includes('badge-text="{{publicationUnreadLabel}}"') &&
     homeTemplate.includes('enhanced="{{petEnhanced}}"') &&
     homeScript.includes("petEnhanced: preferences.enhanced") &&
-    homeTemplate.includes('auto-cycle="{{!publicationUnreadCount}}"') &&
+    homeTemplate.includes(
+      'auto-cycle="{{!capsuleReplica && !publicationUnreadCount}}"',
+    ) &&
     homeTemplate.includes('class="publication-pet-frame"') &&
     homeTemplate.includes('<lucide-icon name="bell"') &&
     homePetCount === 1 &&
@@ -652,7 +655,7 @@ assert(
   profileTemplate.includes('class="identity-pet-frame"') &&
     profileTemplate.includes('wx:if="{{petVisible}}"') &&
     profileTemplate.includes('wx:else class="avatar"') &&
-    profileTemplate.includes('auto-cycle="{{true}}"') &&
+    profileTemplate.includes('auto-cycle="{{!capsuleReplica}}"') &&
     profileTemplate.includes('enhanced="{{petEnhanced}}"') &&
     profileScript.includes("petEnhanced: pet.enhanced") &&
     profileTemplate.includes('label="点击和校园伙伴互动"') &&

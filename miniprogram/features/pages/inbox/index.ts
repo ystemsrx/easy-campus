@@ -1,4 +1,12 @@
 import { buildAppShare } from "../../../utils/app-share";
+import {
+  GLASS_DRAG_DATA,
+  startGlassDrag,
+  moveGlassDrag,
+  endGlassDrag,
+  cancelGlassDrag,
+  consumeGlassTap,
+} from "../../../utils/glass-drag";
 import { getMessages, getNotices } from "../../../services/teaching";
 import {
   getErrorMessage,
@@ -409,6 +417,8 @@ function noticeSourceIdFromLink(link: string): string {
 Page({
   onShareAppMessage: buildAppShare,
   data: {
+    ...GLASS_DRAG_DATA,
+    liquidGlass: false,
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     visualTheme: "default",
@@ -488,14 +498,17 @@ Page({
     }
   },
   onHide() {
+    cancelGlassDrag(this);
     markRefreshPageHidden(this.data.refreshPageToken);
   },
   onUnload() {
+    cancelGlassDrag(this);
     markRefreshPageHidden(this.data.refreshPageToken);
     clearFilterTransitionTimer();
     clearBackgroundFollowupTimers();
   },
   applyAppearance() {
+    cancelGlassDrag(this);
     this.setData(resolveAppearance());
   },
   syncActiveMessageRefresh(): boolean {
@@ -709,7 +722,32 @@ Page({
     });
   },
   onTabTap(event: WechatMiniprogram.TouchEvent) {
+    if (consumeGlassTap(this)) return;
     const index = Number(event.currentTarget.dataset.index);
+    this.selectTab(index);
+  },
+  onSelectorTouchStart(event: WechatMiniprogram.TouchEvent) {
+    startGlassDrag(this, event, {
+      enabled: this.data.liquidGlass,
+      index: this.data.activeTab,
+      count: 2,
+      selector: ".segmented-control",
+      insetRpx: 7,
+      widthRpx: 670,
+    });
+  },
+  onSelectorTouchMove(event: WechatMiniprogram.TouchEvent) {
+    moveGlassDrag(this, event);
+  },
+  onSelectorTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const index = endGlassDrag(this, event);
+    if (index !== undefined) this.selectTab(index);
+  },
+  onSelectorTouchCancel() {
+    cancelGlassDrag(this);
+  },
+  selectTab(index: number) {
+    if (index !== 0 && index !== 1) return;
     if (index === this.data.activeTab) {
       return;
     }
@@ -719,6 +757,7 @@ Page({
     this.loadActiveTab(index);
   },
   onSwiperChange(event: WechatMiniprogram.SwiperChange) {
+    cancelGlassDrag(this);
     const index = event.detail.current;
     if (index !== this.data.activeTab) {
       if (this.data.messageFilterMounted) this.closeMessageFilter();

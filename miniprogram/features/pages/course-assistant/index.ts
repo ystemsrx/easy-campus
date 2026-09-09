@@ -1,4 +1,20 @@
 import { buildAppShare } from "../../../utils/app-share";
+import {
+  attachCapsuleBackdrop,
+  detachCapsuleBackdrop,
+  invalidateCapsuleBackdrop,
+  initializeCapsuleBackdrop,
+  type CapsuleScrollHost,
+} from "../../../utils/capsule-backdrop";
+import {
+  GLASS_DRAG_DATA,
+  scopedGlassDragHost,
+  startGlassDrag,
+  moveGlassDrag,
+  endGlassDrag,
+  cancelGlassDrag,
+  consumeGlassTap,
+} from "../../../utils/glass-drag";
 import { isDemoAccount } from "../../../demo/identity";
 import {
   loadInteractionDraft,
@@ -156,6 +172,13 @@ let mineGrades: GradeView[] = [];
 let courseTouchStart: TapPoint | null = null;
 let courseTouchMoved = false;
 let lastCourseScrollAt = 0;
+const filterMeasureVersions = new WeakMap<object, number>();
+
+function invalidateFilterMeasurement(page: object): number {
+  const version = (filterMeasureVersions.get(page) || 0) + 1;
+  filterMeasureVersions.set(page, version);
+  return version;
+}
 
 function touchPoint(
   event: WechatMiniprogram.TouchEvent,
@@ -178,6 +201,8 @@ Page({
   onShareAppMessage: buildAppShare,
   data: {
     ...resolveAppearance(),
+    ...GLASS_DRAG_DATA,
+    bottomSelector: { ...GLASS_DRAG_DATA },
     demoAccount: false,
     statusLoading: true,
     statusError: "",
@@ -190,6 +215,7 @@ Page({
     courseType: "general_elective" as CourseAssistantCourseType,
     searchQuery: "",
     filterOpen: false,
+    filterPanelHeight: 0,
     selectedKeyword: "",
     catalogSort: "average_score" as CourseAssistantCatalogSort,
     catalogSortLabel: "历史均分",
@@ -222,6 +248,7 @@ Page({
     reviewSubmitting: false,
   },
   onLoad(options: Record<string, string | undefined>) {
+    initializeCapsuleBackdrop(this);
     if (!ensureAuthenticated()) return;
     activeSessionKey = "";
     favoriteCourses = new Map();
@@ -238,6 +265,7 @@ Page({
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    attachCapsuleBackdrop(this, "course-assistant");
     this.applyAppearance();
     const lease = captureSessionLease();
     if (!lease) return;
@@ -258,6 +286,8 @@ Page({
         catalogSortLabel: "历史均分",
         sortMenuMounted: false,
         sortMenuOpen: false,
+        filterOpen: false,
+        filterPanelHeight: 0,
         courses: [],
         catalogLoadingMore: false,
         catalogPage: 1,
@@ -281,7 +311,23 @@ Page({
     this.applyCatalogView();
     if (this.data.favoritesOnly) void this.loadFavorites();
   },
+  onHide() {
+    detachCapsuleBackdrop(this);
+    cancelGlassDrag(this);
+    this.onBottomSelectorTouchCancel();
+    invalidateFilterMeasurement(this);
+  },
+  onResize() {
+    invalidateCapsuleBackdrop(this);
+    cancelGlassDrag(this);
+    this.onBottomSelectorTouchCancel();
+    this.updateFilterPanelHeight();
+  },
   onUnload() {
+    detachCapsuleBackdrop(this);
+    cancelGlassDrag(this);
+    this.onBottomSelectorTouchCancel();
+    invalidateFilterMeasurement(this);
     favoritesRequestSequence += 1;
     catalogRequestSequence += 1;
     mineRequestSequence += 1;
@@ -291,12 +337,17 @@ Page({
     sortMenuTimer = undefined;
   },
   applyAppearance() {
+    cancelGlassDrag(this);
+    this.onBottomSelectorTouchCancel();
     const appearance = resolveAppearance();
     syncWindowBackground(appearance);
-    this.setData({
-      ...appearance,
-      demoAccount: isDemoAccount(captureSessionLease()?.account),
-    });
+    this.setData(
+      {
+        ...appearance,
+        demoAccount: isDemoAccount(captureSessionLease()?.account),
+      },
+      () => this.updateFilterPanelHeight(),
+    );
   },
   async loadAssistant(pendingCourseKey = "") {
     const lease = captureSessionLease();
@@ -307,7 +358,9 @@ Page({
     try {
       await Promise.all([this.loadCatalog(), this.loadMine()]);
       if (!isSessionLeaseCurrent(lease)) return;
-      this.setData({ statusLoading: false });
+      this.setData({ statusLoading: false }, () =>
+        this.updateFilterPanelHeight(),
+      );
       void this.prefetchCourseType(alternateCourseType(this.data.courseType));
       if (pendingCourseKey) this.openReviewFromDetail(pendingCourseKey);
     } catch (error) {
@@ -366,15 +419,18 @@ Page({
       catalogCourses = append
         ? mergeCatalogCourses(catalogCourses, eligibleCourses)
         : eligibleCourses;
-      this.setData({
-        catalogLoading: false,
-        catalogLoadingMore: false,
-        catalogPage: page,
-        catalogHasMore: page < result.pagination.totalPages,
-        summary: result.summary,
-        positiveFilterKeywords: result.keywords.positive,
-        reviewAccess: result.reviewAccess,
-      });
+      this.setData(
+        {
+          catalogLoading: false,
+          catalogLoadingMore: false,
+          catalogPage: page,
+          catalogHasMore: page < result.pagination.totalPages,
+          summary: result.summary,
+          positiveFilterKeywords: result.keywords.positive,
+          reviewAccess: result.reviewAccess,
+        },
+        () => this.updateFilterPanelHeight(),
+      );
       catalogCache.set(cacheKey, {
         courses: [...catalogCourses],
         page,
@@ -508,16 +564,19 @@ Page({
     );
     if (!cached) return false;
     catalogCourses = [...cached.courses];
-    this.setData({
-      catalogLoading: false,
-      catalogLoadingMore: false,
-      catalogError: "",
-      catalogPage: cached.page,
-      catalogHasMore: cached.hasMore,
-      summary: cached.summary,
-      positiveFilterKeywords: cached.positiveFilterKeywords,
-      reviewAccess: cached.reviewAccess,
-    });
+    this.setData(
+      {
+        catalogLoading: false,
+        catalogLoadingMore: false,
+        catalogError: "",
+        catalogPage: cached.page,
+        catalogHasMore: cached.hasMore,
+        summary: cached.summary,
+        positiveFilterKeywords: cached.positiveFilterKeywords,
+        reviewAccess: cached.reviewAccess,
+      },
+      () => this.updateFilterPanelHeight(),
+    );
     this.applyCatalogView();
     return true;
   },
@@ -558,7 +617,36 @@ Page({
     }
   },
   selectCourseType(event: WechatMiniprogram.TouchEvent) {
+    if (consumeGlassTap(this)) return;
     const type = String(event.currentTarget.dataset.type || "");
+    if (type !== "general_elective" && type !== "physical_education") return;
+    this.applyCourseType(type);
+  },
+  onSelectorTouchStart(event: WechatMiniprogram.TouchEvent) {
+    this.onBottomSelectorTouchCancel();
+    startGlassDrag(this, event, {
+      enabled: this.data.liquidGlass,
+      index: this.data.courseType === "physical_education" ? 1 : 0,
+      count: 2,
+      selector: ".course-segment",
+      insetRpx: 6,
+      widthRpx: 478,
+    });
+  },
+  onSelectorTouchMove(event: WechatMiniprogram.TouchEvent) {
+    moveGlassDrag(this, event);
+  },
+  onSelectorTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const index = endGlassDrag(this, event);
+    if (index !== undefined)
+      this.applyCourseType(
+        index === 1 ? "physical_education" : "general_elective",
+      );
+  },
+  onSelectorTouchCancel() {
+    cancelGlassDrag(this);
+  },
+  applyCourseType(type: CourseAssistantCourseType) {
     if (
       (type !== "general_elective" && type !== "physical_education") ||
       type === this.data.courseType
@@ -566,12 +654,15 @@ Page({
       return;
     }
     haptic("light");
+    cancelGlassDrag(this);
+    invalidateFilterMeasurement(this);
     catalogRequestSequence += 1;
     this.setData(
       {
         courseType: type,
         selectedKeyword: "",
         filterOpen: false,
+        filterPanelHeight: 0,
         sortMenuMounted: false,
         sortMenuOpen: false,
         catalogPage: 1,
@@ -609,11 +700,54 @@ Page({
   },
   toggleFilter() {
     if (this.data.reviewAccess.requiresContribution) {
-      this.setData({ activeTab: "publish" });
+      this.selectAssistantTab("publish");
       return;
     }
     haptic("light");
-    this.setData({ filterOpen: !this.data.filterOpen });
+    this.closeSortMenu();
+    invalidateFilterMeasurement(this);
+    const filterOpen = !this.data.filterOpen;
+    this.setData(
+      { filterOpen, ...(!filterOpen ? { filterPanelHeight: 0 } : {}) },
+      () => this.updateFilterPanelHeight(),
+    );
+  },
+  updateFilterPanelHeight() {
+    const version = invalidateFilterMeasurement(this);
+    if (this.data.reviewAccess.requiresContribution) {
+      if (this.data.filterOpen || this.data.filterPanelHeight) {
+        this.setData({ filterOpen: false, filterPanelHeight: 0 });
+      }
+      return;
+    }
+    if (
+      !this.data.filterOpen ||
+      this.data.activeTab !== "browse" ||
+      this.data.statusLoading ||
+      this.data.statusError
+    )
+      return;
+    // Keep the inner panel laid out while clipped, then animate only its measured
+    // occupied height. The ranking below follows the same in-flow transition.
+    this.createSelectorQuery()
+      .select(".filter-panel-measure")
+      .boundingClientRect((rect) => {
+        if (
+          filterMeasureVersions.get(this) !== version ||
+          !this.data.filterOpen ||
+          this.data.activeTab !== "browse"
+        )
+          return;
+        if (
+          Array.isArray(rect) ||
+          !rect ||
+          !Number.isFinite(rect.height) ||
+          rect.height <= 0
+        )
+          return;
+        this.setData({ filterPanelHeight: Math.ceil(rect.height) });
+      })
+      .exec();
   },
   toggleSortMenu() {
     haptic("light");
@@ -702,23 +836,29 @@ Page({
     if (!keyword) return;
     haptic("light");
     catalogCourses = [];
-    this.setData({
-      selectedKeyword: keyword === this.data.selectedKeyword ? "" : keyword,
-      courses: [],
-      catalogPage: 1,
-      catalogHasMore: true,
-    });
+    this.setData(
+      {
+        selectedKeyword: keyword === this.data.selectedKeyword ? "" : keyword,
+        courses: [],
+        catalogPage: 1,
+        catalogHasMore: true,
+      },
+      () => this.updateFilterPanelHeight(),
+    );
     void this.loadCatalog();
   },
   clearFilterKeyword() {
     if (!this.data.selectedKeyword) return;
     catalogCourses = [];
-    this.setData({
-      selectedKeyword: "",
-      courses: [],
-      catalogPage: 1,
-      catalogHasMore: true,
-    });
+    this.setData(
+      {
+        selectedKeyword: "",
+        courses: [],
+        catalogPage: 1,
+        catalogHasMore: true,
+      },
+      () => this.updateFilterPanelHeight(),
+    );
     void this.loadCatalog();
   },
   toggleFavorite(event: WechatMiniprogram.TouchEvent) {
@@ -741,22 +881,59 @@ Page({
       `/features/pages/course-assistant-detail/index?courseKey=${encodeURIComponent(courseKey)}`,
     );
   },
+  onBottomTabTap(event: WechatMiniprogram.TouchEvent) {
+    if (consumeGlassTap(scopedGlassDragHost(this, "bottomSelector"))) return;
+    this.switchTab(event);
+  },
   switchTab(event: WechatMiniprogram.TouchEvent) {
     const tab = String(event.currentTarget.dataset.tab || "");
+    if (tab === "browse" || tab === "publish") this.selectAssistantTab(tab);
+  },
+  onBottomSelectorTouchStart(event: WechatMiniprogram.TouchEvent) {
+    cancelGlassDrag(this);
+    startGlassDrag(scopedGlassDragHost(this, "bottomSelector"), event, {
+      enabled: !this.data.reviewVisible,
+      index: this.data.activeTab === "publish" ? 1 : 0,
+      count: 2,
+      selector: ".assistant-tabbar .tabbar-material",
+      insetRpx: 14,
+      widthRpx: 528,
+    });
+  },
+  onBottomSelectorTouchMove(event: WechatMiniprogram.TouchEvent) {
+    moveGlassDrag(scopedGlassDragHost(this, "bottomSelector"), event);
+  },
+  onBottomSelectorTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const index = endGlassDrag(
+      scopedGlassDragHost(this, "bottomSelector"),
+      event,
+    );
+    if (index !== undefined)
+      this.selectAssistantTab(index === 1 ? "publish" : "browse");
+  },
+  onBottomSelectorTouchCancel() {
+    cancelGlassDrag(scopedGlassDragHost(this, "bottomSelector"));
+  },
+  selectAssistantTab(tab: AssistantTab) {
     if ((tab !== "browse" && tab !== "publish") || tab === this.data.activeTab)
       return;
     haptic("light");
+    cancelGlassDrag(this);
+    this.onBottomSelectorTouchCancel();
+    invalidateFilterMeasurement(this);
     this.closeSortMenu();
-    this.setData({
-      activeTab: tab,
-      browseScrollTop: tabScrollPositions.browse,
-      publishScrollTop: tabScrollPositions.publish,
-    });
+    this.setData(
+      {
+        activeTab: tab,
+        browseScrollTop: tabScrollPositions.browse,
+        publishScrollTop: tabScrollPositions.publish,
+      },
+      () => this.updateFilterPanelHeight(),
+    );
     if (tab === "publish") void this.loadMine();
   },
   openPublishTab() {
-    this.setData({ activeTab: "publish" });
-    void this.loadMine();
+    this.selectAssistantTab("publish");
   },
   async loadMine() {
     const lease = captureSessionLease();
@@ -771,21 +948,24 @@ Page({
       const eligibleCourseKeys = new Set(
         mineGrades.map((grade) => grade.courseKey),
       );
-      this.setData({
-        mineLoading: false,
-        takenCourses: mineGrades,
-        myReviews: result.reviews
-          .filter((review) => {
-            const courseKey = (review as ReviewView).courseKey;
-            return !courseKey || eligibleCourseKeys.has(courseKey);
-          })
-          .map(toReviewView),
-        keywordOptions: keywordOptions(result.keywords).map((item) => ({
-          ...item,
-          active: selectedKeywords.has(item.text),
-        })),
-        reviewAccess: result.reviewAccess,
-      });
+      this.setData(
+        {
+          mineLoading: false,
+          takenCourses: mineGrades,
+          myReviews: result.reviews
+            .filter((review) => {
+              const courseKey = (review as ReviewView).courseKey;
+              return !courseKey || eligibleCourseKeys.has(courseKey);
+            })
+            .map(toReviewView),
+          keywordOptions: keywordOptions(result.keywords).map((item) => ({
+            ...item,
+            active: selectedKeywords.has(item.text),
+          })),
+          reviewAccess: result.reviewAccess,
+        },
+        () => this.updateFilterPanelHeight(),
+      );
     } catch (error) {
       if (request !== mineRequestSequence || !isSessionLeaseCurrent(lease))
         return;
@@ -828,6 +1008,15 @@ Page({
     courseTouchStart = null;
     courseTouchMoved = true;
   },
+  onGlassBackdropScroll(
+    this: CapsuleScrollHost,
+    event: { detail: { scrollTop: number } },
+  ) {
+    "worklet";
+    if (!this._capsuleOffset) return;
+    const offset = event.detail.scrollTop;
+    this._capsuleOffset.value = offset;
+  },
   onCourseScroll(event: WechatMiniprogram.CustomEvent<{ scrollTop: number }>) {
     const tab = event.currentTarget.dataset.tab as AssistantTab;
     if (tab === "browse" || tab === "publish")
@@ -841,6 +1030,8 @@ Page({
     this.openReviewFromDetail(courseKey);
   },
   openReviewFromDetail(courseKey: string) {
+    this.onBottomSelectorTouchCancel();
+    cancelGlassDrag(this);
     this.setData({ activeTab: "publish" });
     const grade = mineGrades.find((item) => item.courseKey === courseKey);
     if (!grade) {
@@ -853,6 +1044,8 @@ Page({
     this.prepareReview(grade);
   },
   prepareReview(grade: GradeView) {
+    this.onBottomSelectorTouchCancel();
+    cancelGlassDrag(this);
     if (!isEligibleCourse(grade)) {
       wx.showToast({ title: "该体育课缺少项目名称，暂不可评价", icon: "none" });
       return;

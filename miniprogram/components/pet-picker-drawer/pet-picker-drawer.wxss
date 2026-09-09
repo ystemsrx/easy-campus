@@ -1,3 +1,4 @@
+@import "../../styles/liquid-glass.wxss";
 @import "../../motion.wxss";
 
 :host {

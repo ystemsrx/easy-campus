@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "disableScroll": true
+  "disableScroll": true,
+  "usingComponents": {
+    "capsule-rim-anchor": "/components/capsule-rim-anchor/capsule-rim-anchor"
+  }
 }

@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -138,7 +139,7 @@ function runtime() {
     if (stubs[normalized]) return stubs[normalized];
     if (modules.has(normalized)) return modules.get(normalized).exports;
     const output = ts.transpileModule(
-      fs.readFileSync(path.join(root, normalized), "utf8"),
+      readSource(path.join(root, normalized), "utf8"),
       {
         compilerOptions: {
           module: ts.ModuleKind.CommonJS,

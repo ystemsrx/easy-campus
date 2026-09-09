@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page page--quick-entry auto-dorm-check-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="自动查寝" back transparent theme="{{theme}}"></navigation-bar>
 
@@ -23,7 +23,15 @@
               <text class="auto-dorm-check-title">自动查寝打卡</text>
               <text class="auto-dorm-check-caption">最佳时段 {{checkInWindowLabel}}</text>
             </view>
-            <view
+            <app-switch wx:if="{{liquidGlass}}"
+              class="auto-dorm-glass-switch"
+              checked="{{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted)))}}"
+              disabled="{{saving || savingAgreement || !available}}"
+              loading="{{checkingCapability}}"
+              bindchange="onEnabledTap"
+              label="自动查寝打卡，{{checkingCapability ? '正在检查' : statusLabel}}"
+            />
+            <view wx:else
               class="auto-dorm-check-switch {{effectiveEnabled || (enabled && (!agreementAccepted || (paymentEnabled && !accessGranted))) ? 'auto-dorm-check-switch--checked' : ''}} {{checkingCapability ? 'auto-dorm-check-switch--checking' : ''}} {{saving ? 'auto-dorm-check-switch--saving' : ''}} {{!available ? 'auto-dorm-check-switch--disabled' : ''}}"
               bindtap="onEnabledTap"
               hover-class="{{saving || savingAgreement || !available ? 'none' : 'auto-dorm-check-switch--pressed'}}"

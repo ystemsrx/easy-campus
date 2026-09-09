@@ -1130,6 +1130,75 @@ async function checkCourseAssistant() {
   assert.equal(published[0].keywords[0], "讲得好");
   page.prepareReview(grade);
   assert.equal(page.data.reviewText, "");
+
+  // The keyword panel occupies its measured height, including wrapped rows.
+  // Delayed measurements must never reopen a closed panel or overwrite a resize.
+  const measurements = [];
+  page.createSelectorQuery = () => ({
+    select(selector) {
+      assert.equal(selector, ".filter-panel-measure");
+      return this;
+    },
+    boundingClientRect(callback) {
+      measurements.push(callback);
+      return this;
+    },
+    exec() {},
+  });
+  page.setData({
+    statusLoading: false,
+    activeTab: "browse",
+    filterOpen: false,
+    filterPanelHeight: 0,
+  });
+  page.toggleFilter();
+  assert.equal(page.data.filterOpen, true);
+  assert.equal(
+    page.data.filterPanelHeight,
+    0,
+    "height stays collapsed until layout is measured",
+  );
+  measurements.shift()({ height: 172.6 });
+  assert.equal(page.data.filterPanelHeight, 173);
+  page.toggleFilter();
+  assert.equal(
+    page.data.filterPanelHeight,
+    0,
+    "closing returns the entire occupied height",
+  );
+  page.toggleFilter();
+  const oldOpen = measurements.shift();
+  page.toggleFilter();
+  page.toggleFilter();
+  measurements.shift()({ height: 235 });
+  oldOpen({ height: 173 });
+  assert.equal(
+    page.data.filterPanelHeight,
+    235,
+    "rapid close/open ignores earlier measurements",
+  );
+  page.onResize();
+  measurements.shift()({ height: 302 });
+  assert.equal(
+    page.data.filterPanelHeight,
+    302,
+    "narrow screens can add keyword rows without clipping",
+  );
+  page.updateFilterPanelHeight();
+  const beforeHide = measurements.shift();
+  page.onHide();
+  beforeHide({ height: 400 });
+  assert.equal(page.data.filterPanelHeight, 302);
+  page.updateFilterPanelHeight();
+  const beforeTypeChange = measurements.shift();
+  page.applyCourseType("physical_education");
+  beforeTypeChange({ height: 302 });
+  assert.equal(page.data.filterOpen, false);
+  assert.equal(
+    page.data.filterPanelHeight,
+    0,
+    "changing types cannot retain the old filter space",
+  );
 }
 
 async function checkFeedback() {

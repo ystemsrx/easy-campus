@@ -7,6 +7,14 @@ import {
 } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+import {
+  GLASS_DRAG_DATA,
+  startGlassDrag,
+  moveGlassDrag,
+  endGlassDrag,
+  cancelGlassDrag,
+  consumeGlassTap,
+} from "../../../utils/glass-drag";
 
 const APPEARANCE_OPTIONS: ReadonlyArray<{
   value: ThemePreference;
@@ -37,6 +45,7 @@ function isVisualTheme(value: string): value is VisualTheme {
 Page({
   onShareAppMessage: buildAppShare,
   data: {
+    ...GLASS_DRAG_DATA,
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     visualTheme: "default" as VisualTheme,
@@ -45,6 +54,7 @@ Page({
     themePreference: "light" as ThemePreference,
     reducedMotion: false,
     haptics: false,
+    liquidGlass: false,
     appearanceOptions: APPEARANCE_OPTIONS,
     visualThemeOptions: VISUAL_THEME_OPTIONS,
   },
@@ -56,6 +66,7 @@ Page({
     this.applyPreferences();
   },
   applyPreferences() {
+    cancelGlassDrag(this);
     const preferences = loadPreferences();
     const appearance = resolveAppearance(preferences);
     syncWindowBackground(appearance);
@@ -65,20 +76,59 @@ Page({
       visualTheme: preferences.visualTheme,
       reducedMotion: preferences.reducedMotion,
       haptics: preferences.haptics,
+      liquidGlass: preferences.liquidGlass,
     });
   },
   selectTheme(event: WechatMiniprogram.TouchEvent) {
+    if (consumeGlassTap(this)) return;
     const theme = String(event.currentTarget.dataset.value || "");
     if (!isThemePreference(theme)) return;
+    this.applyTheme(theme);
+  },
+  applyTheme(theme: ThemePreference) {
+    if (theme === this.data.themePreference) return;
     updatePreferences({ theme });
     haptic("medium");
     this.applyPreferences();
+  },
+  onHide() {
+    cancelGlassDrag(this);
+  },
+  onUnload() {
+    cancelGlassDrag(this);
+  },
+  onSelectorTouchStart(event: WechatMiniprogram.TouchEvent) {
+    startGlassDrag(this, event, {
+      enabled: this.data.liquidGlass,
+      index: APPEARANCE_OPTIONS.findIndex(
+        (option) => option.value === this.data.themePreference,
+      ),
+      count: 3,
+      selector: ".appearance-control",
+      insetRpx: 7,
+      widthRpx: 620,
+    });
+  },
+  onSelectorTouchMove(event: WechatMiniprogram.TouchEvent) {
+    moveGlassDrag(this, event);
+  },
+  onSelectorTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const index = endGlassDrag(this, event);
+    if (index !== undefined) this.applyTheme(APPEARANCE_OPTIONS[index].value);
+  },
+  onSelectorTouchCancel() {
+    cancelGlassDrag(this);
   },
   selectVisualTheme(event: WechatMiniprogram.TouchEvent) {
     const visualTheme = String(event.currentTarget.dataset.value || "");
     if (!isVisualTheme(visualTheme)) return;
     updatePreferences({ visualTheme });
     haptic("medium");
+    this.applyPreferences();
+  },
+  onLiquidGlassChange(event: WechatMiniprogram.SwitchChange) {
+    updatePreferences({ liquidGlass: event.detail.value });
+    haptic("light");
     this.applyPreferences();
   },
   onReducedMotionChange(event: WechatMiniprogram.SwitchChange) {

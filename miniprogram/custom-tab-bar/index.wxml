@@ -1,10 +1,11 @@
-<view wx:if="{{!hidden}}" class="tabbar-shell {{themeClass}} {{visualThemeClass}} {{motionClass}}">
-  <view class="tabbar-material">
-    <view class="tabbar-indicator tabbar-indicator--{{selected}}"></view>
+<view wx:if="{{!hidden}}" class="tabbar-shell {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <view class="tabbar-material" bindtouchstart="onSelectorTouchStart" catchtouchmove="{{liquidGlass ? 'onSelectorTouchMove' : ''}}" bindtouchend="onSelectorTouchEnd" bindtouchcancel="onSelectorTouchCancel">
+    <capsule-rim-anchor class="tabbar-optics" enabled="{{liquidGlass}}" source="{{selected === 1 ? 'schedule' : (selected === 2 ? 'profile' : 'home')}}"/>
+    <view class="tabbar-indicator tabbar-indicator--{{selected}} {{selectorDragging ? 'glass-selector--dragging' : ''}}" style="{{selectorDragStyle}}"></view>
     <view
       wx:for="{{items}}"
       wx:key="pagePath"
-      class="tabbar-item {{selected === index ? 'tabbar-item--active' : ''}}"
+      class="tabbar-item {{(selectorDragging ? selectorDragIndex : selected) === index ? 'tabbar-item--active' : ''}}"
       data-index="{{index}}"
       bindtap="onSelect"
       hover-class="tabbar-item--pressed"
@@ -15,7 +16,7 @@
     >
       <lucide-icon
         name="{{item.icon}}"
-        tone="{{selected === index ? (themeClass === 'theme-dark' ? 'ink' : 'white') : 'muted'}}"
+        tone="{{liquidGlass ? (themeClass === 'theme-dark' ? 'white' : 'ink') : selected === index ? (themeClass === 'theme-dark' ? 'ink' : 'white') : 'muted'}}"
         size="{{36}}"
       ></lucide-icon>
       <text class="tabbar-label">{{item.text}}</text>

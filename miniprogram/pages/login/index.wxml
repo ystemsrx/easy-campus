@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page login-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{loginHandoffClass}}">
+<view class="page login-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}} {{loginHandoffClass}}">
   <view wx:if="{{errorMessage}}" class="login-toast login-toast--{{errorToastPhase}}" aria-role="alert">
     <text class="login-toast-copy">{{errorMessage}}</text>
   </view>

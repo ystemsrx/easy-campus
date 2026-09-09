@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -7,7 +8,7 @@ function assert(condition, message) {
 }
 
 function loadTypeScriptModule(relativePath) {
-  const source = fs.readFileSync(
+  const source = readSource(
     path.resolve(__dirname, "..", "miniprogram", relativePath),
     "utf8",
   );
@@ -70,42 +71,42 @@ assert(
   "首页不得回退显示通用的“同学”占位",
 );
 
-const homeScript = fs.readFileSync(
+const homeScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.ts"),
   "utf8",
 );
-const homeTemplate = fs.readFileSync(
+const homeTemplate = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxml"),
   "utf8",
 );
-const homeStyles = fs.readFileSync(
+const homeStyles = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
-const appStyles = fs.readFileSync(
+const appStyles = readSource(
   path.resolve(__dirname, "..", "miniprogram", "app.wxss"),
   "utf8",
 );
-const contentServiceScript = fs.readFileSync(
+const contentServiceScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "services", "content.ts"),
   "utf8",
 );
 const homeNoticeHandler = homeScript.slice(
   homeScript.lastIndexOf("  openNotice("),
 );
-const appScript = fs.readFileSync(
+const appScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
 );
-const appearanceScript = fs.readFileSync(
+const appearanceScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "utils", "appearance.ts"),
   "utf8",
 );
-const tabBarScript = fs.readFileSync(
+const tabBarScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "custom-tab-bar", "index.ts"),
   "utf8",
 );
-const preferencesScript = fs.readFileSync(
+const preferencesScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "store", "preferences.ts"),
   "utf8",
 );
@@ -120,16 +121,16 @@ const homeRevisionStoreScripts = [
   "exams",
   "schedule",
 ].map((name) =>
-  fs.readFileSync(
+  readSource(
     path.resolve(__dirname, "..", "miniprogram", "store", `${name}.ts`),
     "utf8",
   ),
 );
-const appTypes = fs.readFileSync(
+const appTypes = readSource(
   path.resolve(__dirname, "..", "miniprogram", "types", "app.ts"),
   "utf8",
 );
-const gradeSettingsScript = fs.readFileSync(
+const gradeSettingsScript = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -141,7 +142,7 @@ const gradeSettingsScript = fs.readFileSync(
   ),
   "utf8",
 );
-const gradeSettingsTemplate = fs.readFileSync(
+const gradeSettingsTemplate = readSource(
   path.resolve(
     __dirname,
     "..",

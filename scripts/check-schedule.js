@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -10,7 +11,7 @@ function loadScheduleData() {
     "data",
     "schedule.ts",
   );
-  const output = ts.transpileModule(fs.readFileSync(sourcePath, "utf8"), {
+  const output = ts.transpileModule(readSource(sourcePath, "utf8"), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2020,
@@ -95,7 +96,7 @@ assert(
   "缺少上游学期边界时不得按月份硬编码寒暑假",
 );
 
-const template = fs.readFileSync(
+const template = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -106,15 +107,15 @@ const template = fs.readFileSync(
   ),
   "utf8",
 );
-const pageScript = fs.readFileSync(
+const pageScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "schedule", "index.ts"),
   "utf8",
 );
-const renderScript = fs.readFileSync(
+const renderScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "data", "schedule-render.ts"),
   "utf8",
 );
-const timetableScript = fs.readFileSync(
+const timetableScript = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -126,11 +127,11 @@ const timetableScript = fs.readFileSync(
   ),
   "utf8",
 );
-const homeScript = fs.readFileSync(
+const homeScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "pages", "home", "index.ts"),
   "utf8",
 );
-const pageStyles = fs.readFileSync(
+const pageStyles = readSource(
   path.resolve(
     __dirname,
     "..",
@@ -142,7 +143,7 @@ const pageStyles = fs.readFileSync(
   "utf8",
 );
 const dashedCornerAssets = [24, 30].map((size) =>
-  fs.readFileSync(
+  readSource(
     path.resolve(
       __dirname,
       "..",
@@ -154,7 +155,7 @@ const dashedCornerAssets = [24, 30].map((size) =>
     "utf8",
   ),
 );
-const tabTemplate = fs.readFileSync(
+const tabTemplate = readSource(
   path.resolve(__dirname, "..", "miniprogram", "custom-tab-bar", "index.wxml"),
   "utf8",
 );
@@ -303,7 +304,7 @@ assert(
 );
 assert(
   template.includes(
-    "name=\"plus\" tone=\"{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white'}}\"",
+    `name="plus" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : (visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white')}}"`,
   ) && !template.includes('name="plus" tone="white"'),
   "极简主题浅色模式的日程新增按钮必须使用深色加号",
 );

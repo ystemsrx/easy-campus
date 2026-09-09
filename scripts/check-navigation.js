@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -9,20 +10,20 @@ const navigationPath = path.join(
   "utils",
   "navigation.ts",
 );
-const navigationSource = fs.readFileSync(navigationPath, "utf8");
-const profileSource = fs.readFileSync(
+const navigationSource = readSource(navigationPath, "utf8");
+const profileSource = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.ts"),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
+const profileTemplate = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxml"),
   "utf8",
 );
-const profileStyles = fs.readFileSync(
+const profileStyles = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxss"),
   "utf8",
 );
-const appStyles = fs.readFileSync(
+const appStyles = readSource(
   path.join(projectRoot, "miniprogram", "app.wxss"),
   "utf8",
 );
@@ -36,7 +37,7 @@ const quickEntryTemplates = [
   ["协议与隐私", "pages/legal/index.wxml"],
 ].map(([label, relativePath]) => ({
   label,
-  source: fs.readFileSync(
+  source: readSource(
     path.join(projectRoot, "miniprogram", relativePath),
     "utf8",
   ),
@@ -104,7 +105,7 @@ async function main() {
   ).filter(
     (file) =>
       file !== navigationPath &&
-      fs.readFileSync(file, "utf8").includes("wx.navigateTo("),
+      readSource(file, "utf8").includes("wx.navigateTo("),
   );
   assert(
     directNavigationFiles.length === 0,

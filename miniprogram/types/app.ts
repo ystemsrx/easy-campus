@@ -8,6 +8,7 @@ export interface AppPreferences {
   showGradesBelow60: boolean;
   reducedMotion: boolean;
   haptics: boolean;
+  liquidGlass: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
@@ -17,4 +18,5 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   showGradesBelow60: true,
   reducedMotion: false,
   haptics: false,
+  liquidGlass: false,
 };

@@ -1,3 +1,4 @@
+import { controlAppearance } from "../../behaviors/control-appearance";
 import { PET_SHAPE_IDS, type PetShapeId } from "../geometric-pet/engine-data";
 import { PET_COLORS } from "../../store/pet";
 
@@ -7,6 +8,7 @@ const SHAPE_OPTIONS = PET_SHAPE_IDS.map((id, index) => ({
 }));
 
 Component({
+  behaviors: [controlAppearance],
   properties: {
     open: { type: Boolean, value: false },
     themeClass: { type: String, value: "theme-light" },

@@ -1,66 +1,67 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
 
 const projectRoot = path.resolve(__dirname, "..");
 const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
-const script = fs.readFileSync(path.join(loginRoot, "index.ts"), "utf8");
-const motionScript = fs.readFileSync(path.join(loginRoot, "motion.ts"), "utf8");
-const template = fs.readFileSync(path.join(loginRoot, "index.wxml"), "utf8");
-const styles = fs.readFileSync(path.join(loginRoot, "index.wxss"), "utf8");
-const loginConfig = fs.readFileSync(path.join(loginRoot, "index.json"), "utf8");
+const script = readSource(path.join(loginRoot, "index.ts"), "utf8");
+const motionScript = readSource(path.join(loginRoot, "motion.ts"), "utf8");
+const template = readSource(path.join(loginRoot, "index.wxml"), "utf8");
+const styles = readSource(path.join(loginRoot, "index.wxss"), "utf8");
+const loginConfig = readSource(path.join(loginRoot, "index.json"), "utf8");
 const appConfig = JSON.parse(
-  fs.readFileSync(path.join(projectRoot, "miniprogram", "app.json"), "utf8"),
+  readSource(path.join(projectRoot, "miniprogram", "app.json"), "utf8"),
 );
-const appScript = fs.readFileSync(
+const appScript = readSource(
   path.join(projectRoot, "miniprogram", "app.ts"),
   "utf8",
 );
-const companionService = fs.readFileSync(
+const companionService = readSource(
   path.join(projectRoot, "miniprogram", "services", "companion.ts"),
   "utf8",
 );
-const authService = fs.readFileSync(
+const authService = readSource(
   path.join(projectRoot, "miniprogram", "services", "auth.ts"),
   "utf8",
 );
-const navigationScript = fs.readFileSync(
+const navigationScript = readSource(
   path.join(projectRoot, "miniprogram", "utils", "navigation.ts"),
   "utf8",
 );
-const homeScript = fs.readFileSync(
+const homeScript = readSource(
   path.join(projectRoot, "miniprogram", "pages", "home", "index.ts"),
   "utf8",
 );
-const homeTemplate = fs.readFileSync(
+const homeTemplate = readSource(
   path.join(projectRoot, "miniprogram", "pages", "home", "index.wxml"),
   "utf8",
 );
-const homeStyles = fs.readFileSync(
+const homeStyles = readSource(
   path.join(projectRoot, "miniprogram", "pages", "home", "index.wxss"),
   "utf8",
 );
-const profileScript = fs.readFileSync(
+const profileScript = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.ts"),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
+const profileTemplate = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxml"),
   "utf8",
 );
-const profileStyles = fs.readFileSync(
+const profileStyles = readSource(
   path.join(projectRoot, "miniprogram", "pages", "profile", "index.wxss"),
   "utf8",
 );
-const requestScript = fs.readFileSync(
+const requestScript = readSource(
   path.join(projectRoot, "miniprogram", "services", "request.ts"),
   "utf8",
 );
-const sessionStore = fs.readFileSync(
+const sessionStore = readSource(
   path.join(projectRoot, "miniprogram", "store", "session.ts"),
   "utf8",
 );
-const appConfigScript = fs.readFileSync(
+const appConfigScript = readSource(
   path.join(projectRoot, "miniprogram", "config", "app.ts"),
   "utf8",
 );
@@ -479,7 +480,7 @@ const clawdMarkPath = path.join(
   "clawd-mark.svg",
 );
 const clawdMarkSource = fs.existsSync(clawdMarkPath)
-  ? fs.readFileSync(clawdMarkPath, "utf8")
+  ? readSource(clawdMarkPath, "utf8")
   : "";
 if (
   !template.includes('class="login-clawd-mark-row"') ||
@@ -683,7 +684,7 @@ for (const name of [
     failures.push("缺少登录动画：" + name + ".gif");
     continue;
   }
-  const source = fs.readFileSync(filePath);
+  const source = readSource(filePath);
   animationBytes += source.length;
   if (
     source.length < 10 ||

@@ -1,3 +1,10 @@
+import {
+  initializeCapsuleBackdrop,
+  attachCapsuleBackdrop,
+  detachCapsuleBackdrop,
+  invalidateCapsuleBackdrop,
+  type CapsuleScrollHost,
+} from "../../utils/capsule-backdrop";
 import { buildAppShare } from "../../utils/app-share";
 import {
   loadInteractionDraft,
@@ -150,6 +157,8 @@ function clearScheduleRefreshTimer(): void {
 
 Page({
   onShareAppMessage: buildAppShare,
+  _capsuleDayScroll: undefined as
+    WechatMiniprogram.Skyline.SharedValue<number[]> | undefined,
   _motion: null as ScheduleMotion | null,
   _viewReady: false,
   _headerRendered: false,
@@ -183,6 +192,7 @@ Page({
     editingPlanId: "",
   },
   onLoad() {
+    initializeCapsuleBackdrop(this);
     pagerMoving = false;
     pagerDirty = false;
     pendingSelectedDate = "";
@@ -207,6 +217,7 @@ Page({
     if (account) this.hydrateCachedScheduleIfNeeded(account, true);
   },
   onReady() {
+    attachCapsuleBackdrop(this, "schedule");
     this._viewReady = true;
     this.bindWeekMotion();
     this.measureDayPager();
@@ -298,6 +309,7 @@ Page({
     }
   },
   onResize() {
+    invalidateCapsuleBackdrop(this);
     this.measureDayPager();
   },
   measureDayPager() {
@@ -316,6 +328,7 @@ Page({
   onShow() {
     if (!ensureAuthenticated()) return;
     scheduleVisible = true;
+    attachCapsuleBackdrop(this, "schedule");
     const account = getSession()?.user.account || "";
     if (!account) return;
     this.hydrateCachedScheduleIfNeeded(account);
@@ -332,6 +345,7 @@ Page({
     this.scheduleBackgroundRefresh(SCHEDULE_RETURN_REFRESH_DELAY_MS);
   },
   onHide() {
+    detachCapsuleBackdrop(this);
     scheduleVisible = false;
     clearScheduleRefreshTimer();
     pagerMoving = false;
@@ -355,6 +369,7 @@ Page({
     this.setTabBarHidden(false);
   },
   onUnload() {
+    detachCapsuleBackdrop(this);
     scheduleVisible = false;
     clearScheduleRefreshTimer();
     this._motion = null;
@@ -744,11 +759,32 @@ Page({
       pendingSavedPlan = null;
     }
   },
+  onGlassDayScroll(
+    this: CapsuleScrollHost,
+    event: {
+      detail: { scrollTop: number };
+      currentTarget?: { dataset?: { slot?: number } };
+    },
+  ) {
+    "worklet";
+    if (!this._capsuleDayScroll) return;
+    const slot = Number(event.currentTarget?.dataset?.slot);
+    if (!(slot >= 0)) return;
+    const values = this._capsuleDayScroll.value.slice();
+    values[slot] = event.detail.scrollTop;
+    this._capsuleDayScroll.value = values;
+  },
   onDayVerticalScroll(
     event: WechatMiniprogram.CustomEvent<{ scrollTop: number }>,
   ) {
     const date = String(event.currentTarget.dataset.date || "");
     if (date) dayScrollPositions.set(date, event.detail.scrollTop);
+    const slot = Number(event.currentTarget.dataset.slot);
+    if (this._capsuleDayScroll && slot >= 0) {
+      const values = this._capsuleDayScroll.value.slice();
+      values[slot] = event.detail.scrollTop;
+      this._capsuleDayScroll.value = values;
+    }
     if (dayScrollPositions.size > 90)
       dayScrollPositions.delete(dayScrollPositions.keys().next().value!);
   },

@@ -1,0 +1,7 @@
+/* One 6px mask fades into the existing material at both edges; its centre is empty. */
+.capsule-live-root { position: fixed; z-index: 901; overflow: hidden; border-radius: 999rpx; opacity: 0; pointer-events: none; }
+.assistant-page .capsule-live-root { z-index: 41; }
+.capsule-live-scene { position: absolute; left: 0; top: 0; transform-origin: 0 0; background-color: var(--color-bg); pointer-events: none; }
+.assistant-page .capsule-live-scene { background-color: var(--guide-paper); }
+.capsule-live-day { position: absolute; left: 0; top: 0; background-color: var(--color-bg); pointer-events: none; }
+.capsule-live-spacer { flex: none; width: 100%; pointer-events: none; }

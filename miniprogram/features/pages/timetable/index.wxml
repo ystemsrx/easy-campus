@@ -1,6 +1,6 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view
-  class="page timetable-page timetable-theme--{{timetableThemeId}} {{companionBackgroundClass}} {{themeClass}} {{motionClass}}"
+  class="page timetable-page timetable-theme--{{timetableThemeId}} {{companionBackgroundClass}} {{themeClass}} {{motionClass}} {{liquidGlassClass}}"
   style="background-color: {{backgroundColor}}; {{themeStyle}}"
   bindtouchstart="updateCompanionGaze"
   bindtouchmove="updateCompanionGaze"
@@ -93,7 +93,7 @@
       aria-expanded="{{weekMenuOpen}}"
     >
       <text class="tnum">{{weekLabel}}</text>
-      <view class="week-chevron"><lucide-icon name="chevron-right" tone="{{headerIconTone}}" size="{{16}}"></lucide-icon></view>
+      <view class="week-chevron"><lucide-icon name="chevron-right" tone="{{liquidGlass ? 'white' : headerIconTone}}" size="{{16}}"></lucide-icon></view>
     </view>
 
   </view>
@@ -324,7 +324,7 @@
             </view>
             <view class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
               <text>查看通过率</text>
-              <lucide-icon name="chevron-right" tone="white" size="{{28}}"></lucide-icon>
+              <lucide-icon name="chevron-right" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : ('white')}}" size="{{28}}"></lucide-icon>
             </view>
           </view>
         </view>

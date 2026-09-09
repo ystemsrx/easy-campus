@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { readSource } = require("./read-source");
 const path = require("node:path");
 
 const projectRoot = path.resolve(__dirname, "..");
@@ -15,7 +16,7 @@ const loginTemplate = fs.readFileSync(
   path.join(miniprogramRoot, "pages", "login", "index.wxml"),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
+const profileTemplate = readSource(
   path.join(miniprogramRoot, "pages", "profile", "index.wxml"),
   "utf8",
 );

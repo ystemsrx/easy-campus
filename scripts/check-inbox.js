@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -14,10 +15,10 @@ const pageRoot = path.resolve(
   "pages",
   "inbox",
 );
-const source = fs.readFileSync(path.join(pageRoot, "index.ts"), "utf8");
+const source = readSource(path.join(pageRoot, "index.ts"), "utf8");
 const homeRoot = path.resolve(__dirname, "..", "miniprogram", "pages", "home");
-const homeSource = fs.readFileSync(path.join(homeRoot, "index.ts"), "utf8");
-const homeTemplate = fs.readFileSync(path.join(homeRoot, "index.wxml"), "utf8");
+const homeSource = readSource(path.join(homeRoot, "index.ts"), "utf8");
+const homeTemplate = readSource(path.join(homeRoot, "index.wxml"), "utf8");
 const noticeDetailRoot = path.resolve(
   __dirname,
   "..",
@@ -26,23 +27,23 @@ const noticeDetailRoot = path.resolve(
   "pages",
   "browser",
 );
-const noticeDetailSource = fs.readFileSync(
+const noticeDetailSource = readSource(
   path.join(noticeDetailRoot, "index.ts"),
   "utf8",
 );
-const noticeDetailTemplate = fs.readFileSync(
+const noticeDetailTemplate = readSource(
   path.join(noticeDetailRoot, "index.wxml"),
   "utf8",
 );
-const noticeDetailStyles = fs.readFileSync(
+const noticeDetailStyles = readSource(
   path.join(noticeDetailRoot, "index.wxss"),
   "utf8",
 );
-const semesterSource = fs.readFileSync(
+const semesterSource = readSource(
   path.resolve(__dirname, "..", "miniprogram", "utils", "semester.ts"),
   "utf8",
 );
-const teachingPreviewSource = fs.readFileSync(
+const teachingPreviewSource = readSource(
   path.resolve(__dirname, "..", "miniprogram", "store", "teaching-preview.ts"),
   "utf8",
 );
@@ -70,7 +71,25 @@ const output = ts.transpileModule(source, {
 let cachedPreview = null;
 let cachedTimetable = null;
 const navigationCalls = [];
+const glassDrag = {};
+new Function(
+  "exports",
+  "wx",
+  ts.transpileModule(
+    readSource(
+      path.resolve(__dirname, "../miniprogram/utils/glass-drag.ts"),
+      "utf8",
+    ),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2020,
+      },
+    },
+  ).outputText,
+)(glassDrag, { getWindowInfo: () => ({ windowWidth: 375 }) });
 const stubs = {
+  "../../../utils/glass-drag": glassDrag,
   "../../../utils/app-share": { buildAppShare() {} },
   "../../../services/teaching": {
     getMessages: async () => ({ data: { items: [] }, meta: {} }),
@@ -322,8 +341,8 @@ assert(
   "点击筛选浮窗外的页面区域必须立即开始收起浮窗",
 );
 
-const template = fs.readFileSync(path.join(pageRoot, "index.wxml"), "utf8");
-const styles = fs.readFileSync(path.join(pageRoot, "index.wxss"), "utf8");
+const template = readSource(path.join(pageRoot, "index.wxml"), "utf8");
+const styles = readSource(path.join(pageRoot, "index.wxss"), "utf8");
 assert(
   template.includes('<navigation-bar title="校园通知"') &&
     !template.includes('title="学校通知与教务安排"'),

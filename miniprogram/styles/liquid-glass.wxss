@@ -1,0 +1,326 @@
+/* Native clear-glass fallback for liquid_glass_demo.html's Bloom control.
+ * Skyline cannot sample the backdrop through an SVG displacement filter.
+ * Keep the center transparent and reproduce its illuminated rim and shadow.
+ */
+.liquid-glass {
+  --glass-ink: #292e25;
+  --glass-accent: #506740;
+  --glass-edge: rgba(255, 255, 255, 0.82);
+  --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.06) 28%, rgba(255, 255, 255, 0.02) 64%, rgba(255, 255, 255, 0.38) 100%);
+  --glass-shadow: inset 0 2rpx 2rpx rgba(255, 255, 255, 0.9), inset 0 -2rpx 3rpx rgba(58, 73, 47, 0.18), inset 2rpx 0 3rpx rgba(255, 255, 255, 0.55), 0 4rpx 8rpx -2rpx rgba(38, 57, 28, 0.14), 0 14rpx 28rpx -12rpx rgba(36, 53, 23, 0.19);
+  --glass-tint: rgba(255, 255, 255, 0.08);
+  --glass-track: rgba(132, 148, 116, 0.12);
+}
+.liquid-glass.theme-dark {
+  --glass-ink: #f1f5eb;
+  --glass-accent: #c1d7ac;
+  --glass-edge: rgba(243, 255, 229, 0.3);
+  --glass-sheen: linear-gradient(155deg, rgba(246, 255, 238, 0.22) 0%, rgba(233, 255, 216, 0.025) 28%, rgba(10, 20, 6, 0.06) 64%, rgba(237, 255, 224, 0.12) 100%);
+  --glass-shadow: inset 0 2rpx 2rpx rgba(255, 255, 255, 0.38), inset 0 -2rpx 3rpx rgba(0, 0, 0, 0.32), inset 2rpx 0 3rpx rgba(255, 255, 255, 0.14), 0 4rpx 8rpx -2rpx rgba(0, 0, 0, 0.24), 0 14rpx 28rpx -12rpx rgba(0, 0, 0, 0.34);
+  --glass-tint: rgba(40, 49, 33, 0.14);
+  --glass-track: rgba(174, 195, 153, 0.1);
+}
+
+/* Opt-in material wins over page-specific theme variants. */
+.liquid-glass button,
+.liquid-glass .back-button,
+.liquid-glass .sheet-close,
+.liquid-glass .empty-action,
+.liquid-glass .grade-sort-option,
+.liquid-glass .pet-picker-action,
+.liquid-glass .round-action,
+.liquid-glass .today-chip,
+.liquid-glass .schedule-empty-action,
+.liquid-glass .password-toggle,
+.liquid-glass .markdown-code-copy,
+.liquid-glass .announcement-close,
+.liquid-glass .announcement-confirm,
+.liquid-glass .feedback-type-option,
+.liquid-glass .nav-refresh,
+.liquid-glass .image-action,
+.liquid-glass .year-picker-close,
+.liquid-glass .circle-tool,
+.liquid-glass .filter-keyword,
+.liquid-glass .favorite-button,
+.liquid-glass .rating-star-button,
+.liquid-glass .keyword-option,
+.liquid-glass .detail-favorite,
+.liquid-glass .like-button,
+.liquid-glass .result-action,
+.liquid-glass .semester-chip,
+.liquid-glass .grade-clear,
+.liquid-glass .grade-filter-button,
+.liquid-glass .search-clear,
+.liquid-glass .course-switch,
+.liquid-glass .pass-picker-close,
+.liquid-glass .semester-menu-option,
+.liquid-glass .setup-nav-skip,
+.liquid-glass .pet-drawer-close,
+.liquid-glass .building-pill,
+.liquid-glass .period-choice,
+.liquid-glass .period-picker-close,
+.liquid-glass .period-group-option,
+.liquid-glass .period-pill,
+.liquid-glass .room-results-close,
+.liquid-glass .header-button,
+.liquid-glass .header-week,
+.liquid-glass .week-option,
+.liquid-glass .menu-action,
+.liquid-glass .submenu-back,
+.liquid-glass .semester-option,
+.liquid-glass .course-pass-rate-action,
+.liquid-glass .notice-copy-link,
+.liquid-glass .week-selection-circle,
+.liquid-glass .tabbar-indicator,
+.liquid-glass .appearance-indicator,
+.liquid-glass .segment-indicator,
+.liquid-glass .campus-indicator,
+.liquid-glass .quick-date-indicator {
+  box-sizing: border-box;
+  background-image: var(--glass-sheen) !important;
+  background-color: var(--glass-tint) !important;
+  border: 1rpx solid var(--glass-edge) !important;
+  box-shadow: var(--glass-shadow) !important;
+  backdrop-filter: none !important;
+}
+.liquid-glass button,
+.liquid-glass .back-button,
+.liquid-glass .sheet-close,
+.liquid-glass .empty-action,
+.liquid-glass .grade-sort-option,
+.liquid-glass .pet-picker-action,
+.liquid-glass .round-action,
+.liquid-glass .today-chip,
+.liquid-glass .schedule-empty-action,
+.liquid-glass .password-toggle,
+.liquid-glass .markdown-code-copy,
+.liquid-glass .announcement-close,
+.liquid-glass .announcement-confirm,
+.liquid-glass .feedback-type-option,
+.liquid-glass .nav-refresh,
+.liquid-glass .image-action,
+.liquid-glass .year-picker-close,
+.liquid-glass .circle-tool,
+.liquid-glass .filter-keyword,
+.liquid-glass .favorite-button,
+.liquid-glass .rating-star-button,
+.liquid-glass .keyword-option,
+.liquid-glass .detail-favorite,
+.liquid-glass .like-button,
+.liquid-glass .result-action,
+.liquid-glass .semester-chip,
+.liquid-glass .grade-clear,
+.liquid-glass .grade-filter-button,
+.liquid-glass .search-clear,
+.liquid-glass .course-switch,
+.liquid-glass .pass-picker-close,
+.liquid-glass .semester-menu-option,
+.liquid-glass .setup-nav-skip,
+.liquid-glass .pet-drawer-close,
+.liquid-glass .building-pill,
+.liquid-glass .period-choice,
+.liquid-glass .period-picker-close,
+.liquid-glass .period-group-option,
+.liquid-glass .period-pill,
+.liquid-glass .room-results-close,
+.liquid-glass .header-button,
+.liquid-glass .header-week,
+.liquid-glass .week-option,
+.liquid-glass .menu-action,
+.liquid-glass .submenu-back,
+.liquid-glass .semester-option,
+.liquid-glass .course-pass-rate-action,
+.liquid-glass .notice-copy-link {
+  color: var(--glass-ink) !important;
+  border-radius: 999rpx !important;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.liquid-glass button::after { border: none; }
+.liquid-glass button text { color: var(--glass-ink); }
+.liquid-glass .danger-button,
+.liquid-glass .danger-button text { color: #c0452d !important; }
+.liquid-glass.theme-dark .danger-button,
+.liquid-glass.theme-dark .danger-button text { color: #ffa493 !important; }
+
+.liquid-glass .tabbar-material,
+.liquid-glass .appearance-control,
+.liquid-glass .segmented-control,
+.liquid-glass .course-segment,
+.liquid-glass .campus-switch {
+  background-color: var(--glass-track) !important;
+  border-color: var(--glass-edge) !important;
+  border-radius: 999rpx !important;
+  backdrop-filter: none !important;
+}
+.liquid-glass .tabbar-indicator,
+.liquid-glass .appearance-indicator,
+.liquid-glass .segment-indicator,
+.liquid-glass .campus-indicator,
+.liquid-glass .quick-date-indicator {
+  border-radius: 999rpx !important;
+  transition-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1.12);
+}
+.liquid-glass .feedback-type-option--active,
+.liquid-glass .grade-sort-option--active,
+.liquid-glass .filter-keyword--active,
+.liquid-glass .keyword-option--active,
+.liquid-glass .semester-chip--active,
+.liquid-glass .building-pill--active,
+.liquid-glass .period-group-option--active,
+.liquid-glass .period-pill--active,
+.liquid-glass .week-option--active,
+.liquid-glass .semester-option--active,
+.liquid-glass .circle-tool--active,
+.liquid-glass .favorite-button--active,
+.liquid-glass .detail-favorite--active,
+.liquid-glass .like-button--active {
+  border-color: var(--glass-accent) !important;
+  color: var(--glass-accent) !important;
+  background-color: var(--glass-track) !important;
+}
+.liquid-glass .tabbar-material { overflow: visible; box-shadow: var(--glass-shadow); }
+.liquid-glass .tabbar-item { flex-wrap: nowrap; white-space: nowrap; }
+.liquid-glass .tabbar-item--active,
+.liquid-glass .appearance-option--active,
+.liquid-glass .segment-item--active,
+.liquid-glass .segment-option--active,
+.liquid-glass .campus-option--active,
+.liquid-glass .quick-date-option--active { color: var(--glass-ink) !important; }
+.liquid-glass .tabbar-indicator { transition-duration: 320ms; }
+.liquid-glass.motion-reduced .tabbar-indicator,
+.liquid-glass.motion-reduced .appearance-indicator,
+.liquid-glass.motion-reduced .segment-indicator,
+.liquid-glass.motion-reduced .campus-indicator,
+.liquid-glass.motion-reduced .quick-date-indicator { transition-duration: 0ms; }
+
+app-switch { display: inline-flex; flex: none; }
+.auto-dorm-glass-switch { display: flex; flex: none; transform: scale(0.84); transform-origin: right center; }
+
+.liquid-glass .back-button text,
+.liquid-glass .sheet-close text,
+.liquid-glass .empty-action text,
+.liquid-glass .grade-sort-option text,
+.liquid-glass .pet-picker-action text,
+.liquid-glass .round-action text,
+.liquid-glass .today-chip text,
+.liquid-glass .schedule-empty-action text,
+.liquid-glass .password-toggle text,
+.liquid-glass .markdown-code-copy text,
+.liquid-glass .announcement-close text,
+.liquid-glass .announcement-confirm text,
+.liquid-glass .feedback-type-option text,
+.liquid-glass .nav-refresh text,
+.liquid-glass .image-action text,
+.liquid-glass .year-picker-close text,
+.liquid-glass .circle-tool text,
+.liquid-glass .filter-keyword text,
+.liquid-glass .favorite-button text,
+.liquid-glass .rating-star-button text,
+.liquid-glass .keyword-option text,
+.liquid-glass .detail-favorite text,
+.liquid-glass .like-button text,
+.liquid-glass .result-action text,
+.liquid-glass .semester-chip text,
+.liquid-glass .grade-clear text,
+.liquid-glass .grade-filter-button text,
+.liquid-glass .search-clear text,
+.liquid-glass .course-switch text,
+.liquid-glass .pass-picker-close text,
+.liquid-glass .semester-menu-option text,
+.liquid-glass .setup-nav-skip text,
+.liquid-glass .pet-drawer-close text,
+.liquid-glass .building-pill text,
+.liquid-glass .period-choice text,
+.liquid-glass .period-picker-close text,
+.liquid-glass .period-group-option text,
+.liquid-glass .period-pill text,
+.liquid-glass .room-results-close text,
+.liquid-glass .header-button text,
+.liquid-glass .header-week text,
+.liquid-glass .week-option text,
+.liquid-glass .menu-action text,
+.liquid-glass .submenu-back text,
+.liquid-glass .semester-option text,
+.liquid-glass .course-pass-rate-action text,
+.liquid-glass .notice-copy-link text,
+.liquid-glass .feedback-type-option--active text,
+.liquid-glass .grade-sort-option--active text,
+.liquid-glass .filter-keyword--active text,
+.liquid-glass .keyword-option--active text,
+.liquid-glass .semester-chip--active text,
+.liquid-glass .building-pill--active text,
+.liquid-glass .period-group-option--active text,
+.liquid-glass .period-pill--active text,
+.liquid-glass .week-option--active text,
+.liquid-glass .semester-option--active text,
+.liquid-glass .circle-tool--active text,
+.liquid-glass .favorite-button--active text,
+.liquid-glass .detail-favorite--active text,
+.liquid-glass .tabbar-item--active text,
+.liquid-glass .appearance-option--active text,
+.liquid-glass .campus-option--active text,
+.liquid-glass .personalization-switch text,
+.liquid-glass .grade-setting-switch text,
+.liquid-glass .week-day-date--selected text,
+.liquid-glass .quick-date-option--active text,
+.liquid-glass .segment-option--active text,
+.liquid-glass .segment-item--active text,
+.liquid-glass .week-day-date--selected { color: var(--glass-ink) !important; }
+
+.liquid-glass .room-query-button .query-spinner { border-color: rgba(80, 103, 64, 0.24); border-top-color: var(--glass-ink); }
+
+.liquid-glass .primary-button--disabled,
+.liquid-glass .feedback-submit--disabled,
+.liquid-glass .review-submit--disabled,
+.liquid-glass .room-query-button--disabled,
+.liquid-glass .electricity-query-button--disabled { opacity: 0.42 !important; box-shadow: none !important; }
+
+/* Optical workbench: clear center with narrow opposing light/dark rims.
+ * Skyline has no backdrop displacement; keep reflections confined to the edge. */
+.liquid-glass .tabbar-material {
+  border: 1rpx solid rgba(255, 255, 255, 0.42) !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(170deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 14%, rgba(255, 255, 255, 0) 86%, rgba(255, 255, 255, 0.16) 100%);
+  box-shadow: inset 0 1rpx 1rpx rgba(255, 255, 255, 0.72), inset 1rpx 0 2rpx rgba(255, 255, 255, 0.3), inset 0 -1rpx 2rpx rgba(35, 45, 30, 0.22), 0 2rpx 4rpx -1rpx rgba(38, 57, 28, 0.12), 0 14rpx 28rpx -12rpx rgba(36, 53, 23, 0.17) !important;
+}
+.liquid-glass.theme-dark .tabbar-material {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background-image: linear-gradient(170deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 14%, rgba(255, 255, 255, 0) 86%, rgba(255, 255, 255, 0.07) 100%);
+  box-shadow: inset 0 1rpx 1rpx rgba(255, 255, 255, 0.34), inset 1rpx 0 2rpx rgba(255, 255, 255, 0.12), inset 0 -1rpx 2rpx rgba(0, 0, 0, 0.38), 0 2rpx 4rpx -1rpx rgba(0, 0, 0, 0.2), 0 14rpx 28rpx -12rpx rgba(0, 0, 0, 0.28) !important;
+}
+.liquid-glass .tabbar-indicator {
+  border: 1rpx solid rgba(255, 255, 255, 0.58) !important;
+  background-color: transparent !important;
+  background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 17%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.24) 100%) !important;
+  box-shadow: inset 1rpx 1rpx 1rpx rgba(255, 255, 255, 0.86), inset -1rpx -1rpx 2rpx rgba(35, 45, 30, 0.3), 0 3rpx 5rpx -2rpx rgba(38, 57, 28, 0.16) !important;
+}
+.liquid-glass.theme-dark .tabbar-indicator {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 17%, rgba(255, 255, 255, 0) 82%, rgba(255, 255, 255, 0.12) 100%) !important;
+  box-shadow: inset 1rpx 1rpx 1rpx rgba(255, 255, 255, 0.48), inset -1rpx -1rpx 2rpx rgba(0, 0, 0, 0.44), 0 3rpx 5rpx -2rpx rgba(0, 0, 0, 0.28) !important;
+}
+.liquid-glass .glass-selector--dragging { transition-duration: 0ms !important; }
+
+/* Timetable photography needs a softer rim than the plain settings surface. */
+.liquid-glass.timetable-page {
+  --glass-edge: rgba(255, 255, 255, 0.25);
+  --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.025) 28%, rgba(255, 255, 255, 0.01) 64%, rgba(255, 255, 255, 0.14) 100%);
+  --glass-shadow: inset 0 1rpx 2rpx rgba(255, 255, 255, 0.32), inset 0 -1rpx 3rpx rgba(30, 45, 50, 0.12), 0 4rpx 10rpx -3rpx rgba(20, 40, 50, 0.14);
+}
+.liquid-glass.timetable-page.theme-dark {
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-shadow: inset 0 1rpx 2rpx rgba(255, 255, 255, 0.2), inset 0 -1rpx 3rpx rgba(0, 0, 0, 0.2), 0 4rpx 10rpx -3rpx rgba(0, 0, 0, 0.22);
+}
+.liquid-glass.timetable-page .header-week,
+.liquid-glass.timetable-page .header-week text { color: #ffffff !important; }
+.liquid-glass.timetable-page .header-week { background-color: rgba(15, 35, 54, 0.22) !important; }
+.liquid-glass.timetable-page .week-option-date,
+.liquid-glass.timetable-page .week-option--current .week-option-date,
+.liquid-glass.timetable-page .week-option--active .week-option-date { color: #9f9a90 !important; }
+.liquid-glass.timetable-page .week-option--active {
+  border-color: rgba(80, 103, 64, 0.25) !important;
+}
+.liquid-glass.timetable-page.theme-dark .week-option--active {
+  border-color: rgba(193, 215, 172, 0.25) !important;
+}

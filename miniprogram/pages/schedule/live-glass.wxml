@@ -1,0 +1,9 @@
+<import src="./day-content.wxml"/>
+<view wx:if="{{liveGlass.mounted}}" id="capsule-live-root" class="capsule-live-root" style="{{liveGlass.rootStyle}}" aria-hidden="true">
+  <view id="capsule-live-scene" class="capsule-live-scene" style="width:{{liveGlass.sourceWidth}}px;min-height:{{liveGlass.sourceHeight}}px;">
+          <view wx:if="{{liveGlass.beforeHeight}}" class="capsule-live-spacer" style="height:{{liveGlass.beforeHeight}}px;"></view>
+          <view wx:for="{{liveGlass.days}}" wx:for-item="capsuleDay" wx:key="slot" id="capsule-live-day-{{capsuleDay.slot}}" class="capsule-live-day" style="width:{{liveGlass.sourceWidth}}px;min-height:{{liveGlass.sourceHeight}}px;">
+            <block wx:for="{{[dayPages[capsuleDay.slot]]}}" wx:for-item="day" wx:key="selectedDate"><template is="schedule-day-content" data="{{day:day,timelineHeight:timelineHeight,capsuleReplica:true}}"/></block>
+    </view>
+  </view>
+</view>

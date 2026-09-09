@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page page--quick-entry auto-dorm-check-payment-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page page--quick-entry auto-dorm-check-payment-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{paymentScrollTop}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}" bindscroll="onPaymentScroll">
     <navigation-bar title="打卡套餐" back transparent theme="{{theme}}"></navigation-bar>
 

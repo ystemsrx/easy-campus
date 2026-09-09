@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page electricity-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page electricity-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="宿舍用电与余额" back transparent theme="{{theme}}"></navigation-bar>
     <view class="electricity-content page-content">
@@ -24,7 +24,7 @@
             <text class="room-limit">最多 4 位</text>
           </view>
           <button class="electricity-query-button {{optionsLoading || querying || !buildingId || !roomNumber ? 'electricity-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying || !buildingId || !roomNumber}}" hover-class="electricity-query-button--pressed" bindtap="onQuery">
-            <lucide-icon name="zap" tone="{{visualTheme === 'minimal' && theme === 'dark' ? 'ink' : 'white'}}" size="{{27}}"></lucide-icon>
+            <lucide-icon name="zap" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : (visualTheme === 'minimal' && theme === 'dark' ? 'ink' : 'white')}}" size="{{27}}"></lucide-icon>
             <text>{{querying ? '读取中' : '绑定'}}</text>
           </button>
           <button wx:if="{{account && bindingEditing}}" class="binding-cancel" bindtap="cancelRebind">取消换绑</button>

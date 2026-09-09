@@ -1,5 +1,5 @@
 <view
-  class="motion-layer {{open ? 'motion-layer--active' : ''}} pet-picker-layer {{themeClass}} {{visualThemeClass}} {{motionClass}}"
+  class="{{liquidGlassClass}} {{glassThemeClass}} {{glassMotionClass}} motion-layer {{open ? 'motion-layer--active' : ''}} pet-picker-layer {{themeClass}} {{visualThemeClass}} {{motionClass}}"
 >
   <view class="motion-scrim {{open ? 'motion-scrim--active' : ''}} pet-picker-scrim" catchtap="noop" catchtouchmove="noop"></view>
   <view class="motion-sheet {{open ? 'motion-sheet--active' : ''}} pet-picker-card">

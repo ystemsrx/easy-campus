@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { readSource } = require("./read-source");
 const path = require("node:path");
 const ts = require("typescript");
 
@@ -588,7 +589,7 @@ const profileScript = fs.readFileSync(
   path.resolve(__dirname, "..", "miniprogram", "pages", "profile", "index.ts"),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
+const profileTemplate = readSource(
   path.resolve(
     __dirname,
     "..",

@@ -1,6 +1,9 @@
+<import src="./content.wxml"/>
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page profile-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{authenticationExitClass}}">
+<view class="page profile-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}} {{authenticationExitClass}}">
   <scroll-view
+    id="capsule-scroll-source"
+    worklet:onscrollupdate="onGlassBackdropScroll"
     class="page-scroll"
     type="list"
     scroll-y
@@ -8,101 +11,7 @@
     show-scrollbar="{{false}}"
   >
     <navigation-bar transparent theme="{{theme}}"></navigation-bar>
-    <view class="profile-content page-content page-content--tab">
-      <view class="profile-header">
-        <text class="profile-eyebrow">个人中心</text>
-        <text class="profile-title display-title">我的</text>
-      </view>
-
-      <view class="identity-card identity-card--{{identityCardTone}}">
-        <view class="ambient-blob identity-blob identity-blob--one"></view>
-        <view class="ambient-blob identity-blob identity-blob--two"></view>
-        <view class="identity-main">
-          <view wx:if="{{petVisible}}" class="identity-pet-frame">
-            <geometric-pet
-              shape="{{petShape}}"
-              color="{{petColor}}"
-              enhanced="{{petEnhanced}}"
-              state="happy"
-              reduced-motion="{{reducedMotion}}"
-              auto-cycle="{{true}}"
-              label="点击和校园伙伴互动"
-            ></geometric-pet>
-          </view>
-          <view wx:else class="avatar"><text>{{avatarText}}</text></view>
-          <view class="identity-copy"><text class="identity-name display-title">{{userName}}</text><text class="identity-account tnum">{{account || '—'}}</text></view>
-        </view>
-        <text class="identity-school">{{organizationName}}</text>
-        <view class="identity-details">
-          <text class="identity-class" overflow="ellipsis" max-lines="1">{{classLabel || '—'}}</text>
-          <view class="identity-enrollment"><text class="identity-enrollment-label">入学</text><text class="identity-enrollment-date tnum">{{enrollmentDate || '—'}}</text></view>
-        </view>
-      </view>
-
-      <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
-      <view class="settings-card card">
-        <view class="setting-row {{autoDormCheckVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
-          <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
-          <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-        <view wx:if="{{autoDormCheckVisible}}" class="setting-row setting-row--action {{openingSetting === 'auto-dorm-check' ? 'setting-row--pressed' : ''}}" bindtap="openAutoDormCheck" aria-role="button" aria-label="打开{{autoDormCheckTitle}}，当前{{autoDormCheckStatusLabel}}">
-          <view class="setting-copy"><text class="setting-title">{{autoDormCheckTitle}}</text><text class="setting-caption">自动完成查寝打卡</text></view>
-          <view class="auto-dorm-check-setting-value"><view class="auto-dorm-check-setting-dot auto-dorm-check-setting-dot--{{autoDormCheckStatusTone}}"></view><text>{{autoDormCheckStatusLabel}}</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-      </view>
-
-      <view class="section-header"><view><text class="section-title">设置</text></view></view>
-      <view class="settings-card card">
-        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'pet' ? 'setting-row--pressed' : ''}}" bindtap="openPetSetup" aria-role="button" aria-label="设置校园伙伴">
-          <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
-          <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'grades' ? 'setting-row--pressed' : ''}}" bindtap="openGradeDisplaySettings" aria-role="button" aria-label="打开成绩展示设置">
-          <view class="setting-copy"><text class="setting-title">成绩展示设置</text><text class="setting-caption">主页与成绩列表</text></view>
-          <view class="grade-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-        <view class="setting-row setting-row--action {{openingSetting === 'personalization' ? 'setting-row--pressed' : ''}}" bindtap="openPersonalizationSettings" aria-role="button" aria-label="打开个性化设置">
-          <view class="setting-copy"><text class="setting-title">个性化</text><text class="setting-caption">外观与交互</text></view>
-          <view class="personalization-setting-value"><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-      </view>
-
-      <view class="section-header"><view><text class="section-title">协议与隐私</text></view></view>
-      <view class="settings-card card">
-        <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'terms' ? 'setting-row--pressed' : ''}}" data-document="terms" bindtap="openLegalDocument" aria-role="link" aria-label="查看用户协议">
-          <view class="setting-copy"><text class="setting-title">用户协议</text><text class="setting-caption">服务规则与使用约定</text></view>
-          <view class="legal-setting-value"><text>查看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-        <view class="setting-row setting-row--action {{openingSetting === 'privacy' ? 'setting-row--pressed' : ''}}" data-document="privacy" bindtap="openLegalDocument" aria-role="link" aria-label="查看隐私政策">
-          <view class="setting-copy"><text class="setting-title">隐私政策</text><text class="setting-caption">个人信息处理与权利</text></view>
-          <view class="legal-setting-value"><text>查看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-      </view>
-
-      <view class="section-header"><view><text class="section-title">成为开发者</text></view></view>
-      <view class="developer-card card">
-        <text class="developer-copy">克隆仓库开始开发：</text>
-        <view class="terminal-card">
-          <view class="terminal-head"><view class="terminal-dot terminal-dot--red"></view><view class="terminal-dot terminal-dot--yellow"></view><view class="terminal-dot terminal-dot--green"></view><text>bash</text></view>
-          <scroll-view class="terminal-code-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="terminal-code-line"><text class="terminal-token terminal-token--git" selectable user-select>git</text><text class="terminal-token terminal-token--action" selectable user-select>clone</text><text class="terminal-token terminal-token--option" selectable user-select>--depth</text><text class="terminal-token terminal-token--number" selectable user-select>1</text><text class="terminal-token terminal-token--repository" selectable user-select>git@github.com:ystemsrx/easy-campus.git</text></view></scroll-view>
-        </view>
-      </view>
-
-      <view class="section-header"><view><text class="section-title">帮助</text></view></view>
-      <view class="settings-card card">
-        <view class="setting-row setting-row--divided setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
-          <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
-          <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-        <view id="about-entry" class="setting-row setting-row--action {{openingSetting === 'about' ? 'setting-row--pressed' : ''}}" bindtap="openAbout" aria-role="button" aria-label="关于{{appName}}">
-          <view class="setting-copy"><text class="setting-title">关于</text></view>
-          <view class="legal-setting-value"><text>{{appName}}</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-        </view>
-      </view>
-
-      <view wx:if="{{errorMessage}}" class="profile-error pressable" bindtap="retryLoadUser" hover-class="pressing"><text>{{errorMessage}}</text><text>点击重试</text></view>
-      <button class="danger-button logout-button" hover-class="button-pressed" bindtap="logout" disabled="{{loggingOut}}" aria-busy="{{loggingOut}}"><lucide-icon name="log-out" tone="danger" size="{{28}}"></lucide-icon><text>{{loggingOut ? '退出中' : '退出登录'}}</text></button>
-    </view>
+    <template is="profile-content" data="{{account:account,appName:appName,autoDormCheckStatusLabel:autoDormCheckStatusLabel,autoDormCheckStatusTone:autoDormCheckStatusTone,autoDormCheckTitle:autoDormCheckTitle,autoDormCheckVisible:autoDormCheckVisible,avatarText:avatarText,classLabel:classLabel,enrollmentDate:enrollmentDate,errorMessage:errorMessage,identityCardTone:identityCardTone,loggingOut:loggingOut,openingSetting:openingSetting,organizationName:organizationName,petColor:petColor,petEnabled:petEnabled,petEnhanced:petEnhanced,petShape:petShape,petVisible:petVisible,reducedMotion:reducedMotion,userName:userName,capsuleReplica:false}}"/>
   </scroll-view>
 
   <view wx:if="{{authenticationExitClass}}" class="profile-auth-login-backdrop" aria-hidden="true">
@@ -136,5 +45,6 @@
       <button class="primary-button feedback-submit {{feedbackCanSubmit ? '' : 'feedback-submit--disabled'}}" hover-class="button-pressed" bindtap="submitFeedback" disabled="{{!feedbackCanSubmit || feedbackSubmitting}}" aria-busy="{{feedbackSubmitting}}">{{feedbackSubmitting ? '提交中' : '提交反馈'}}</button>
     </view>
   </bottom-sheet>
+  <include src="./live-glass.wxml"/>
 </view>
 <screen-watermark></screen-watermark>

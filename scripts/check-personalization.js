@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -5,7 +6,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const miniprogramRoot = path.join(projectRoot, "miniprogram");
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(miniprogramRoot, relativePath), "utf8");
+  return readSource(path.join(miniprogramRoot, relativePath), "utf8");
 }
 
 function assert(condition, message) {
@@ -23,15 +24,15 @@ const personalizationTemplate = read(
 const appStyles = read("app.wxss");
 const homeTemplate = read("pages/home/index.wxml");
 const homeStyles = read("pages/home/index.wxss");
-const personalizationStyles = read(
-  "features/pages/personalization/index.wxss",
-);
+const personalizationStyles = read("features/pages/personalization/index.wxss");
 const tabBarTemplate = read("custom-tab-bar/index.wxml");
-const tabBarStyles = read("custom-tab-bar/index.wxss");
+const tabBarStyles = read("styles/floating-tabbar.wxss");
 const navigationStyles = read("components/navigation-bar/navigation-bar.wxss");
 const passRateStyles = read("components/pass-rate-card/pass-rate-card.wxss");
 const geometricPetStyles = read("components/geometric-pet/geometric-pet.wxss");
-const petPickerStyles = read("components/pet-picker-drawer/pet-picker-drawer.wxss");
+const petPickerStyles = read(
+  "components/pet-picker-drawer/pet-picker-drawer.wxss",
+);
 const timetableTemplate = read("features/pages/timetable/index.wxml");
 const appConfig = JSON.parse(read("app.json"));
 const featurePackage = appConfig.subPackages.find(

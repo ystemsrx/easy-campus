@@ -1,0 +1,8 @@
+<import src="./publish-content.wxml"/>
+<import src="./browse-content.wxml"/>
+<view wx:if="{{liveGlass.mounted}}" id="capsule-live-root" class="capsule-live-root" style="{{liveGlass.rootStyle}}" aria-hidden="true">
+  <view id="capsule-live-scene" class="capsule-live-scene" style="width:{{liveGlass.sourceWidth}}px;min-height:{{liveGlass.sourceHeight}}px;">
+          <view wx:if="{{liveGlass.beforeHeight}}" class="capsule-live-spacer" style="height:{{liveGlass.beforeHeight}}px;"></view>
+          <block wx:if="{{activeTab === 'browse'}}"><template is="course-browse-content" data="{{catalogError:catalogError,catalogLoading:catalogLoading,catalogLoadingMore:catalogLoadingMore,catalogSortLabel:catalogSortLabel,courseType:courseType,courses:courses,favoritesError:favoritesError,favoritesLoading:favoritesLoading,favoritesOnly:favoritesOnly,filterOpen:filterOpen,filterPanelHeight:filterPanelHeight,liquidGlass:liquidGlass,motionClass:motionClass,positiveFilterKeywords:positiveFilterKeywords,reviewAccess:reviewAccess,searchQuery:searchQuery,selectedKeyword:selectedKeyword,selectorDragIndex:selectorDragIndex,selectorDragStyle:selectorDragStyle,selectorDragging:selectorDragging,sortMenuOpen:sortMenuOpen,summary:summary,capsuleReplica:true}}"/></block><block wx:else><template is="course-publish-content" data="{{demoAccount:demoAccount,mineError:mineError,mineLoading:mineLoading,motionClass:motionClass,myReviews:myReviews,takenCourses:takenCourses,capsuleReplica:true}}"/></block>
+  </view>
+</view>

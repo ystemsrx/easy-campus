@@ -1,3 +1,10 @@
+import {
+  initializeCapsuleBackdrop,
+  attachCapsuleBackdrop,
+  detachCapsuleBackdrop,
+  invalidateCapsuleBackdrop,
+  type CapsuleScrollHost,
+} from "../../utils/capsule-backdrop";
 import { buildAppShare } from "../../utils/app-share";
 import {
   autoDormCheckPresentationPatch,
@@ -158,6 +165,7 @@ Page({
     feedbackErrorMessage: "",
   },
   onLoad() {
+    initializeCapsuleBackdrop(this);
     hydratedProfileSources = null;
     profileVisible = false;
     const sessionAccount = getSession()?.user.account || "";
@@ -165,12 +173,28 @@ Page({
       this.hydrateCachedProfileIfNeeded(sessionAccount, true);
     }
   },
+  onReady() {
+    attachCapsuleBackdrop(this, "profile");
+  },
+  onResize() {
+    invalidateCapsuleBackdrop(this);
+  },
+  onGlassBackdropScroll(
+    this: CapsuleScrollHost,
+    event: { detail: { scrollTop: number } },
+  ) {
+    "worklet";
+    if (!this._capsuleOffset) return;
+    const offset = event.detail.scrollTop;
+    this._capsuleOffset.value = offset;
+  },
   onShow() {
     if (!ensureAuthenticated()) {
       return;
     }
     clearAuthenticationExitTimer();
     profileVisible = true;
+    attachCapsuleBackdrop(this, "profile");
     const lease = captureSessionLease();
     if (!lease) return;
     const account = lease.account;
@@ -199,10 +223,12 @@ Page({
     this.scheduleProfileRefresh(PROFILE_RETURN_REFRESH_DELAY_MS);
   },
   onHide() {
+    detachCapsuleBackdrop(this);
     profileVisible = false;
     clearProfileRefreshTimer();
   },
   onUnload() {
+    detachCapsuleBackdrop(this);
     profileVisible = false;
     clearProfileRefreshTimer();
     clearAuthenticationExitTimer();

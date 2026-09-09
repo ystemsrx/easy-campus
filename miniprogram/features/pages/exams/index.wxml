@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page exams-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page exams-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onExamScroll" bindscrolltolower="loadMore" lower-threshold="180">
     <navigation-bar title="考试安排" back extra-left transparent theme="{{theme}}">
       <view slot="after-left" class="nav-refresh pressable {{refreshing ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{refreshing ? '正在刷新考试安排' : '刷新考试安排'}}" aria-disabled="{{refreshing}}">

@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page page--quick-entry grade-settings-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page page--quick-entry grade-settings-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <navigation-bar title="成绩展示设置" back transparent theme="{{theme}}"></navigation-bar>
 
   <view class="grade-settings-content page-content page-enter">
@@ -9,14 +9,14 @@
           <text class="grade-setting-title">主页展示成绩</text>
           <text class="grade-setting-caption">关闭后首页以星号隐藏</text>
         </view>
-        <switch class="grade-setting-switch" checked="{{showGradesOnHome}}" color="#7d8f6e" bindchange="onShowGradesOnHomeChange" aria-label="主页展示成绩" />
+        <app-switch class="grade-setting-switch" checked="{{showGradesOnHome}}" color="#7d8f6e" bindchange="onShowGradesOnHomeChange" label="主页展示成绩" />
       </view>
       <view class="grade-setting-row">
         <view class="grade-setting-copy">
           <text class="grade-setting-title">展示60分以下成绩</text>
           <text class="grade-setting-caption">关闭后隐藏不及格与异常成绩</text>
         </view>
-        <switch class="grade-setting-switch" checked="{{showGradesBelow60}}" color="#7d8f6e" bindchange="onShowGradesBelow60Change" aria-label="展示60分以下成绩" />
+        <app-switch class="grade-setting-switch" checked="{{showGradesBelow60}}" color="#7d8f6e" bindchange="onShowGradesBelow60Change" label="展示60分以下成绩" />
       </view>
     </view>
   </view>

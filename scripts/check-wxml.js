@@ -1,10 +1,11 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const miniprogramRoot = path.resolve(__dirname, "..", "miniprogram");
 const failures = [];
 const appConfig = JSON.parse(
-  fs.readFileSync(path.join(miniprogramRoot, "app.json"), "utf8"),
+  readSource(path.join(miniprogramRoot, "app.json"), "utf8"),
 );
 const skylineOptions = appConfig.rendererOptions?.skyline || {};
 for (const option of ["tagNameStyleIsolation", "enableScrollViewAutoSize"]) {
@@ -19,7 +20,7 @@ for (const page of appConfig.pages || []) {
     failures.push(`${page}.json: 页面配置不存在`);
     continue;
   }
-  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  const config = JSON.parse(readSource(configPath, "utf8"));
   if (config.navigationStyle !== "custom" || config.disableScroll !== true) {
     failures.push(
       `${page}.json: Skyline 页面必须使用自定义导航栏并禁用页面级滚动`,
@@ -69,7 +70,7 @@ function visit(directory) {
       continue;
     }
 
-    const source = fs.readFileSync(fullPath, "utf8");
+    const source = readSource(fullPath, "utf8");
     const relativePath = path.relative(miniprogramRoot, fullPath);
     const scrollViews = source.match(/<scroll-view\b[^>]*>/g) || [];
     for (const tag of scrollViews) {
@@ -90,9 +91,18 @@ function visit(directory) {
       failures.push(`${relativePath}: Skyline 不支持 web-view`);
     }
 
-    const scriptPath = fullPath.replace(/\.wxml$/, ".ts");
+    let scriptPath = fullPath.replace(/\.wxml$/, ".ts");
+    const owner = path.join(path.dirname(fullPath), "index.wxml");
+    if (
+      !fs.existsSync(scriptPath) &&
+      fullPath !== owner &&
+      fs.existsSync(owner) &&
+      fs.readFileSync(owner, "utf8").includes(`src="./${entry.name}"`)
+    ) {
+      scriptPath = owner.replace(/\.wxml$/, ".ts");
+    }
     const script = fs.existsSync(scriptPath)
-      ? fs.readFileSync(scriptPath, "utf8")
+      ? readSource(scriptPath, "utf8")
       : "";
     const eventPattern =
       /\b(?:bind|catch|capture-bind|capture-catch)[\w:-]*=(['"])([^'"{}]+)\1/g;
@@ -112,7 +122,7 @@ function visit(directory) {
 
 visit(miniprogramRoot);
 
-const navigationTemplate = fs.readFileSync(
+const navigationTemplate = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -121,7 +131,7 @@ const navigationTemplate = fs.readFileSync(
   ),
   "utf8",
 );
-const navigationStyles = fs.readFileSync(
+const navigationStyles = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -130,7 +140,7 @@ const navigationStyles = fs.readFileSync(
   ),
   "utf8",
 );
-const navigationScript = fs.readFileSync(
+const navigationScript = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -141,7 +151,7 @@ const navigationScript = fs.readFileSync(
 );
 const pageNavigationSources = (appConfig.pages || [])
   .flatMap((page) => [`${page}.wxml`, `${page}.ts`])
-  .map((page) => fs.readFileSync(path.join(miniprogramRoot, page), "utf8"))
+  .map((page) => readSource(path.join(miniprogramRoot, page), "utf8"))
   .join("\n");
 if (
   !navigationTemplate.startsWith(
@@ -206,15 +216,15 @@ if (
   );
 }
 
-const inboxTemplate = fs.readFileSync(
+const inboxTemplate = readSource(
   path.join(miniprogramRoot, "features", "pages", "inbox", "index.wxml"),
   "utf8",
 );
-const inboxStyles = fs.readFileSync(
+const inboxStyles = readSource(
   path.join(miniprogramRoot, "features", "pages", "inbox", "index.wxss"),
   "utf8",
 );
-const profileTemplate = fs.readFileSync(
+const profileTemplate = readSource(
   path.join(miniprogramRoot, "pages", "profile", "index.wxml"),
   "utf8",
 );
@@ -261,31 +271,31 @@ if (
   );
 }
 
-const homeTemplate = fs.readFileSync(
+const homeTemplate = readSource(
   path.join(miniprogramRoot, "pages", "home", "index.wxml"),
   "utf8",
 );
-const homeScript = fs.readFileSync(
+const homeScript = readSource(
   path.join(miniprogramRoot, "pages", "home", "index.ts"),
   "utf8",
 );
-const homeStyles = fs.readFileSync(
+const homeStyles = readSource(
   path.join(miniprogramRoot, "pages", "home", "index.wxss"),
   "utf8",
 );
-const gradesTemplate = fs.readFileSync(
+const gradesTemplate = readSource(
   path.join(miniprogramRoot, "features", "pages", "grades", "index.wxml"),
   "utf8",
 );
-const gradesScript = fs.readFileSync(
+const gradesScript = readSource(
   path.join(miniprogramRoot, "features", "pages", "grades", "index.ts"),
   "utf8",
 );
-const gradesStyles = fs.readFileSync(
+const gradesStyles = readSource(
   path.join(miniprogramRoot, "features", "pages", "grades", "index.wxss"),
   "utf8",
 );
-const gradeSortTemplate = fs.readFileSync(
+const gradeSortTemplate = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -294,7 +304,7 @@ const gradeSortTemplate = fs.readFileSync(
   ),
   "utf8",
 );
-const gradeSortScript = fs.readFileSync(
+const gradeSortScript = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -303,7 +313,7 @@ const gradeSortScript = fs.readFileSync(
   ),
   "utf8",
 );
-const gradeSortStyles = fs.readFileSync(
+const gradeSortStyles = readSource(
   path.join(
     miniprogramRoot,
     "components",
@@ -312,47 +322,47 @@ const gradeSortStyles = fs.readFileSync(
   ),
   "utf8",
 );
-const gradeDetailTemplate = fs.readFileSync(
+const gradeDetailTemplate = readSource(
   path.join(miniprogramRoot, "features", "pages", "grade-detail", "index.wxml"),
   "utf8",
 );
-const gradeDetailScript = fs.readFileSync(
+const gradeDetailScript = readSource(
   path.join(miniprogramRoot, "features", "pages", "grade-detail", "index.ts"),
   "utf8",
 );
-const progressRingScript = fs.readFileSync(
+const progressRingScript = readSource(
   path.join(miniprogramRoot, "utils", "progress-ring.ts"),
   "utf8",
 );
-const electricityTemplate = fs.readFileSync(
+const electricityTemplate = readSource(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.wxml"),
   "utf8",
 );
-const electricityStyles = fs.readFileSync(
+const electricityStyles = readSource(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.wxss"),
   "utf8",
 );
-const electricityScript = fs.readFileSync(
+const electricityScript = readSource(
   path.join(miniprogramRoot, "features", "pages", "electricity", "index.ts"),
   "utf8",
 );
-const cacheRefreshScript = fs.readFileSync(
+const cacheRefreshScript = readSource(
   path.join(miniprogramRoot, "services", "cache-refresh.ts"),
   "utf8",
 );
-const passRateTemplate = fs.readFileSync(
+const passRateTemplate = readSource(
   path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxml"),
   "utf8",
 );
-const passRateScript = fs.readFileSync(
+const passRateScript = readSource(
   path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.ts"),
   "utf8",
 );
-const passRateStyles = fs.readFileSync(
+const passRateStyles = readSource(
   path.join(miniprogramRoot, "features", "pages", "pass-rates", "index.wxss"),
   "utf8",
 );
-const passRateCardTemplate = fs.readFileSync(
+const passRateCardTemplate = readSource(
   path.join(
     miniprogramRoot,
     "components",

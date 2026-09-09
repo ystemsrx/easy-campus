@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <navigation-bar title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="rooms-content page-content {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
@@ -45,7 +45,7 @@
           <lucide-icon name="chevron-right" tone="muted" size="{{27}}"></lucide-icon>
         </view>
 
-        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="none" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><lucide-icon wx:else name="search" tone="white" size="{{29}}"></lucide-icon><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
+        <button class="room-query-button {{optionsLoading || querying ? 'room-query-button--disabled' : ''}}" disabled="{{optionsLoading || querying}}" hover-class="none" bindtap="onQuery"><view wx:if="{{querying}}" class="query-spinner"></view><lucide-icon wx:else name="search" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : ('white')}}" size="{{29}}"></lucide-icon><text>{{querying ? '正在查找…' : '查询空教室'}}</text></button>
       </view>
 
     </view>

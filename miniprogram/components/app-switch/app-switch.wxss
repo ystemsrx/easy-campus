@@ -1,0 +1,73 @@
+@import "../../styles/liquid-glass.wxss";
+
+.glass-switch {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 104rpx;
+  height: 64rpx;
+  overflow: visible;
+}
+.glass-switch-track {
+  position: absolute;
+  top: 1rpx;
+  left: 0;
+  width: 104rpx;
+  height: 62rpx;
+  border-radius: 999rpx;
+  background: rgba(125, 137, 116, 0.2);
+  box-shadow: inset 0 2rpx 5rpx rgba(32, 44, 24, 0.12);
+  transition: background-color 220ms ease;
+}
+.glass-switch--checked .glass-switch-track { background: #7d8f6e; }
+.theme-dark.glass-switch--checked .glass-switch-track { background: #acbe97; }
+.glass-switch--dragging .glass-switch-track { transition-duration: 0ms; }
+.glass-switch-position {
+  position: absolute;
+  top: 4rpx;
+  left: 3rpx;
+  width: 60rpx;
+  height: 56rpx;
+  transform: translateX(0);
+  transition: transform 360ms cubic-bezier(0.2, 0.85, 0.25, 1.2);
+}
+.glass-switch--checked .glass-switch-position { transform: translateX(38rpx); }
+.glass-switch--dragging .glass-switch-position { transition-duration: 0ms; }
+.glass-switch-lens {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1rpx solid var(--glass-edge);
+  border-radius: 999rpx;
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-shadow);
+  transform: scale(1);
+  transition: transform 380ms cubic-bezier(0.2, 0.85, 0.25, 1.3);
+}
+/* Bloom: 60 x 56 resting lens, uniform 36% inflation about its center.
+ * The track is a sibling so the expanded left/right edges remain visible. */
+.glass-switch--pressed .glass-switch-lens { transform: scale(1.36); }
+.glass-switch--disabled { opacity: 0.42; }
+.glass-switch-spinner {
+  display: block;
+  flex: none;
+  width: 26rpx;
+  height: 26rpx;
+  animation-name: glass-switch-spin;
+  animation-duration: 720ms;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.motion-reduced .glass-switch-position,
+.motion-reduced .glass-switch-lens,
+.motion-reduced .glass-switch-track { transition-duration: 0ms; }
+.motion-reduced.glass-switch--pressed .glass-switch-lens { transform: scale(1); }
+.motion-reduced .glass-switch-spinner { animation-name: none; }
+
+@keyframes glass-switch-spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -5,7 +6,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(root, relativePath), "utf8");
+  return readSource(path.join(root, relativePath), "utf8");
 }
 
 const app = JSON.parse(read("miniprogram/app.json"));
@@ -43,7 +44,10 @@ assert.match(
   page,
   /wx:if="\{\{!demoAccount && item\.content\}\}" class="my-review-body"/,
 );
-assert.match(page, /wx:if="\{\{!reviewVisible\}\}" class="assistant-tabbar"/);
+assert.match(
+  page,
+  /wx:if="\{\{!reviewVisible\}\}" class="tabbar-shell assistant-tabbar /,
+);
 assert.match(page, /safe-area="\{\{false\}\}"/);
 assert.match(
   page,
@@ -146,12 +150,30 @@ assert.equal(assistantSurface, navigationSurface);
 assert.equal(detailSurface, navigationSurface);
 assert.equal(assistantDarkSurface, navigationDarkSurface);
 assert.equal(detailDarkSurface, navigationDarkSurface);
+const tabbarStyles = read("miniprogram/styles/floating-tabbar.wxss");
 assert.match(
   styles,
-  /\.assistant-tabbar\s*\{[^}]*background-color:\s*rgba\(247, 245, 239, 0\.94\)/s,
+  /@import "\.\.\/\.\.\/\.\.\/styles\/floating-tabbar\.wxss"/,
 );
-assert.match(styles, /\.filter-panel-shell\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.filter-panel-shell--open\s*\{[^}]*display:\s*block/s);
+assert.match(
+  read("miniprogram/custom-tab-bar/index.wxss"),
+  /@import "\.\.\/styles\/floating-tabbar\.wxss"/,
+);
+assert.match(styles, /\.assistant-tabbar\s*\{[^}]*--tab-pill:\s*#d97757/s);
+assert.match(
+  page,
+  /filter-panel-shell[^>]*style="height: \{\{filterPanelHeight\}\}px;"/,
+);
+assert.match(
+  styles,
+  /\.filter-panel-shell\s*\{[^}]*transition:\s*height\s+240ms/s,
+);
+assert.doesNotMatch(styles, /\.filter-panel-shell[^}]*display:\s*none/s);
+assert.match(styles, /\.filter-panel-shell\s*\{[^}]*pointer-events:\s*none/s);
+assert.match(
+  styles,
+  /\.filter-panel-shell--open\s*\{[^}]*pointer-events:\s*auto/s,
+);
 assert.doesNotMatch(styles, /transition:\s*max-height/);
 assert.match(styles, /\.course-search\s*\{[^}]*border-radius:\s*999rpx/s);
 assert.match(styles, /\.segment-indicator\s*\{[^}]*transition:\s*transform/s);
@@ -160,13 +182,22 @@ assert.match(
   styles,
   /\.review-submit\.review-submit--disabled[^}]*background-color:\s*#aaa69c/s,
 );
-assert.match(styles, /\.assistant-tabbar\s*\{[^}]*height:\s*100rpx/s);
+assert.match(tabbarStyles, /\.tabbar-material\s*\{[^}]*height:\s*100rpx/s);
+assert.match(
+  styles,
+  /\.assistant-tabbar \.tabbar-indicator\s*\{[^}]*top:\s*14rpx/s,
+);
+assert.match(
+  styles,
+  /\.assistant-bottom-space\s*\{[^}]*height:\s*calc\(140rpx \+ env\(safe-area-inset-bottom\)\)/s,
+);
 assert.doesNotMatch(
   styles.match(/\.assistant-tabbar\s*\{[^}]*\}/s)?.[0] || "",
   /safe-area-inset-bottom/,
 );
-assert.match(styles, /\.assistant-tab\s*\{[^}]*flex-direction:\s*row/s);
-assert.match(styles, /\.assistant-tab\s*\{[^}]*font-size:\s*27rpx/s);
+assert.match(tabbarStyles, /\.tabbar-item\s*\{[^}]*flex-direction:\s*row/s);
+assert.match(tabbarStyles, /\.tabbar-item\s*\{[^}]*white-space:\s*nowrap/s);
+assert.match(page, /catchtouchmove="onBottomSelectorTouchMove"/);
 assert.match(styles, /\.course-sort-layer\s*\{[^}]*position:\s*fixed/s);
 assert.match(styles, /\.course-sort-popover\s*\{[^}]*position:\s*absolute/s);
 assert.match(

@@ -1,5 +1,5 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page orders-page {{themeClass}} {{visualThemeClass}} {{motionClass}}">
+<view class="page orders-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <navigation-bar title="历史订单" title-suffix="{{loaded ? '（' + total + '）' : ''}}" back extra-left inset-back="{{true}}" transparent theme="{{theme}}">
     <view slot="after-left" class="nav-refresh pressable {{loading || refreshing ? 'nav-refresh--loading' : ''}}" bindtap="refresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{loading || refreshing ? '正在刷新订单' : '刷新订单'}}" aria-disabled="{{loading || refreshing || loadingMore}}">
       <image wx:if="{{loading || refreshing}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>

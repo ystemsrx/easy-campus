@@ -4,11 +4,15 @@
   background-color: var(--color-bg);
 }
 
-.personalization-content {
+.personalization-scroll {
   flex: 1;
   min-height: 0;
+  height: 100%;
+}
+
+.personalization-content {
   padding-top: 28rpx;
-  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+  padding-bottom: 0;
 }
 
 .personalization-card {
@@ -413,3 +417,6 @@
 }
 
 .motion-reduced .appearance-indicator { transition-duration: 0ms; }
+
+.personalization-bottom-space { height: calc(48rpx + env(safe-area-inset-bottom)); }
+.personalization-row { flex-wrap: nowrap; }

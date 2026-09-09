@@ -1,0 +1,14 @@
+<switch wx:if="{{!liquidGlass}}" checked="{{checked}}" disabled="{{disabled}}" color="{{color}}" bindchange="onNativeChange" aria-label="{{label}}" />
+<view
+  wx:else
+  class="glass-switch liquid-glass {{glassThemeClass}} {{glassMotionClass}} {{checked ? 'glass-switch--checked' : ''}} {{pressed ? 'glass-switch--pressed' : ''}} {{dragging ? 'glass-switch--dragging' : ''}} {{disabled ? 'glass-switch--disabled' : ''}}"
+  aria-role="switch" aria-checked="{{checked}}" aria-disabled="{{disabled}}" aria-label="{{label}}"
+  bindtouchstart="onTouchStart" catchtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="cancelGesture" catchtap="onTap"
+>
+  <view class="glass-switch-track" style="{{dragTrackStyle}}"></view>
+  <view class="glass-switch-position" style="{{dragStyle}}">
+    <view class="glass-switch-lens">
+      <image wx:if="{{loading}}" class="glass-switch-spinner" src="{{glassThemeClass === 'theme-dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
+    </view>
+  </view>
+</view>

@@ -1,3 +1,5 @@
+@import "../../styles/capsule-live.wxss";
+
 .schedule-content { padding-top: 20rpx; }
 
 .schedule-header {

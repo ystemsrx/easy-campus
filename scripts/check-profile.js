@@ -1,3 +1,4 @@
+const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
@@ -6,7 +7,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const miniprogramRoot = path.join(projectRoot, "miniprogram");
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(miniprogramRoot, relativePath), "utf8");
+  return readSource(path.join(miniprogramRoot, relativePath), "utf8");
 }
 
 function assert(condition, message) {
