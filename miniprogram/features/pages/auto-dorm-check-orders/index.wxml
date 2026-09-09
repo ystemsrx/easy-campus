@@ -19,7 +19,7 @@
           <text wx:if="{{item.monthLabel}}" class="orders-month">{{item.monthLabel}}</text>
           <view class="order-card">
             <view class="order-card-head"><text class="order-plan" overflow="ellipsis" max-lines="2">{{item.planName}}</text><text class="order-status order-status--{{item.statusTone}}">{{item.statusLabel}}</text></view>
-            <view class="order-payment"><view class="order-payment-copy"><text class="order-method">微信支付</text><text class="order-date tnum">{{item.paidLabel}}</text></view><view class="order-amount-copy"><view class="order-amount"><text class="order-currency">¥</text><text class="order-value tnum">{{item.amountLabel}}</text></view><text wx:if="{{item.refundLabel}}" class="order-refund tnum">{{item.refundLabel}}</text></view></view>
+            <view class="order-payment"><view class="order-payment-copy"><text class="order-method">{{item.paymentLabel}}</text><text class="order-date tnum">{{item.paidLabel}}</text></view><view class="order-amount-copy"><view class="order-amount"><text class="order-currency">¥</text><text class="order-value tnum">{{item.amountLabel}}</text></view><text wx:if="{{item.refundLabel}}" class="order-refund tnum">{{item.refundLabel}}</text></view></view>
             <view class="order-receipt"><view class="order-number-copy"><text class="order-number-label">订单号</text><text class="order-number tnum" overflow="ellipsis" max-lines="1">{{item.outTradeNo}}</text></view><button class="order-copy" data-id="{{item.id}}" bindtap="copyOrder" aria-label="复制订单号">复制</button></view>
           </view>
         </block>

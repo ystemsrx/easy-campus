@@ -8,6 +8,7 @@ export interface OrderView extends AutoDormCheckOrderHistoryItem {
   statusLabel: string;
   statusTone: "success" | "warning" | "muted" | "danger";
   refundLabel: string;
+  paymentLabel: string;
 }
 
 export function orderViews(
@@ -35,6 +36,12 @@ export function orderViews(
     const fullyRefunded = refunded >= item.amountCents && refunded > 0;
     return {
       ...item,
+      paymentLabel:
+        item.paymentChannel === "apple_iap"
+          ? "Apple 支付"
+          : item.paymentChannel === "wechat"
+            ? "微信支付"
+            : "虚拟支付",
       monthLabel,
       paidLabel: formatDateTime(timestamp),
       amountLabel: (item.amountCents / 100).toFixed(2),

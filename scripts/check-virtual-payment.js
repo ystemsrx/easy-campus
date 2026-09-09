@@ -16,6 +16,9 @@ let current = true;
 let loginCalls = 0;
 let apiCalls = 0;
 let paymentOptions;
+let platform = "android";
+let system = "Android 14";
+let wechatVersion = "8.0.68";
 let timerId = 0;
 const timers = new Map();
 const warnings = [];
@@ -27,6 +30,8 @@ class ApiClientError extends Error {
   }
 }
 const wx = {
+  getDeviceInfo: () => ({ platform, system }),
+  getAppBaseInfo: () => ({ version: wechatVersion }),
   canIUse: () => true,
   login: (options) => {
     loginCalls++;
@@ -85,13 +90,50 @@ const service = moduleValue.exports;
 async function main() {
   const payment = {
     mode: "short_series_goods",
-    signData: '{ "offerId": "123", "productId": "count_1" }',
+    signData:
+      '{ "offerId": "123", "productId": "count_2", "env": 0, "goodsPrice": 100 }',
     paySig: "pay-sig",
     signature: "user-sig",
   };
   assert.equal(await service.launchWechatPayment(payment), "success");
   assert.equal(paymentOptions.signData, payment.signData);
   assert.equal(timers.size, 0);
+  platform = "ios";
+  system = "iOS 15.0";
+  assert.equal(await service.launchWechatPayment(payment), "success");
+  assert.equal(paymentOptions.signData, payment.signData);
+  for (const bad of [
+    { env: 1, goodsPrice: 100 },
+    { env: 0, goodsPrice: 50 },
+    { env: 0, goodsPrice: "100" },
+  ]) {
+    assert.throws(
+      () =>
+        service.launchWechatPayment({
+          ...payment,
+          signData: JSON.stringify(bad),
+        }),
+      { code: "WECHAT_APPLE_PAY_UNAVAILABLE" },
+    );
+  }
+  for (const [deviceSystem, version] of [
+    ["iOS 14.8", "8.0.68"],
+    ["iOS 15.0", "8.0.67"],
+  ]) {
+    system = deviceSystem;
+    wechatVersion = version;
+    assert.throws(() => service.launchWechatPayment(payment), {
+      code: "WECHAT_APPLE_PAY_UNSUPPORTED",
+    });
+  }
+  system = "iPadOS 18.0";
+  wechatVersion = "8.1.0";
+  assert.equal(await service.launchWechatPayment(payment), "success");
+  for (platform of ["android", "ios"]) {
+    wx.requestVirtualPayment = (options) => options.fail({ errCode: -2 });
+    assert.equal(await service.launchWechatPayment(payment), "cancelled");
+  }
+  platform = "android";
   wx.requestVirtualPayment = (options) =>
     options.fail({ errCode: -2, errMsg: "用户取消" });
   assert.equal(await service.launchWechatPayment(payment), "cancelled");

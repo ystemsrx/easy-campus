@@ -243,6 +243,16 @@ async function main() {
   );
 
   const view = env.load("features/utils/auto-dorm-check-orders.ts");
+  const channels = view.orderViews([
+    order("apple", { paymentChannel: "apple_iap" }),
+    order("wechat", { paymentChannel: "wechat" }),
+    order("unknown", { paymentChannel: null }),
+  ]);
+  assert.deepEqual(
+    channels.map((item) => item.paymentLabel),
+    ["Apple 支付", "微信支付", "虚拟支付"],
+  );
+  assert.ok(channels.every((item) => item.statusLabel === "已支付"));
   const rows = view.orderViews([
     order("paid"),
     order("full", { refundedCents: 600 }),

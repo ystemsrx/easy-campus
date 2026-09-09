@@ -141,6 +141,7 @@ export interface AutoDormCheckPaymentOrder {
   status: AutoDormCheckPaymentOrderStatus;
   credited: boolean;
   amountCents: number;
+  paymentChannel?: "wechat" | "apple_iap" | null;
   createdAt: string;
   paidAt: string | null;
   expiresAt?: string | null;

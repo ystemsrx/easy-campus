@@ -276,7 +276,9 @@ export function cancelAutoDormCheckPaymentOrder(
   );
 }
 
-function assertVirtualPaymentSupported(): void {
+function assertVirtualPaymentSupported(
+  payment?: WechatPaymentParameters,
+): void {
   if (isDemoAccount(captureSessionLease()?.account)) return;
   if (
     typeof wx.requestVirtualPayment !== "function" ||
@@ -287,6 +289,41 @@ function assertVirtualPaymentSupported(): void {
       code: "WECHAT_VIRTUAL_PAY_UNSUPPORTED",
       statusCode: 400,
     });
+  const device = wx.getDeviceInfo?.();
+  if (device?.platform !== "ios") return;
+  const version = (wx.getAppBaseInfo?.().version || "").split(".").map(Number);
+  const minimum = [8, 0, 68];
+  const difference =
+    minimum
+      .map((part, index) => (version[index] || 0) - part)
+      .find((part) => part !== 0) || 0;
+  const systemVersion = Number(
+    device.system?.match(/(?:iOS|iPadOS)\s+(\d+)/i)?.[1],
+  );
+  if (difference < 0 || !systemVersion || systemVersion < 15)
+    throw new ApiClientError({
+      message: "请升级至 iOS 15 和微信 8.0.68 及以上",
+      code: "WECHAT_APPLE_PAY_UNSUPPORTED",
+      statusCode: 400,
+    });
+  if (payment) {
+    let data: { env?: number; goodsPrice?: number } | null = null;
+    try {
+      data = JSON.parse(payment.signData);
+    } catch {
+      /* Never log signed parameters. */
+    }
+    if (
+      data?.env !== 0 ||
+      !Number.isSafeInteger(data?.goodsPrice) ||
+      (data?.goodsPrice || 0) < 100
+    )
+      throw new ApiClientError({
+        message: "该套餐暂不可购买",
+        code: "WECHAT_APPLE_PAY_UNAVAILABLE",
+        statusCode: 400,
+      });
+  }
 }
 
 export function launchWechatPayment(
@@ -294,7 +331,7 @@ export function launchWechatPayment(
 ): Promise<"success" | "cancelled"> {
   if (isDemoAccount(captureSessionLease()?.account))
     return Promise.resolve("cancelled");
-  assertVirtualPaymentSupported();
+  assertVirtualPaymentSupported(payment);
   return new Promise((resolve, reject) => {
     let settled = false;
     const finish = (result: "success" | "cancelled" | ApiClientError) => {
