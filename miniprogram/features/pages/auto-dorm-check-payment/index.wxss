@@ -294,10 +294,6 @@
   opacity: 0.86;
 }
 
-.payment-plan-card--confirming {
-  opacity: 0.72;
-}
-
 .payment-plan-card--disabled {
   opacity: 0.58;
 }
@@ -503,6 +499,11 @@
 }
 .auto-dorm-check-payment-page .payment-cancel {
   flex: none;
+  height: 68rpx;
+  line-height: 68rpx;
+  padding: 0 28rpx;
+  margin: 0 auto;
+  text-align: center;
   border: 0;
   color: var(--color-text);
   background: transparent;

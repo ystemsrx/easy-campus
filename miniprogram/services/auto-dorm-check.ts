@@ -227,6 +227,7 @@ export async function createAutoDormCheckPaymentOrder(
   planId: string,
   idempotencyKey: string,
 ): Promise<AutoDormCheckPaymentOrderResult> {
+  assertVirtualPaymentSupported();
   const code = await wechatPaymentLogin();
   return apiRequest<AutoDormCheckPaymentOrderResult>(`${ROOT}/payment/orders`, {
     method: "POST",
@@ -275,26 +276,104 @@ export function cancelAutoDormCheckPaymentOrder(
   );
 }
 
+function assertVirtualPaymentSupported(): void {
+  if (isDemoAccount(captureSessionLease()?.account)) return;
+  if (
+    typeof wx.requestVirtualPayment !== "function" ||
+    !wx.canIUse("requestVirtualPayment")
+  )
+    throw new ApiClientError({
+      message: "请更新微信后重试",
+      code: "WECHAT_VIRTUAL_PAY_UNSUPPORTED",
+      statusCode: 400,
+    });
+}
+
 export function launchWechatPayment(
   payment: WechatPaymentParameters,
-): Promise<"success" | "cancelled" | "unknown"> {
+): Promise<"success" | "cancelled"> {
   if (isDemoAccount(captureSessionLease()?.account))
     return Promise.resolve("cancelled");
-  return new Promise((resolve) =>
-    wx.requestPayment({
-      ...payment,
-      success: () => resolve("success"),
-      fail: (error) =>
-        resolve(/cancel/i.test(error.errMsg || "") ? "cancelled" : "unknown"),
-    }),
-  );
+  assertVirtualPaymentSupported();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (result: "success" | "cancelled" | ApiClientError) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (result instanceof ApiClientError) {
+        // Native messages may contain signed request data; log only our code
+        // and the numeric WeChat error code, never the payment parameters.
+        console.warn("[virtual-payment]", result.code, result.details);
+        reject(result);
+      } else resolve(result);
+    };
+    const fail = (error: unknown) => {
+      const nativeError = error as {
+        errMsg?: unknown;
+        errCode?: unknown;
+      } | null;
+      const wechatCode =
+        typeof nativeError?.errCode === "number" &&
+        Number.isFinite(nativeError.errCode)
+          ? nativeError.errCode
+          : undefined;
+      if (
+        wechatCode === -2 ||
+        (wechatCode === undefined &&
+          typeof nativeError?.errMsg === "string" &&
+          /\bcancel(?:led|ed)?\b/i.test(nativeError.errMsg))
+      ) {
+        finish("cancelled");
+        return;
+      }
+      finish(
+        new ApiClientError({
+          message:
+            wechatCode === -15010 ? "该套餐暂不可购买" : "未能打开支付，请重试",
+          code: "WECHAT_VIRTUAL_PAY_FAILED",
+          statusCode: 400,
+          details: { wechatCode },
+        }),
+      );
+    };
+    const timer = setTimeout(
+      () =>
+        finish(
+          new ApiClientError({
+            message: "支付结果未返回，请查看订单",
+            code: "WECHAT_VIRTUAL_PAY_TIMEOUT",
+            statusCode: 408,
+          }),
+        ),
+      60_000,
+    );
+    // Official typings currently declare SignData as an object. The runtime
+    // requires the exact JSON string signed by our server; do not reserialize.
+    const requestVirtualPayment = wx.requestVirtualPayment as unknown as (
+      options: WechatPaymentParameters & {
+        success: () => void;
+        fail: (error: { errMsg?: string; errCode?: number }) => void;
+      },
+    ) => void;
+    try {
+      requestVirtualPayment.call(wx, {
+        ...payment,
+        success: () => finish("success"),
+        fail,
+      });
+    } catch (error) {
+      fail(error);
+    }
+  });
 }
 
 export function getAutoDormCheckPaymentOrder(
   orderId: string,
+  { refresh = false }: { refresh?: boolean } = {},
 ): Promise<AutoDormCheckPaymentOrderResult> {
   return apiRequest<AutoDormCheckPaymentOrderResult>(
-    `${ROOT}/payment/orders/${encodeURIComponent(orderId)}`,
+    `${ROOT}/payment/orders/${encodeURIComponent(orderId)}${refresh ? "?refresh=true" : ""}`,
   );
 }
 

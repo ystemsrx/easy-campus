@@ -148,17 +148,17 @@ export interface AutoDormCheckPaymentOrder {
 }
 
 export interface WechatPaymentParameters {
-  timeStamp: string;
-  nonceStr: string;
-  package: string;
-  signType: "RSA";
-  paySign: string;
+  mode: "short_series_goods";
+  signData: string;
+  paySig: string;
+  signature: string;
 }
 
 export interface AutoDormCheckPaymentOrderResult {
   order: AutoDormCheckPaymentOrder;
   entitlement: AutoDormCheckEntitlement;
   payment?: WechatPaymentParameters | null;
+  paymentCheck?: { canResume: boolean; remainingMs: number };
 }
 
 export interface AutoDormCheckOrderHistoryItem extends AutoDormCheckPaymentOrder {

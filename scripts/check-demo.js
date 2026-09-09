@@ -68,7 +68,7 @@ function boot(storage = new Map()) {
     "uploadFile",
     "downloadFile",
     "login",
-    "requestPayment",
+    "requestVirtualPayment",
     "getRandomValues",
   ]) {
     wx[name] = (input) => {

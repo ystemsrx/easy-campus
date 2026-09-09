@@ -4,14 +4,15 @@
     <navigation-bar title="打卡套餐" back transparent theme="{{theme}}"></navigation-bar>
 
     <view class="payment-content page-content">
-      <view class="payment-progress-region" style="height: {{progressHeight}}px;" aria-hidden="{{!processing && !pendingResult}}">
+      <view class="payment-progress-region" style="height: {{progressHeight}}px;" aria-hidden="{{!processing && !checkingPayment && !canResumePayment}}">
         <view wx:if="{{progressMounted}}" class="payment-progress-inner {{progressExpanded ? 'payment-progress-inner--expanded' : ''}}">
           <view class="payment-processing card" aria-role="status">
             <view wx:if="{{progressBusy}}" class="payment-spinner-enter"><image class="payment-processing-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit"></image></view>
-            <text class="payment-progress-title">{{progressBusy ? '正在处理支付' : '订单待完成'}}</text>
+            <text class="payment-progress-title">{{progressBusy ? (checkingPayment ? '正在查询订单' : '正在处理支付') : '订单待完成'}}</text>
             <text class="payment-progress-plan">{{progressPlanName}} {{progressPriceLabel}}</text>
-            <button wx:if="{{!progressBusy}}" class="primary-button payment-continue {{paymentActionPending ? 'payment-continue--disabled' : ''}}" hover-class="none" aria-disabled="{{paymentActionPending}}" bindtap="retryPendingPayment">继续支付</button>
-            <button class="payment-cancel" hover-class="none" aria-disabled="{{cancellingPayment}}" bindtap="cancelPendingPayment">{{cancellingPayment ? '取消中' : '取消支付'}}</button>
+            <button wx:if="{{canResumePayment && !progressBusy && !paymentActionPending}}" class="primary-button payment-continue" hover-class="none" bindtap="retryPendingPayment">继续付款</button>
+            <view wx:if="{{cancellingPayment}}" class="payment-cancel" aria-role="status">取消中</view>
+            <button wx:elif="{{processing || checkingPayment || canResumePayment}}" class="payment-cancel" hover-class="none" bindtap="cancelPendingPayment">取消订单</button>
           </view>
         </view>
       </view>
@@ -81,13 +82,12 @@
             <view
               wx:for="{{timePlans}}"
               wx:key="id"
-              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
+              class="payment-plan-card card {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
               data-id="{{item.id}}"
               bindtap="onPlanTap"
               hover-class="{{loading || processing || pendingResult ? 'none' : 'payment-plan-card--pressed'}}"
               hover-stay-time="80"
               aria-role="button"
-              aria-disabled="{{loading || processing || pendingResult}}"
               aria-label="购买{{item.name}}，{{item.priceLabel}}"
             >
               <view class="payment-plan-icon payment-plan-icon--time">
@@ -99,7 +99,7 @@
               </view>
               <view class="payment-plan-action">
                 <text class="payment-plan-price tnum">{{item.priceLabel}}</text>
-                <text>{{confirmingPlanId === item.id ? '确认中' : '购买'}}</text>
+                <text>购买</text>
               </view>
             </view>
           </view>
@@ -116,13 +116,12 @@
             <view
               wx:for="{{countPlans}}"
               wx:key="id"
-              class="payment-plan-card card {{confirmingPlanId === item.id ? 'payment-plan-card--confirming' : ''}} {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
+              class="payment-plan-card card {{loading || processing || pendingResult ? 'payment-plan-card--disabled' : ''}}"
               data-id="{{item.id}}"
               bindtap="onPlanTap"
               hover-class="{{loading || processing || pendingResult ? 'none' : 'payment-plan-card--pressed'}}"
               hover-stay-time="80"
               aria-role="button"
-              aria-disabled="{{loading || processing || pendingResult}}"
               aria-label="购买{{item.name}}，{{item.priceLabel}}"
             >
               <view class="payment-plan-icon payment-plan-icon--count">
@@ -134,7 +133,7 @@
               </view>
               <view class="payment-plan-action">
                 <text class="payment-plan-price tnum">{{item.priceLabel}}</text>
-                <text>{{confirmingPlanId === item.id ? '确认中' : '购买'}}</text>
+                <text>购买</text>
               </view>
             </view>
           </view>

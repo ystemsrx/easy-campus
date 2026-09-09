@@ -6,7 +6,7 @@ import type {
 
 const PREFIX = "easy-swu:auto-dorm-check:v1:";
 const LOCATION_PREFIX = "easy-swu:auto-dorm-check-location:v1:";
-const PAYMENT_PENDING_PREFIX = "easy-swu:auto-dorm-check-payment:v2:";
+const PAYMENT_PENDING_PREFIX = "easy-swu:auto-dorm-check-payment:v3:";
 let autoDormCheckRevision = 0;
 const VALID_STATES = new Set<AutoDormCheckState>([
   "checked_in",
@@ -34,6 +34,10 @@ export interface PendingAutoDormCheckPayment {
   orderId: string | null;
   planId: string;
   createdAt: number;
+  planName?: string;
+  priceLabel?: string;
+  // Only an explicit false proves that this draft has never reached wx.
+  paymentInvoked?: boolean;
 }
 
 export function getAutoDormCheckRevision(): number {
@@ -220,6 +224,9 @@ export function loadPendingAutoDormCheckPayment(
         ? value.planId
         : String(value.planCode),
     createdAt: Number(value.createdAt) || 0,
+    planName: typeof value.planName === "string" ? value.planName : "",
+    priceLabel: typeof value.priceLabel === "string" ? value.priceLabel : "",
+    paymentInvoked: value.paymentInvoked !== false,
   };
 }
 
@@ -229,14 +236,23 @@ export function savePendingAutoDormCheckPayment(
 ): boolean {
   if (!account.trim()) return false;
   try {
-    wx.setStorageSync(paymentPendingStorageKey(account), payment);
+    const previous = loadPendingAutoDormCheckPayment(account);
+    const record =
+      previous?.idempotencyKey === payment.idempotencyKey &&
+      previous.paymentInvoked !== false
+        ? { ...payment, paymentInvoked: true }
+        : payment;
+    wx.setStorageSync(paymentPendingStorageKey(account), record);
     const stored = loadPendingAutoDormCheckPayment(account);
     return Boolean(
       stored &&
       stored.idempotencyKey === payment.idempotencyKey &&
       stored.orderId === payment.orderId &&
       stored.planId === payment.planId &&
-      stored.createdAt === payment.createdAt,
+      stored.createdAt === payment.createdAt &&
+      stored.planName === (payment.planName || "") &&
+      stored.priceLabel === (payment.priceLabel || "") &&
+      stored.paymentInvoked === (payment.paymentInvoked !== false),
     );
   } catch {
     return false;

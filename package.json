@@ -33,7 +33,7 @@
     "check:pet": "node scripts/check-pet.js",
     "check:personalization": "node scripts/check-personalization.js",
     "check:course-assistant": "node scripts/check-course-assistant.js",
-    "check:auto-dorm-check": "node scripts/check-auto-dorm-check-payment.js",
+    "check:auto-dorm-check": "node scripts/check-auto-dorm-check-payment.js && node scripts/check-virtual-payment.js",
     "check:heartbeat": "node scripts/check-heartbeat.js",
     "check:device-proof": "node scripts/check-device-proof.js && node scripts/check-request-clock.js",
     "check:session": "node scripts/check-session-isolation.js",
