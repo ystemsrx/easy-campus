@@ -108,9 +108,8 @@ const tick = () => new Promise(setImmediate);
 
 async function main() {
   const cancelled = harness();
-  cancelled.page.onLoad();
-  cancelled.page.onShow();
-  cancelled.requests[0].resolve(
+  cancelled.storage.set(
+    "easy-swu:auto-dorm-check-orders:v1:alice",
     result(
       Array.from({ length: 4 }, (_, index) =>
         order(`cancelled-${index}`, {
@@ -121,16 +120,27 @@ async function main() {
       ),
     ),
   );
-  await tick();
-  assert.equal(cancelled.page.data.total, 4);
+  cancelled.page.onLoad();
+  cancelled.page.onShow();
+  assert.equal(
+    cancelled.page.data.total,
+    0,
+    "Do not reuse the old count including cancelled orders",
+  );
   assert.equal(
     cancelled.page.data.orders.length,
-    4,
-    "Four cancelled orders must render four rows, not the empty state",
+    0,
+    "Do not flash cancelled rows from the old cache",
   );
-  assert.ok(
-    cancelled.page.data.orders.every((item) => item.statusLabel === "已取消"),
+  cancelled.requests[0].resolve(result([]));
+  await tick();
+  assert.equal(cancelled.page.data.total, 0);
+  assert.equal(
+    cancelled.page.data.orders.length,
+    0,
+    "A history containing only cancelled orders is empty after the server filters it",
   );
+  assert.equal(cancelled.page.data.hasMore, false);
   cancelled.page.onUnload();
   const env = harness();
   const { page, requests } = env;
@@ -286,7 +296,10 @@ async function main() {
     css,
     /\.nav-refresh\s*\{[^}]*width:\s*76rpx;[^}]*height:\s*76rpx;[^}]*border-radius:\s*999rpx;/s,
   );
-  assert.match(template, /title-suffix="{{loaded \? '（' \+ total \+ '）' : ''}}"/);
+  assert.match(
+    template,
+    /title-suffix="{{loaded \? '（' \+ total \+ '）' : ''}}"/,
+  );
   assert.doesNotMatch(template, /orders-heading|orders-caption|笔购买记录/);
   assert.match(
     read("features/pages/auto-dorm-check-payment/index.wxss"),
@@ -294,6 +307,14 @@ async function main() {
   );
   assert.match(template, /bindscrolltolower="loadMore"/);
   assert.doesNotMatch(template, /catchtouchmove|refresher-|<bottom-sheet/);
+  assert.match(
+    template,
+    /<view wx:if="{{!orders.length}}" class="orders-state">[\s\S]*title="暂无购买记录"[\s\S]*<\/view>\s*<view wx:else class="orders-scroll-shell">/,
+  );
+  assert.match(
+    css,
+    /\.orders-state\s*\{[^}]*display:\s*flex;[^}]*flex:\s*1;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*min-height:\s*0;/s,
+  );
   assert.match(
     template,
     /<view class="orders-bottom-space"><\/view>\s*<\/scroll-view>/,

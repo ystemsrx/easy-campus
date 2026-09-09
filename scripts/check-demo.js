@@ -614,7 +614,15 @@ async function main() {
   assert.ok(demoPayment.plans.length);
   const history = await dorm.getAutoDormCheckPaymentOrders();
   assert.equal(history.items.length, 20);
-  assert.equal((await dorm.getAutoDormCheckPaymentOrders(2)).items.length, 4);
+  const historyPage2 = await dorm.getAutoDormCheckPaymentOrders(2);
+  assert.equal(historyPage2.items.length, 3);
+  assert.equal(history.pagination.total, 23);
+  assert.equal(historyPage2.pagination.total, 23);
+  assert.ok(
+    [...history.items, ...historyPage2.items].every(
+      (item) => item.status !== "cancelled",
+    ),
+  );
   const purchase = await dorm.createAutoDormCheckPaymentOrder(
     demoPayment.plans[0].id,
     "demo-purchase",

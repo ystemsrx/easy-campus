@@ -261,12 +261,7 @@ export function demoRequest<T>(
   if (route === "/auto-dorm-check/payment/orders" && method === "GET") {
     return result(
       paginate(
-        state.dorm.orders.filter(
-          (order) =>
-            !query.status ||
-            query.status === "all" ||
-            order.status === query.status,
-        ),
+        state.dorm.orders.filter((order) => order.status !== "cancelled"),
         query,
       ),
     );

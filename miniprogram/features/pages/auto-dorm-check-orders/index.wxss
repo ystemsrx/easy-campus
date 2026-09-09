@@ -61,6 +61,20 @@
     transform: rotate(360deg);
   }
 }
+.orders-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0 28rpx env(safe-area-inset-bottom);
+}
+.orders-state > empty-state,
+.orders-state > loading-view {
+  flex: none;
+  width: 100%;
+}
 .orders-scroll-shell {
   flex: 1;
   min-height: 0;

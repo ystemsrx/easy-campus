@@ -1,7 +1,8 @@
 import type { AutoDormCheckOrderHistoryItem, Paginated } from "../../types/api";
 
 export type OrderHistory = Paginated<AutoDormCheckOrderHistoryItem>;
-const PREFIX = "easy-swu:auto-dorm-check-orders:v1:";
+// v2 uses server totals and pages that exclude cancelled orders.
+const PREFIX = "easy-swu:auto-dorm-check-orders:v2:";
 
 export function loadOrderHistory(account: string): OrderHistory | null {
   if (!account) return null;
