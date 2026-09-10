@@ -2,7 +2,6 @@
 
 .page.pass-rate-page.theme-light,
 .page.pass-rate-page.theme-dark {
-  --color-bg: var(--pass-bg);
   --color-bg-elevated: var(--pass-surface);
   --color-bg-subtle: var(--pass-subtle);
   --color-text: var(--pass-text);
@@ -12,7 +11,6 @@
   --color-primary-soft: var(--pass-accent-soft);
   --color-separator: var(--pass-line);
   --shadow-card: var(--pass-shadow);
-  --visual-component-bg: var(--pass-bg);
   --visual-component-elevated: var(--pass-surface);
   --visual-component-subtle: var(--pass-subtle);
   --visual-component-text: var(--pass-text);
@@ -24,6 +22,12 @@
   --visual-component-card-shadow: var(--pass-shadow);
   --glass-ink: var(--pass-text);
   --glass-accent: var(--pass-accent);
+}
+
+.page.pass-rate-page.theme-light.theme-style-soft,
+.page.pass-rate-page.theme-dark.theme-style-soft {
+  --color-bg: var(--pass-bg);
+  --visual-component-bg: var(--pass-bg);
 }
 
 .pass-rate-content { padding-top: 20rpx; padding-bottom: 50rpx; }
