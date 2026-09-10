@@ -1,4 +1,9 @@
-import { getSession } from "../store/session";
+import {
+  captureSessionLease,
+  getSession,
+  isSessionLeaseCurrent,
+  updateSessionCredential,
+} from "../store/session";
 import type { HeartbeatData } from "../types/api";
 import { apiRequest } from "./request";
 
@@ -22,15 +27,30 @@ async function reportHeartbeat(): Promise<void> {
     return;
   }
 
+  const session = getSession();
+  const lease = captureSessionLease(session);
+  const credentialAtStart = session?.credential;
+
   heartbeatInFlight = true;
   try {
-    await apiRequest<HeartbeatData>("/auth/heartbeat", {
+    const data = await apiRequest<HeartbeatData>("/auth/heartbeat", {
       method: "POST",
       data: {},
       retry: false,
       timeout: HEARTBEAT_TIMEOUT_MS,
       allowInvalidCredential: true,
     });
+    const current = getSession();
+    if (
+      data.credential &&
+      isSessionLeaseCurrent(lease, current) &&
+      current?.credential === credentialAtStart &&
+      (data.credential.status !== credentialAtStart?.status ||
+        data.credential.checkedAt !== credentialAtStart?.checkedAt ||
+        data.credential.errorCode !== credentialAtStart?.errorCode)
+    ) {
+      updateSessionCredential(data.credential);
+    }
   } catch {
     // 心跳失败不打断当前页面；认证失效仍由统一请求层处理。
   } finally {

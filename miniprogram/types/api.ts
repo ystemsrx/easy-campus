@@ -236,6 +236,7 @@ export interface CurrentUserData {
 
 export interface HeartbeatData {
   alive: true;
+  credential?: CredentialState;
 }
 
 export interface CompanionPreferencesData {
