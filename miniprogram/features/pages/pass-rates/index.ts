@@ -155,7 +155,8 @@ function componentViews(course: PassRateCourse): ComponentView[] {
         ? "占比未提供"
         : `${Number.isInteger(component.weightPercent) ? component.weightPercent : Number(component.weightPercent.toFixed(2))}%`,
     width: Number(((rawWeights[index] / totalWeight) * 100).toFixed(2)),
-    tone: index % 4,
+    // Skip neighboring shades, including where the five-color cycle repeats.
+    tone: (index * 2) % 5,
   }));
 }
 

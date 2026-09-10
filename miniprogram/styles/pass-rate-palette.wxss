@@ -1,0 +1,87 @@
+/* Shared by the page and the statistics card, including timetable previews. */
+.pass-rate-page,
+.pass-rate-card {
+  --pass-bg: #f4f7fb;
+  --pass-surface: #ffffff;
+  --pass-subtle: #edf2f8;
+  --pass-text: #1e293b;
+  --pass-secondary: #52647a;
+  --pass-muted: #5e6e84;
+  --pass-accent: #0066cc;
+  --pass-accent-soft: #e8f2ff;
+  --pass-success: #2f755f;
+  --pass-success-soft: #e9f4ee;
+  --pass-success-track: #e6eee9;
+  --pass-hero-from: #e5f0ff;
+  --pass-hero-to: #f0f6ff;
+  --pass-hero-text: #193b63;
+  --pass-hero-muted: #4b6480;
+  --pass-chip: rgba(255, 255, 255, 0.64);
+  --pass-bar: #a3c5eb;
+  --pass-track: #eef3f9;
+  --pass-line: #dce5ef;
+  --pass-danger: #a64b58;
+  --pass-danger-soft: #fbf0f1;
+  --pass-material: rgba(255, 255, 255, 0.94);
+  --pass-scrim: rgba(23, 38, 59, 0.36);
+  --pass-shadow: 0 12rpx 40rpx -16rpx rgba(35, 67, 105, 0.16);
+}
+
+.pass-rate-page.theme-dark,
+.pass-rate-card--dark {
+  --pass-bg: #101923;
+  --pass-surface: #192534;
+  --pass-subtle: #233245;
+  --pass-text: #e6edf7;
+  --pass-secondary: #b5c3d4;
+  --pass-muted: #9babbe;
+  --pass-accent: #78b7ff;
+  --pass-accent-soft: #213b59;
+  --pass-success: #82c7a6;
+  --pass-success-soft: #203d35;
+  --pass-success-track: #21362f;
+  --pass-hero-from: #1b3553;
+  --pass-hero-to: #213f60;
+  --pass-hero-text: #e3efff;
+  --pass-hero-muted: #b0c6e0;
+  --pass-chip: rgba(10, 26, 45, 0.3);
+  --pass-bar: #537ca8;
+  --pass-track: #202e3e;
+  --pass-line: #2b4057;
+  --pass-danger: #e4a1aa;
+  --pass-danger-soft: #362932;
+  --pass-material: rgba(25, 37, 52, 0.96);
+  --pass-scrim: rgba(4, 10, 18, 0.58);
+  --pass-shadow: 0 14rpx 44rpx -16rpx rgba(0, 0, 0, 0.3);
+}
+
+.pass-rate-page.theme-style-minimal,
+.pass-rate-card--minimal {
+  --pass-bg: #f5f6f7;
+  --pass-subtle: #edf0f3;
+  --pass-accent: #3b6d9a;
+  --pass-accent-soft: #eaf0f6;
+  --pass-success: #466e59;
+  --pass-success-soft: #edf3ee;
+  --pass-success-track: #e8ede8;
+  --pass-hero-from: #ffffff;
+  --pass-hero-to: #ffffff;
+  --pass-bar: #adc2d3;
+  --pass-track: #edf1f4;
+  --pass-shadow: none;
+}
+
+.pass-rate-page.theme-dark.theme-style-minimal,
+.pass-rate-card--dark.pass-rate-card--minimal {
+  --pass-bg: #12171d;
+  --pass-subtle: #252f3b;
+  --pass-accent: #93badc;
+  --pass-accent-soft: #26394a;
+  --pass-success: #a0c6ac;
+  --pass-success-soft: #293b30;
+  --pass-success-track: #29362e;
+  --pass-hero-from: #192534;
+  --pass-hero-to: #192534;
+  --pass-bar: #59748c;
+  --pass-track: #222f3a;
+}

@@ -28,7 +28,6 @@ const personalizationStyles = read("features/pages/personalization/index.wxss");
 const tabBarTemplate = read("custom-tab-bar/index.wxml");
 const tabBarStyles = read("styles/floating-tabbar.wxss");
 const navigationStyles = read("components/navigation-bar/navigation-bar.wxss");
-const passRateStyles = read("components/pass-rate-card/pass-rate-card.wxss");
 const geometricPetStyles = read("components/geometric-pet/geometric-pet.wxss");
 const petPickerStyles = read(
   "components/pet-picker-drawer/pet-picker-drawer.wxss",
@@ -185,11 +184,8 @@ assert(
     tabBarStyles.includes("--tab-pill: #f7f3e9;") &&
     navigationStyles.includes(
       'font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;',
-    ) &&
-    passRateStyles.includes(
-      "background: linear-gradient(180deg, #c98a2d, #e5b86e);",
     ),
-  "默认主题的字体、主色、通知红点、底栏和图表必须保持原有样式",
+  "默认主题的字体、主色、通知红点和底栏必须保持原有样式",
 );
 
 console.log("Personalization settings checks passed.");

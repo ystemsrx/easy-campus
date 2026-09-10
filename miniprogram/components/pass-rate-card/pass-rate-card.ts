@@ -148,26 +148,30 @@ function passRateRingSource(
   const circumference = 2 * Math.PI * 42;
   const progressLength = Number(((circumference * progress) / 100).toFixed(2));
   const remainderLength = Number((circumference - progressLength).toFixed(2));
-  const trackColor = theme === "dark" ? "#ffffff" : "#2b2620";
-  const trackOpacity =
-    visualTheme === "minimal" ? 0.2 : theme === "dark" ? 0.08 : 0.06;
+  // Match styles/pass-rate-palette.wxss; image SVGs cannot inherit WXSS variables.
+  const trackColor =
+    visualTheme === "minimal"
+      ? theme === "dark"
+        ? "#29362e"
+        : "#e8ede8"
+      : theme === "dark"
+        ? "#21362f"
+        : "#e6eee9";
   const progressColor =
     visualTheme === "minimal"
       ? theme === "dark"
-        ? "#ffffff"
-        : "#000000"
-      : visualTheme === "soft"
-        ? theme === "dark"
-          ? "#8fc79e"
-          : "#5e9a73"
-        : "#7d8f6e";
+        ? "#a0c6ac"
+        : "#466e59"
+      : theme === "dark"
+        ? "#82c7a6"
+        : "#2f755f";
   const animation =
     animate && progress
       ? `<animate attributeName="stroke-dasharray" from="0 ${Number(circumference.toFixed(2))}" to="${progressLength} ${remainderLength}" dur=".24s" calcMode="spline" keyTimes="0;1" keySplines=".22 1 .36 1" fill="freeze"/>`
       : "";
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">` +
-    `<circle cx="50" cy="50" r="42" fill="none" stroke="${trackColor}" stroke-opacity="${trackOpacity}" stroke-width="9.24"/>` +
+    `<circle cx="50" cy="50" r="42" fill="none" stroke="${trackColor}" stroke-width="9.24"/>` +
     `<circle cx="50" cy="50" r="42" fill="none" stroke="${progressColor}" stroke-width="9.24" stroke-linecap="round" stroke-dasharray="${progressLength} ${remainderLength}" stroke-opacity="${progress ? 1 : 0}" transform="rotate(-90 50 50)">${animation}</circle>` +
     `</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;

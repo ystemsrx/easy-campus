@@ -546,8 +546,8 @@ if (
   !passRateStyles.includes(
     ".course-picker-body { flex: 1; width: 100%; min-height: 0; }",
   ) ||
-  !passRateStyles.includes(
-    ".course-picker-scroll { width: 100%; height: 100%; background: #fbf9f4; }",
+  !/\.course-picker-scroll\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/.test(
+    passRateStyles,
   ) ||
   !passRateStyles.includes(
     ".course-picker-bottom-space { width: 100%; height: calc(136rpx + env(safe-area-inset-bottom)); }",
