@@ -700,12 +700,75 @@ Page({
             pending.idempotencyKey,
           );
       if (!isFlowCurrent(instance, revision, lease)) return;
+      if (
+        mode === "resume" &&
+        canLaunchPayment() &&
+        initialResult.order.status === "pending"
+      ) {
+        const remainingMs = initialResult.paymentCheck?.remainingMs || 0;
+        if (
+          remainingMs <= 0 ||
+          (!initialResult.paymentCheck?.canResume &&
+            trackedPending.paymentInvoked !== false)
+        ) {
+          activeFlowAccounts.delete(instance);
+          this.showAwaitingPayment(trackedPending, initialResult);
+          return;
+        }
+        if (initialResult.paymentCheck?.canResume) {
+          // XPay outTradeNo is single-use, including Apple orders still pending
+          // after cashier dismissal. End this local attempt before creating a
+          // new one; the server continues reconciling any late payment on it.
+          const deadline = Date.now() + remainingMs;
+          initialResult = await cancelAutoDormCheckPaymentOrder(
+            initialResult.order.id,
+          );
+          if (!isFlowCurrent(instance, revision, lease)) return;
+          if (
+            initialResult.order.status === "cancelled" &&
+            canLaunchPayment() &&
+            Date.now() < deadline
+          ) {
+            const idempotencyKey = await createIdempotencyKey();
+            if (!isFlowCurrent(instance, revision, lease)) return;
+            if (canLaunchPayment() && Date.now() < deadline) {
+              const replacement: PendingAutoDormCheckPayment = {
+                ...trackedPending,
+                idempotencyKey,
+                orderId: null,
+                createdAt: Date.now(),
+                paymentInvoked: false,
+              };
+              // Save the new key before sending: a lost response or page exit
+              // must recover this exact order, not issue another purchase.
+              if (!savePendingAutoDormCheckPayment(lease.account, replacement))
+                throw new Error("订单保存失败，请稍后重试");
+              trackedPending = replacement;
+              rememberActivePendingPayment(
+                instance,
+                lease.account,
+                replacement,
+              );
+              initialResult = await createAutoDormCheckPaymentOrder(
+                replacement.planId,
+                replacement.idempotencyKey,
+              );
+              if (!isFlowCurrent(instance, revision, lease)) return;
+            }
+          } else if (shouldPollOrder(initialResult.order)) {
+            // Cancellation/query uncertainty must never create a second order.
+            activeFlowAccounts.delete(instance);
+            this.showAwaitingPayment(trackedPending, initialResult);
+            return;
+          }
+        }
+      }
       this.setPaymentView({
         pendingOrderId: initialResult.order.id,
         pendingPriceLabel: `¥${(initialResult.order.amountCents / 100).toFixed(2)}`,
       });
       trackedPending = {
-        ...pending,
+        ...trackedPending,
         orderId: initialResult.order.id,
         planName: this.data.pendingPlanName,
         priceLabel: this.data.pendingPriceLabel,

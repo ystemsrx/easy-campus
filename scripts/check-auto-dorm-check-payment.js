@@ -490,8 +490,9 @@ function loadPaymentPageRuntime(options) {
         options.repeatedOrderResult
       );
     },
-    launchWechatPayment: async () => {
+    launchWechatPayment: async (payment) => {
       calls.native = (calls.native || 0) + 1;
+      (calls.nativePayments ||= []).push(payment);
       options.onNative?.();
       if (options.nativeError) throw options.nativeError;
       return options.nativeResult || "success";
@@ -505,6 +506,7 @@ function loadPaymentPageRuntime(options) {
     createAutoDormCheckPaymentOrder: async (planId, key) => {
       calls.create += 1;
       calls.creations.push({ planId, key });
+      options.onCreate?.(planId, key);
       if (options.createError)
         throw Object.assign(
           new ApiClientError(options.createError.message),
@@ -1080,8 +1082,15 @@ async function checkNativePayment() {
     );
   }
   const resumed = loadPaymentPageRuntime({
-    resumeResult: pending,
-    orderQueue: [{ ...pending, payment: null }, paid],
+    cancelResult: cancelled,
+    createResult: {
+      ...pending,
+      order: { ...pending.order, id: "retry-order" },
+    },
+    orderQueue: [
+      { ...pending, payment: null },
+      { ...paid, order: { ...paid.order, id: "retry-order" } },
+    ],
   });
   await resumed.instance.runPaymentFlow(
     resumed.lease,
@@ -1089,17 +1098,26 @@ async function checkNativePayment() {
     "resume",
   );
   assert(
-    resumed.calls.create === 0 &&
-      resumed.calls.resume === 1 &&
+    resumed.calls.create === 1 &&
+      !resumed.calls.resume &&
       resumed.calls.native === 1 &&
       resumed.calls.get === 2 &&
-      !resumed.calls.cancel &&
+      resumed.calls.cancel === 1 &&
+      resumed.calls.creations[0].key !== saved.idempotencyKey &&
+      resumed.calls.lookups.at(-1).id === "retry-order" &&
       resumed.calls.toasts.includes("购买成功"),
-    "退出后继续支付必须重新签发原订单参数并确认到账，不能创建另一笔订单",
+    "已进入收银台的订单重试必须结束旧尝试、用新幂等键创建新单并核对新单到账",
   );
   for (const [initial, resumeCalls] of [
     [cancelled, 0],
-    [{ ...pending, payment: null }, 1],
+    [
+      {
+        ...pending,
+        payment: null,
+        paymentCheck: { canResume: false, remainingMs: 60000 },
+      },
+      1,
+    ],
   ]) {
     const closed = loadPaymentPageRuntime({
       orderQueue: [initial],
@@ -1107,7 +1125,7 @@ async function checkNativePayment() {
     });
     await closed.instance.runPaymentFlow(
       closed.lease,
-      { ...saved, orderId: "native-order" },
+      { ...saved, orderId: "native-order", paymentInvoked: false },
       "resume",
     );
     assert(
@@ -1254,7 +1272,8 @@ async function checkPendingControls() {
     const r = loadPaymentPageRuntime({
       storedPending: saved,
       orderQueue: [pending, confirmation.promise],
-      resumeResult: prepay.promise,
+      cancelResult: cancelled,
+      createResult: prepay.promise,
       freshEntitlement: paid.entitlement,
     });
     r.instance.showAwaitingPayment(saved, {
@@ -1265,7 +1284,9 @@ async function checkPendingControls() {
     await settle();
     r.instance.retryPendingPayment();
     assert(
-      r.calls.resume === 1 &&
+      r.calls.create === 1 &&
+        r.calls.cancel === 1 &&
+        !r.calls.resume &&
         !r.instance.data.processing &&
         r.instance.data.pendingResult,
       "继续支付准备期间保留待完成卡片并阻止重复点击",
@@ -1855,11 +1876,14 @@ async function checkInterruptedPurchaseRecovery() {
     const r = loadPaymentPageRuntime({
       createResult: response.promise,
       resumeResult: response.promise,
+      orderQueue: phase === "sign" ? [unknown] : [],
       repeatedOrderResult: eligible,
     });
     const work = r.instance.runPaymentFlow(
       r.lease,
-      phase === "create" ? { ...saved, orderId: null } : saved,
+      phase === "create"
+        ? { ...saved, orderId: null }
+        : { ...saved, paymentInvoked: false },
       phase === "create" ? "purchase" : "resume",
     );
     await settle();
@@ -2231,12 +2255,155 @@ async function checkUnlaunchedDraftRecovery() {
   }
 }
 
+async function checkRetriedPaymentRecovery() {
+  const saved = {
+    idempotencyKey: "original-attempt",
+    orderId: "original-order",
+    planId: "count_2",
+    planName: "2次",
+    priceLabel: "¥1.00",
+    createdAt: Date.now(),
+    paymentInvoked: true,
+  };
+  const pending = {
+    order: order("pending", false, saved.orderId),
+    entitlement: entitlement(),
+    paymentCheck: { canResume: true, remainingMs: 60000 },
+  };
+  const closed = {
+    ...pending,
+    order: order("cancelled", false, saved.orderId),
+  };
+  const paid = { ...pending, order: order("paid", true, saved.orderId) };
+  const draft = {
+    order: order("pending", false, "replacement-order"),
+    entitlement: entitlement(),
+    paymentCheck: { canResume: false, remainingMs: 60000 },
+    payment: {
+      mode: "short_series_goods",
+      signData: '{"outTradeNo":"replacement-trade"}',
+      paySig: "new-signature",
+      signature: "new-user-signature",
+    },
+  };
+  const unsignedDraft = { ...draft, payment: null };
+  for (const options of [
+    { cancelResult: pending },
+    { cancelError: new Error("offline") },
+    { cancelResult: paid },
+    { repeatedOrderResult: closed },
+    { repeatedOrderResult: paid },
+    {
+      repeatedOrderResult: {
+        ...pending,
+        paymentCheck: { canResume: false, remainingMs: 60000 },
+      },
+    },
+    {
+      repeatedOrderResult: {
+        ...pending,
+        paymentCheck: { canResume: true, remainingMs: 0 },
+      },
+    },
+    {
+      cancelResult: closed,
+      failSave: (value) => value.idempotencyKey !== saved.idempotencyKey,
+    },
+  ]) {
+    const r = loadPaymentPageRuntime({
+      storedPending: saved,
+      repeatedOrderResult: pending,
+      ...options,
+    });
+    await r.instance.runPaymentFlow(r.lease, saved, "resume");
+    assert(
+      !r.calls.create && !r.calls.native && !r.calls.resume,
+      "已到账、关闭、过期、查单或取消未确认、保存失败时，重试不得创建新单或复用旧收银台",
+    );
+    r.instance.onUnload();
+  }
+  for (const phase of ["cancel", "create"]) {
+    const response = deferred();
+    const pendingStore = { value: { ...saved } };
+    const old = loadPaymentPageRuntime({
+      pendingStore,
+      repeatedOrderResult: pending,
+      cancelResult: phase === "cancel" ? response.promise : closed,
+      createResult: phase === "create" ? response.promise : draft,
+      onCreate: (_plan, key) =>
+        assert(
+          pendingStore.value.idempotencyKey === key &&
+            key !== saved.idempotencyKey &&
+            pendingStore.value.orderId === null &&
+            pendingStore.value.paymentInvoked === false,
+          "新单创建请求发出前必须持久化新幂等键和未调用标记",
+        ),
+    });
+    const work = old.instance.runPaymentFlow(old.lease, saved, "resume");
+    await settle();
+    old.instance.onHide();
+    old.instance.onUnload();
+    const key = pendingStore.value.idempotencyKey;
+    const current = loadPaymentPageRuntime({
+      pendingStore,
+      createResult: draft,
+      resumeResult: draft,
+      repeatedOrderResult: phase === "cancel" ? closed : unsignedDraft,
+      orderQueue:
+        phase === "create"
+          ? [
+              unsignedDraft,
+              unsignedDraft,
+              { ...paid, order: order("paid", true, draft.order.id) },
+            ]
+          : [],
+    });
+    current.instance.onShow();
+    await settle();
+    response.resolve(phase === "cancel" ? closed : draft);
+    await work;
+    assert(
+      !old.calls.native && !current.calls.native,
+      "取消或创建新单在途退出后，不得由迟到响应自动打开支付",
+    );
+    if (phase === "cancel") {
+      assert(
+        !old.calls.create &&
+          !current.calls.create &&
+          pendingStore.value === null,
+        "取消原单期间离开页面，不应补发新购买请求",
+      );
+    } else {
+      assert(
+        current.calls.creations[0]?.key === key &&
+          current.instance.data.canResumePayment &&
+          pendingStore.value.orderId === draft.order.id,
+        "创建响应丢失时，用已保存的新幂等键找回新单，不复活旧单",
+      );
+      current.instance.retryPendingPayment();
+      await settle();
+      assert(
+        current.calls.native === 1 &&
+          current.calls.nativePayments[0].signData === draft.payment.signData &&
+          current.calls.create === 1 &&
+          current.calls.resume === 1 &&
+          !current.calls.cancel &&
+          current.calls.lookups.at(-1).id === draft.order.id &&
+          pendingStore.value === null,
+        "找回从未调用的新单后只首次打开新收银台，并按新单确认到账",
+      );
+    }
+    current.instance.onUnload();
+  }
+}
+
 async function main() {
   checkPendingStorage();
   checkProgressTransition();
   await checkPaymentPrefetch();
   await checkStateMachine();
   await checkNativePayment();
+  await checkRetriedPaymentRecovery();
   await checkPendingControls();
   await checkVerifiedPaymentActions();
   await checkPaymentEntryRendering();
