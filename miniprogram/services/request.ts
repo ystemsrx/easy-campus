@@ -632,7 +632,7 @@ export async function teachingRequest<T>(
 ): Promise<{ data: T; meta: QueryMeta }> {
   const envelope = (await requestEnvelope<T>(
     path,
-    options,
+    { timeout: 90000, ...options },
   )) as TeachingSuccess<T>;
   return {
     data: envelope.data,
