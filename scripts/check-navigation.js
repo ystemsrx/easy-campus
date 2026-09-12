@@ -34,6 +34,7 @@ const quickEntryTemplates = [
   ["成绩展示设置", "features/pages/grade-settings/index.wxml"],
   ["个性化", "features/pages/personalization/index.wxml"],
   ["关于", "features/pages/about/index.wxml"],
+  ["开放平台", "features/pages/open-platform/index.wxml"],
   ["协议与隐私", "pages/legal/index.wxml"],
 ].map(([label, relativePath]) => ({
   label,
@@ -120,7 +121,7 @@ async function main() {
     profileStyles.match(/\.setting-row--pressed\s*\{[^}]*\}/s)?.[0] || "";
   assert(
     !profileTemplate.includes('hover-class="setting-row--pressed"') &&
-      (profileTemplate.match(/openingSetting ===/g) || []).length === 8 &&
+      (profileTemplate.match(/openingSetting ===/g) || []).length === 9 &&
       /openProfileRoute\(key: ProfileSettingKey, url: string\)[\s\S]*?if \(this\.data\.openingSetting\) return;[\s\S]*?this\.setData\(\{ openingSetting: key \}, \(\) => \{[\s\S]*?navigateTo\(url\)\.then/.test(
         profileSource,
       ) &&

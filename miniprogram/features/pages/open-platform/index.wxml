@@ -1,0 +1,53 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<view class="page page--quick-entry platform-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <navigation-bar title="开放平台" back transparent theme="{{theme}}"></navigation-bar>
+  <view class="platform-scroll-region">
+    <scroll-view class="platform-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="platform-content page-enter">
+        <view class="platform-brand">
+          <view class="platform-logo-frame"><image class="platform-logo" src="/features/assets/platform-logo.jpg" mode="aspectFill" aria-label="Lazy Campus"></image></view>
+          <view class="platform-brand-copy"><text class="platform-brand-name">LAZY CAMPUS</text><text class="platform-brand-caption">为校园开发者而来</text></view>
+        </view>
+
+        <view class="platform-hero">
+          <text class="platform-title">校园灵感，</text>
+          <text class="platform-title platform-title--accent">由你实现。</text>
+          <text class="platform-intro">将校园数据接入自己的 App、网站或脚本，让一个好想法，成为每天用得上的小工具。</text>
+        </view>
+
+        <view class="platform-playground" aria-role="img" aria-label="从校园接口，连接到你的应用">
+          <view class="platform-playground-head" aria-hidden="true"><text>FROM CAMPUS TO YOUR APP</text><view class="platform-playground-mark"></view></view>
+          <view class="platform-connection" aria-hidden="true">
+            <view class="platform-source"><text class="platform-source-symbol">{ }</text><text class="platform-node-label">校园 API</text></view>
+            <view class="platform-connector"><image class="platform-connector-arrow" src="{{theme === 'dark' ? '/features/assets/platform-arrow-dark.svg' : '/features/assets/platform-arrow.svg'}}" mode="aspectFit" aria-hidden="true"></image></view>
+            <view class="platform-app"><view class="platform-app-icon"><view class="platform-app-tile"><view class="platform-app-dot"></view></view></view><text class="platform-node-label">你的 App</text></view>
+          </view>
+          <view class="platform-capabilities" aria-hidden="true"><text>课表与成绩</text><view class="platform-capability-dot"></view><text>校园资讯</text><view class="platform-capability-dot"></view><text>生活服务</text></view>
+        </view>
+
+        <view class="platform-benefits">
+          <view class="platform-benefit"><text class="platform-benefit-number">01</text><view class="platform-benefit-copy"><text class="platform-benefit-title">校园能力，随你组合</text><text class="platform-benefit-description">课表、成绩、考试、校历、校园资讯与寝室电费，用熟悉的语言读取本人的校园数据。</text></view></view>
+          <view class="platform-benefit"><text class="platform-benefit-number">02</text><view class="platform-benefit-copy"><text class="platform-benefit-title">免费调用，轻松起步</text><text class="platform-benefit-description">使用学校账号登录，创建应用、选择接口权限，跟随文档发起第一次调用。</text></view></view>
+          <view class="platform-benefit platform-benefit--last"><text class="platform-benefit-number">03</text><view class="platform-benefit-copy"><text class="platform-benefit-title">每个应用，尽在掌握</text><text class="platform-benefit-description">独立密钥与调用配额，用量、日志一目了然，随时管理应用授权。</text></view></view>
+        </view>
+
+        <view class="platform-visit">
+          <text class="platform-visit-eyebrow">从这里开始</text>
+          <text class="platform-visit-title">下一个校园 App，交给你。</text>
+          <view class="platform-url-row">
+            <text class="platform-url" selectable user-select overflow="ellipsis" max-lines="1">{{platformUrl}}</text>
+            <button class="platform-copy" hover-class="platform-copy--pressed" bindtap="copyUrl" aria-label="{{copied ? '网址已复制，再次复制开放平台网址' : '复制开放平台网址'}}">
+              <view class="platform-copy-face">
+                <lucide-icon wx:if="{{copied}}" name="check" tone="white" size="{{26}}"></lucide-icon>
+                <lucide-icon wx:else name="copy" tone="white" size="{{26}}"></lucide-icon>
+              </view>
+            </button>
+          </view>
+          <text class="platform-visit-hint">在浏览器中打开，开始构建。</text>
+        </view>
+      </view>
+      <view class="platform-bottom-space"></view>
+    </scroll-view>
+  </view>
+</view>
+<screen-watermark></screen-watermark>

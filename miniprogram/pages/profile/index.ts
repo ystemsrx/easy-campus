@@ -64,6 +64,7 @@ type ProfileSettingKey =
   | "grades"
   | "personalization"
   | "about"
+  | "open-platform"
   | "terms"
   | "privacy";
 
@@ -375,6 +376,12 @@ Page({
   },
   openAbout() {
     this.openProfileRoute("about", "/features/pages/about/index");
+  },
+  openPlatform() {
+    this.openProfileRoute(
+      "open-platform",
+      "/features/pages/open-platform/index",
+    );
   },
   openLegalDocument(event: WechatMiniprogram.TouchEvent) {
     const document =
