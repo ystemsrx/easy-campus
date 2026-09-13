@@ -158,6 +158,12 @@
 .setting-row--divided { border-bottom: 1rpx solid var(--color-separator); }
 .setting-row--action { background-color: transparent; }
 .setting-row--pressed { background-color: var(--color-bg-subtle); }
+/* The native contact control only launches the session; the inner view owns the row layout.
+ * plain opts out of the style-v2 fixed-width button; these resets also override glass material. */
+.profile-page .contact-entry { display: block; box-sizing: border-box; width: 100% !important; max-width: 100%; min-height: 0; margin: 0 !important; padding: 0 !important; border: none !important; border-radius: 0 !important; background-color: transparent !important; background-image: none !important; box-shadow: none !important; line-height: 1.5; text-align: left; }
+.profile-page .contact-entry::after { border: none; }
+.contact-entry .setting-row { flex-wrap: nowrap; width: 100%; white-space: nowrap; }
+.profile-page .contact-entry .setting-title { overflow: hidden; color: var(--color-text); text-overflow: ellipsis; white-space: nowrap; }
 .setting-copy { flex: 1; min-width: 0; }
 .pet-setting-value,
 .course-assistant-setting-value,
@@ -166,7 +172,9 @@
 .personalization-setting-value,
 .platform-setting-value,
 .legal-setting-value,
+.contact-setting-value,
 .feedback-setting-value { display: flex; flex: none; flex-direction: row; align-items: center; gap: 7rpx; color: var(--color-text-tertiary); font-size: 22rpx; font-weight: 650; white-space: nowrap; }
+.contact-setting-value { flex-wrap: nowrap; }
 .pet-color-dot { flex: none; width: 22rpx; height: 22rpx; margin-right: 2rpx; border: 3rpx solid rgba(255, 255, 255, 0.76); border-radius: 50%; box-shadow: 0 2rpx 8rpx rgba(20, 20, 30, 0.18); }
 .auto-dorm-check-setting-dot { flex: none; width: 14rpx; height: 14rpx; border-radius: 50%; }
 .auto-dorm-check-setting-dot--success { background: #69a25c; }

@@ -90,6 +90,7 @@ type ProfileSourceName = Exclude<keyof ProfileSourceRevisions, "account">;
 let authenticationExitTimer: ReturnType<typeof setTimeout> | undefined;
 let hydratedProfileSources: ProfileSourceRevisions | null = null;
 let profileRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let contactPressTimer: ReturnType<typeof setTimeout> | undefined;
 let profileVisible = false;
 
 function profileSourcesAreCurrent(account: string): boolean {
@@ -135,6 +136,7 @@ Page({
     loading: false,
     loggingOut: false,
     openingSetting: "" as ProfileSettingKey | "",
+    contactPressed: false,
     authenticationExitClass: "",
     errorMessage: "",
     userName: "同学",
@@ -190,6 +192,7 @@ Page({
     this._capsuleOffset.value = offset;
   },
   onShow() {
+    this.resetContactPress();
     if (!ensureAuthenticated()) {
       return;
     }
@@ -224,11 +227,13 @@ Page({
     this.scheduleProfileRefresh(PROFILE_RETURN_REFRESH_DELAY_MS);
   },
   onHide() {
+    this.resetContactPress();
     detachCapsuleBackdrop(this);
     profileVisible = false;
     clearProfileRefreshTimer();
   },
   onUnload() {
+    this.resetContactPress();
     detachCapsuleBackdrop(this);
     profileVisible = false;
     clearProfileRefreshTimer();
@@ -373,6 +378,22 @@ Page({
       "personalization",
       "/features/pages/personalization/index",
     );
+  },
+  onContactTap() {
+    this.resetContactPress();
+    haptic("light");
+    this.setData({ contactPressed: true });
+    contactPressTimer = setTimeout(() => {
+      contactPressTimer = undefined;
+      this.setData({ contactPressed: false });
+    }, 240);
+  },
+  resetContactPress() {
+    if (contactPressTimer !== undefined) {
+      clearTimeout(contactPressTimer);
+      contactPressTimer = undefined;
+    }
+    if (this.data.contactPressed) this.setData({ contactPressed: false });
   },
   openAbout() {
     this.openProfileRoute("about", "/features/pages/about/index");

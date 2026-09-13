@@ -87,13 +87,19 @@
 
   <view class="section-header"><view><text class="section-title">帮助</text></view></view>
   <view class="settings-card card">
-    <view class="setting-row setting-row--divided setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
-      <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
-      <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-    </view>
-    <view id="{{capsuleReplica ? 'rim-' : ''}}about-entry" class="setting-row setting-row--action {{openingSetting === 'about' ? 'setting-row--pressed' : ''}}" bindtap="openAbout" aria-role="button" aria-label="关于{{appName}}">
+    <button class="contact-entry" plain open-type="contact" session-from="profile" hover-class="none" bindtap="onContactTap" aria-label="联系客服">
+      <view class="setting-row setting-row--divided setting-row--action {{contactPressed ? 'setting-row--pressed' : ''}}">
+        <view class="setting-copy"><text class="setting-title">联系客服</text></view>
+        <view class="contact-setting-value"><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+      </view>
+    </button>
+    <view id="{{capsuleReplica ? 'rim-' : ''}}about-entry" class="setting-row setting-row--divided setting-row--action {{openingSetting === 'about' ? 'setting-row--pressed' : ''}}" bindtap="openAbout" aria-role="button" aria-label="关于{{appName}}">
       <view class="setting-copy"><text class="setting-title">关于</text></view>
       <view class="legal-setting-value"><text>{{appName}}</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+    </view>
+    <view class="setting-row setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
+      <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
+      <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
     </view>
   </view>
 
