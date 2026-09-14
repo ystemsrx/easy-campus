@@ -120,7 +120,9 @@ assert.equal(
 assert.throws(() => exportsObject.scheduledInstant("2026-09-14", "12:00", now));
 assert.throws(() => exportsObject.scheduledInstant("2026-09-31", "12:01", now));
 const page = read("miniprogram/features/pages/course-grab/index.wxml");
-assert.doesNotMatch(page, /正向关键词|positiveLabel|data-field="positive"/);
+assert.match(page, /正向关键词/);
+assert.match(page, /data-field="positive"/);
+assert.match(page, /placeholder="只写课程名，例：网球, 英语"/);
 assert.match(page, /课程关键词（[^）]*逗号分隔）/);
 const configure = page.match(/<button[^>]*bindtap="configure"[^>]*>/)?.[0];
 assert.ok(configure);

@@ -152,12 +152,13 @@ function runtime(options = {}) {
     const exports = {};
     cache.set(relative, exports);
     vm.runInNewContext(
-      ts.transpileModule(source, {
-        compilerOptions: {
-          target: ts.ScriptTarget.ES2020,
-          module: ts.ModuleKind.CommonJS,
-        },
-      }).outputText,
+      (options.missingIntl ? "delete globalThis.Intl;\n" : "") +
+        ts.transpileModule(source, {
+          compilerOptions: {
+            target: ts.ScriptTarget.ES2020,
+            module: ts.ModuleKind.CommonJS,
+          },
+        }).outputText,
       {
         exports,
         require: (specifier) =>
@@ -189,7 +190,7 @@ function runtime(options = {}) {
         },
         clearTimeout: (id) => timers.delete(id),
         Date,
-        Intl,
+        Intl: Object.hasOwn(options, "intl") ? options.intl : Intl,
       },
     );
     return exports;
@@ -250,15 +251,32 @@ function runtime(options = {}) {
 async function main() {
   await require("./check-course-grab-refunds")();
   const event = { currentTarget: { dataset: { id: "course_assistant" } } };
-  {
-    const r = runtime();
+  for (const options of [
+    {},
+    { missingIntl: true },
+    { intl: undefined },
+    { intl: {} },
+    {
+      intl: {
+        DateTimeFormat() {
+          throw new Error("unsupported Intl");
+        },
+      },
+    },
+    { intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({}) }) } },
+  ]) {
+    const r = runtime(options);
     await settle();
     r.instance.configure({ currentTarget: { dataset: {} } });
     await settle();
     r.instance.setData({
       search: "英\u200b语，体育、ＡＢ",
+      positive: "体\u200b育馆、户外",
       negative: "李\u2060老师､王老师",
     });
+    const expectedInstant = new Date(
+      `${r.instance.data.date}T${r.instance.data.time}:00`,
+    ).toISOString();
     await r.instance.save();
     assert.equal(r.instance.data.draftError, "");
     assert.equal(r.calls.save.length, 1);
@@ -271,9 +289,23 @@ async function main() {
       "李老师",
       "王老师",
     ]);
-    assert.equal("positiveKeywords" in r.calls.save[0], false);
+    assert.deepEqual(Array.from(r.calls.save[0].positiveKeywords), [
+      "体育馆",
+      "户外",
+    ]);
+    assert.equal(
+      r.calls.save[0].scheduledAt,
+      expectedInstant,
+      "Intl support must not change the selected instant",
+    );
+    assert.equal(
+      r.calls.save[0].sourceTimezone,
+      Object.keys(options).length
+        ? "UTC"
+        : Intl.DateTimeFormat().resolvedOptions().timeZone,
+    );
     assert.equal(r.instance.data.tasks[0].negativeLabel, "李老师、王老师");
-    assert.equal("positiveLabel" in r.instance.data.tasks[0], false);
+    assert.equal(r.instance.data.tasks[0].positiveLabel, "体育馆、户外");
     r.instance.onUnload();
   }
   for (const toggleError of ["次数不足请先购买", "使用人数过多，请稍后重试"]) {

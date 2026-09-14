@@ -4,6 +4,7 @@ import type { AutoDormCheckOrderHistoryItem } from "../types/api";
 export interface CourseGrabTask {
   id: string;
   searchKeywords: string[];
+  positiveKeywords: string[];
   negativeKeywords: string[];
   scheduledAt: string;
   sourceTimezone: string;
@@ -27,6 +28,7 @@ export interface CourseGrabStatus {
 export interface CourseGrabInput {
   id?: string;
   searchKeywords: string[];
+  positiveKeywords: string[];
   negativeKeywords: string[];
   scheduledAt: string;
   sourceTimezone: string;

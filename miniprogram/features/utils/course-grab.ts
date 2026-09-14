@@ -21,6 +21,19 @@ export function parseKeywords(input: string, max = 20): string[] {
   return result;
 }
 const pad = (n: number) => String(n).padStart(2, "0");
+export function resolveSourceTimezone(): string {
+  // The selected instant is already converted by Date, independently of Intl.
+  // UTC describes that serialized value when the runtime cannot name its zone.
+  try {
+    if (typeof Intl !== "undefined") {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (typeof zone === "string" && zone) return zone;
+    }
+  } catch {
+    // Some mini-program runtimes provide only part of the Intl API.
+  }
+  return "UTC";
+}
 export function localMinute(value: Date) {
   return {
     date: `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`,
