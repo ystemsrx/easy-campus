@@ -18,7 +18,14 @@ const deferred = () => {
 function runtime(options = {}) {
   let lease = { account: "student-a", token: "session-a" };
   const pending = options.pending || new Map();
-  const calls = { create: [], native: [], navigate: [], status: 0, cancel: 0 };
+  const calls = {
+    create: [],
+    save: [],
+    native: [],
+    navigate: [],
+    status: 0,
+    cancel: 0,
+  };
   const timers = new Map();
   const timerDelays = new Map();
   let timerId = 0;
@@ -112,6 +119,15 @@ function runtime(options = {}) {
       },
     },
     "services/course-grab": {
+      saveCourseGrab: async (input) => {
+        calls.save.push(input);
+        return {
+          observedAt: new Date().toISOString(),
+          entryEnabled: true,
+          balance: { remaining: 0, reserved: 1 },
+          tasks: [{ ...input, enabled: true, state: "pending" }],
+        };
+      },
       toggleCourseGrab: async () => {
         throw new Error(options.toggleError || "次数不足请先购买");
       },
@@ -234,6 +250,32 @@ function runtime(options = {}) {
 async function main() {
   await require("./check-course-grab-refunds")();
   const event = { currentTarget: { dataset: { id: "course_assistant" } } };
+  {
+    const r = runtime();
+    await settle();
+    r.instance.configure({ currentTarget: { dataset: {} } });
+    await settle();
+    r.instance.setData({
+      search: "英\u200b语，体育、ＡＢ",
+      negative: "李\u2060老师､王老师",
+    });
+    await r.instance.save();
+    assert.equal(r.instance.data.draftError, "");
+    assert.equal(r.calls.save.length, 1);
+    assert.deepEqual(Array.from(r.calls.save[0].searchKeywords), [
+      "英语",
+      "体育",
+      "ab",
+    ]);
+    assert.deepEqual(Array.from(r.calls.save[0].negativeKeywords), [
+      "李老师",
+      "王老师",
+    ]);
+    assert.equal("positiveKeywords" in r.calls.save[0], false);
+    assert.equal(r.instance.data.tasks[0].negativeLabel, "李老师、王老师");
+    assert.equal("positiveLabel" in r.instance.data.tasks[0], false);
+    r.instance.onUnload();
+  }
   for (const toggleError of ["次数不足请先购买", "使用人数过多，请稍后重试"]) {
     const r = runtime({ toggleError });
     await settle();

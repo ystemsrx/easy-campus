@@ -2,9 +2,17 @@ export function parseKeywords(input: string, max = 20): string[] {
   const result = [
     ...new Set(
       input
+        .replace(
+          /[\s\p{White_Space}\p{Default_Ignorable_Code_Point}\p{Cf}\p{Cc}]/gu,
+          "",
+        )
         .normalize("NFKC")
-        .split(/[,，]/u)
-        .map((value) => value.replace(/\s/gu, "").toLowerCase())
+        .replace(
+          /[\s\p{White_Space}\p{Default_Ignorable_Code_Point}\p{Cf}\p{Cc}]/gu,
+          "",
+        )
+        .toLowerCase()
+        .split(/[,、]/u)
         .filter(Boolean),
     ),
   ];

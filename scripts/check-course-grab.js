@@ -91,6 +91,27 @@ assert.deepEqual(
   ["英语", "ab"],
 );
 assert.throws(() => exportsObject.parseKeywords("a,b,c,d", 3));
+assert.deepEqual(
+  Array.from(
+    exportsObject.parseKeywords(
+      " 英\u200b语，体\u200c育、Ａ\u2060Ｂ､英语﹐体育︑ab ",
+      3,
+    ),
+  ),
+  ["英语", "体育", "ab"],
+);
+assert.deepEqual(
+  Array.from(
+    exportsObject.parseKeywords(
+      "\u200b\u200c\u200d\u2060\ufeff\u00ad\ufe0f\u034f\u202e\u0085\u0000，､",
+    ),
+  ),
+  [],
+);
+assert.deepEqual(Array.from(exportsObject.parseKeywords("ｅ\u200b\u0301")), [
+  "é",
+]);
+assert.throws(() => exportsObject.parseKeywords("一、二､三，四", 3));
 const now = new Date(2026, 8, 14, 12, 0).getTime();
 assert.equal(
   exportsObject.scheduledInstant("2026-09-14", "12:01", now),
@@ -99,6 +120,8 @@ assert.equal(
 assert.throws(() => exportsObject.scheduledInstant("2026-09-14", "12:00", now));
 assert.throws(() => exportsObject.scheduledInstant("2026-09-31", "12:01", now));
 const page = read("miniprogram/features/pages/course-grab/index.wxml");
+assert.doesNotMatch(page, /正向关键词|positiveLabel|data-field="positive"/);
+assert.match(page, /课程关键词（[^）]*逗号分隔）/);
 const configure = page.match(/<button[^>]*bindtap="configure"[^>]*>/)?.[0];
 assert.ok(configure);
 assert.doesNotMatch(configure, /remaining|reserved/);

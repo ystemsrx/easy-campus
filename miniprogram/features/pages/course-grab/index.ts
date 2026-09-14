@@ -48,7 +48,6 @@ Page({
         label: string;
         timeLabel: string;
         searchLabel: string;
-        positiveLabel: string;
         negativeLabel: string;
       }
     >,
@@ -60,7 +59,6 @@ Page({
     draftId: "",
     editId: "",
     search: "",
-    positive: "",
     negative: "",
     date: "",
     time: "",
@@ -138,7 +136,6 @@ Page({
         label: stateLabel[task.state] || "已关闭",
         timeLabel: timeLabel(task.scheduledAt),
         searchLabel: task.searchKeywords.join("、"),
-        positiveLabel: task.positiveKeywords.join("、"),
         negativeLabel: task.negativeKeywords.join("、"),
       })),
     });
@@ -215,7 +212,6 @@ Page({
       editId: id,
       draftId: id || uuid(),
       search: task?.searchKeywords.join(", ") || "",
-      positive: task?.positiveKeywords.join(", ") || "",
       negative: task?.negativeKeywords.join(", ") || "",
       ...chosen,
       minDate: next.date,
@@ -304,7 +300,7 @@ Page({
   },
   input(event: WechatMiniprogram.Input) {
     const field = String(event.currentTarget.dataset.field);
-    if (["search", "positive", "negative"].includes(field))
+    if (["search", "negative"].includes(field))
       this.setData({ [field]: event.detail.value });
   },
   dateChange(event: WechatMiniprogram.PickerChange) {
@@ -329,7 +325,6 @@ Page({
       const searchKeywords = parseKeywords(this.data.search, 3);
       if (!searchKeywords.length) throw new Error("请填写课程关键词");
       const scheduledAt = scheduledInstant(this.data.date, this.data.time);
-      const positiveKeywords = parseKeywords(this.data.positive);
       const negativeKeywords = parseKeywords(this.data.negative);
       this.setData({ saving: true, draftError: "" });
       const sourceTimezone =
@@ -338,7 +333,6 @@ Page({
         {
           ...(this.data.editId ? {} : { id: this.data.draftId }),
           searchKeywords,
-          positiveKeywords,
           negativeKeywords,
           scheduledAt,
           sourceTimezone,
