@@ -12,6 +12,8 @@ export interface CourseGrabTask {
   enabled: boolean;
   state: string;
   resultCode: string | null;
+  retryCount?: number;
+  nextRetryAt?: string | null;
   selectedCourse: { courseName?: string; sectionId?: string } | null;
   generation: number;
   updatedAt: string;

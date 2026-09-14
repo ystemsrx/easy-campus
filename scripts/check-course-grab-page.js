@@ -113,7 +113,7 @@ function runtime(options = {}) {
     },
     "services/course-grab": {
       toggleCourseGrab: async () => {
-        throw new Error("次数不足请先购买");
+        throw new Error(options.toggleError || "次数不足请先购买");
       },
       loadCourseGrabStatus: () => null,
       getCourseGrabStatus: async () => {
@@ -234,13 +234,13 @@ function runtime(options = {}) {
 async function main() {
   await require("./check-course-grab-refunds")();
   const event = { currentTarget: { dataset: { id: "course_assistant" } } };
-  {
-    const r = runtime();
+  for (const toggleError of ["次数不足请先购买", "使用人数过多，请稍后重试"]) {
+    const r = runtime({ toggleError });
     await settle();
     r.instance.setData({ tasks: [{ id: "task-a", enabled: false }] });
     await r.instance.toggle({ currentTarget: { dataset: { id: "task-a" } } });
     await settle();
-    assert.equal(r.instance.data.capsuleToastMessage, "次数不足请先购买");
+    assert.equal(r.instance.data.capsuleToastMessage, toggleError);
     assert.equal(r.instance.data.capsuleToastVisible, true);
     assert.equal(r.instance.data.tasks[0].enabled, false);
     r.fireTimer(3000);

@@ -47,6 +47,7 @@ export const stateLabel: Record<string, string> = {
   paused: "已暂停",
   pending: "等待抢课",
   warming: "准备中",
+  retrying: "等待重试",
   submitting: "抢课中",
   checking: "抢课中",
   uncertain: "结果确认中",
