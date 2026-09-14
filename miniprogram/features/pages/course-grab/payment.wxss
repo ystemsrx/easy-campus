@@ -1,0 +1,171 @@
+.payment-processing {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  flex-direction: column;
+  padding: 32rpx 24rpx;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg);
+}
+
+/* This one region changes flow height so the existing cards move together.
+   Measure its inner content; auto/max-height guesses jump or clip large text. */
+.payment-progress-region {
+  width: 100%;
+  overflow: hidden;
+  transition: height 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.payment-progress-inner {
+  width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 24rpx;
+  opacity: 0;
+  transform: translateY(-8rpx);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease-out,
+    transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.payment-progress-inner--expanded {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.payment-spinner-enter {
+  flex: none;
+  animation-name: payment-spinner-reveal;
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+}
+.motion-reduced .payment-progress-region,
+.motion-reduced .payment-progress-inner {
+  transition-duration: 0ms;
+}
+.motion-reduced .payment-progress-inner {
+  transform: none;
+}
+.motion-reduced .payment-spinner-enter {
+  animation-name: none;
+}
+@keyframes payment-spinner-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.payment-processing-spinner {
+  display: block;
+  flex: none;
+  width: 142rpx;
+  min-width: 142rpx;
+  height: 142rpx;
+  min-height: 142rpx;
+  border-radius: 999rpx;
+  animation-name: payment-processing-spin;
+  animation-duration: 760ms;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.payment-capsule-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 3000;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 80rpx);
+  min-height: 68rpx;
+  padding: 0 34rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 999rpx;
+  color: #fff;
+  background: rgba(8, 10, 14, 0.58);
+  box-shadow: 0 16rpx 46rpx rgba(8, 10, 14, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -44%) scale(0.94);
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.payment-capsule-toast--visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.payment-capsule-toast text {
+  flex: none;
+  font-size: 25rpx;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.motion-reduced .payment-processing-spinner {
+  animation-name: none;
+}
+
+.motion-reduced .payment-capsule-toast {
+  transition-duration: 1ms;
+}
+
+.motion-reduced .payment-capsule-toast,
+.motion-reduced .payment-capsule-toast--visible {
+  transform: translate(-50%, -50%);
+}
+
+@keyframes payment-processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.payment-progress-title {
+  color: var(--color-text);
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-top: 18rpx;
+}
+.payment-progress-plan {
+  color: var(--color-text);
+  font-size: 28rpx;
+  margin-top: 16rpx;
+}
+.payment-continue {
+  flex: none;
+  margin-top: 32rpx;
+  white-space: nowrap;
+  background-image: none;
+  background-color: var(--color-primary);
+}
+.grab-page .payment-continue.payment-continue--disabled {
+  color: #fff;
+  background: #9a9aa3;
+  box-shadow: none;
+}
+.grab-page .payment-cancel {
+  flex: none;
+  height: 68rpx;
+  line-height: 68rpx;
+  padding: 0 28rpx;
+  margin: 0 auto;
+  text-align: center;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  box-shadow: none;
+  font-size: 26rpx;
+  white-space: nowrap;
+}
+.grab-page .payment-cancel::after {
+  display: none;
+  border: 0;
+}

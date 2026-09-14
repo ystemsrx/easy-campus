@@ -236,7 +236,7 @@ export async function createAutoDormCheckPaymentOrder(
   });
 }
 
-async function wechatPaymentLogin(): Promise<string> {
+export async function wechatPaymentLogin(): Promise<string> {
   const lease = captureSessionLease();
   if (isDemoAccount(lease?.account)) return "demo-local-payment";
   const code = await new Promise<string>((resolve, reject) =>
@@ -276,7 +276,7 @@ export function cancelAutoDormCheckPaymentOrder(
   );
 }
 
-function assertVirtualPaymentSupported(
+export function assertVirtualPaymentSupported(
   payment?: WechatPaymentParameters,
 ): void {
   if (isDemoAccount(captureSessionLease()?.account)) return;

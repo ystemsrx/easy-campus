@@ -32,9 +32,13 @@
 
   <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
   <view class="settings-card card">
-    <view class="setting-row {{autoDormCheckVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
+    <view class="setting-row {{autoDormCheckVisible || courseGrabVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
       <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
       <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+    </view>
+    <view wx:if="{{courseGrabVisible}}" class="setting-row setting-row--divided setting-row--action {{openingSetting === 'course-grab' ? 'setting-row--pressed' : ''}}" bindtap="openCourseGrab" aria-role="button" aria-label="打开抢课助手（实验）">
+      <view class="setting-copy"><text class="setting-title">抢课助手（实验）</text><text class="setting-caption">定时抢课，未抢到返还次数</text></view>
+      <view class="course-assistant-setting-value"><text>配置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
     </view>
     <view wx:if="{{autoDormCheckVisible}}" class="setting-row setting-row--action {{openingSetting === 'auto-dorm-check' ? 'setting-row--pressed' : ''}}" bindtap="openAutoDormCheck" aria-role="button" aria-label="打开{{autoDormCheckTitle}}，当前{{autoDormCheckStatusLabel}}">
       <view class="setting-copy"><text class="setting-title">{{autoDormCheckTitle}}</text><text class="setting-caption">自动完成查寝打卡</text></view>

@@ -1,0 +1,339 @@
+@import "../../../motion.wxss";
+@import "./payment.wxss";
+
+.grab-page {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+}
+.grab-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 8rpx 28rpx;
+  gap: 12rpx;
+  flex: none;
+}
+.grab-text-button {
+  margin: 0;
+  padding: 12rpx 16rpx;
+  color: var(--color-text);
+  background-color: transparent;
+  font-size: 25rpx;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex: none;
+  border: 0;
+}
+.grab-text-button::after {
+  border: 0;
+}
+.grab-text-button--disabled {
+  color: var(--color-text-tertiary);
+  opacity: 0.5;
+  background-color: transparent;
+}
+.grab-empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  padding-bottom: 120rpx;
+}
+.page.grab-page .grab-buy {
+  background-image: none;
+  background-color: var(--color-primary);
+  color: var(--color-on-accent, #fff);
+  box-shadow: none;
+  min-width: 310rpx;
+  margin: 0;
+  white-space: nowrap;
+  flex: none;
+}
+.grab-list-shell {
+  flex: 1;
+  min-height: 0;
+}
+.grab-scroll {
+  width: 100%;
+  height: 100%;
+}
+.grab-list {
+  padding-top: 20rpx;
+}
+.grab-task {
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+.grab-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+.grab-copy {
+  flex: 1;
+  min-width: 0;
+}
+.grab-switch {
+  flex: none;
+  width: 104rpx;
+  height: 64rpx;
+}
+.grab-task-actions {
+  display: flex;
+  flex: none;
+  width: 104rpx;
+  flex-direction: column;
+  align-items: center;
+  align-self: flex-start;
+}
+.grab-task-actions .grab-edit {
+  width: 104rpx;
+  margin: 0;
+  padding: 12rpx 0;
+  text-align: center;
+}
+.grab-task-footer {
+  margin-top: 16rpx;
+}
+.grab-task-state {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+.grab-title {
+  display: block;
+  color: var(--color-text);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+.grab-time {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  margin-top: 12rpx;
+  white-space: nowrap;
+}
+.grab-filters {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 20rpx;
+  margin-top: 12rpx;
+}
+.grab-filter {
+  flex: 1;
+  min-width: 0;
+}
+.grab-filter--right .grab-detail {
+  text-align: right;
+}
+.grab-detail {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.grab-muted {
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+}
+.grab-result {
+  margin-top: 16rpx;
+}
+.grab-result .grab-muted {
+  flex: 1;
+  min-width: 0;
+}
+.grab-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 36rpx 0;
+  color: var(--color-text-secondary);
+  font-size: 25rpx;
+}
+.grab-bottom-space {
+  height: calc(104rpx + env(safe-area-inset-bottom));
+  flex: none;
+}
+.grab-error {
+  display: block;
+  color: var(--color-danger);
+  font-size: 25rpx;
+  padding: 16rpx 28rpx;
+}
+.grab-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1200;
+}
+.grab-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(24, 21, 18, 0.36);
+}
+.grab-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 86vh;
+  width: 100%;
+  box-sizing: border-box;
+  border-top-left-radius: 56rpx;
+  border-top-right-radius: 56rpx;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background-color: var(--color-bg-elevated);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.grab-sheet-head {
+  flex: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 100rpx;
+  padding: 30rpx 38rpx 12rpx 44rpx;
+}
+.grab-sheet-title {
+  color: #16161a;
+  font-size: 34rpx;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex: none;
+}
+.theme-dark .grab-sheet-title {
+  color: #f7f3e9;
+}
+.grab-form {
+  padding: 6rpx 40rpx 24rpx;
+}
+.grab-label {
+  display: block;
+  margin: 24rpx 0 14rpx;
+  color: var(--color-text);
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.grab-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 88rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text);
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+.grab-date-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
+}
+.grab-date-row picker {
+  flex: 1;
+  min-width: 0;
+}
+.grab-page > navigation-bar,
+.grab-page > .payment-progress-region {
+  flex: none;
+}
+.grab-page .payment-progress-inner {
+  padding-left: 28rpx;
+  padding-right: 28rpx;
+}
+.grab-sheet-handle {
+  position: absolute;
+  top: 14rpx;
+  left: 50%;
+  width: 70rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background-color: var(--color-text-tertiary);
+  opacity: 0.3;
+  transform: translateX(-50%);
+}
+.grab-sheet-close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 60rpx;
+  min-width: 60rpx;
+  max-width: 60rpx;
+  height: 60rpx;
+  min-height: 60rpx;
+  max-height: 60rpx;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 30rpx;
+  background-color: var(--color-bg-subtle);
+  transition:
+    transform 110ms ease-out,
+    opacity 110ms ease-out;
+}
+.grab-sheet-close::after {
+  border: 0;
+}
+.grab-sheet-close--pressed {
+  transform: scale(0.9);
+  opacity: 0.72;
+}
+.grab-form-shell {
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+}
+.grab-sheet-footer {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 40rpx calc(28rpx + env(safe-area-inset-bottom));
+}
+.page.grab-page .grab-delete,
+.page.grab-page .grab-save {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+.page.grab-page .grab-save {
+  color: var(--color-on-accent, #fff);
+  background-image: none;
+  background-color: var(--color-primary);
+  box-shadow: none;
+}

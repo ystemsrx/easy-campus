@@ -1,17 +1,82 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const assert = require("node:assert/strict");
+const ts = require("typescript");
 const { spawnSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..");
 
+function checkScheduleScrollWorklet(code) {
+  const source = ts.createSourceFile(
+    "schedule.js",
+    code,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  let factory;
+  function visit(node) {
+    if (
+      ts.isPropertyAssignment(node) &&
+      node.name.getText(source) === "_onGlassDayScroll_worklet_factory_"
+    ) {
+      factory = vm.runInNewContext(`(${node.initializer.getText(source)})`);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.equal(
+    typeof factory,
+    "function",
+    "The real compiler must produce the scroll worklet factory",
+  );
+  const shared = {
+    value: Array.from({ length: 21 }, (_, index) => index * 10),
+  };
+  // The old compiler output calls this._slice_worklet_factory_ here and throws.
+  const worklet = factory.call({ _capsuleDayScroll: shared });
+  const execute = vm.runInNewContext(`(${worklet.asString})`, {
+    jsThis: { _closure: worklet._closure },
+  });
+  for (const slot of [0, 10, 20]) {
+    const previous = shared.value;
+    const expected = [...previous];
+    expected[slot] = 315;
+    execute({
+      currentTarget: { dataset: { slot } },
+      detail: { scrollTop: 315 },
+    });
+    assert.notEqual(shared.value, previous);
+    assert.deepEqual(Array.from(shared.value), expected);
+    assert.equal(
+      previous[slot],
+      slot * 10,
+      "Publishing a scroll offset must not mutate the prior shared array",
+    );
+  }
+  const previous = shared.value;
+  for (const slot of [undefined, -1, 21, 0.5]) {
+    execute({
+      currentTarget: { dataset: { slot } },
+      detail: { scrollTop: 999 },
+    });
+    assert.equal(
+      shared.value,
+      previous,
+      "Invalid scroll slots must be ignored",
+    );
+  }
+}
+
 // Run in the installed DevTools Electron runtime so its bundled compiler and
 // exact Babel dependency versions are loaded directly from app.asar.
 async function compileWithDevTools(archive) {
-  const { bableCompile } = require(path.join(
-    archive,
-    "js/common/miniprogram-builder/modules/corecompiler/summer/plugins/script_task/babel_script_task.js",
-  ));
+  const { bableCompile } = require(
+    path.join(
+      archive,
+      "js/common/miniprogram-builder/modules/corecompiler/summer/plugins/script_task/babel_script_task.js",
+    ),
+  );
   const project = JSON.parse(
     fs.readFileSync(path.join(root, "project.config.json"), "utf8"),
   );
@@ -48,6 +113,11 @@ async function compileWithDevTools(archive) {
       );
       if (!result.code) throw new Error("Compiler produced no JavaScript");
       new vm.Script(result.code, { filename });
+      if (
+        path.relative(sourceRoot, filename).replaceAll("\\", "/") ===
+        "pages/schedule/index.ts"
+      )
+        checkScheduleScrollWorklet(result.code);
     } catch (error) {
       failures.push(`${path.relative(sourceRoot, filename)}: ${error.message}`);
     } finally {
@@ -81,7 +151,9 @@ async function main() {
     "app.asar",
   );
   if (!fs.existsSync(resolvedExecutable) || !fs.existsSync(archive)) {
-    throw new Error("WeChat DevTools executable or resources/app.asar not found");
+    throw new Error(
+      "WeChat DevTools executable or resources/app.asar not found",
+    );
   }
   const result = spawnSync(
     resolvedExecutable,

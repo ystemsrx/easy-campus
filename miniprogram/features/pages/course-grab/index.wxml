@@ -1,0 +1,83 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<view class="page page--quick-entry grab-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <navigation-bar title="抢课助手（实验）" back transparent theme="{{theme}}"></navigation-bar>
+  <view class="grab-toolbar">
+    <button class="grab-text-button" bindtap="orders" hover-class="button-pressed">订单历史</button>
+    <button class="grab-text-button {{saving || !entryEnabled ? 'grab-text-button--disabled' : ''}}" bindtap="configure" disabled="{{saving || !entryEnabled}}" hover-class="button-pressed">配置抢课</button>
+  </view>
+  <view class="payment-progress-region" style="height: {{progressHeight}}px;" aria-hidden="{{!processing && !checkingPayment && !canResumePayment}}">
+    <view wx:if="{{progressMounted}}" class="payment-progress-inner {{progressExpanded ? 'payment-progress-inner--expanded' : ''}}">
+      <view class="payment-processing card" aria-role="status">
+        <view wx:if="{{progressBusy}}" class="payment-spinner-enter"><image class="payment-processing-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit"></image></view>
+        <text class="payment-progress-title">{{progressBusy ? (checkingPayment ? '正在查询订单' : '正在处理支付') : '订单待完成'}}</text>
+        <text class="payment-progress-plan">{{progressPlanName}} {{progressPriceLabel}}</text>
+        <button wx:if="{{canResumePayment && !progressBusy && !paymentActionPending}}" class="primary-button payment-continue" hover-class="none" bindtap="resumePurchase">继续付款</button>
+        <view wx:if="{{cancellingPayment}}" class="payment-cancel" aria-role="status">取消中</view>
+        <button wx:elif="{{processing || checkingPayment || canResumePayment}}" class="payment-cancel" hover-class="none" bindtap="cancelPurchase">取消订单</button>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{errorMessage}}" class="grab-error" bindtap="retryPurchase"><text>{{errorMessage}}</text><text>重试</text></view>
+  <view wx:if="{{error}}" class="grab-error" bindtap="refresh"><text>{{error}}</text><text>重试</text></view>
+  <view wx:if="{{!statusLoaded}}" class="grab-empty"><loading-view label="读取中" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view></view>
+  <view wx:elif="{{!tasks.length}}" class="grab-empty">
+    <text wx:if="{{!entryEnabled}}" class="grab-muted">暂未开放</text>
+    <button class="primary-button grab-buy {{!entryEnabled || processing || paymentActionPending || loading ? 'primary-button--disabled' : ''}}" data-id="course_assistant" bindtap="buy" disabled="{{!entryEnabled || processing || paymentActionPending || loading}}" hover-class="button-pressed">购买一次 · ¥5</button>
+    <text class="grab-muted">剩余 {{remaining}} 次</text>
+  </view>
+  <view wx:else class="grab-list-shell">
+    <scroll-view class="grab-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="grab-list page-content">
+        <view wx:for="{{tasks}}" wx:key="id" class="grab-task card">
+          <view class="grab-row">
+            <view class="grab-copy" data-id="{{item.id}}" bindtap="configure" aria-role="button" aria-label="编辑{{item.searchLabel}}">
+              <text class="grab-title" overflow="ellipsis" max-lines="2">{{item.searchLabel}}</text>
+              <text class="grab-time tnum">{{item.timeLabel}}</text>
+            </view>
+            <view class="grab-task-actions">
+              <app-switch class="grab-switch" checked="{{item.enabled}}" disabled="{{saving || !entryEnabled || item.state === 'submitting' || item.state === 'uncertain'}}" data-id="{{item.id}}" bindchange="toggle" label="{{item.searchLabel}}，{{item.enabled ? '已开启' : '已关闭'}}"></app-switch>
+            </view>
+          </view>
+          <view wx:if="{{item.positiveLabel || item.negativeLabel}}" class="grab-filters" data-id="{{item.id}}" bindtap="configure" aria-role="button" aria-label="编辑筛选条件">
+            <view class="grab-filter"><text wx:if="{{item.positiveLabel}}" class="grab-detail" overflow="ellipsis" max-lines="1">包含：{{item.positiveLabel}}</text></view>
+            <view class="grab-filter grab-filter--right"><text wx:if="{{item.negativeLabel}}" class="grab-detail" overflow="ellipsis" max-lines="1">排除：{{item.negativeLabel}}</text></view>
+          </view>
+          <view class="grab-row grab-task-footer">
+            <text class="grab-muted grab-task-state" overflow="ellipsis" max-lines="1">{{item.label}}{{item.state === 'succeeded' && item.selectedCourse.courseName ? '：' + item.selectedCourse.courseName : ''}}</text>
+            <view class="grab-task-actions">
+              <button class="grab-text-button grab-edit" data-id="{{item.id}}" bindtap="configure" disabled="{{saving || !entryEnabled}}">编辑</button>
+            </view>
+          </view>
+        </view>
+        <view class="grab-balance"><text>剩余 {{remaining}} 次</text><button class="primary-button grab-buy {{!entryEnabled || processing || paymentActionPending || loading ? 'primary-button--disabled' : ''}}" data-id="course_assistant" bindtap="buy" disabled="{{!entryEnabled || processing || paymentActionPending || loading}}">购买一次 · ¥5</button></view>
+      </view>
+      <view class="grab-bottom-space"></view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{draftMounted}}" class="grab-overlay motion-layer {{draftActive ? 'motion-layer--active' : ''}}">
+    <view class="grab-mask motion-scrim {{draftActive ? 'motion-scrim--active' : ''}}" bindtap="closeDraft" catchtouchmove="noop"></view>
+    <view class="grab-sheet motion-sheet {{draftActive ? 'motion-sheet--active' : ''}}">
+      <view class="grab-sheet-handle"></view>
+      <view class="grab-sheet-head"><text class="grab-sheet-title">配置抢课</text><view class="grab-sheet-close" bindtap="closeDraft" hover-class="grab-sheet-close--pressed" hover-stay-time="90" aria-role="button" aria-disabled="{{saving}}" aria-label="关闭配置抢课"><lucide-icon name="x" tone="muted" size="{{30}}" label="关闭"></lucide-icon></view></view>
+      <view class="grab-form-shell" style="height: {{draftBodyHeight}}px;"><scroll-view class="grab-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="grab-form">
+          <text class="grab-label">课程关键词（最多3门候选，按优先顺序抢最多1门）</text>
+          <input class="grab-input" value="{{search}}" data-field="search" bindinput="input" placeholder="例如：英语, 体育" maxlength="302" adjust-position cursor-spacing="24"/>
+          <text class="grab-label">正向关键词</text><input class="grab-input" value="{{positive}}" data-field="positive" bindinput="input" placeholder="需要包含的课程、教师等，逗号分隔" maxlength="2100" adjust-position cursor-spacing="24"/>
+          <text class="grab-label">反向关键词</text><input class="grab-input" value="{{negative}}" data-field="negative" bindinput="input" placeholder="排除的课程、教师等，逗号分隔" maxlength="2100" adjust-position cursor-spacing="24"/>
+          <text class="grab-label">抢课时间（精确时间，不要提前）</text>
+          <view class="grab-date-row"><picker mode="date" value="{{date}}" start="{{minDate}}" bindchange="dateChange"><view class="grab-input tnum">{{date}}</view></picker><picker mode="time" value="{{time}}" start="{{minTime}}" bindchange="timeChange"><view class="grab-input tnum">{{time}}</view></picker></view>
+          <text wx:if="{{draftError}}" class="grab-error">{{draftError}}</text>
+        </view>
+      </scroll-view></view>
+      <view class="grab-sheet-footer">
+        <button wx:if="{{editId}}" class="danger-button grab-delete" bindtap="remove" disabled="{{saving}}">删除</button>
+        <button class="primary-button grab-save {{saving ? 'primary-button--disabled' : ''}}" bindtap="save" disabled="{{saving}}" hover-class="button-pressed">{{saving ? '保存中' : '保存'}}</button>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{capsuleToastMounted}}" class="payment-capsule-toast {{capsuleToastVisible ? 'payment-capsule-toast--visible' : ''}}" aria-role="status">
+    <text>{{capsuleToastMessage}}</text>
+  </view>
+</view>
+<screen-watermark></screen-watermark>

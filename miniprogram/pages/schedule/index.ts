@@ -770,7 +770,13 @@ Page({
     if (!this._capsuleDayScroll) return;
     const slot = Number(event.currentTarget?.dataset?.slot);
     if (!(slot >= 0)) return;
-    const values = this._capsuleDayScroll.value.slice();
+    // A call chained from this is mistaken for a page worklet method by the
+    // WeChat compiler. Copy by index before publishing the new shared value.
+    const previous = this._capsuleDayScroll.value;
+    if (slot >= previous.length || slot % 1 !== 0) return;
+    const values: number[] = [];
+    for (let index = 0; index < previous.length; index += 1)
+      values[index] = previous[index];
     values[slot] = event.detail.scrollTop;
     this._capsuleDayScroll.value = values;
   },

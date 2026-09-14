@@ -121,7 +121,7 @@ async function main() {
     profileStyles.match(/\.setting-row--pressed\s*\{[^}]*\}/s)?.[0] || "";
   assert(
     !profileTemplate.includes('hover-class="setting-row--pressed"') &&
-      (profileTemplate.match(/openingSetting ===/g) || []).length === 9 &&
+      (profileTemplate.match(/openingSetting ===/g) || []).length === 10 &&
       /openProfileRoute\(key: ProfileSettingKey, url: string\)[\s\S]*?if \(this\.data\.openingSetting\) return;[\s\S]*?this\.setData\(\{ openingSetting: key \}, \(\) => \{[\s\S]*?navigateTo\(url\)\.then/.test(
         profileSource,
       ) &&

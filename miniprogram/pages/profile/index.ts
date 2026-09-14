@@ -1,4 +1,8 @@
 import {
+  getCourseGrabStatus,
+  loadCourseGrabStatus,
+} from "../../services/course-grab";
+import {
   initializeCapsuleBackdrop,
   attachCapsuleBackdrop,
   detachCapsuleBackdrop,
@@ -59,6 +63,7 @@ import {
 
 type ProfileSettingKey =
   | "course-assistant"
+  | "course-grab"
   | "auto-dorm-check"
   | "pet"
   | "grades"
@@ -154,6 +159,7 @@ Page({
     petEnabled: false,
     petVisible: false,
     autoDormCheckVisible: false,
+    courseGrabVisible: false,
     autoDormCheckTitle: "自动查寝",
     autoDormCheckStatusLabel: "已关闭",
     autoDormCheckStatusTone: "muted" as
@@ -202,6 +208,15 @@ Page({
     const lease = captureSessionLease();
     if (!lease) return;
     const account = lease.account;
+    this.setData({
+      courseGrabVisible: loadCourseGrabStatus(account)?.entryEnabled || false,
+    });
+    void getCourseGrabStatus()
+      .then((status) => {
+        if (isSessionLeaseCurrent(lease))
+          this.setData({ courseGrabVisible: status.entryEnabled });
+      })
+      .catch(() => {});
     if (this.data.account && this.data.account !== account)
       this.setData({
         feedbackVisible: false,
@@ -351,6 +366,10 @@ Page({
         this.setData({ openingSetting: "" });
       });
     });
+  },
+  openCourseGrab() {
+    if (this.data.courseGrabVisible)
+      this.openProfileRoute("course-grab", "/features/pages/course-grab/index");
   },
   openCourseAssistant() {
     this.openProfileRoute(
