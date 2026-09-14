@@ -40,6 +40,37 @@ export function localMinute(value: Date) {
     time: `${pad(value.getHours())}:${pad(value.getMinutes())}`,
   };
 }
+export function timePickerState(date: string, time: string, now = Date.now()) {
+  const next = localMinute(new Date(Math.floor(now / 60000) * 60000 + 60000));
+  const chosenDate =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= next.date ? date : next.date;
+  const minimum = chosenDate === next.date ? next.time : "00:00";
+  const chosenTime =
+    date === chosenDate &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(time) &&
+    time >= minimum
+      ? time
+      : minimum;
+  const [hour, minute] = chosenTime.split(":").map(Number);
+  const [firstHour, firstMinute] = minimum.split(":").map(Number);
+  const minuteStart = hour === firstHour ? firstMinute : 0;
+  return {
+    date: chosenDate,
+    time: chosenTime,
+    minDate: next.date,
+    timeRange: [
+      Array.from(
+        { length: 24 - firstHour },
+        (_, i) => `${pad(firstHour + i)}时`,
+      ),
+      Array.from(
+        { length: 60 - minuteStart },
+        (_, i) => `${pad(minuteStart + i)}分`,
+      ),
+    ],
+    timeIndices: [hour - firstHour, minute - minuteStart],
+  };
+}
 export function scheduledInstant(date: string, time: string, now = Date.now()) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time))
     throw new Error("请选择日期和时间");

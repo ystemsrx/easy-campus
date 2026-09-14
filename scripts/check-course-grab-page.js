@@ -16,6 +16,15 @@ const deferred = () => {
 };
 
 function runtime(options = {}) {
+  let clock = options.now ?? Date.now();
+  class TestDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : [clock]));
+    }
+    static now() {
+      return clock;
+    }
+  }
   let lease = { account: "student-a", token: "session-a" };
   const pending = options.pending || new Map();
   const calls = {
@@ -189,7 +198,7 @@ function runtime(options = {}) {
           return id;
         },
         clearTimeout: (id) => timers.delete(id),
-        Date,
+        Date: options.now === undefined ? Date : TestDate,
         Intl: Object.hasOwn(options, "intl") ? options.intl : Intl,
       },
     );
@@ -233,6 +242,9 @@ function runtime(options = {}) {
   instance.onShow();
   return {
     instance,
+    setNow(value) {
+      clock = value;
+    },
     calls,
     pending,
     result,
@@ -251,6 +263,53 @@ function runtime(options = {}) {
 async function main() {
   await require("./check-course-grab-refunds")();
   const event = { currentTarget: { dataset: { id: "course_assistant" } } };
+  {
+    const r = runtime({ now: new Date(2026, 8, 15, 0, 5, 30).getTime() });
+    await settle();
+    r.instance.configure({ currentTarget: { dataset: {} } });
+    assert.equal(r.instance.data.timeRange[0].length, 24);
+    assert.equal(r.instance.data.time, "00:06");
+    r.instance.timeColumnChange({ detail: { column: 0, value: 9 } });
+    assert.equal(
+      r.instance.data.time,
+      "00:06",
+      "wheel motion must not commit the time",
+    );
+    assert.equal(r.instance.data.timeRange[1][0], "00分");
+    r.instance.timeChange({ detail: { value: [9, 0] } });
+    assert.equal(r.instance.data.time, "09:00");
+    r.instance.timeColumnChange({ detail: { column: 0, value: 10 } });
+    r.instance.cancelTimePicker();
+    assert.equal(r.instance.data.time, "09:00");
+    assert.equal(r.instance.data.timeIndices[0], 9);
+    r.instance.dateChange({ detail: { value: "2026-09-16" } });
+    r.instance.timeChange({ detail: { value: [0, 0] } });
+    assert.equal(r.instance.data.time, "00:00");
+    r.instance.dateChange({ detail: { value: "2026-09-15" } });
+    assert.equal(
+      r.instance.data.time,
+      "00:06",
+      "returning to today clamps an earlier time",
+    );
+    r.instance.onUnload();
+  }
+  {
+    const r = runtime({ now: new Date(2026, 8, 15, 23, 58, 30).getTime() });
+    await settle();
+    r.instance.configure({ currentTarget: { dataset: {} } });
+    assert.deepEqual(Array.from(r.instance.data.timeRange[0]), ["23时"]);
+    assert.deepEqual(Array.from(r.instance.data.timeRange[1]), ["59分"]);
+    r.instance.onHide();
+    r.setNow(new Date(2026, 8, 15, 23, 59, 10).getTime());
+    r.instance.onShow();
+    assert.equal(r.instance.data.date, "2026-09-16");
+    assert.equal(r.instance.data.time, "00:00");
+    assert.equal(r.instance.data.timeRange[0].length, 24);
+    r.setNow(new Date(2026, 8, 16, 0, 0, 0).getTime());
+    r.instance.prepareTimePicker();
+    assert.equal(r.instance.data.time, "00:01");
+    r.instance.onUnload();
+  }
   for (const options of [
     {},
     { missingIntl: true },

@@ -66,7 +66,7 @@
           <text class="grab-label">正向关键词（选填）</text><input class="grab-input" value="{{positive}}" data-field="positive" bindinput="input" placeholder="需要包含的课程、教师等，逗号分隔" maxlength="2100" adjust-position cursor-spacing="24"/>
           <text class="grab-label">反向关键词（选填）</text><input class="grab-input" value="{{negative}}" data-field="negative" bindinput="input" placeholder="排除的课程、教师等，逗号分隔" maxlength="2100" adjust-position cursor-spacing="24"/>
           <text class="grab-label">抢课时间（精确时间，不要提前）</text>
-          <view class="grab-date-row"><picker mode="date" value="{{date}}" start="{{minDate}}" bindchange="dateChange"><view class="grab-input tnum">{{date}}</view></picker><picker mode="time" value="{{time}}" start="{{minTime}}" bindchange="timeChange"><view class="grab-input tnum">{{time}}</view></picker></view>
+          <view class="grab-date-row"><picker mode="date" value="{{date}}" start="{{minDate}}" bindtap="prepareTimePicker" bindchange="dateChange"><view class="grab-input tnum">{{date}}</view></picker><picker mode="multiSelector" range="{{timeRange}}" value="{{timeIndices}}" bindtap="prepareTimePicker" bindcolumnchange="timeColumnChange" bindchange="timeChange" bindcancel="cancelTimePicker"><view class="grab-input tnum">{{time}}</view></picker></view>
           <text wx:if="{{draftError}}" class="grab-error">{{draftError}}</text>
         </view>
       </scroll-view></view>

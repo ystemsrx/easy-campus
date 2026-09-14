@@ -22,6 +22,7 @@ import {
 } from "../../../utils/appearance";
 import {
   localMinute,
+  timePickerState,
   scheduledInstant,
   parseKeywords,
   resolveSourceTimezone,
@@ -66,7 +67,8 @@ Page({
     date: "",
     time: "",
     minDate: "",
-    minTime: "",
+    timeRange: [[], []] as string[][],
+    timeIndices: [0, 0],
     draftError: "",
   },
   _draftRevision: 0,
@@ -105,7 +107,10 @@ Page({
       const cached = loadCourseGrabStatus(lease.account);
       if (cached) this.applyStatus(cached);
     }
-    if (this.data.draftOpen) this.setDraftPresence(true);
+    if (this.data.draftOpen) {
+      this.prepareTimePicker();
+      this.setDraftPresence(true);
+    }
     void this.refresh();
   },
   onHide() {
@@ -218,9 +223,7 @@ Page({
       search: task?.searchKeywords.join(", ") || "",
       positive: task?.positiveKeywords?.join(", ") || "",
       negative: task?.negativeKeywords.join(", ") || "",
-      ...chosen,
-      minDate: next.date,
-      minTime: chosen.date === next.date ? next.time : "00:00",
+      ...timePickerState(chosen.date, chosen.time),
       draftError: "",
     });
     this.setDraftPresence(true);
@@ -309,18 +312,46 @@ Page({
       this.setData({ [field]: event.detail.value });
   },
   dateChange(event: WechatMiniprogram.PickerChange) {
-    const next = localMinute(
-      new Date(Math.ceil((Date.now() + 1) / 60000) * 60000),
+    this.setData(timePickerState(String(event.detail.value), this.data.time));
+  },
+  prepareTimePicker() {
+    this.setData(timePickerState(this.data.date, this.data.time));
+  },
+  timeColumnChange(
+    event: WechatMiniprogram.CustomEvent<{ column: number; value: number }>,
+  ) {
+    const { column, value } = event.detail;
+    if ((column !== 0 && column !== 1) || !Number.isInteger(value)) return;
+    const indices = this.data.timeIndices.slice();
+    indices[column] = value;
+    const hour = this.data.timeRange[0][indices[0]];
+    const minute = this.data.timeRange[1][indices[1]];
+    if (!hour || !minute) return;
+    const state = timePickerState(
+      this.data.date,
+      `${hour.slice(0, 2)}:${minute.slice(0, 2)}`,
     );
-    const date = String(event.detail.value);
+    // Wheel movement is a draft; cancellation must preserve the displayed time.
     this.setData({
-      date,
-      minDate: next.date,
-      minTime: date === next.date ? next.time : "00:00",
+      timeRange: state.timeRange,
+      timeIndices: state.timeIndices,
     });
   },
   timeChange(event: WechatMiniprogram.PickerChange) {
-    this.setData({ time: String(event.detail.value) });
+    const indices = event.detail.value;
+    if (!Array.isArray(indices) || indices.length !== 2) return;
+    const hour = this.data.timeRange[0][Number(indices[0])];
+    const minute = this.data.timeRange[1][Number(indices[1])];
+    if (!hour || !minute) return;
+    this.setData(
+      timePickerState(
+        this.data.date,
+        `${hour.slice(0, 2)}:${minute.slice(0, 2)}`,
+      ),
+    );
+  },
+  cancelTimePicker() {
+    this.prepareTimePicker();
   },
   async save() {
     if (this.data.saving) return;

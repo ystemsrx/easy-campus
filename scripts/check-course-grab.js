@@ -119,7 +119,60 @@ assert.equal(
 );
 assert.throws(() => exportsObject.scheduledInstant("2026-09-14", "12:00", now));
 assert.throws(() => exportsObject.scheduledInstant("2026-09-31", "12:01", now));
+const pickerAt = (date, time, hour, minute) =>
+  exportsObject.timePickerState(
+    date,
+    time,
+    new Date(2026, 8, 15, hour, minute, 30).getTime(),
+  );
+const midnightPicker = pickerAt("2026-09-15", "00:00", 0, 0);
+assert.equal(midnightPicker.timeRange[0].length, 24);
+assert.equal(midnightPicker.timeRange[0][23], "23时");
+assert.equal(midnightPicker.time, "00:01");
+const morningPicker = pickerAt("2026-09-15", "09:00", 0, 0);
+assert.equal(morningPicker.timeRange[1].length, 60);
+assert.equal(morningPicker.timeRange[1][0], "00分");
+const nextDayPicker = pickerAt("2026-09-16", "00:00", 12, 34);
+assert.equal(nextDayPicker.timeRange[0].length, 24);
+assert.equal(nextDayPicker.timeRange[1].length, 60);
+assert.equal(pickerAt("2026-09-15", "01:00", 12, 34).time, "12:35");
+const rollover = pickerAt("2026-09-15", "23:59", 23, 59);
+assert.equal(rollover.date, "2026-09-16");
+assert.equal(rollover.time, "00:00");
+for (let hour = 0; hour < 24; hour++) {
+  for (const minute of [0, 29, 58, 59]) {
+    const clock = new Date(2026, 8, 15, hour, minute, 30).getTime();
+    const state = exportsObject.timePickerState("2026-09-15", "00:00", clock);
+    for (const label of state.timeRange[0]) {
+      const column = exportsObject.timePickerState(
+        state.date,
+        `${label.slice(0, 2)}:00`,
+        clock,
+      );
+      const selectedHour = column.timeRange[0][column.timeIndices[0]].slice(
+        0,
+        2,
+      );
+      for (const m of column.timeRange[1]) {
+        assert.ok(
+          Date.parse(
+            exportsObject.scheduledInstant(
+              column.date,
+              `${selectedHour}:${m.slice(0, 2)}`,
+              clock,
+            ),
+          ) > clock,
+        );
+      }
+    }
+  }
+}
 const page = read("miniprogram/features/pages/course-grab/index.wxml");
+assert.match(
+  page,
+  /mode="multiSelector"[^>]*range="\{\{timeRange\}\}"[^>]*value="\{\{timeIndices\}\}"/,
+);
+assert.doesNotMatch(page, /mode="time"|minTime/);
 assert.match(page, /正向关键词/);
 assert.match(page, /data-field="positive"/);
 assert.match(page, /placeholder="只写课程名，例：网球, 英语"/);
