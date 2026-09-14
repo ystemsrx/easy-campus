@@ -228,7 +228,7 @@ function startPreload(session: Session): PrimaryTabPreloadState {
   warmSchedule(state, false);
   warmProfile(state);
 
-  state.userPromise = getCurrentUser();
+  state.userPromise = getCurrentUser(true);
   state.timetablePromise = preloadTimetable(state);
   state.schedulePromise = preloadSchedule(state);
   void state.userPromise.then(() => warmProfile(state)).catch(() => undefined);

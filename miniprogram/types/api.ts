@@ -223,6 +223,8 @@ export interface CurrentUserData {
   name: string;
   /** First account registration timestamp, returned as ISO 8601 UTC. */
   registeredAt?: string | null;
+  /** Last successful campus profile fetch, independent of data changes. */
+  profileFetchedAt?: string | null;
   credential: CredentialState;
   companion: CompanionPreferencesData | null;
   profile: {

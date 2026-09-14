@@ -20,6 +20,7 @@ import { syncVisitSession } from "./visits";
 import { getDevicePublicKey } from "./device-proof";
 import { DEMO_PASSWORD, demoLoginData, isDemoAccount } from "../demo/identity";
 import { prepareDemoData } from "../demo/bootstrap";
+import { refreshProfileOnForeground } from "./profile-refresh";
 
 let loginRequestRevision = 0;
 
@@ -68,7 +69,9 @@ export async function login(
   return session;
 }
 
-export async function getCurrentUser(): Promise<CurrentUserData> {
+export async function getCurrentUser(
+  checkProfileFreshness = false,
+): Promise<CurrentUserData> {
   const lease = captureSessionLease();
   const data = await apiRequest<CurrentUserData>("/auth/me");
   assertSessionLeaseCurrent(lease);
@@ -79,6 +82,7 @@ export async function getCurrentUser(): Promise<CurrentUserData> {
   assertSessionLeaseCurrent(lease);
   saveCurrentUser(data);
   updateSessionCredential(data.credential);
+  if (checkProfileFreshness) return refreshProfileOnForeground(data);
   return data;
 }
 

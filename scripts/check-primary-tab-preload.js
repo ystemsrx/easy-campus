@@ -119,7 +119,7 @@ assert(
     preload.includes("const timetable = timetableSnapshot?.data || null") &&
     preload.includes("loadScheduleData(account)") &&
     preload.includes("warmSchedule(state)") &&
-    preload.includes("state.userPromise = getCurrentUser()") &&
+    preload.includes("state.userPromise = getCurrentUser(true)") &&
     preload.includes("state.timetablePromise = preloadTimetable(state)") &&
     preload.includes("state.schedulePromise = preloadSchedule(state)"),
   "预加载器必须先准备本地首屏，再并行加载资料、课表和用户日程",
