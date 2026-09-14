@@ -406,6 +406,28 @@ Page({
       contactPressTimer = undefined;
       this.setData({ contactPressed: false });
     }, 240);
+    if (typeof wx.openCustomerServiceChat !== "function") {
+      wx.showToast({
+        title: "请升级微信后联系客服",
+        icon: "none",
+        duration: 3000,
+      });
+      return;
+    }
+    wx.openCustomerServiceChat({
+      corpId: "wwe7e6f80e6dbb8036",
+      extInfo: {
+        url: "https://work.weixin.qq.com/kfid/kfcd16e8411ecae0283",
+      },
+      fail: (error) => {
+        if (/cancel/i.test(error.errMsg)) return;
+        wx.showToast({
+          title: "客服打开失败，请稍后重试",
+          icon: "none",
+          duration: 3000,
+        });
+      },
+    });
   },
   resetContactPress() {
     if (contactPressTimer !== undefined) {

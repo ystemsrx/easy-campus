@@ -91,7 +91,7 @@
 
   <view class="section-header"><view><text class="section-title">帮助</text></view></view>
   <view class="settings-card card">
-    <button class="contact-entry" plain open-type="contact" session-from="profile" hover-class="none" bindtap="onContactTap" aria-label="联系客服">
+    <button class="contact-entry" plain hover-class="none" bindtap="onContactTap" aria-label="联系客服">
       <view class="setting-row setting-row--divided setting-row--action {{contactPressed ? 'setting-row--pressed' : ''}}">
         <view class="setting-copy"><text class="setting-title">联系客服</text></view>
         <view class="contact-setting-value"><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
