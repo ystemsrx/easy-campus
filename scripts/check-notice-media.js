@@ -66,6 +66,27 @@ const detail = {
     },
   ],
 };
+// Exercise media inside a table, including a table inside a native list item.
+detail.contentBlocks[0].segments = [
+  {
+    key: "table",
+    type: "table",
+    rowCount: 1,
+    columnCount: 1,
+    cells: [{ key: "cell", segments: detail.contentBlocks[0].segments }],
+  },
+];
+detail.contentBlocks[1].items[0].segments = [
+  {
+    key: "nested-table",
+    type: "table",
+    rowCount: 1,
+    columnCount: 1,
+    cells: [
+      { key: "cell", segments: detail.contentBlocks[1].items[0].segments },
+    ],
+  },
+];
 let current = true;
 let definition;
 let menu;
@@ -153,12 +174,12 @@ async function run() {
     "https://ugs.swu.edu.cn/1.jpg",
     "https://ugs.swu.edu.cn/2.jpg",
   ]);
-  page.previewImage(event({ src: page.data.imageUrls[1] }));
+  page.previewImage({ ...event({}), detail: { src: page.data.imageUrls[1] } });
   assert.equal(previews[0].current, page.data.imageUrls[1]);
   assert.deepEqual(previews[0].urls, page.data.imageUrls);
   page.previewImage(event({ src: "icon.gif" }));
   assert.equal(previews.length, 1);
-  page.openAttachment(event({ url: attachment.url }));
+  page.openAttachment({ ...event({}), detail: { url: attachment.url } });
   assert.deepEqual(menu.itemList, ["预览", "转发文件", "复制链接"]);
   menu.success({ tapIndex: 2 });
   assert.equal(copies.at(-1), attachment.url);

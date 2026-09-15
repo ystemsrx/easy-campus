@@ -14,6 +14,7 @@
           <block wx:if="{{contentBlock.type === 'html'}}">
             <block wx:for="{{contentBlock.segments}}" wx:key="key" wx:for-item="segment">
               <rich-text wx:if="{{segment.type === 'html'}}" class="notice-rich-text" mode="compat" nodes="{{segment.contentHtml}}"></rich-text>
+              <notice-table wx:elif="{{segment.type === 'table'}}" table="{{segment}}" theme="{{theme}}" bindpreviewimage="previewImage" bindopenattachment="openAttachment"></notice-table>
               <image wx:elif="{{segment.type === 'image'}}" class="notice-article-image pressable" src="{{segment.src}}" mode="widthFix" data-src="{{segment.src}}" bindtap="previewImage" aria-role="button" aria-label="{{segment.alt || '查看大图'}}"></image>
               <view wx:else class="notice-attachment pressable" data-url="{{segment.url}}" bindtap="openAttachment" hover-class="pressing" aria-role="button" aria-label="{{segment.name}}">
                 <image wx:if="{{segment.iconSrc}}" class="notice-attachment-icon" src="{{segment.iconSrc}}" mode="aspectFit"></image><text class="notice-attachment-name">{{segment.name}}</text>
@@ -27,6 +28,7 @@
               <view class="notice-native-list-body">
                 <block wx:for="{{listItem.segments}}" wx:key="key" wx:for-item="segment">
                   <rich-text wx:if="{{segment.type === 'html'}}" class="notice-native-list-body-rich-text" mode="compat" nodes="{{segment.contentHtml}}"></rich-text>
+                  <notice-table wx:elif="{{segment.type === 'table'}}" table="{{segment}}" theme="{{theme}}" bindpreviewimage="previewImage" bindopenattachment="openAttachment"></notice-table>
                   <image wx:elif="{{segment.type === 'image'}}" class="notice-article-image pressable" src="{{segment.src}}" mode="widthFix" data-src="{{segment.src}}" bindtap="previewImage" aria-role="button" aria-label="{{segment.alt || '查看大图'}}"></image>
                   <view wx:else class="notice-attachment pressable" data-url="{{segment.url}}" bindtap="openAttachment" hover-class="pressing" aria-role="button" aria-label="{{segment.name}}">
                     <image wx:if="{{segment.iconSrc}}" class="notice-attachment-icon" src="{{segment.iconSrc}}" mode="aspectFit"></image><text class="notice-attachment-name">{{segment.name}}</text>

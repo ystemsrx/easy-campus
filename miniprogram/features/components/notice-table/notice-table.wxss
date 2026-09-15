@@ -1,0 +1,14 @@
+.notice-table { display: block; width: 100%; min-width: 0; margin: 12px 0; color: #3a352d; }
+.table-caption { display: block; margin-bottom: 8px; font-size: 16px; line-height: 1.75; }
+.table-viewport { display: block; width: 100%; }
+.table-grid { position: relative; flex: none; }
+.table-cell { position: absolute; box-sizing: border-box; padding: 12px; border: 1px solid #d8dee9; }
+.table-cell--header { background: rgba(127, 127, 127, 0.08); font-weight: 650; }
+.table-cell-content { display: block; width: 100%; min-width: 0; }
+.table-rich-text { display: block; color: #3a352d; font-size: 16px; line-height: 1.75; word-break: break-all; }
+.table-image { display: block; width: 100%; margin: 8px 0; }
+.table-attachment { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-start; width: 100%; color: #b85c38; }
+.table-attachment-icon { flex: none; width: 16px; height: 16px; margin: 6px 6px 0 0; }
+.table-attachment-name { display: block; flex: 1; min-width: 0; font-size: 16px; line-height: 1.8; word-break: break-all; text-decoration: underline; }
+.theme-dark .table-rich-text, .theme-dark .table-caption { color: #ddd5c7; }
+.theme-dark .table-cell { border-color: #625e56; }

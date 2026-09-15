@@ -82,12 +82,25 @@ function resolveSegments(content: {
       ];
 }
 
+function collectSegments(blocks: NoticeContentBlock[]): NoticeContentSegment[] {
+  const flatten = (segments: NoticeContentSegment[]): NoticeContentSegment[] =>
+    segments.flatMap((segment) =>
+      segment.type === "table"
+        ? flatten(segment.cells.flatMap((cell) => cell.segments))
+        : [segment],
+    );
+  return blocks.flatMap((block) =>
+    flatten(
+      block.type === "html"
+        ? block.segments || []
+        : block.items.flatMap((item) => item.segments || []),
+    ),
+  );
+}
+
 function collectImageUrls(blocks: NoticeContentBlock[]): string[] {
-  const urls = blocks.flatMap((block) =>
-    (block.type === "html"
-      ? block.segments || []
-      : block.items.flatMap((item) => item.segments || [])
-    ).flatMap((segment) => (segment.type === "image" ? [segment.src] : [])),
+  const urls = collectSegments(blocks).flatMap((segment) =>
+    segment.type === "image" ? [segment.src] : [],
   );
   return [...new Set(urls)];
 }
@@ -173,14 +186,9 @@ Page({
         contentHtml: detail.contentHtml,
         contentBlocks,
         imageUrls: collectImageUrls(contentBlocks),
-        attachments: contentBlocks.flatMap((block) =>
-          (block.type === "html"
-            ? block.segments || []
-            : block.items.flatMap((item) => item.segments || [])
-          ).filter(
-            (segment): segment is NoticeAttachment =>
-              segment.type === "attachment",
-          ),
+        attachments: collectSegments(contentBlocks).filter(
+          (segment): segment is NoticeAttachment =>
+            segment.type === "attachment",
         ),
         url,
         domain: domainFromUrl(url),
@@ -204,8 +212,8 @@ Page({
     haptic("light");
     void this.loadDetail(true);
   },
-  previewImage(event: WechatMiniprogram.BaseEvent) {
-    const src = event.currentTarget.dataset.src;
+  previewImage(event: WechatMiniprogram.CustomEvent<{ src?: string }>) {
+    const src = event.currentTarget.dataset.src || event.detail?.src;
     if (typeof src !== "string" || !this.data.imageUrls.includes(src)) return;
     wx.previewImage({
       current: src,
@@ -213,10 +221,11 @@ Page({
       fail: () => this.showNoticeFeedback("图片打开失败，请重试"),
     });
   },
-  openAttachment(event: WechatMiniprogram.BaseEvent) {
+  openAttachment(event: WechatMiniprogram.CustomEvent<{ url?: string }>) {
     if (this.data.attachmentBusy) return;
     const attachment = this.data.attachments.find(
-      (item) => item.url === event.currentTarget.dataset.url,
+      (item) =>
+        item.url === (event.currentTarget.dataset.url || event.detail?.url),
     );
     if (!attachment) return;
     const lease = captureSessionLease();

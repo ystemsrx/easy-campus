@@ -352,7 +352,27 @@ export interface NoticeHtmlContentBlock {
 export type NoticeContentSegment =
   | { key: string; type: "html"; contentHtml: string }
   | { key: string; type: "image"; src: string; alt: string }
+  | NoticeTable
   | NoticeAttachment;
+
+export interface NoticeTable {
+  key: string;
+  type: "table";
+  caption: string;
+  rowCount: number;
+  columnCount: number;
+  cells: NoticeTableCell[];
+}
+
+export interface NoticeTableCell {
+  key: string;
+  row: number;
+  column: number;
+  rowSpan: number;
+  colSpan: number;
+  header: boolean;
+  segments: NoticeContentSegment[];
+}
 
 export interface NoticeAttachment {
   key: string;

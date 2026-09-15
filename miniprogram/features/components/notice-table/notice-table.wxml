@@ -1,0 +1,19 @@
+<view class="notice-table theme-{{theme}}">
+  <text wx:if="{{table.caption}}" class="table-caption" selectable user-select>{{table.caption}}</text>
+  <scroll-view class="table-viewport" style="height: {{layout.height}}px;" type="list" scroll-x enable-flex enhanced show-scrollbar="{{true}}">
+    <view class="table-grid" style="width: {{layout.width}}px; height: {{layout.height}}px;">
+      <view wx:for="{{layout.cells}}" wx:key="key" wx:for-item="cell" class="table-cell {{cell.header ? 'table-cell--header' : ''}}" style="left: {{cell.left}}px; top: {{cell.top}}px; width: {{cell.width}}px; height: {{cell.height}}px;">
+        <view class="table-cell-content">
+          <block wx:for="{{cell.segments}}" wx:key="key" wx:for-item="segment">
+            <rich-text wx:if="{{segment.type === 'html'}}" class="table-rich-text" mode="compat" nodes="{{segment.contentHtml}}"></rich-text>
+            <image wx:elif="{{segment.type === 'image'}}" class="table-image" src="{{segment.src}}" mode="widthFix" data-src="{{segment.src}}" bindtap="previewImage" bindload="measure" binderror="measure" aria-role="button" aria-label="{{segment.alt || '查看大图'}}"></image>
+            <notice-table wx:elif="{{segment.type === 'table'}}" table="{{segment}}" theme="{{theme}}" bindresize="measure"></notice-table>
+            <view wx:elif="{{segment.type === 'attachment'}}" class="table-attachment" data-url="{{segment.url}}" bindtap="openAttachment" aria-role="button" aria-label="{{segment.name}}">
+              <image wx:if="{{segment.iconSrc}}" class="table-attachment-icon" src="{{segment.iconSrc}}" mode="aspectFit"></image><text class="table-attachment-name">{{segment.name}}</text>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>
