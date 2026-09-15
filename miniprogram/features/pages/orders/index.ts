@@ -45,7 +45,7 @@ Page({
     hasMore: false,
     refunding: "",
     accountKey: "",
-    category: "other",
+    category: "",
     insetBack: false,
     navigationReady: false,
     tabs: [] as { id: string; label: string }[],
@@ -55,7 +55,7 @@ Page({
   onLoad(options: Record<string, string>) {
     // Navigation measures its inset once on attachment, after route options are known.
     this.setData({
-      category: options.category || "other",
+      category: options.category || "",
       insetBack: options.modal === "1",
       navigationReady: true,
     });
@@ -101,8 +101,11 @@ Page({
       if (dorm.entryEnabled && dorm.functionEnabled) tabs.push({ id: "dorm", label: "查寝" });
       if (course.entryEnabled) tabs.push({ id: "course", label: "抢课" });
       tabs.push({ id: "other", label: "其他" });
-      const category = tabs.some((t) => t.id === this.data.category) ? this.data.category : "other";
-      if (category !== this.data.category) this.setData({ orders: [], page: 0 });
+      const category = tabs.some((t) => t.id === this.data.category) ? this.data.category : tabs[0].id;
+      if (category !== this.data.category) {
+        this._revision += 1;
+        this.setData({ orders: [], page: 0, loaded: false, loading: false, hasMore: false });
+      }
       this.setData({ tabs, category, selectedTabIndex: tabs.findIndex((t) => t.id === category) });
       this.restoreDormCache();
       await this.load(false);

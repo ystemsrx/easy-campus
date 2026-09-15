@@ -46,11 +46,45 @@ async function run() {
   assert.match(read(route + ".wxml"), /inset-back="\{\{insetBack\}\}"/);
   assert.match(read(route + ".wxml"), /<navigation-bar wx:if="\{\{navigationReady\}\}"/);
   assert.match(read(route + ".wxml"), /class="order-number-row">[\s\S]*?item.outTradeNo[\s\S]*?catchtap="copyOrder"[^>]*>复制<\/button>[\s\S]*?<\/view>/);
-  assert.match(read("pages/profile/content.wxml"), /<view class="settings-card card">\s*<view[^>]*bindtap="openOrders"[\s\S]*?class="setting-caption">查看所有订单/);
+  const profile = read("pages/profile/content.wxml");
+  const helpStart = profile.indexOf('>帮助</text>');
+  assert(helpStart >= 0);
+  assert(!profile.slice(0, helpStart).includes('bindtap="openOrders"'));
+  assert.match(profile.slice(helpStart), /bindtap="openAbout"[\s\S]*?bindtap="openOrders"[\s\S]*?class="setting-caption">查看所有订单[\s\S]*?bindtap="openFeedback"/);
+  assert.equal((profile.match(/bindtap="openOrders"/g) || []).length, 1);
   for (const file of ["auto-dorm-check/index.ts", "auto-dorm-check-payment/index.ts", "course-grab/payment.ts", "course-grab/index.ts"]) {
     assert.match(read("features/pages/" + file), /orders\/index\?category=(?:dorm|course)&modal=1",\s*"wx:\/\/cupertino-modal"/);
   }
-  const h = harness(); h.page.onLoad({ category: "dorm" }); h.page.onShow(); await flush();
+  for (const [dorm, course, requested, expected] of [
+    [true, true, undefined, "dorm"],
+    [false, true, undefined, "course"],
+    [false, false, undefined, "other"],
+    [true, true, "invalid", "dorm"],
+    [false, true, "dorm", "course"],
+    [true, true, "course", "course"],
+    [true, true, "other", "other"],
+  ]) {
+    const initial = harness(); initial.flags(dorm, course);
+    initial.page.onLoad(requested ? { category: requested } : {});
+    initial.page.onShow(); await flush();
+    assert.equal(initial.page.data.category, expected);
+    assert.equal(initial.page.data.selectedTabIndex, initial.page.data.tabs.findIndex((t) => t.id === expected));
+    assert.equal(initial.requests.length, 1);
+    assert.equal(initial.requests[0].category, expected);
+    initial.requests.shift().resolve(result([])); await flush();
+  }
+  const changed = harness(); changed.page.onLoad({}); changed.page.onShow(); await flush();
+  const disabledCategoryRequest = changed.requests.shift();
+  changed.flags(false, true); changed.page.refresh(); await flush();
+  assert.equal(changed.page.data.category, "course");
+  assert.equal(changed.page.data.selectedTabIndex, 0);
+  const fallbackRequest = changed.requests.shift();
+  assert.equal(fallbackRequest.category, "course");
+  disabledCategoryRequest.resolve(result([order("old-dorm")])); await flush();
+  assert.equal(changed.page.data.orders.length, 0);
+  fallbackRequest.resolve(result([order("current-course")])); await flush();
+  assert.equal(changed.page.data.orders[0].id, "current-course");
+  const h = harness(); h.page.onLoad({}); h.page.onShow(); await flush();
   assert.deepEqual(h.page.data.tabs.map((t) => t.id), ["dorm", "course", "other"]);
   assert.equal(h.page.data.selectedTabIndex, 0);
   h.requests.shift().resolve(result([order("1")], 1, 2)); await flush();
