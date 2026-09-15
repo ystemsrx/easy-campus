@@ -29,8 +29,8 @@ const grab = read("miniprogram/features/pages/course-grab/payment.ts")
     '"../../../store/auto-dorm-check"',
   )
   .replaceAll(
-    "/features/pages/course-grab-orders/index",
-    "/features/pages/auto-dorm-check-orders/index",
+    "/features/pages/orders/index?category=course",
+    "/features/pages/orders/index?category=dorm",
   );
 assert.equal(
   compile(grab),

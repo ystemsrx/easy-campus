@@ -100,6 +100,9 @@ async function main() {
   assert.equal(timers.size, 0);
   platform = "ios";
   system = "iOS 15.0";
+  assert.equal(await service.launchWechatPayment({ ...payment,
+    signData: JSON.stringify({ env: 0, goodsPrice: 50, buyQuantity: 2, productId: "service_unit_050" }),
+  }), "success");
   assert.equal(await service.launchWechatPayment(payment), "success");
   assert.equal(paymentOptions.signData, payment.signData);
   for (const bad of [

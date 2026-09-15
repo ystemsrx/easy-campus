@@ -1,0 +1,47 @@
+@import "../auto-dorm-check-payment/index.wxss";
+.service-page { display: flex; flex-direction: column; height: 100vh; }
+.service-scroll { flex: 1; min-height: 0; height: 100%; }
+.service-content { display: flex; flex-direction: column; padding: 24rpx 32rpx calc(80rpx + env(safe-area-inset-bottom)); }
+.service-items { display: flex; flex-direction: column; width: 100%; }
+.service-item { flex: none; width: 100%; min-height: 88rpx; }
+.service-title { display: block; font-size: 40rpx; font-weight: 600; }
+.service-status { display: block; color: #198568; margin: 16rpx 0 32rpx; }
+.service-line { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid var(--color-separator); }
+.service-name { flex: 1; min-width: 0; color: var(--color-text); word-break: break-all; }
+.service-price { flex: none; white-space: nowrap; }
+.service-note { display: block; margin: 24rpx 0; color: #888; }
+.service-error { display: block; margin: 24rpx 0; color: #c34242; }
+.service-content button { margin-top: 24rpx; }
+.service-content input { padding: 24rpx; border: 1rpx solid #888; }
+.service-page .service-buy,
+.service-page .service-secondary {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: 100%;
+  align-self: center;
+  margin-left: auto;
+  margin-right: auto;
+  min-height: 88rpx;
+  padding: 20rpx 28rpx;
+  border: 0;
+  border-radius: 999rpx;
+  background-image: none;
+  box-shadow: none;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.service-page .service-buy {
+  color: var(--color-on-accent, #ffffff);
+  background-color: var(--color-primary);
+}
+.service-page .service-secondary {
+  color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+.service-page .service-buy::after,
+.service-page .service-secondary::after { border: 0; }
+.service-page .service-button--disabled { opacity: 0.5; }

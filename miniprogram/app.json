@@ -29,11 +29,11 @@
         "pages/auto-dorm-check/index",
         "pages/auto-dorm-check-agreement/index",
         "pages/auto-dorm-check-payment/index",
-        "pages/auto-dorm-check-orders/index",
+        "pages/orders/index",
+        "pages/service-order/index",
         "pages/course-assistant/index",
         "pages/course-assistant-detail/index",
-        "pages/course-grab/index",
-        "pages/course-grab-orders/index"
+        "pages/course-grab/index"
       ]
     }
   ],

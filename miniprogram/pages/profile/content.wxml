@@ -48,6 +48,10 @@
 
   <view class="section-header"><view><text class="section-title">设置</text></view></view>
   <view class="settings-card card">
+    <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'orders' ? 'setting-row--pressed' : ''}}" bindtap="openOrders" aria-role="button" aria-label="我的订单">
+      <view class="setting-copy"><text class="setting-title">订单</text><text class="setting-caption">查看所有订单</text></view>
+      <view class="legal-setting-value"><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+    </view>
     <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'pet' ? 'setting-row--pressed' : ''}}" bindtap="openPetSetup" aria-role="button" aria-label="设置校园伙伴">
       <view class="setting-copy"><text class="setting-title">校园伙伴</text><text class="setting-caption">{{petEnabled ? '已开启' : '已关闭'}}</text></view>
       <view class="pet-setting-value"><view class="pet-color-dot" style="background: {{petColor}};"></view><text>设置</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>

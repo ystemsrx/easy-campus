@@ -207,7 +207,10 @@ Page({
     this.cancelPendingPayment();
   },
   orders() {
-    navigateTo("/features/pages/course-grab-orders/index");
+    navigateTo(
+      "/features/pages/orders/index?category=course&modal=1",
+      "wx://cupertino-modal",
+    );
   },
   configure(event: WechatMiniprogram.TouchEvent) {
     if (this.data.saving || !this.data.entryEnabled) return;

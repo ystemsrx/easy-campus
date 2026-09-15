@@ -1,20 +1,29 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page page--quick-entry grab-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
-  <navigation-bar title="订单历史" back extra-left transparent theme="{{theme}}">
+  <navigation-bar wx:if="{{navigationReady}}" title="订单" back="{{true}}" extra-left="{{true}}" inset-back="{{insetBack}}" transparent="{{true}}" theme="{{theme}}">
     <view slot="after-left" class="nav-refresh pressable {{loading ? 'nav-refresh--loading' : ''}}" bindtap="refresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{loading ? '正在刷新订单' : '刷新订单'}}" aria-disabled="{{loading}}">
       <image wx:if="{{loading}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
       <lucide-icon wx:else name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
     </view>
   </navigation-bar>
+  <view wx:if="{{tabs.length > 1}}" class="order-tabs-shell">
+    <view class="order-tabs order-tabs--{{tabs.length}}" role="tablist">
+      <view class="order-tab-indicator order-tab-indicator--{{selectedTabIndex}}" aria-hidden="{{true}}"></view>
+      <view wx:for="{{tabs}}" wx:key="id" class="order-tab {{category === item.id ? 'order-tab--active' : ''}}" data-id="{{item.id}}" bindtap="changeCategory" aria-role="button" aria-label="{{item.label + (category === item.id ? '，已选择' : '')}}">{{item.label}}</view>
+    </view>
+  </view>
   <view wx:if="{{error}}" class="grab-error" bindtap="refresh">{{error}}</view>
   <view wx:if="{{loaded && !orders.length}}" class="grab-empty"><text class="grab-muted">暂无已支付订单</text></view>
   <view wx:else class="grab-list-shell"><scroll-view class="grab-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="more" lower-threshold="120">
     <view class="grab-list page-content">
-      <view wx:for="{{orders}}" wx:key="id" class="grab-task card">
-        <view class="grab-row"><text class="grab-title">抢课一次</text><text class="grab-time tnum">{{item.priceLabel}}</text></view>
+      <view wx:for="{{orders}}" wx:key="id" class="grab-task card" data-id="{{item.id}}" bindtap="openOrder">
+        <view class="grab-row"><text class="grab-title">{{item.title}}</text><text class="grab-time tnum">{{item.priceLabel}}</text></view>
         <text class="grab-time tnum">{{item.timeLabel}}</text>
-        <text class="grab-detail" selectable user-select>{{item.outTradeNo}}</text>
-        <view class="grab-row grab-result"><text class="grab-muted">{{item.statusLabel}}</text><view class="grab-refund-action"><button class="grab-text-button" data-id="{{item.id}}" bindtap="refund" disabled="{{refunding !== '' || item.refundedCents > 0 || item.statusLabel === '退款处理中'}}">{{refunding === item.id ? '处理中' : item.refundLabel}}</button></view></view>
+        <view class="order-number-row">
+          <text class="grab-detail order-number" selectable user-select>{{item.outTradeNo}}</text>
+          <button class="grab-text-button order-copy" data-id="{{item.id}}" catchtap="copyOrder" aria-label="复制订单号">复制</button>
+        </view>
+        <view class="grab-row grab-result"><text class="grab-muted">{{item.statusLabel}}</text><view wx:if="{{category === 'course'}}" class="grab-refund-action"><button class="grab-text-button" data-id="{{item.id}}" catchtap="refund" disabled="{{refunding !== '' || item.refundedCents > 0 || item.statusLabel === '退款处理中'}}">{{refunding === item.id ? '处理中' : item.refundLabel}}</button></view></view>
       </view>
       <button wx:if="{{hasMore}}" class="grab-text-button" bindtap="more" disabled="{{loading}}">{{loading ? '读取中' : '加载更多'}}</button>
     </view>

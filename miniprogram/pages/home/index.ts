@@ -931,6 +931,7 @@ Page({
       return;
     }
     homeVisible = true;
+    resumeServiceOrder();
     attachCapsuleBackdrop(this, "home");
     if (this.data.authenticated) {
       const account = getSession()?.user.account || "";
@@ -2545,3 +2546,4 @@ Page({
     );
   },
 });
+import { resumeServiceOrder } from "../../utils/service-order-return";

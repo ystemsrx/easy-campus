@@ -254,7 +254,7 @@ Page({
   openOrders() {
     haptic("light");
     void navigateTo(
-      "/features/pages/auto-dorm-check-orders/index",
+      "/features/pages/orders/index?category=dorm&modal=1",
       "wx://cupertino-modal",
     );
   },

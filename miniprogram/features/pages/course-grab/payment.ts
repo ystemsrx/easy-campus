@@ -261,7 +261,7 @@ export const courseGrabPaymentPage = definePaymentPage({
   openOrders() {
     haptic("light");
     void navigateTo(
-      "/features/pages/course-grab-orders/index",
+      "/features/pages/orders/index?category=course&modal=1",
       "wx://cupertino-modal",
     );
   },

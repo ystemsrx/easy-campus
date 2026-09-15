@@ -1,4 +1,10 @@
 import { buildAppShare } from "../../../utils/app-share";
+import { getAutoDormCheckLocalStatus, getAutoDormCheckPaymentOrders } from "../../../services/auto-dorm-check";
+import { getCourseGrabStatus } from "../../../services/course-grab";
+import { getServiceOrders } from "../../services/service-orders";
+import { navigateTo } from "../../../utils/navigation";
+import { orderViews } from "../../utils/auto-dorm-check-orders";
+import { loadOrderHistory, saveOrderHistory } from "../../store/auto-dorm-check-orders";
 import {
   getCourseGrabOrders,
   refundCourseGrab,
@@ -22,6 +28,8 @@ type OrderView = CourseGrabOrder & {
   priceLabel: string;
   statusLabel: string;
   refundLabel: string;
+  title?: string;
+  service?: boolean;
 };
 const refundStorageKey = (account: string, id: string) =>
   `easy-swu:course-grab-refund:v1:${encodeURIComponent(account)}:${id}`;
@@ -37,8 +45,21 @@ Page({
     hasMore: false,
     refunding: "",
     accountKey: "",
+    category: "other",
+    insetBack: false,
+    navigationReady: false,
+    tabs: [] as { id: string; label: string }[],
+    selectedTabIndex: 0,
   },
   _revision: 0,
+  onLoad(options: Record<string, string>) {
+    // Navigation measures its inset once on attachment, after route options are known.
+    this.setData({
+      category: options.category || "other",
+      insetBack: options.modal === "1",
+      navigationReady: true,
+    });
+  },
   onShow() {
     if (!ensureAuthenticated()) return;
     const appearance = resolveAppearance();
@@ -58,6 +79,41 @@ Page({
         refunding: "",
       });
     }
+    void this.loadTabs();
+  },
+  restoreDormCache() {
+    const lease = captureSessionLease();
+    if (!lease || this.data.category !== "dorm" || this.data.loaded) return;
+    const cached = loadOrderHistory(lease.account);
+    if (!cached) return;
+    this.setData({ orders: orderViews(cached.items).map((item) => ({ ...item,
+      title: item.planName, timeLabel: item.paidLabel, priceLabel: `¥${item.amountLabel}`,
+      refund: { refundable: false, amountCents: 0, unavailableReason: null, requiresApple: false },
+    })), loaded: true, page: cached.pagination.page, hasMore: cached.pagination.page < cached.pagination.totalPages });
+  },
+  async loadTabs() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    try {
+      const [dorm, course] = await Promise.all([getAutoDormCheckLocalStatus(), getCourseGrabStatus()]);
+      if (!isSessionLeaseCurrent(lease)) return;
+      const tabs = [];
+      if (dorm.entryEnabled && dorm.functionEnabled) tabs.push({ id: "dorm", label: "查寝" });
+      if (course.entryEnabled) tabs.push({ id: "course", label: "抢课" });
+      tabs.push({ id: "other", label: "其他" });
+      const category = tabs.some((t) => t.id === this.data.category) ? this.data.category : "other";
+      if (category !== this.data.category) this.setData({ orders: [], page: 0 });
+      this.setData({ tabs, category, selectedTabIndex: tabs.findIndex((t) => t.id === category) });
+      this.restoreDormCache();
+      await this.load(false);
+    } catch (error) { this.setData({ error: getErrorMessage(error, "订单分类读取失败，请重试") }); }
+  },
+  changeCategory(event: WechatMiniprogram.TouchEvent) {
+    const category = String(event.currentTarget.dataset.id);
+    if (!this.data.tabs.some((t) => t.id === category) || category === this.data.category) return;
+    this._revision += 1;
+    this.setData({ category, selectedTabIndex: this.data.tabs.findIndex((t) => t.id === category), orders: [], page: 0, loaded: false, loading: false, hasMore: false, error: "" });
+    this.restoreDormCache();
     void this.load(false);
   },
   onUnload() {
@@ -70,30 +126,33 @@ Page({
     const revision = this._revision;
     this.setData({ loading: true, error: "" });
     try {
-      const result = await getCourseGrabOrders(append ? this.data.page + 1 : 1);
+      const page = append ? this.data.page + 1 : 1;
+      const category = this.data.category;
+      const result = category === "course" ? await getCourseGrabOrders(page) : category === "dorm"
+        ? await getAutoDormCheckPaymentOrders(page) : await getServiceOrders(page);
       if (revision !== this._revision || !isSessionLeaseCurrent(lease)) return;
       const unique = new Map(
         (append ? this.data.orders : []).map((item) => [item.id, item]),
       );
-      result.items.forEach((item) =>
+      result.items.forEach((raw) => {
+        const item = raw as CourseGrabOrder & { title?: string; service?: boolean; statusLabel?: string; planName?: string };
+        const view = orderViews([item])[0];
         unique.set(item.id, {
           ...item,
           timeLabel: timeLabel(item.paidAt || item.createdAt),
           priceLabel: `¥${(item.amountCents / 100).toFixed(2)}`,
-          statusLabel: item.refundedCents
-            ? "已退款"
-            : item.refunds.some((r) =>
-                  ["pending", "processing", "abnormal"].includes(r.status),
-                )
-              ? "退款处理中"
-              : "已支付",
-          refundLabel: item.refund.requiresApple ? "申请退款" : "退款",
-        }),
-      );
+          title: item.title || item.planName || "抢课一次",
+          service: category === "other",
+          statusLabel: item.statusLabel || view.statusLabel,
+          refund: item.refund || { refundable: false, amountCents: 0, unavailableReason: null, requiresApple: false },
+          refundLabel: item.refund?.requiresApple ? "申请退款" : "退款",
+        });
+      });
+      if (category === "dorm" && !append && "total" in result.pagination) saveOrderHistory(lease.account, result as Parameters<typeof saveOrderHistory>[1]);
       for (const item of result.items) {
         if (
           this.data.refunding !== item.id &&
-          item.refund.refundable &&
+          "refund" in item && item.refund?.refundable &&
           item.refunds.length > 0 &&
           item.refunds.every((refund) => refund.status === "closed")
         )
@@ -114,12 +173,20 @@ Page({
     }
   },
   refresh() {
-    void this.load(false);
+    void this.loadTabs();
+  },
+  openOrder(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.category === "other") void navigateTo(`/features/pages/service-order/index?id=${encodeURIComponent(String(event.currentTarget.dataset.id))}`);
+  },
+  copyOrder(event: WechatMiniprogram.TouchEvent) {
+    const item = this.data.orders.find((o) => o.id === String(event.currentTarget.dataset.id));
+    if (item) wx.setClipboardData({ data: item.outTradeNo });
   },
   more() {
     if (!this.data.error) void this.load(true);
   },
   async refund(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.category !== "course") return;
     if (this.data.refunding) return;
     const id = String(event.currentTarget.dataset.id);
     const order = this.data.orders.find((item) => item.id === id);

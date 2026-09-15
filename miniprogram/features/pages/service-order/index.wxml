@@ -1,0 +1,35 @@
+<view class="page service-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <scroll-view class="service-scroll" scroll-y type="list" enhanced show-scrollbar="{{false}}" scroll-top="{{paymentScrollTop}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}" bindscroll="onPaymentScroll">
+    <navigation-bar title="服务订单" back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
+    <view class="service-content">
+      <view class="payment-progress-region" style="height: {{progressHeight}}px;" aria-hidden="{{!processing && !checkingPayment && !canResumePayment}}">
+        <view wx:if="{{progressMounted}}" class="payment-progress-inner {{progressExpanded ? 'payment-progress-inner--expanded' : ''}}">
+          <view class="payment-processing card" aria-role="status">
+            <view wx:if="{{progressBusy}}" class="payment-spinner-enter"><image class="payment-processing-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit"></image></view>
+            <text class="payment-progress-title">{{progressBusy ? (checkingPayment ? '正在查询订单' : '正在处理支付') : '订单待完成'}}</text>
+            <text class="payment-progress-plan">{{progressPlanName}} {{progressPriceLabel}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{!order}}"><input value="{{code}}" bindinput="inputCode" placeholder="订单码" maxlength="64"/><button class="service-secondary {{busy ? 'service-button--disabled' : ''}}" bindtap="load" disabled="{{busy}}">查看订单</button></view>
+      <block wx:if="{{order}}">
+        <text class="service-title">{{order.platform_name}}</text><text class="service-status">{{status}}</text>
+        <view class="service-items">
+          <view wx:for="{{items}}" wx:key="id" class="service-line service-item">
+            <text class="service-name">{{item.name}}</text>
+            <text class="service-price tnum">¥{{item.price}}</text>
+          </view>
+        </view>
+        <view class="service-line"><text>总计</text><text class="service-price tnum">¥{{price}}</text></view>
+        <text wx:if="{{order.fulfillment.summary}}" class="service-note">{{order.fulfillment.summary}}</text>
+        <text wx:if="{{refundSummary}}" class="service-note">{{refundSummary}}</text>
+        <button wx:if="{{canPay}}" class="service-buy {{busy ? 'service-button--disabled' : ''}}" bindtap="pay" disabled="{{busy}}">确认购买 ¥{{price}}</button>
+        <button wx:if="{{!canPay && order.payment_status !== 'PAID'}}" class="service-secondary {{busy ? 'service-button--disabled' : ''}}" bindtap="check" disabled="{{busy}}">查询付款结果</button>
+      </block>
+      <text wx:if="{{error}}" class="service-error">{{error}}</text>
+      <button class="service-secondary" bindtap="orders">我的订单</button>
+    </view>
+  </scroll-view>
+</view>
+<screen-watermark></screen-watermark>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>

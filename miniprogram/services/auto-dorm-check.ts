@@ -307,7 +307,7 @@ export function assertVirtualPaymentSupported(
       statusCode: 400,
     });
   if (payment) {
-    let data: { env?: number; goodsPrice?: number } | null = null;
+    let data: { env?: number; goodsPrice?: number; buyQuantity?: number } | null = null;
     try {
       data = JSON.parse(payment.signData);
     } catch {
@@ -316,7 +316,9 @@ export function assertVirtualPaymentSupported(
     if (
       data?.env !== 0 ||
       !Number.isSafeInteger(data?.goodsPrice) ||
-      (data?.goodsPrice || 0) < 100
+      !Number.isSafeInteger(data?.buyQuantity ?? 1) ||
+      (data?.buyQuantity ?? 1) < 1 ||
+      (data?.goodsPrice || 0) * (data?.buyQuantity ?? 1) < 100
     )
       throw new ApiClientError({
         message: "该套餐暂不可购买",

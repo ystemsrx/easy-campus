@@ -62,6 +62,7 @@ import {
 } from "../../utils/profile";
 
 type ProfileSettingKey =
+  | "orders"
   | "course-assistant"
   | "course-grab"
   | "auto-dorm-check"
@@ -370,6 +371,9 @@ Page({
   openCourseGrab() {
     if (this.data.courseGrabVisible)
       this.openProfileRoute("course-grab", "/features/pages/course-grab/index");
+  },
+  openOrders() {
+    this.openProfileRoute("orders", "/features/pages/orders/index");
   },
   openCourseAssistant() {
     this.openProfileRoute(

@@ -8,7 +8,7 @@ module.exports = async function checkRefunds() {
   const source = fs.readFileSync(
     path.join(
       __dirname,
-      "../miniprogram/features/pages/course-grab-orders/index.ts",
+      "../miniprogram/features/pages/orders/index.ts",
     ),
     "utf8",
   );
@@ -55,6 +55,7 @@ module.exports = async function checkRefunds() {
         definition = value;
       },
       require: (name) => {
+        if (name.endsWith("utils/auto-dorm-check-orders")) return { orderViews: (items) => items.map((item) => ({ ...item, statusLabel: "已支付" })) };
         if (name.endsWith("services/course-grab")) return services;
         if (name.endsWith("services/request")) return request;
         if (name.endsWith("store/session"))
@@ -86,6 +87,7 @@ module.exports = async function checkRefunds() {
     },
   };
   const key = "easy-swu:course-grab-refund:v1:student-a:order-a";
+  page.data.category = "course";
   const event = { currentTarget: { dataset: { id: order.id } } };
   await page.load(false);
   failed = true;
