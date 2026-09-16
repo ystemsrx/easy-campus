@@ -51,6 +51,18 @@ const paymentStyles = read(
 );
 
 assert(
+  autoTemplate.includes("查寝时段 {{schoolCheckInWindowLabel}}") &&
+    !autoTemplate.includes("最佳时段") &&
+    autoScript.includes(
+      "schoolCheckInWindowLabel: `${status.schoolCheckInStartTime}–${status.schoolCheckInEndTime}`",
+    ) &&
+    autoScript.match(/schoolCheckInWindowLabel: "21:00–23:30"/g)?.length === 2 &&
+    store.includes('typeof status.schoolCheckInStartTime !== "string"') &&
+    store.includes('typeof status.schoolCheckInEndTime !== "string"'),
+  "自动查寝页须展示管理端设置的学校查寝时段，不得显示最佳打卡时段",
+);
+
+assert(
   featurePackage?.pages?.includes("pages/auto-dorm-check-payment/index"),
   "app.json: 独立打卡套餐页必须注册在 features 分包",
 );

@@ -149,6 +149,8 @@ function cachedStatus(value: unknown): AutoDormCheckStatus | null {
     !VALID_STATES.has(status.checkInStatus as AutoDormCheckState) ||
     typeof status.checkInStartTime !== "string" ||
     typeof status.checkInEndTime !== "string" ||
+    typeof status.schoolCheckInStartTime !== "string" ||
+    typeof status.schoolCheckInEndTime !== "string" ||
     typeof status.paymentEnabled !== "boolean" ||
     typeof status.accessGranted !== "boolean" ||
     !status.entitlement ||

@@ -21,7 +21,7 @@
           <view class="auto-dorm-check-row">
             <view class="auto-dorm-check-copy">
               <text class="auto-dorm-check-title">自动查寝打卡</text>
-              <text class="auto-dorm-check-caption">最佳时段 {{checkInWindowLabel}}</text>
+              <text class="auto-dorm-check-caption">查寝时段 {{schoolCheckInWindowLabel}}</text>
             </view>
             <app-switch wx:if="{{liquidGlass}}"
               class="auto-dorm-glass-switch"
