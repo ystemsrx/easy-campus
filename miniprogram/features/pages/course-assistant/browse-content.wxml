@@ -81,7 +81,7 @@
             <text class="course-rating-value tnum">{{item.ratingLabel}}</text><text wx:if="{{item.reviewCount > 0}}" class="course-review-count tnum">{{item.reviewCount}} 条想法</text>
           </view>
         </view>
-        <view class="course-card-aside"><view class="course-score"><text class="course-score-value tnum">{{item.scoreLabel}}</text><text class="course-score-label">历史均分</text></view><text wx:if="{{item.type === 'general_elective' && item.courseOwnershipLabel}}" class="course-ownership">{{item.courseOwnershipLabel}}</text></view>
+        <view class="course-card-aside {{item.type === 'general_elective' && item.courseOwnershipLabel ? 'course-card-aside--ownership' : ''}}"><view class="course-score"><text class="course-score-value tnum">{{item.scoreLabel}}</text><text class="course-score-label">历史均分</text></view><view wx:if="{{item.type === 'general_elective' && item.courseOwnershipLabel}}" class="course-ownership"><text wx:for="{{item.courseOwnerships}}" wx:for-item="ownership" wx:key="*this" class="course-ownership-item">{{ownership}}{{index < item.courseOwnerships.length - 1 ? '，' : ''}}</text></view></view>
       </view>
       <view class="course-card-bottom">
         <view class="course-tags"><text wx:if="{{item.thoughtsLocked}}" class="course-tag course-tag--muted">课程想法待解锁</text><block wx:else><text wx:for="{{item.keywords}}" wx:key="text" class="course-tag">{{item.text}}</text><text wx:if="{{!item.keywords.length}}" class="course-tag course-tag--muted">等待第一条想法</text></block></view>

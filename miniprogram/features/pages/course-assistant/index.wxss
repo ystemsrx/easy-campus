@@ -699,6 +699,7 @@
 .course-card-top {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 26rpx;
@@ -789,12 +790,32 @@
   min-width: 0;
 }
 
+.course-card-aside--ownership {
+  width: calc(50% - 13rpx);
+  overflow: hidden;
+}
+
 .course-ownership {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: 8rpx;
+  row-gap: 4rpx;
+  width: 100%;
+  min-width: 0;
+  max-height: 60rpx;
   margin-top: 16rpx;
+  overflow: hidden;
   color: var(--guide-muted);
   font-size: 19rpx;
-  line-height: 1.35;
+  line-height: 28rpx;
   text-align: right;
+}
+
+.course-ownership-item {
+  flex: none;
+  white-space: nowrap;
 }
 
 .course-score-value {
@@ -859,9 +880,13 @@
 }
 
 .course-review-count {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   color: var(--guide-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 18rpx;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
