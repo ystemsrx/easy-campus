@@ -262,11 +262,18 @@ function toDetailView(detail: CourseAssistantCourseDetail): DetailView {
   const historyChart = historyChartView(history);
   return {
     ...detail,
-    typeLabel: detail.type === "physical_education" ? "体育课程" : "通识选修",
+    typeLabel:
+      detail.type === "physical_education"
+        ? "体育"
+        : detail.type === "international"
+          ? "国际"
+          : "通选",
     typeKicker:
       detail.type === "physical_education"
         ? "PHYSICAL EDUCATION"
-        : "GENERAL EDUCATION",
+        : detail.type === "international"
+          ? "INTERNATIONAL COURSE"
+          : "GENERAL EDUCATION",
     teacherLabel: formatCourseTeacherNames(detail.teacherNames),
     creditsLabel:
       detail.credits === null

@@ -133,6 +133,12 @@ const DEFAULT_REVIEW_ACCESS: CourseAssistantReviewAccess = {
   eligibleCourseCount: 0,
   ownReviewCount: 0,
 };
+const COURSE_TYPE_OPTIONS: CourseAssistantCourseType[] = [
+  "general_elective",
+  "physical_education",
+  "international",
+];
+const CATALOG_PAGE_SIZE = 40;
 
 function reviewContentLength(value: string) {
   return Array.from(value.trim()).length;
@@ -406,7 +412,7 @@ Page({
     try {
       const result = await getCourseAssistantCatalog({
         page,
-        pageSize: 100,
+        pageSize: CATALOG_PAGE_SIZE,
         type: this.data.courseType,
         q: this.data.searchQuery.trim() || undefined,
         keyword: this.data.selectedKeyword || undefined,
@@ -598,7 +604,7 @@ Page({
     try {
       const result = await getCourseAssistantCatalog({
         page: 1,
-        pageSize: 100,
+        pageSize: CATALOG_PAGE_SIZE,
         type,
         sort: catalogSort,
       });
@@ -619,15 +625,15 @@ Page({
   selectCourseType(event: WechatMiniprogram.TouchEvent) {
     if (consumeGlassTap(this)) return;
     const type = String(event.currentTarget.dataset.type || "");
-    if (type !== "general_elective" && type !== "physical_education") return;
+    if (!isCourseType(type)) return;
     this.applyCourseType(type);
   },
   onSelectorTouchStart(event: WechatMiniprogram.TouchEvent) {
     this.onBottomSelectorTouchCancel();
     startGlassDrag(this, event, {
       enabled: this.data.liquidGlass,
-      index: this.data.courseType === "physical_education" ? 1 : 0,
-      count: 2,
+      index: COURSE_TYPE_OPTIONS.indexOf(this.data.courseType),
+      count: COURSE_TYPE_OPTIONS.length,
       selector: ".course-segment",
       insetRpx: 6,
       widthRpx: 478,
@@ -638,21 +644,16 @@ Page({
   },
   onSelectorTouchEnd(event: WechatMiniprogram.TouchEvent) {
     const index = endGlassDrag(this, event);
-    if (index !== undefined)
-      this.applyCourseType(
-        index === 1 ? "physical_education" : "general_elective",
-      );
+    if (index !== undefined) {
+      const type = COURSE_TYPE_OPTIONS[index];
+      if (type) this.applyCourseType(type);
+    }
   },
   onSelectorTouchCancel() {
     cancelGlassDrag(this);
   },
   applyCourseType(type: CourseAssistantCourseType) {
-    if (
-      (type !== "general_elective" && type !== "physical_education") ||
-      type === this.data.courseType
-    ) {
-      return;
-    }
+    if (type === this.data.courseType) return;
     haptic("light");
     cancelGlassDrag(this);
     invalidateFilterMeasurement(this);
@@ -1267,15 +1268,21 @@ function toReviewView(review: CourseAssistantReview): ReviewView {
 }
 
 function courseTypeLabel(type: CourseAssistantCourseType): string {
-  return type === "physical_education" ? "体育课程" : "通识选修";
+  if (type === "physical_education") return "体育";
+  if (type === "international") return "国际";
+  return "通选";
+}
+
+function isCourseType(type: string): type is CourseAssistantCourseType {
+  return COURSE_TYPE_OPTIONS.some((option) => option === type);
 }
 
 function alternateCourseType(
   type: CourseAssistantCourseType,
 ): CourseAssistantCourseType {
-  return type === "general_elective"
-    ? "physical_education"
-    : "general_elective";
+  return COURSE_TYPE_OPTIONS[
+    (COURSE_TYPE_OPTIONS.indexOf(type) + 1) % COURSE_TYPE_OPTIONS.length
+  ];
 }
 
 function catalogCacheKey(

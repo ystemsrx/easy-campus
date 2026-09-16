@@ -9,10 +9,12 @@ import type {
 import { demoDate, demoSemester, demoTimestamp } from "./data";
 
 // Match the course-key contract used by detail links and saved favorites.
-const DEMO_COURSE_KEYS = ["1".padStart(64, "0"), "2".padStart(64, "0")];
+const DEMO_COURSE_KEYS = [1, 2, 3].map((value) =>
+  String(value).padStart(64, "0"),
+);
 
 export function normalizeDemoCourseKey(courseKey: string): string {
-  const legacy = /^demo-assistant-([01])$/.exec(courseKey);
+  const legacy = /^demo-assistant-([012])$/.exec(courseKey);
   return legacy ? DEMO_COURSE_KEYS[Number(legacy[1])] : courseKey;
 }
 
@@ -25,7 +27,7 @@ export const DEMO_REVIEW_ACCESS: CourseAssistantReviewAccess = {
   allowed: true,
   requiresContribution: false,
   exempt: true,
-  eligibleCourseCount: 2,
+  eligibleCourseCount: 3,
   ownReviewCount: 1,
 };
 
@@ -54,26 +56,33 @@ export function demoPublications(): Publication[] {
 
 export function demoOwnGrades(): CourseAssistantGrade[] {
   const semester = demoSemester();
-  return ["中国文化概论", "大学体育"].map((courseName, i) => ({
-    attemptKey: `demo-attempt-${i}`,
-    courseKey: DEMO_COURSE_KEYS[i],
-    type: i === 0 ? "general_elective" : "physical_education",
-    courseName,
-    displayName: courseName,
-    sportName: i === 1 ? "羽毛球" : null,
-    courseNature: i === 0 ? "通识选修" : "体育",
-    academicYear: semester.academicYearLabel,
-    academicYearStart: semester.academicYear,
-    term: semester.term,
-    termLabel: semester.label,
-    finalScore: 90 + i * 3,
-    calculationScore: 90 + i * 3,
-    teacherName: "陈老师",
-    credits: 2,
-    sourceFetchedAt: demoTimestamp(-3),
-    reviewed: false,
-    reviewId: null,
-  }));
+  return ["中国文化概论", "大学体育", "逻辑学导论（国际课程）"].map(
+    (courseName, i) => ({
+      attemptKey: `demo-attempt-${i}`,
+      courseKey: DEMO_COURSE_KEYS[i],
+      type:
+        i === 0
+          ? "general_elective"
+          : i === 1
+            ? "physical_education"
+            : "international",
+      courseName,
+      displayName: i === 2 ? "逻辑学导论" : courseName,
+      sportName: i === 1 ? "羽毛球" : null,
+      courseNature: i === 0 ? "通识选修" : i === 1 ? "体育" : "专业选修课",
+      academicYear: semester.academicYearLabel,
+      academicYearStart: semester.academicYear,
+      term: semester.term,
+      termLabel: semester.label,
+      finalScore: 90 + i * 3,
+      calculationScore: 90 + i * 3,
+      teacherName: "陈老师",
+      credits: 2,
+      sourceFetchedAt: demoTimestamp(-3),
+      reviewed: false,
+      reviewId: null,
+    }),
+  );
 }
 
 export function demoReviews(): CourseAssistantReview[] {
@@ -93,7 +102,9 @@ export function demoReviews(): CourseAssistantReview[] {
     content:
       i === 0
         ? "课堂内容丰富，老师讲解清晰，能够了解不少有趣的文化知识。"
-        : "课堂氛围轻松，练习安排充实，运动后很有成就感。",
+        : i === 1
+          ? "课堂氛围轻松，练习安排充实，运动后很有成就感。"
+          : "课程内容清晰，案例丰富，对理解逻辑推理很有帮助。",
     likeCount: 12,
     liked: false,
     createdAt: demoTimestamp(-2),

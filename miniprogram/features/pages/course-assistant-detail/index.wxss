@@ -155,6 +155,11 @@
   background-color: var(--guide-olive-soft);
 }
 
+.course-type--international {
+  color: var(--guide-blue);
+  background-color: var(--guide-blue-soft);
+}
+
 .detail-term {
   flex: none;
   color: var(--guide-muted);

@@ -35,6 +35,8 @@ assert.match(page, /filter-panel-shell--open/);
 assert.doesNotMatch(page, /wx:if="\{\{filterOpen\}\}" class="filter-panel/);
 assert.doesNotMatch(page, /semester-badge">匿名互助/);
 assert.match(page, /segment-indicator--physical/);
+assert.match(page, /segment-indicator--international/);
+assert.match(page, /data-type="international"[^>]*>\s*<text>国际<\/text>/);
 assert.match(page, /至少 8 个字/);
 assert.match(
   page,
@@ -81,6 +83,8 @@ assert.doesNotMatch(
   /authorizeCourseAssistant|getCourseAssistantStatus/,
 );
 assert.match(controller, /result\.reviewAccess/);
+assert.match(controller, /const CATALOG_PAGE_SIZE = 40/);
+assert.equal((controller.match(/pageSize: CATALOG_PAGE_SIZE/g) || []).length, 2);
 assert.match(controller, /publishCourseAssistantReview\(/);
 assert.match(controller, /positive: \[[^\]]*"任务少"/s);
 assert.match(controller, /negative: \[[^\]]*"任务多"/s);
@@ -243,6 +247,8 @@ assert.doesNotMatch(detailPage, /还没有课程想法|item\.latest/);
 const detailController = read(
   "miniprogram/features/pages/course-assistant-detail/index.ts",
 );
+assert.match(detailController, /detail\.type === "international"/);
+assert.match(detailStyles, /\.course-type--international\s*\{/);
 assert.match(detailController, /const bottom = 180/);
 assert.match(detailController, /const axisSegments = 4/);
 assert.doesNotMatch(detailPage, /<canvas/);

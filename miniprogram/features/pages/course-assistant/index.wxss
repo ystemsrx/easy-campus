@@ -345,7 +345,7 @@
   top: 6rpx;
   bottom: 6rpx;
   left: 6rpx;
-  width: calc(50% - 6rpx);
+  width: calc((100% - 12rpx) / 3);
   border-radius: 999rpx;
   background-color: var(--guide-card);
   box-shadow: 0 3rpx 12rpx rgba(20, 20, 19, 0.08);
@@ -355,6 +355,10 @@
 
 .segment-indicator--physical {
   transform: translateX(100%);
+}
+
+.segment-indicator--international {
+  transform: translateX(200%);
 }
 
 .segment-option {
@@ -749,6 +753,11 @@
 .course-type--physical_education {
   color: var(--guide-olive);
   background-color: var(--guide-olive-soft);
+}
+
+.course-type--international {
+  color: var(--guide-blue);
+  background-color: var(--guide-blue-soft);
 }
 
 .course-meta-text {

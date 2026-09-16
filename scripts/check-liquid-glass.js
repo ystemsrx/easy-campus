@@ -509,14 +509,14 @@ courseAssistant.data.selectedKeyword = "讲得好";
 courseAssistant.data.filterOpen = true;
 courseAssistant.data.filterPanelHeight = 160;
 selectorStart(courseAssistant);
-selectorMove(courseAssistant, 200);
+selectorMove(courseAssistant, 100);
 assert.equal(courseAssistant.data.courseType, "general_elective");
 assert.equal(
   catalogRestores,
   0,
   "dragging previews the type without fetching courses",
 );
-selectorEnd(courseAssistant, 200);
+selectorEnd(courseAssistant, 100);
 assert.equal(courseAssistant.data.courseType, "physical_education");
 assert.equal(catalogRestores, 1);
 assert.equal(courseAssistant.data.selectedKeyword, "");
@@ -530,11 +530,21 @@ assert.equal(
   1,
   "the release tap cannot undo the new course type",
 );
-selectorStart(courseAssistant, 200);
+selectorStart(courseAssistant, 100);
 selectorMove(courseAssistant, 20);
 selectorEnd(courseAssistant, 20);
 assert.equal(courseAssistant.data.courseType, "general_elective");
 assert.equal(catalogRestores, 2);
+selectorStart(courseAssistant);
+selectorMove(courseAssistant, 200);
+selectorEnd(courseAssistant, 200);
+assert.equal(courseAssistant.data.courseType, "international");
+assert.equal(catalogRestores, 3);
+selectorStart(courseAssistant, 200);
+selectorMove(courseAssistant, 20);
+selectorEnd(courseAssistant, 20);
+assert.equal(courseAssistant.data.courseType, "general_elective");
+assert.equal(catalogRestores, 4);
 selectorStart(courseAssistant);
 selectorMove(courseAssistant, 200);
 courseAssistant.onHide();
@@ -542,7 +552,7 @@ selectorEnd(courseAssistant, 200);
 assert.equal(courseAssistant.data.courseType, "general_elective");
 assert.equal(
   catalogRestores,
-  2,
+  4,
   "hiding the page must cancel the pending type selection",
 );
 

@@ -9,7 +9,7 @@
   <view class="course-section-head publish-section-head"><text class="course-section-title display-title">我修过的课</text><text class="course-section-note">{{takenCourses.length}} 门</text></view>
   <loading-view wx:if="{{mineLoading && !takenCourses.length}}" label="正在整理可评价课程" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
   <empty-state wx:elif="{{mineError && !takenCourses.length}}" icon="circle-alert" icon-tone="danger" title="课程加载失败" description="{{mineError}}" action-text="重新加载" bindaction="retryMine"></empty-state>
-  <empty-state wx:elif="{{!takenCourses.length}}" icon="book-open" icon-tone="amber" title="暂无可评价课程" description="仅通识选修课和体育课会显示在这里"></empty-state>
+  <empty-state wx:elif="{{!takenCourses.length}}" icon="book-open" icon-tone="amber" title="暂无可评价课程" description="修过的通选、体育和国际课程会显示在这里"></empty-state>
   <view wx:else class="taken-list">
     <block wx:for="{{takenCourses}}" wx:key="courseKey"><view class="taken-item {{item.reviewUnderReview ? 'taken-item--reviewing' : (item.reviewed ? 'taken-item--done' : '')}}" data-key="{{item.courseKey}}" bindtouchstart="onCourseTouchStart" bindtouchmove="onCourseTouchMove" bindtouchend="onCourseTouchEnd" bindtouchcancel="onCourseTouchCancel" bindtap="openReview" hover-class="{{item.reviewed ? '' : 'taken-item--pressed'}}">
       <view class="taken-copy"><view class="taken-name-row"><text class="taken-name" overflow="ellipsis" max-lines="1">{{item.displayName}}</text><text wx:if="{{item.reviewed}}" class="done-badge {{item.reviewUnderReview ? 'done-badge--reviewing' : ''}}">{{item.reviewUnderReview ? '审核中' : '已发布'}}</text></view><text class="taken-meta tnum">{{item.metaLabel}}</text></view>

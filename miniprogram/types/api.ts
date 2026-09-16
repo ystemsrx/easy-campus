@@ -535,7 +535,7 @@ export interface PassRatesData {
 }
 
 export type CourseAssistantCourseType =
-  "general_elective" | "physical_education";
+  "general_elective" | "physical_education" | "international";
 export type CourseAssistantCatalogSort = "average_score" | "rating";
 
 export type CourseAssistantKeywordSentiment =

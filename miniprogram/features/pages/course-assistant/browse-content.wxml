@@ -7,7 +7,7 @@
 
   <view class="guide-hero">
     <view class="guide-ring guide-ring--one"></view><view class="guide-ring guide-ring--two"></view>
-    <text class="guide-kicker">通识选修 · 体育课程</text>
+    <text class="guide-kicker">通选 · 体育 · 国际</text>
     <view class="guide-title display-title"><text class="guide-title-line">前人栽树，</text><text class="guide-title-line">后来选课不踩坑。</text></view>
     <view class="hero-stats">
       <view class="hero-stat"><text class="hero-stat-value tnum">{{summary.courseCount}}</text><text class="hero-stat-label">收录课程</text></view>
@@ -29,9 +29,10 @@
 
   <view class="course-tools">
     <view class="course-segment" aria-role="tablist" bindtouchstart="onSelectorTouchStart" catchtouchmove="{{liquidGlass ? 'onSelectorTouchMove' : ''}}" bindtouchend="onSelectorTouchEnd" bindtouchcancel="onSelectorTouchCancel">
-      <view class="segment-indicator {{courseType === 'physical_education' ? 'segment-indicator--physical' : ''}} {{selectorDragging ? 'glass-selector--dragging' : ''}}" style="{{selectorDragStyle}}"></view>
-      <view class="segment-option {{(selectorDragging ? selectorDragIndex === 0 : courseType === 'general_elective') ? 'segment-option--active' : ''}}" data-type="general_elective" bindtap="selectCourseType" hover-class="segment-option--pressed" aria-role="tab" aria-selected="{{courseType === 'general_elective'}}"><text>通识选修</text></view>
-      <view class="segment-option {{(selectorDragging ? selectorDragIndex === 1 : courseType === 'physical_education') ? 'segment-option--active' : ''}}" data-type="physical_education" bindtap="selectCourseType" hover-class="segment-option--pressed" aria-role="tab" aria-selected="{{courseType === 'physical_education'}}"><text>体育课程</text></view>
+      <view class="segment-indicator {{courseType === 'physical_education' ? 'segment-indicator--physical' : ''}} {{courseType === 'international' ? 'segment-indicator--international' : ''}} {{selectorDragging ? 'glass-selector--dragging' : ''}}" style="{{selectorDragStyle}}"></view>
+      <view class="segment-option {{(selectorDragging ? selectorDragIndex === 0 : courseType === 'general_elective') ? 'segment-option--active' : ''}}" data-type="general_elective" bindtap="selectCourseType" hover-class="segment-option--pressed" aria-role="tab" aria-selected="{{courseType === 'general_elective'}}"><text>通选</text></view>
+      <view class="segment-option {{(selectorDragging ? selectorDragIndex === 1 : courseType === 'physical_education') ? 'segment-option--active' : ''}}" data-type="physical_education" bindtap="selectCourseType" hover-class="segment-option--pressed" aria-role="tab" aria-selected="{{courseType === 'physical_education'}}"><text>体育</text></view>
+      <view class="segment-option {{(selectorDragging ? selectorDragIndex === 2 : courseType === 'international') ? 'segment-option--active' : ''}}" data-type="international" bindtap="selectCourseType" hover-class="segment-option--pressed" aria-role="tab" aria-selected="{{courseType === 'international'}}"><text>国际</text></view>
     </view>
     <view class="circle-tool {{favoritesOnly ? 'circle-tool--active' : ''}}" bindtap="toggleFavoritesOnly" hover-class="circle-tool--pressed" aria-role="button" aria-label="只看收藏">
       <image wx:if="{{favoritesOnly}}" class="tool-image" src="/features/assets/course-assistant/heart-coral.svg" mode="aspectFit"></image>
