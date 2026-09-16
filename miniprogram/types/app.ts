@@ -6,6 +6,7 @@ export interface AppPreferences {
   visualTheme: VisualTheme;
   showGradesOnHome: boolean;
   showGradesBelow60: boolean;
+  useArithmeticAverage: boolean;
   reducedMotion: boolean;
   haptics: boolean;
   liquidGlass: boolean;
@@ -16,6 +17,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   visualTheme: "default",
   showGradesOnHome: true,
   showGradesBelow60: true,
+  useArithmeticAverage: false,
   reducedMotion: false,
   haptics: false,
   liquidGlass: false,

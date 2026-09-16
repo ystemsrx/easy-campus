@@ -17,6 +17,7 @@ Page({
     motionClass: "motion-normal",
     showGradesOnHome: true,
     showGradesBelow60: true,
+    useArithmeticAverage: false,
   },
   onLoad() {
     this.applyPreferences();
@@ -33,6 +34,7 @@ Page({
       ...appearance,
       showGradesOnHome: preferences.showGradesOnHome,
       showGradesBelow60: preferences.showGradesBelow60,
+      useArithmeticAverage: preferences.useArithmeticAverage,
     });
   },
   onShowGradesOnHomeChange(event: WechatMiniprogram.SwitchChange) {
@@ -42,6 +44,11 @@ Page({
   },
   onShowGradesBelow60Change(event: WechatMiniprogram.SwitchChange) {
     updatePreferences({ showGradesBelow60: event.detail.value });
+    haptic("light");
+    this.applyPreferences();
+  },
+  onUseArithmeticAverageChange(event: WechatMiniprogram.SwitchChange) {
+    updatePreferences({ useArithmeticAverage: event.detail.value });
     haptic("light");
     this.applyPreferences();
   },

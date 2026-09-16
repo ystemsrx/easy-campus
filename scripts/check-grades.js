@@ -356,6 +356,21 @@ const highestHistoricalSummary = moduleRecord.exports.summarizeGrades(
   highestHistoricalGrades,
 );
 assert(
+  moduleRecord.exports.arithmeticAverageGrades(highestHistoricalGrades) ===
+    85.5 &&
+    moduleRecord.exports.arithmeticAverageGrades([
+      ...highestHistoricalGrades,
+      { ...highestHistoricalGrades[0], id: "no-credit", credits: 0 },
+      {
+        ...highestHistoricalGrades[0],
+        id: "no-score",
+        calculationScore: null,
+      },
+    ]) === 85.5 &&
+    moduleRecord.exports.arithmeticAverageGrades([]) === null,
+  "算数平均分须沿用加权均分的有效课程样本，但每门课程权重相同",
+);
+assert(
   highestHistoricalGrades.map((course) => course.id).join(",") ===
     "retake-higher,historical-math" &&
     highestHistoricalSummary.courseCount === 2 &&
@@ -774,13 +789,18 @@ assert(
 assert(
   appTypes.includes("showGradesBelow60: boolean;") &&
     appTypes.includes("showGradesBelow60: true,") &&
+    appTypes.includes("useArithmeticAverage: false,") &&
     preferencesStore.includes("typeof stored.showGradesBelow60") &&
+    preferencesStore.includes("typeof stored.useArithmeticAverage") &&
     profileTemplate.includes("成绩展示设置") &&
     profileScript.includes("this.openProfileRoute(") &&
     profileScript.includes('"/features/pages/grade-settings/index"') &&
     !profileTemplate.includes('bindchange="onShowGradesOnHomeChange"') &&
     gradeSettingsTemplate.includes('checked="{{showGradesOnHome}}"') &&
     gradeSettingsTemplate.includes('checked="{{showGradesBelow60}}"') &&
+    gradeSettingsTemplate.includes('checked="{{useArithmeticAverage}}"') &&
+    gradeSettingsTemplate.includes("开启后展示算数平均分而非加权") &&
+    gradesPageScript.includes("arithmeticAverageGrades(") &&
     gradesPageScript.includes(
       "includeUnsuccessful: this.data.includeUnsuccessful",
     ) &&

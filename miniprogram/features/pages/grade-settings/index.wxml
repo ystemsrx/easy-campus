@@ -11,12 +11,19 @@
         </view>
         <app-switch class="grade-setting-switch" checked="{{showGradesOnHome}}" color="#7d8f6e" bindchange="onShowGradesOnHomeChange" label="主页展示成绩" />
       </view>
-      <view class="grade-setting-row">
+      <view class="grade-setting-row grade-setting-row--divided">
         <view class="grade-setting-copy">
           <text class="grade-setting-title">展示60分以下成绩</text>
           <text class="grade-setting-caption">关闭后隐藏不及格与异常成绩</text>
         </view>
         <app-switch class="grade-setting-switch" checked="{{showGradesBelow60}}" color="#7d8f6e" bindchange="onShowGradesBelow60Change" label="展示60分以下成绩" />
+      </view>
+      <view class="grade-setting-row">
+        <view class="grade-setting-copy">
+          <text class="grade-setting-title">使用算数平均分</text>
+          <text class="grade-setting-caption">开启后展示算数平均分而非加权</text>
+        </view>
+        <app-switch class="grade-setting-switch" checked="{{useArithmeticAverage}}" color="#7d8f6e" bindchange="onUseArithmeticAverageChange" label="使用算数平均分" />
       </view>
     </view>
   </view>

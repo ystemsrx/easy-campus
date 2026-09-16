@@ -52,6 +52,10 @@ export function loadPreferences(): AppPreferences {
       typeof stored.showGradesBelow60 === "boolean"
         ? stored.showGradesBelow60
         : DEFAULT_PREFERENCES.showGradesBelow60,
+    useArithmeticAverage:
+      typeof stored.useArithmeticAverage === "boolean"
+        ? stored.useArithmeticAverage
+        : DEFAULT_PREFERENCES.useArithmeticAverage,
     reducedMotion:
       typeof stored.reducedMotion === "boolean"
         ? stored.reducedMotion

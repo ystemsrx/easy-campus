@@ -276,13 +276,17 @@ export function latestGradedSemester(
   );
 }
 
-export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
-  const scoredCourses = courses.filter(
+function scoredGradeCourses(courses: GradeCourse[]): GradeCourse[] {
+  return courses.filter(
     (course) =>
       typeof course.credits === "number" &&
       course.credits > 0 &&
       typeof course.calculationScore === "number",
   );
+}
+
+export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
+  const scoredCourses = scoredGradeCourses(courses);
   const weightedCredits = scoredCourses.reduce(
     (total, course) => total + (course.credits || 0),
     0,
@@ -317,6 +321,19 @@ export function summarizeGrades(courses: GradeCourse[]): GradeSummary {
       ? Number((gradePointTotal / gradePointCredits).toFixed(2))
       : null,
   };
+}
+
+export function arithmeticAverageGrades(courses: GradeCourse[]): number | null {
+  const scores = scoredGradeCourses(courses).map(
+    (course) => course.calculationScore as number,
+  );
+  return scores.length
+    ? Number(
+        (
+          scores.reduce((total, score) => total + score, 0) / scores.length
+        ).toFixed(2),
+      )
+    : null;
 }
 
 function comparableCourseScore(course: GradeCourse): number | null {

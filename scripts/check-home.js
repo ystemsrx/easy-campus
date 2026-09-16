@@ -539,10 +539,11 @@ assert(
   "初次登录没有本地快照时，消息、通知和课表必须各自返回后立即显示，不能等待最慢请求",
 );
 assert(
-  homeScript.includes(
-    "summarizeGrades(highestGradesByCourseName(data?.items || []))",
-  ) && !homeScript.includes("latestSemesterGrades(data).summary"),
-  "首页成绩卡必须汇总全历史成绩，并按课程名只采用最高分",
+  homeScript.includes("highestGradesByCourseName(data?.items || [])") &&
+    homeScript.includes("summarizeGrades(courses)") &&
+    homeScript.includes("arithmeticAverageGrades(courses)") &&
+    !homeScript.includes("latestSemesterGrades(data).summary"),
+  "首页成绩卡必须汇总全历史成绩、按课程名只采用最高分，并支持切换均分算法",
 );
 
 const publicationPopoverStyle =

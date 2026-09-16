@@ -197,6 +197,34 @@ cached.page.onShow();
 assert.equal(cached.page.data.gradeAverageLabel, "73.3");
 assert.equal(cached.page.data.gradePointAverageLabel, "2.33");
 
+const arithmeticValues = new Map();
+bootHome(arithmeticValues).grades.saveGradesSnapshot(
+  "student",
+  {
+    ...gradeData,
+    items: gradeData.items.map((course) =>
+      course.id === "english" ? { ...course, credits: 4 } : course,
+    ),
+  },
+  storedAt,
+);
+const weightedHome = bootHome(arithmeticValues);
+assert.equal(weightedHome.initialData.gradeAverageLabel, "75");
+weightedHome.page.onLoad();
+weightedHome.page.onShow();
+weightedHome.preferences.updatePreferences({ useArithmeticAverage: true });
+weightedHome.page.onShow();
+assert.equal(
+  weightedHome.page.data.gradeAverageLabel,
+  "73.3",
+  "switching the preference updates the cached home preview",
+);
+assert.equal(
+  bootHome(arithmeticValues).initialData.gradeAverageLabel,
+  "73.3",
+  "arithmetic average must be present on the first frame",
+);
+
 cached.page.hydrateServerGrade(
   "student",
   {

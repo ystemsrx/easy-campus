@@ -130,6 +130,7 @@ import {
 } from "../../utils/exams";
 import { formatSchedule, formatScheduleDate } from "../../utils/format";
 import {
+  arithmeticAverageGrades,
   gradePointRingValue,
   highestGradesByCourseName,
   summarizeGrades,
@@ -436,13 +437,17 @@ function gradePreviewPatch(
   gradePointAverageLabel: string;
   gradeCourseCount: number;
 } {
-  const summary = summarizeGrades(highestGradesByCourseName(data?.items || []));
+  const courses = highestGradesByCourseName(data?.items || []);
+  const summary = summarizeGrades(courses);
+  const average = loadPreferences().useArithmeticAverage
+    ? arithmeticAverageGrades(courses)
+    : summary.weightedAverage;
   return {
     gradeRingSource: progressRingSource(
       gradePointRingValue(summary.gradePointAverage),
       animate,
     ),
-    gradeAverageLabel: displayGradeAverage(summary.weightedAverage, 1),
+    gradeAverageLabel: displayGradeAverage(average, 1),
     gradePointAverageLabel:
       summary.gradePointAverage === null
         ? "—"

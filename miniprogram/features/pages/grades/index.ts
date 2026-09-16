@@ -35,6 +35,7 @@ import { resolveAppearance } from "../../../utils/appearance";
 import { formatDateTime } from "../../../utils/date";
 import { formatCredits, formatScore, scoreTone } from "../../../utils/format";
 import {
+  arithmeticAverageGrades,
   gradesForSemester,
   isMakeupOrDeferredGrade,
   isUnsuccessfulGrade,
@@ -319,6 +320,7 @@ Page({
     activeSemesterId: "all",
     semesterInitialized: false,
     includeUnsuccessful: loadPreferences().showGradesBelow60,
+    useArithmeticAverage: loadPreferences().useArithmeticAverage,
     refreshPageToken: 0,
     observedRefreshFlightId: 0,
   },
@@ -338,6 +340,7 @@ Page({
     if (!ensureAuthenticated()) return;
     markRefreshPageVisible(this.data.refreshPageToken);
     const includeUnsuccessful = loadPreferences().showGradesBelow60;
+    const useArithmeticAverage = loadPreferences().useArithmeticAverage;
     if (includeUnsuccessful !== this.data.includeUnsuccessful) {
       hydratedGradesAccount = "";
       requestSequence += 1;
@@ -356,6 +359,19 @@ Page({
         academicYear: 0,
         term: 0,
         activeSemesterId: "all",
+      });
+    }
+    if (useArithmeticAverage !== this.data.useArithmeticAverage) {
+      const average = useArithmeticAverage
+        ? arithmeticAverageGrades(this.data.gradeItems)
+        : this.data.summary.weightedAverage;
+      this.setData({
+        useArithmeticAverage,
+        averageRingSource: progressRingSource(
+          average,
+          this.data.motionClass !== "motion-reduced",
+        ),
+        averageLabel: displayAverage(average),
       });
     }
     this.applyAppearance();
@@ -530,6 +546,11 @@ Page({
   },
   applyGradesData(data: GradesData, fetchedAtValue = "", append = false) {
     const fetchedAt = fetchedAtValue ? formatDateTime(fetchedAtValue) : "";
+    const average = loadPreferences().useArithmeticAverage
+      ? arithmeticAverageGrades(
+          append ? [...this.data.gradeItems, ...data.items] : data.items,
+        )
+      : data.summary.weightedAverage;
     const incoming = data.items.map((course, index) =>
       toGradeView(course, `${course.id}:${index}`),
     );
@@ -537,10 +558,10 @@ Page({
       gradeItems: append ? [...this.data.gradeItems, ...incoming] : incoming,
       summary: data.summary,
       averageRingSource: progressRingSource(
-        data.summary.weightedAverage,
+        average,
         this.data.motionClass !== "motion-reduced",
       ),
-      averageLabel: displayAverage(data.summary.weightedAverage),
+      averageLabel: displayAverage(average),
       gradePointAverageLabel: displayAverage(data.summary.gradePointAverage),
       page: data.pagination.page,
       totalPages: data.pagination.totalPages,
