@@ -275,7 +275,7 @@ function toDetailView(detail: CourseAssistantCourseDetail): DetailView {
         : detail.type === "international"
           ? "INTERNATIONAL COURSE"
           : "GENERAL EDUCATION",
-    teacherLabel: formatCourseTeacherNames(detail.teacherNames),
+    teacherLabel: formatCourseTeacherNames(detail.teacherNames, detail.type),
     creditsLabel:
       detail.credits === null
         ? "学分未提供"

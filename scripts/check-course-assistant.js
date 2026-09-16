@@ -97,7 +97,7 @@ assert.match(
   controller,
   /sort === "rating" && this\.data\.reviewAccess\.ownReviewCount === 0/,
 );
-assert.match(controller, /formatCourseTeacherNames\(course\.teacherNames\)/);
+assert.match(controller, /formatCourseTeacherNames\(course\.teacherNames, course\.type\)/);
 assert.doesNotMatch(controller, /教师信息待补充/);
 assert.match(controller, /course\.type !== "physical_education"/);
 assert.match(controller, /Boolean\(course\.sportName\?\.trim\(\)\)/);
@@ -263,7 +263,7 @@ assert.doesNotMatch(detailPage, /历史平均分数 · 匿名成绩/);
 assert.doesNotMatch(detailPage, /教务课程名/);
 assert.match(
   detailController,
-  /formatCourseTeacherNames\(detail\.teacherNames\)/,
+  /formatCourseTeacherNames\(detail\.teacherNames, detail\.type\)/,
 );
 assert.match(detailController, /detail\.reviewRows\[rowIndex\]\.underReview/);
 assert.match(detailController, /review\.own && review\.underReview/);
@@ -280,7 +280,7 @@ assert.doesNotMatch(detailController, /教师信息待补充/);
 const courseAssistantFormat = read(
   "miniprogram/features/utils/course-assistant.ts",
 );
-assert.match(courseAssistantFormat, /teachers\.length <= 3/);
+assert.match(courseAssistantFormat, /courseType === "general_elective" \? 2 : 3/);
 assert.match(courseAssistantFormat, /"多名教师"/);
 assert.match(courseAssistantFormat, /formatReviewTeacherNames/);
 

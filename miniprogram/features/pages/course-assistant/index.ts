@@ -1333,7 +1333,7 @@ function toCourseCard(
     ...course,
     indexLabel: String(index + 1).padStart(2, "0"),
     typeLabel: courseTypeLabel(course.type),
-    teacherLabel: formatCourseTeacherNames(course.teacherNames),
+    teacherLabel: formatCourseTeacherNames(course.teacherNames, course.type),
     creditsLabel:
       course.credits === null
         ? "学分未提供"
