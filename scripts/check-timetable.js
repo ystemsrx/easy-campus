@@ -138,7 +138,16 @@ function loadTimetableTheme() {
     },
   }).outputText;
   const moduleRecord = { exports: {} };
-  new Function("module", "exports", output)(moduleRecord, moduleRecord.exports);
+  new Function("module", "exports", "require", output)(
+    moduleRecord,
+    moduleRecord.exports,
+    (request) => {
+      if (request === "./timetable-custom")
+        return { loadCustomColor: () => "#0862ad", loadCustomBackground: () => null };
+      if (request === "../store/session") return { getSession: () => null };
+      return require(request);
+    },
+  );
   return moduleRecord.exports;
 }
 
@@ -3204,6 +3213,7 @@ assert(
     "prewarmTimetableFirstScreen(account, timetable, timetableThemeId)",
   ) &&
     !appSource.includes("preloadTimetableThemeAssets(timetableThemeId)") &&
+    appSource.includes('preloadTimetableThemeAssets("custom")') &&
     timetablePageScript.includes(
       "preloadTimetableThemeAssets(visualPreferences.timetableThemeId)",
     ) &&
@@ -3219,6 +3229,8 @@ assert(
     ) &&
     timetableRenderSource.includes("cached.themeId === themeId") &&
     assetPreloadSource.includes("TIMETABLE_THEME_FIRST_SCREEN_ASSETS") &&
+    assetPreloadSource.includes("loadCustomBackground") &&
+    assetPreloadSource.includes("custom.filePath") &&
     assetPreloadSource.includes("preloadTimetableThemeAssets") &&
     timetablePageScript.includes("queueRemainingWeekPages") &&
     timetablePageTemplate.includes('wx:if="{{weekPage.ready}}"') &&

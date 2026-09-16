@@ -1,5 +1,8 @@
+import { loadCustomBackground, loadCustomColor } from "./timetable-custom";
+import { getSession } from "../store/session";
+
 export type TimetableThemeId =
-  "default" | "companion" | "clawd" | "snack" | "vivid";
+  "default" | "companion" | "clawd" | "snack" | "vivid" | "custom";
 
 export type TimetableCoursePalette = readonly [
   string,
@@ -300,6 +303,9 @@ function timetableThemeStyle(
     `--companion-color:${safeHexColor(companionColor)}`,
     `--companion-wash:${companionAmbientWash(mutedCompanion[4])}`,
   ];
+  if (themeId === "custom") {
+    declarations.push("--timetable-chrome:#242424", "--timetable-chrome-muted:#444444", "--timetable-chrome-subtle:#555555", "--timetable-chrome-faint:#666666", "--timetable-header-surface:rgba(255,255,255,0.9)", "--timetable-header-surface-pressed:#ffffff", "--timetable-week-surface:#ffffff", "--timetable-week-surface-pressed:#f4f4f4", "--timetable-today-background:#242424", "--timetable-today-text:#ffffff");
+  }
   COURSE_TONE_IDS.forEach((tone, index) => {
     const courseFill =
       themeId === "companion" ? backgroundColor : palette[index];
@@ -317,7 +323,7 @@ function timetableThemeStyle(
 }
 
 export function resolveTimetableThemeId(value: unknown): TimetableThemeId {
-  if (value === "image") return "default";
+  if (value === "custom") return "custom";
   const selected = TIMETABLE_THEME_OPTIONS.find((theme) => theme.id === value);
   return selected?.id || "default";
 }
@@ -335,32 +341,37 @@ export function loadTimetableThemeId(): TimetableThemeId {
 export function timetableThemePatch(
   id: unknown,
   companionColor: string,
+  customColor = loadCustomColor(),
 ): TimetableThemePatch {
   const selectedId = resolveTimetableThemeId(id);
   const selected =
     TIMETABLE_THEME_OPTIONS.find((theme) => theme.id === selectedId) ||
     TIMETABLE_THEME_OPTIONS[0];
   const palette =
-    selected.id === "companion"
+    selectedId === "custom"
+      ? Array(8).fill(customColor) as unknown as TimetableCoursePalette
+      : selected.id === "companion"
       ? companionCoursePalette(companionColor)
       : selected.palette || DEFAULT_COURSE_PALETTE;
   const backgroundColor =
-    selected.id === "companion"
+    selectedId === "custom"
+      ? (loadCustomBackground(getSession()?.user.id || "")?.edges.top || "#f3f2f6")
+      : selected.id === "companion"
       ? companionBackgroundColor(companionColor)
       : selected.backgroundColor;
   return {
-    timetableThemeId: selected.id,
+    timetableThemeId: selectedId,
     backgroundColor,
     companionBackgroundClass:
       selected.id === "companion" && isNeutralCompanionColor(companionColor)
         ? "timetable-companion-background--plain"
         : "",
     themeStyle: timetableThemeStyle(
-      selected.id,
+      selectedId,
       palette,
       companionColor,
       backgroundColor,
     ),
-    headerIconTone: selected.id === "default" ? "white" : "ink",
+    headerIconTone: selectedId === "default" ? "white" : "ink",
   };
 }

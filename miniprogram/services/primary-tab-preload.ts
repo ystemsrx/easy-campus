@@ -27,6 +27,9 @@ import type {
   TimetableData,
 } from "../types/api";
 import { getCurrentUser } from "./auth";
+import { loadTimetableThemeId } from "../data/timetable-theme";
+import { preloadTimetableThemeAssets } from "../utils/icon-preload";
+import { syncTimetableBackground } from "./timetable-background";
 import {
   getLocalSchedule,
   getTimetable,
@@ -227,6 +230,14 @@ function startPreload(session: Session): PrimaryTabPreloadState {
   activeState = state;
   warmSchedule(state, false);
   warmProfile(state);
+  if (loadTimetableThemeId() === "custom") {
+    preloadTimetableThemeAssets("custom");
+    void syncTimetableBackground()
+      .then((path) => {
+        if (path && isActive(state)) preloadTimetableThemeAssets("custom");
+      })
+      .catch(() => undefined);
+  }
 
   state.userPromise = getCurrentUser(true);
   state.timetablePromise = preloadTimetable(state);

@@ -1,4 +1,6 @@
 import type { TimetableThemeId } from "../data/timetable-theme";
+import { loadCustomBackground } from "../data/timetable-custom";
+import { getSession } from "../store/session";
 
 const PRIMARY_TAB_ASSET_PATHS = [
   "/assets/icons/arrow-left-white.svg",
@@ -24,7 +26,7 @@ const PRIMARY_TAB_ASSET_PATHS = [
 
 const PRELOAD_CONCURRENCY = 4;
 let preloadStarted = false;
-const preloadedTimetableThemes = new Set<TimetableThemeId>();
+const preloadedTimetableThemes = new Set<string>();
 const TIMETABLE_THEME_FIRST_SCREEN_ASSETS: Partial<
   Record<TimetableThemeId, readonly string[]>
 > = {
@@ -68,8 +70,12 @@ export function preloadPrimaryTabAssets(): void {
 
 /** 只解码当前课表主题首帧会实际使用的图片。 */
 export function preloadTimetableThemeAssets(themeId: TimetableThemeId): void {
-  if (preloadedTimetableThemes.has(themeId)) return;
-  preloadedTimetableThemes.add(themeId);
-  const paths = TIMETABLE_THEME_FIRST_SCREEN_ASSETS[themeId] || [];
+  const custom = themeId === "custom"
+    ? loadCustomBackground(getSession()?.user.id || "")
+    : null;
+  const key = custom ? `custom:${getSession()?.user.id}:${custom.version}:${custom.filePath}` : themeId;
+  if (preloadedTimetableThemes.has(key)) return;
+  preloadedTimetableThemes.add(key);
+  const paths = custom ? [custom.filePath] : TIMETABLE_THEME_FIRST_SCREEN_ASSETS[themeId] || [];
   void Promise.all(paths.map((path) => warmImage(path)));
 }

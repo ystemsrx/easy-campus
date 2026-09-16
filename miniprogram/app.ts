@@ -9,7 +9,7 @@ import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
 import { prewarmTimetableFirstScreen } from "./data/timetable-render";
 import { loadTimetableThemeId } from "./data/timetable-theme";
-import { preloadPrimaryTabAssets } from "./utils/icon-preload";
+import { preloadPrimaryTabAssets, preloadTimetableThemeAssets } from "./utils/icon-preload";
 import { registerAuthenticationRoute } from "./utils/navigation";
 
 App<IAppOption>({
@@ -27,6 +27,7 @@ App<IAppOption>({
     prepareDemoData(this);
     preloadPrimaryTabAssets();
     const timetableThemeId = loadTimetableThemeId();
+    if (timetableThemeId === "custom") preloadTimetableThemeAssets("custom");
     const account = this.globalData.session?.user.account || "";
     const timetable = account ? loadTimetableSnapshot(account) : null;
     if (timetable) {

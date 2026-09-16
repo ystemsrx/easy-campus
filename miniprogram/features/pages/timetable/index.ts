@@ -1,4 +1,6 @@
 import { buildAppShare } from "../../../utils/app-share";
+import { CUSTOM_COLORS, customFillIsVertical, loadCustomBackground, loadCustomColor, readableBackgroundText, saveCustomColor } from "../../../data/timetable-custom";
+import { syncTimetableBackground, uploadTimetableBackground } from "../../../services/timetable-background";
 import {
   coursesForWeek,
   teachingWeekForDate,
@@ -29,6 +31,7 @@ import {
 } from "../../../data/timetable-theme";
 import {
   getErrorMessage,
+  isRateLimitError,
   shouldShowRefreshFailureFeedback,
 } from "../../../services/request";
 import { getPassRates, getTimetable } from "../../../services/teaching";
@@ -238,7 +241,9 @@ const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
 const HEADER_BUTTON_GAP_RPX = 12;
 const TIMETABLE_MENU_LEFT_RPX = 88;
-const MAIN_MENU_HEIGHT = 588;
+const MAIN_MENU_HEIGHT = 666;
+const CUSTOM_MENU_HEIGHT = 486;
+const CUSTOM_MENU_WITH_IMAGE_HEIGHT = 558;
 const SWIPE_WEEKS_STORAGE_KEY = "timetable-swipe-weeks-v1";
 const COURSE_ENTRANCE_MS = 280;
 
@@ -1410,6 +1415,10 @@ function submenuHeight(semesterCount: number): number {
   return Math.min(590, Math.max(250, 104 + Math.min(6, semesterCount) * 78));
 }
 
+function customMenuHeight(hasSavedBackground: boolean): number {
+  return hasSavedBackground ? CUSTOM_MENU_WITH_IMAGE_HEIGHT : CUSTOM_MENU_HEIGHT;
+}
+
 function weekMenuListHeight(weekCount: number): number {
   return Math.min(448, 32 + Math.ceil(Math.max(1, weekCount) / 4) * 86);
 }
@@ -1700,6 +1709,17 @@ function timetableVisualPreferencesPatch(
 
 const INITIAL_TIMETABLE_VISUAL_PREFERENCES = timetableVisualPreferencesPatch();
 
+function customBackgroundPatch() {
+  const cached = loadCustomBackground(getSession()?.user.id || "");
+  const edges = cached?.edges || { top: "#f3f2f6", bottom: "#f3f2f6", left: "#f3f2f6", right: "#f3f2f6" };
+  return {
+    customImagePath: cached?.filePath || "",
+    customFillVertical: customFillIsVertical(cached),
+    customEdges: edges,
+    customTextStyle: `--timetable-custom-header-text:${readableBackgroundText(edges.top)};--timetable-custom-scale-text:${readableBackgroundText(edges.left)};`,
+  };
+}
+
 function clearTimetableMenuTimers(): void {
   if (menuOpenTimer !== undefined) {
     clearTimeout(menuOpenTimer);
@@ -1741,6 +1761,11 @@ Page({
     compactHeader: false,
     ...backgroundMetrics(),
     timetableThemes: TIMETABLE_THEME_OPTIONS,
+    customColors: CUSTOM_COLORS,
+    customColor: loadCustomColor(),
+    ...customBackgroundPatch(),
+    customOpen: false,
+    uploadingBackground: false,
     clawdSceneSrc: "",
     clawdScenePositionStyle: CLAWD_DEFAULT_POSITION_STYLE,
     clawdSceneMotionClass: "",
@@ -1822,6 +1847,8 @@ Page({
     this.setData(
       {
         ...visualPreferences,
+        customColor: loadCustomColor(),
+        ...customBackgroundPatch(),
         swipeWeeks: loadSwipeWeeks(),
         compactHeader,
         refreshPageToken,
@@ -1832,6 +1859,7 @@ Page({
     this.hydrate();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
+    void this.syncCustomBackground();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
@@ -1839,6 +1867,8 @@ Page({
     this.setData(
       {
         ...timetableVisualPreferencesPatch(),
+        customColor: loadCustomColor(),
+        ...customBackgroundPatch(),
         ...backgroundMetrics(this.data.compactHeader),
       },
       () => this.syncClawdSceneSequence(),
@@ -1846,6 +1876,7 @@ Page({
     this.hydrate();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
+    void this.syncCustomBackground();
   },
   onHide() {
     markRefreshPageHidden(this.data.refreshPageToken);
@@ -2069,6 +2100,7 @@ Page({
         menuMounted: false,
         menuOpen: false,
         semesterOpen: false,
+        customOpen: false,
         weekMenuMounted: false,
         weekMenuOpen: false,
         weekScrollIntoView: "",
@@ -2608,6 +2640,7 @@ Page({
         menuMounted: true,
         menuOpen: false,
         semesterOpen: false,
+        customOpen: false,
         menuHeight: MAIN_MENU_HEIGHT,
       },
       () => {
@@ -2635,6 +2668,7 @@ Page({
         this.setData({
           menuMounted: false,
           semesterOpen: false,
+          customOpen: false,
           menuHeight: MAIN_MENU_HEIGHT,
         });
       }
@@ -2647,9 +2681,69 @@ Page({
       menuHeight: this.data.semesterMenuHeight,
     });
   },
+  openCustomMenu() {
+    haptic("light");
+    this.setData({ customOpen: true, menuHeight: customMenuHeight(!!this.data.customImagePath) });
+  },
   backToMainMenu() {
     haptic("light");
-    this.setData({ semesterOpen: false, menuHeight: MAIN_MENU_HEIGHT });
+    this.setData({ semesterOpen: false, customOpen: false, menuHeight: MAIN_MENU_HEIGHT });
+  },
+  async syncCustomBackground() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    try {
+      const path = await syncTimetableBackground();
+      if (path && pageAlive && isSessionLeaseCurrent(lease)) {
+        preloadTimetableThemeAssets("custom");
+        this.setData({
+          ...customBackgroundPatch(),
+          ...timetableThemePatch(this.data.timetableThemeId, this.data.companionColor),
+          ...(this.data.customOpen ? { menuHeight: customMenuHeight(true) } : {}),
+        });
+      }
+    } catch { /* Keep the last saved image while offline. */ }
+  },
+  chooseCustomBackground() {
+    if (this.data.uploadingBackground) return;
+    wx.chooseMedia({ count: 1, mediaType: ["image"], sourceType: ["album", "camera"],
+      success: async ({ tempFiles }) => {
+        const path = tempFiles[0]?.tempFilePath;
+        if (!path) return;
+        this.setData({ uploadingBackground: true });
+        try {
+          await uploadTimetableBackground(path);
+          preloadTimetableThemeAssets("custom");
+          this.setData({
+            ...customBackgroundPatch(),
+            ...(this.data.customOpen ? { menuHeight: customMenuHeight(true) } : {}),
+          });
+          this.activateCustomTheme();
+        } catch (error) {
+          if (isRateLimitError(error)) return;
+          wx.showToast({ title: getErrorMessage(error) || "上传失败，请重试", icon: "none" });
+        } finally { this.setData({ uploadingBackground: false }); }
+      },
+    });
+  },
+  activateSavedBackground() {
+    if (!this.data.customImagePath || this.data.uploadingBackground) return;
+    preloadTimetableThemeAssets("custom");
+    this.activateCustomTheme();
+    haptic("light");
+  },
+  selectCustomColor(event: WechatMiniprogram.TouchEvent) {
+    const color = String(event.currentTarget.dataset.color || "");
+    if (!CUSTOM_COLORS.some((option) => option === color)) return;
+    saveCustomColor(color);
+    this.setData({ customColor: color });
+    this.activateCustomTheme(color);
+    haptic("light");
+  },
+  activateCustomTheme(color?: string) {
+    this.clearCompanionGaze();
+    this.setData(timetableThemePatch("custom", this.data.companionColor, color || this.data.customColor), () => this.syncClawdSceneSequence());
+    try { wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, "custom"); } catch { /* Keep this visit's theme. */ }
   },
   closeMenus() {
     this.closeTimetableMenu();
@@ -2896,6 +2990,7 @@ Page({
     const passRateOwnScore = Number(this.data.passRateOwnScore);
     this.setData({
       ...backgroundMetrics(this.data.compactHeader),
+      customFillVertical: customFillIsVertical(loadCustomBackground(getSession()?.user.id || "")),
       ...(selectedCourse
         ? { courseSheetHeight: courseSheetHeight(selectedCourse) }
         : {}),

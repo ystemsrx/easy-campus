@@ -5,6 +5,7 @@ Component({
     reducedMotion: { type: Boolean, value: false },
     theme: { type: String, value: "light" },
     visualTheme: { type: String, value: "default" },
+    forceBlack: { type: Boolean, value: false },
   },
   data: { mounted: false, visible: false, message: "访问速度太快了" },
   lifetimes: {

@@ -119,6 +119,9 @@ assert(
     preload.includes("const timetable = timetableSnapshot?.data || null") &&
     preload.includes("loadScheduleData(account)") &&
     preload.includes("warmSchedule(state)") &&
+    preload.includes('if (loadTimetableThemeId() === "custom")') &&
+    preload.includes("syncTimetableBackground()") &&
+    preload.includes('preloadTimetableThemeAssets("custom")') &&
     preload.includes("state.userPromise = getCurrentUser(true)") &&
     preload.includes("state.timetablePromise = preloadTimetable(state)") &&
     preload.includes("state.schedulePromise = preloadSchedule(state)"),

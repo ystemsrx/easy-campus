@@ -565,6 +565,8 @@ async function requestEnvelope<T>(
       showRateLimitToast(
         isFeedbackDailyLimitError(apiError)
           ? FEEDBACK_DAILY_LIMITED_MESSAGE
+          : apiError.code === "TIMETABLE_BACKGROUND_DAILY_LIMITED"
+          ? "更换背景过于频繁"
           : "访问速度太快了",
       );
       throw error;

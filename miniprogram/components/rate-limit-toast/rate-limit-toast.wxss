@@ -57,6 +57,14 @@
   background: #fff;
 }
 
+.rate-limit-toast--force-black.rate-limit-toast--force-black {
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+  border-radius: 999rpx;
+  color: #fff;
+  background: rgba(8, 10, 14, 0.58);
+  box-shadow: 0 16rpx 46rpx rgba(8, 10, 14, 0.16);
+}
+
 .rate-limit-toast--reduced-motion {
   transform: translate(-50%, -50%);
   transition: opacity 120ms ease-out;

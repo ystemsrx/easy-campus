@@ -1,7 +1,7 @@
-<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}" force-black="{{true}}"></rate-limit-toast>
 <view
   class="page timetable-page timetable-theme--{{timetableThemeId}} {{companionBackgroundClass}} {{themeClass}} {{motionClass}} {{liquidGlassClass}}"
-  style="background-color: {{backgroundColor}}; {{themeStyle}}"
+  style="background-color: {{backgroundColor}}; {{themeStyle}} {{customTextStyle}}"
   bindtouchstart="updateCompanionGaze"
   bindtouchmove="updateCompanionGaze"
   bindtouchend="clearCompanionGaze"
@@ -27,6 +27,11 @@
     draggable="{{false}}"
     aria-hidden="true"
   ></image>
+  <block wx:elif="{{timetableThemeId === 'custom' && customImagePath}}">
+    <view class="custom-background-fill {{customFillVertical ? 'custom-background-fill--top' : 'custom-background-fill--left'}}" style="background-color: {{customFillVertical ? customEdges.top : customEdges.left}};"></view>
+    <view class="custom-background-fill {{customFillVertical ? 'custom-background-fill--bottom' : 'custom-background-fill--right'}}" style="background-color: {{customFillVertical ? customEdges.bottom : customEdges.right}};"></view>
+    <image class="timetable-background timetable-background--custom" src="{{customImagePath}}" mode="aspectFit" fade-in="{{false}}" draggable="{{false}}" aria-hidden="true"></image>
+  </block>
   <view class="background-shade"></view>
 
   <view wx:if="{{timetableThemeId === 'clawd'}}" class="clawd-ambient-layer" aria-hidden="true">
@@ -234,7 +239,7 @@
 
   <view
     wx:if="{{menuMounted}}"
-    class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen ? 'timetable-menu--submenu' : ''}}"
+    class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen || customOpen ? 'timetable-menu--submenu' : ''}} {{customOpen ? 'timetable-menu--custom' : ''}}"
     style="top: {{menuTop}}px; height: {{menuHeight}}rpx; transform-origin: {{menuOriginX}}px {{menuOriginY}}px;"
     catchtap="stopPropagation"
   >
@@ -274,6 +279,12 @@
         </view>
       </view>
       <view class="menu-separator"></view>
+      <view class="menu-action pressable" bindtap="openCustomMenu" hover-class="pressing">
+        <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="sparkles" tone="sage" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">自定背景</text>
+        <lucide-icon wx:if="{{timetableThemeId === 'custom'}}" name="check" tone="coral" size="{{22}}"></lucide-icon>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
       <view class="menu-action pressable" bindtap="openSemesterMenu" hover-class="pressing">
         <view class="menu-action-icon menu-action-icon--semester"><lucide-icon name="calendar-days" tone="coral" size="{{25}}"></lucide-icon></view>
         <text class="menu-action-label">选择学期</text>
@@ -302,6 +313,29 @@
         <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="calendar-range" tone="sage" size="{{25}}"></lucide-icon></view>
         <text class="menu-action-label">滑动切换</text>
         <app-switch class="menu-switch" checked="{{swipeWeeks}}" bindchange="onSwipeWeeksChange" label="滑动切换周次"></app-switch>
+      </view>
+    </view>
+    <view class="menu-panel menu-panel--custom">
+      <view class="submenu-header">
+        <view class="submenu-back pressable" bindtap="backToMainMenu" hover-class="pressing" aria-role="button" aria-label="返回课表菜单"><lucide-icon name="arrow-left" tone="ink" size="{{24}}"></lucide-icon></view>
+        <text>自定背景</text>
+      </view>
+      <view class="menu-action pressable" bindtap="chooseCustomBackground" hover-class="pressing" aria-role="button" aria-disabled="{{uploadingBackground}}">
+        <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="plus" tone="sage" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">{{uploadingBackground ? '上传中' : '上传图片'}}</text>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view wx:if="{{customImagePath}}" class="menu-action custom-saved-background pressable" bindtap="activateSavedBackground" hover-class="pressing" aria-role="button" aria-label="使用已上传图片" aria-disabled="{{uploadingBackground}}">
+        <image class="custom-saved-background-image" src="{{customImagePath}}" mode="aspectFill" fade-in="{{false}}" draggable="{{false}}"></image>
+        <text class="menu-action-label">已上传图片</text>
+        <lucide-icon wx:if="{{timetableThemeId === 'custom'}}" name="check" tone="coral" size="{{22}}"></lucide-icon>
+        <lucide-icon wx:else name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <text class="menu-label custom-color-label">颜色选择</text>
+      <view class="custom-color-options">
+        <view wx:for="{{customColors}}" wx:key="*this" class="custom-color-slot" data-color="{{item}}" bindtap="selectCustomColor" aria-role="button" aria-label="选择课程颜色{{item}}">
+          <view class="custom-color-option {{customColor === item ? 'custom-color-option--active' : ''}}" style="background-color: {{item}};"></view>
+        </view>
       </view>
     </view>
     <view class="menu-panel menu-panel--semester">

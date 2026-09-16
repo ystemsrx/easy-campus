@@ -92,6 +92,14 @@ if (
   failures.push("429 胶囊必须在屏幕正中以半透明黑色渐入渐出");
 }
 if (
+  !fs.readFileSync(path.join(miniprogramRoot, "features/pages/timetable/index.wxml"), "utf8").includes('force-black="{{true}}"') ||
+  !componentStyles.includes(".rate-limit-toast--force-black.rate-limit-toast--force-black") ||
+  !requestScript.includes('apiError.code === "TIMETABLE_BACKGROUND_DAILY_LIMITED"') ||
+  !requestScript.includes('"更换背景过于频繁"')
+) {
+  failures.push("课表背景每日限额必须使用三秒居中的黑色胶囊提示");
+}
+if (
   !/isRateLimitError\(apiError\)/.test(requestScript) ||
   !/showRateLimitToast\(/.test(requestScript) ||
   !/FEEDBACK_DAILY_LIMITED_MESSAGE/.test(requestScript) ||
@@ -135,7 +143,7 @@ for (const page of declaredPages) {
     "utf8",
   );
   if (
-    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s+reduced-motion="\{\{motionClass === 'motion-reduced'\}\}"\s*>/.test(
+    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s+reduced-motion="\{\{motionClass === 'motion-reduced'\}\}"(?:\s+force-black="\{\{true\}\}")?\s*>/.test(
       template,
     )
   ) {
