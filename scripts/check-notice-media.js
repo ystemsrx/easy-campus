@@ -134,6 +134,11 @@ const stubs = {
     captureSessionLease: () => ({}),
     isSessionLeaseCurrent: () => current,
   },
+  "../../../store/notice-details": {
+    isNoticeDetailDue: () => true,
+    loadNoticeDetailSnapshot: () => null,
+    saveNoticeDetailSnapshot: () => null,
+  },
   "../../utils/notice-attachments": {
     canPreviewAttachment: (type) => /^(?:docx?|xlsx?|pptx?|pdf)$/.test(type),
     downloadNoticeAttachment: async () => {

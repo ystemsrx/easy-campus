@@ -5,6 +5,11 @@ import { resolveAppearance } from "../../../utils/appearance";
 import { formatDateTime } from "../../../utils/date";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
+import {
+  isNoticeDetailDue,
+  loadNoticeDetailSnapshot,
+  saveNoticeDetailSnapshot,
+} from "../../../store/notice-details";
 import type {
   NoticeAttachment,
   NoticeContentBlock,
@@ -148,7 +153,10 @@ Page({
       url,
       domain: domainFromUrl(url),
     });
-    void this.loadDetail();
+    const lease = captureSessionLease();
+    const cached = lease ? loadNoticeDetailSnapshot(lease.account, id) : null;
+    if (cached) this.showDetail(cached.detail);
+    if (isNoticeDetailDue(cached)) void this.loadDetail();
   },
   onShow() {
     this.setData(resolveAppearance());
@@ -157,7 +165,7 @@ Page({
     this.disposed = true;
     Object.values(this.attachmentFiles).forEach(removeAttachmentFile);
   },
-  async loadDetail(refresh = false) {
+  async loadDetail(refresh = false, automatic = false) {
     if (!this.data.id) {
       this.setData({
         loaded: true,
@@ -172,41 +180,50 @@ Page({
       errorMessage: "",
     });
     try {
-      const result = await getNoticeDetail(this.data.id, refresh);
-      if (!isSessionLeaseCurrent(lease)) return;
-      const detail = result.data;
-      const publishedAt = detail.publishedAt || this.data.publishedAt;
-      const url = detail.link || this.data.url;
-      const contentBlocks = resolveContentBlocks(detail);
-      this.setData({
-        title: detail.title || this.data.title,
-        publisher: detail.publisher || "",
-        publishedAt,
-        displayTime: publishedAt ? formatDateTime(publishedAt) : "",
-        contentHtml: detail.contentHtml,
-        contentBlocks,
-        imageUrls: collectImageUrls(contentBlocks),
-        attachments: collectSegments(contentBlocks).filter(
-          (segment): segment is NoticeAttachment =>
-            segment.type === "attachment",
-        ),
-        url,
-        domain: domainFromUrl(url),
-        loaded: true,
-      });
+      const result = await getNoticeDetail(this.data.id, refresh, automatic);
+      if (this.disposed || !isSessionLeaseCurrent(lease)) return;
+      const cached = saveNoticeDetailSnapshot(
+        lease.account,
+        this.data.id,
+        result.data,
+        result.meta,
+      );
+      this.showDetail(cached?.detail || result.data);
       if (!refresh && result.meta.refreshing) {
-        void this.loadDetail(true);
+        void this.loadDetail(true, true);
       }
     } catch (error) {
-      if (!isSessionLeaseCurrent(lease)) return;
-      if (refresh && this.data.contentHtml) return;
+      if (this.disposed || !isSessionLeaseCurrent(lease)) return;
+      if (this.data.contentHtml) return;
       this.setData({
         loaded: true,
         errorMessage: getErrorMessage(error, "通知正文加载失败，请稍后重试。"),
       });
     } finally {
-      if (isSessionLeaseCurrent(lease)) this.setData({ loading: false });
+      if (!this.disposed && isSessionLeaseCurrent(lease))
+        this.setData({ loading: false });
     }
+  },
+  showDetail(detail: NoticeDetail) {
+    const publishedAt = detail.publishedAt || this.data.publishedAt;
+    const url = detail.link || this.data.url;
+    const contentBlocks = resolveContentBlocks(detail);
+    this.setData({
+      title: detail.title || this.data.title,
+      publisher: detail.publisher || "",
+      publishedAt,
+      displayTime: publishedAt ? formatDateTime(publishedAt) : "",
+      contentHtml: detail.contentHtml,
+      contentBlocks,
+      imageUrls: collectImageUrls(contentBlocks),
+      attachments: collectSegments(contentBlocks).filter(
+        (segment): segment is NoticeAttachment =>
+          segment.type === "attachment",
+      ),
+      url,
+      domain: domainFromUrl(url),
+      loaded: true,
+    });
   },
   retry() {
     haptic("light");

@@ -91,10 +91,11 @@ export function getNotices(
 export function getNoticeDetail(
   id: string,
   refresh = false,
+  automatic = false,
 ): Promise<TeachingResult<NoticeDetail>> {
   return teachingRequest<NoticeDetail>(
     `/teaching/notices/detail${buildQuery({ id, refresh: refresh || undefined })}`,
-    { credentialReauthFeedback: refresh },
+    { credentialReauthFeedback: refresh && !automatic },
   );
 }
 
