@@ -791,6 +791,8 @@
 }
 
 .course-card-aside--ownership {
+  align-self: stretch;
+  justify-content: space-between;
   width: calc(50% - 13rpx);
   overflow: hidden;
 }

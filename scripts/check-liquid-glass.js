@@ -505,7 +505,7 @@ courseAssistant.restoreCatalogCache = () => {
   catalogRestores += 1;
   return true;
 };
-courseAssistant.data.selectedKeyword = "讲得好";
+courseAssistant.data.selectedFilterKeywords = ["讲得好", "任务少"];
 courseAssistant.data.filterOpen = true;
 courseAssistant.data.filterPanelHeight = 160;
 selectorStart(courseAssistant);
@@ -519,7 +519,7 @@ assert.equal(
 selectorEnd(courseAssistant, 100);
 assert.equal(courseAssistant.data.courseType, "physical_education");
 assert.equal(catalogRestores, 1);
-assert.equal(courseAssistant.data.selectedKeyword, "");
+assert.deepEqual(courseAssistant.data.selectedFilterKeywords, []);
 assert.equal(courseAssistant.data.filterOpen, false);
 assert.equal(courseAssistant.data.filterPanelHeight, 0);
 courseAssistant.selectCourseType({

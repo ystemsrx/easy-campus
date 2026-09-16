@@ -142,6 +142,17 @@ const COURSE_TYPE_OPTIONS: CourseAssistantCourseType[] = [
 const CATALOG_PAGE_SIZE = 40;
 const COURSE_OWNERSHIP_OPTIONS = ["思想政治", "心理健康", "公共艺术", "人文社科"];
 
+function ownershipOptions(selected: string[]) {
+  return COURSE_OWNERSHIP_OPTIONS.map((text) => ({
+    text,
+    active: selected.includes(text),
+  }));
+}
+
+function filterKeywordOptions(available: string[], selected: string[]) {
+  return available.map((text) => ({ text, active: selected.includes(text) }));
+}
+
 function reviewContentLength(value: string) {
   return Array.from(value.trim()).length;
 }
@@ -224,9 +235,9 @@ Page({
     searchQuery: "",
     filterOpen: false,
     filterPanelHeight: 0,
-    selectedKeyword: "",
-    selectedOwnership: "",
-    courseOwnershipOptions: COURSE_OWNERSHIP_OPTIONS,
+    selectedFilterKeywords: [] as string[],
+    selectedOwnerships: [] as string[],
+    courseOwnershipOptions: ownershipOptions([]),
     catalogSort: "average_score" as CourseAssistantCatalogSort,
     catalogSortLabel: "历史均分",
     sortMenuMounted: false,
@@ -242,6 +253,7 @@ Page({
     courses: [] as CourseCardView[],
     summary: { courseCount: 0, reviewCount: 0, contributorCount: 0 },
     positiveFilterKeywords: DEFAULT_KEYWORDS.positive,
+    positiveFilterOptions: filterKeywordOptions(DEFAULT_KEYWORDS.positive, []),
     mineLoading: false,
     mineError: "",
     takenCourses: [] as GradeView[],
@@ -298,8 +310,10 @@ Page({
         sortMenuOpen: false,
         filterOpen: false,
         filterPanelHeight: 0,
-        selectedKeyword: "",
-        selectedOwnership: "",
+        selectedFilterKeywords: [],
+        positiveFilterOptions: filterKeywordOptions(DEFAULT_KEYWORDS.positive, []),
+        selectedOwnerships: [],
+        courseOwnershipOptions: ownershipOptions([]),
         courses: [],
         catalogLoadingMore: false,
         catalogPage: 1,
@@ -407,8 +421,8 @@ Page({
     const cacheKey = catalogCacheKey(
       this.data.courseType,
       this.data.searchQuery,
-      this.data.selectedKeyword,
-      this.data.selectedOwnership,
+      this.data.selectedFilterKeywords.join(","),
+      this.data.selectedOwnerships.join(","),
       this.data.catalogSort,
     );
     this.setData({
@@ -422,10 +436,10 @@ Page({
         pageSize: CATALOG_PAGE_SIZE,
         type: this.data.courseType,
         q: this.data.searchQuery.trim() || undefined,
-        keyword: this.data.selectedKeyword || undefined,
+        keyword: this.data.selectedFilterKeywords.join(",") || undefined,
         ownership:
           this.data.courseType === "general_elective"
-            ? this.data.selectedOwnership || undefined
+            ? this.data.selectedOwnerships.join(",") || undefined
             : undefined,
         sort: this.data.catalogSort,
       });
@@ -444,6 +458,10 @@ Page({
           catalogHasMore: page < result.pagination.totalPages,
           summary: result.summary,
           positiveFilterKeywords: result.keywords.positive,
+          positiveFilterOptions: filterKeywordOptions(
+            result.keywords.positive,
+            this.data.selectedFilterKeywords,
+          ),
           reviewAccess: result.reviewAccess,
         },
         () => this.updateFilterPanelHeight(),
@@ -499,13 +517,13 @@ Page({
                   .join(" ")
                   .toLocaleLowerCase()
                   .includes(query)) &&
-              (!this.data.selectedKeyword ||
-                course.keywords.some(
-                  (keyword) => keyword.text === this.data.selectedKeyword,
+              (!this.data.selectedFilterKeywords.length ||
+                course.keywords.some((keyword) =>
+                  this.data.selectedFilterKeywords.includes(keyword.text),
                 )) &&
-              (!this.data.selectedOwnership ||
-                (course.courseOwnerships || []).includes(
-                  this.data.selectedOwnership,
+              (!this.data.selectedOwnerships.length ||
+                this.data.selectedOwnerships.some((ownership) =>
+                  (course.courseOwnerships || []).includes(ownership),
                 )),
           )
           .sort(
@@ -587,8 +605,8 @@ Page({
       catalogCacheKey(
         this.data.courseType,
         this.data.searchQuery,
-        this.data.selectedKeyword,
-        this.data.selectedOwnership,
+        this.data.selectedFilterKeywords.join(","),
+        this.data.selectedOwnerships.join(","),
         this.data.catalogSort,
       ),
     );
@@ -603,6 +621,10 @@ Page({
         catalogHasMore: cached.hasMore,
         summary: cached.summary,
         positiveFilterKeywords: cached.positiveFilterKeywords,
+        positiveFilterOptions: filterKeywordOptions(
+          cached.positiveFilterKeywords,
+          this.data.selectedFilterKeywords,
+        ),
         reviewAccess: cached.reviewAccess,
       },
       () => this.updateFilterPanelHeight(),
@@ -613,8 +635,8 @@ Page({
   async prefetchCourseType(type: CourseAssistantCourseType) {
     const lease = captureSessionLease();
     const searchQuery = this.data.searchQuery.trim();
-    const selectedKeyword = this.data.selectedKeyword;
-    const selectedOwnership = this.data.selectedOwnership;
+    const selectedKeyword = this.data.selectedFilterKeywords.join(",");
+    const selectedOwnership = this.data.selectedOwnerships.join(",");
     const catalogSort = this.data.catalogSort;
     if (!lease || searchQuery || selectedKeyword || selectedOwnership) {
       return;
@@ -687,8 +709,13 @@ Page({
     this.setData(
       {
         courseType: type,
-        selectedKeyword: "",
-        selectedOwnership: "",
+        selectedFilterKeywords: [],
+        positiveFilterOptions: filterKeywordOptions(
+          this.data.positiveFilterKeywords,
+          [],
+        ),
+        selectedOwnerships: [],
+        courseOwnershipOptions: ownershipOptions([]),
         filterOpen: false,
         filterPanelHeight: 0,
         sortMenuMounted: false,
@@ -861,12 +888,22 @@ Page({
   },
   selectFilterKeyword(event: WechatMiniprogram.TouchEvent) {
     const keyword = String(event.currentTarget.dataset.keyword || "");
-    if (!keyword) return;
+    if (!this.data.positiveFilterKeywords.includes(keyword)) return;
     haptic("light");
     catalogCourses = [];
+    const selected = new Set(this.data.selectedFilterKeywords);
+    if (selected.has(keyword)) selected.delete(keyword);
+    else selected.add(keyword);
+    const selectedFilterKeywords = this.data.positiveFilterKeywords.filter(
+      (option) => selected.has(option),
+    );
     this.setData(
       {
-        selectedKeyword: keyword === this.data.selectedKeyword ? "" : keyword,
+        selectedFilterKeywords,
+        positiveFilterOptions: filterKeywordOptions(
+          this.data.positiveFilterKeywords,
+          selectedFilterKeywords,
+        ),
         courses: [],
         catalogPage: 1,
         catalogHasMore: true,
@@ -876,11 +913,15 @@ Page({
     void this.loadCatalog();
   },
   clearFilterKeyword() {
-    if (!this.data.selectedKeyword) return;
+    if (!this.data.selectedFilterKeywords.length) return;
     catalogCourses = [];
     this.setData(
       {
-        selectedKeyword: "",
+        selectedFilterKeywords: [],
+        positiveFilterOptions: filterKeywordOptions(
+          this.data.positiveFilterKeywords,
+          [],
+        ),
         courses: [],
         catalogPage: 1,
         catalogHasMore: true,
@@ -894,10 +935,16 @@ Page({
     if (!COURSE_OWNERSHIP_OPTIONS.includes(ownership)) return;
     haptic("light");
     catalogCourses = [];
+    const selected = new Set(this.data.selectedOwnerships);
+    if (selected.has(ownership)) selected.delete(ownership);
+    else selected.add(ownership);
+    const selectedOwnerships = COURSE_OWNERSHIP_OPTIONS.filter((option) =>
+      selected.has(option),
+    );
     this.setData(
       {
-        selectedOwnership:
-          ownership === this.data.selectedOwnership ? "" : ownership,
+        selectedOwnerships,
+        courseOwnershipOptions: ownershipOptions(selectedOwnerships),
         courses: [],
         catalogPage: 1,
         catalogHasMore: true,
@@ -907,10 +954,16 @@ Page({
     void this.loadCatalog();
   },
   clearFilterOwnership() {
-    if (!this.data.selectedOwnership) return;
+    if (!this.data.selectedOwnerships.length) return;
     catalogCourses = [];
     this.setData(
-      { selectedOwnership: "", courses: [], catalogPage: 1, catalogHasMore: true },
+      {
+        selectedOwnerships: [],
+        courseOwnershipOptions: ownershipOptions([]),
+        courses: [],
+        catalogPage: 1,
+        catalogHasMore: true,
+      },
       () => this.updateFilterPanelHeight(),
     );
     void this.loadCatalog();

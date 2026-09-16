@@ -38,9 +38,9 @@
       <image wx:if="{{favoritesOnly}}" class="tool-image" src="/features/assets/course-assistant/heart-coral.svg" mode="aspectFit"></image>
       <image wx:else class="tool-image" src="/features/assets/course-assistant/heart-muted.svg" mode="aspectFit"></image>
     </view>
-    <view wx:if="{{!reviewAccess.requiresContribution}}" class="circle-tool {{filterOpen || selectedKeyword || selectedOwnership ? 'circle-tool--active' : ''}}" bindtap="toggleFilter" hover-class="circle-tool--pressed" aria-role="button" aria-label="筛选课程">
-      <lucide-icon name="list-filter" tone="{{filterOpen || selectedKeyword || selectedOwnership ? 'coral' : 'muted'}}" size="31"></lucide-icon>
-      <view wx:if="{{selectedKeyword || selectedOwnership}}" class="filter-dot"></view>
+    <view wx:if="{{!reviewAccess.requiresContribution}}" class="circle-tool {{filterOpen || selectedFilterKeywords.length || selectedOwnerships.length ? 'circle-tool--active' : ''}}" bindtap="toggleFilter" hover-class="circle-tool--pressed" aria-role="button" aria-label="筛选课程">
+      <lucide-icon name="list-filter" tone="{{filterOpen || selectedFilterKeywords.length || selectedOwnerships.length ? 'coral' : 'muted'}}" size="31"></lucide-icon>
+      <view wx:if="{{selectedFilterKeywords.length || selectedOwnerships.length}}" class="filter-dot"></view>
     </view>
   </view>
 
@@ -49,12 +49,12 @@
       <view class="filter-panel">
         <view class="filter-panel-head"><text>按正向关键词筛选</text><text class="filter-clear" bindtap="clearFilterKeyword">清除筛选</text></view>
         <view class="filter-keywords">
-          <view wx:for="{{positiveFilterKeywords}}" wx:key="*this" class="filter-keyword {{selectedKeyword === item ? 'filter-keyword--active' : ''}}" data-keyword="{{item}}" bindtap="selectFilterKeyword"><text>{{item}}</text></view>
+          <view wx:for="{{positiveFilterOptions}}" wx:key="text" class="filter-keyword {{item.active ? 'filter-keyword--active' : ''}}" data-keyword="{{item.text}}" bindtap="selectFilterKeyword"><text>{{item.text}}</text></view>
         </view>
         <block wx:if="{{courseType === 'general_elective'}}">
           <view class="filter-panel-head filter-panel-head--ownership"><text>课程归属</text><text class="filter-clear" bindtap="clearFilterOwnership">清除筛选</text></view>
           <view class="filter-keywords">
-            <view wx:for="{{courseOwnershipOptions}}" wx:key="*this" class="filter-keyword {{selectedOwnership === item ? 'filter-keyword--active' : ''}}" data-ownership="{{item}}" bindtap="selectFilterOwnership"><text>{{item}}</text></view>
+            <view wx:for="{{courseOwnershipOptions}}" wx:key="text" class="filter-keyword {{item.active ? 'filter-keyword--active' : ''}}" data-ownership="{{item.text}}" bindtap="selectFilterOwnership"><text>{{item.text}}</text></view>
           </view>
         </block>
       </view>
