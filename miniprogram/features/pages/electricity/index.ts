@@ -84,6 +84,15 @@ interface ElectricityBuildingRow {
   items: ElectricityBuilding[];
 }
 
+interface ElectricityBuildingGroup {
+  id: string;
+  title: string;
+  count: number;
+  expanded: boolean;
+  height: number;
+  rows: ElectricityBuildingRow[];
+}
+
 interface ElectricityRefreshInput {
   buildingId: string;
   buildingName: string;
@@ -359,6 +368,109 @@ function toBuildingRows(
   return rows;
 }
 
+function toBuildingGroups(
+  buildings: ElectricityBuilding[],
+  expandedIds: string[] = [],
+): { groups: ElectricityBuildingGroup[]; otherRows: ElectricityBuildingRow[] } {
+  const grouped = new Map<
+    string,
+    {
+      title: string;
+      items: {
+        building: ElectricityBuilding;
+        buildingNumber: number;
+        roomNumber: number;
+        unitNumber: number;
+        sourceIndex: number;
+      }[];
+    }
+  >();
+  const others: ElectricityBuilding[] = [];
+  for (const [sourceIndex, building] of buildings.entries()) {
+    const normalizedName = normalizeBuildingSearchText(building.name);
+    const name = normalizedName.replace(/（[^）]*）|\([^)]*\)/g, "");
+    const keywordGroup = normalizedName.includes("博士生公寓")
+      ? { id: "doctoral:博士生公寓", title: "博士生公寓" }
+      : normalizedName.includes("博士后公寓")
+        ? { id: "postdoctoral:博士后公寓", title: "博士后公寓" }
+        : normalizedName.includes("门面")
+          ? { id: "storefront:门面", title: "门面" }
+          : null;
+    if (keywordGroup) {
+      const { id, title } = keywordGroup;
+      if (!grouped.has(id)) grouped.set(id, { title, items: [] });
+      grouped.get(id)!.items.push({
+        building,
+        buildingNumber: 0,
+        roomNumber: 0,
+        unitNumber: 0,
+        sourceIndex,
+      });
+      continue;
+    }
+    const garden = name.match(/^(.+?园)(\d+)舍$/);
+    const village = name.match(
+      /^(.+?村)(?:(\d+)栋(?:(\d+)号)?|(\d+)号(?:(\d+)栋)?|(\d+))(?:(\d+)单元)?$/,
+    );
+    if (!garden && !village) {
+      others.push(building);
+      continue;
+    }
+    const title = garden?.[1] || village![1];
+    const kind = garden ? "garden" : "village";
+    const id = `${kind}:${title}`;
+    if (!grouped.has(id)) grouped.set(id, { title, items: [] });
+    grouped.get(id)!.items.push({
+      building,
+      buildingNumber: Number(village?.[2] || village?.[5] || 0),
+      roomNumber: Number(
+        garden?.[2] || village?.[3] || village?.[4] || village?.[6] || 0,
+      ),
+      unitNumber: Number(village?.[7] || 0),
+      sourceIndex,
+    });
+  }
+  const groups = [...grouped.entries()]
+    .sort(([first], [second]) => {
+      const rank = (id: string) =>
+        id.startsWith("garden:")
+          ? 0
+          : id.startsWith("doctoral:")
+            ? 1
+            : id.startsWith("postdoctoral:")
+              ? 2
+              : id.startsWith("village:")
+                ? 3
+                : 4;
+      const kindOrder = rank(first) - rank(second);
+      return kindOrder || first.localeCompare(second, "zh-CN");
+    })
+    .map(([id, group]) => {
+      const items = group.items
+        .sort((first, second) =>
+          id.startsWith("doctoral:") ||
+          id.startsWith("postdoctoral:") ||
+          id.startsWith("storefront:")
+            ? first.sourceIndex - second.sourceIndex
+            : first.buildingNumber - second.buildingNumber ||
+              first.roomNumber - second.roomNumber ||
+              first.unitNumber - second.unitNumber ||
+              first.building.name.localeCompare(second.building.name, "zh-CN"),
+        )
+        .map(({ building }) => building);
+      const rows = toBuildingRows(items);
+      return {
+        id,
+        title: group.title,
+        count: items.length,
+        expanded: expandedIds.includes(id),
+        height: 12 + rows.length * 94,
+        rows,
+      };
+    });
+  return { groups, otherRows: toBuildingRows(others) };
+}
+
 function isBindingCooldownActive(
   binding: ElectricityCachedData["binding"],
   fallbackTimestamp = "",
@@ -385,7 +497,8 @@ Page({
     errorMessage: "",
     allBuildings: [] as ElectricityBuilding[],
     buildings: [] as ElectricityBuilding[],
-    buildingRows: [] as ElectricityBuildingRow[],
+    buildingGroups: [] as ElectricityBuildingGroup[],
+    otherBuildingRows: [] as ElectricityBuildingRow[],
     buildingId: "",
     buildingName: "",
     draftBuildingId: "",
@@ -455,6 +568,8 @@ Page({
         buildingQuery: "",
         buildingSearchFocused: false,
         buildingPickerVisible: false,
+        buildingGroups: [],
+        otherBuildingRows: [],
         bindingEditing: false,
         roomNumber: "",
         boundBuildingId: "",
@@ -595,10 +710,19 @@ Page({
         result.buildings,
         this.data.buildingQuery,
       );
+      const grouped = toBuildingGroups(
+        buildings,
+        this.data.buildingQuery
+          ? this.data.buildingGroups
+              .filter((group) => group.expanded)
+              .map((group) => group.id)
+          : [],
+      );
       this.setData({
         allBuildings: result.buildings,
         buildings,
-        buildingRows: toBuildingRows(buildings),
+        buildingGroups: grouped.groups,
+        otherBuildingRows: grouped.otherRows,
         buildingId: selected?.id || "",
         buildingName: selected?.name || "",
       });
@@ -672,12 +796,14 @@ Page({
       return;
     }
     haptic("light");
+    const grouped = toBuildingGroups(this.data.allBuildings);
     this.setData({
       buildingPickerVisible: true,
       draftBuildingId: this.data.buildingId,
       buildingQuery: "",
       buildings: this.data.allBuildings,
-      buildingRows: toBuildingRows(this.data.allBuildings),
+      buildingGroups: grouped.groups,
+      otherBuildingRows: grouped.otherRows,
     });
   },
   closeBuildingPicker() {
@@ -688,10 +814,17 @@ Page({
       String(event.detail.value || ""),
     );
     const buildings = filterBuildings(this.data.allBuildings, buildingQuery);
+    const grouped = toBuildingGroups(buildings);
+    if (buildingQuery) {
+      grouped.groups.forEach((group) => {
+        group.expanded = true;
+      });
+    }
     this.setData({
       buildingQuery,
       buildings,
-      buildingRows: toBuildingRows(buildings),
+      buildingGroups: grouped.groups,
+      otherBuildingRows: grouped.otherRows,
     });
     return buildingQuery;
   },
@@ -700,6 +833,20 @@ Page({
   },
   onBuildingSearchBlur() {
     this.setData({ buildingSearchFocused: false });
+  },
+  toggleBuildingGroup(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    const buildingGroups = this.data.buildingGroups.map((group) =>
+      group.id === id ? { ...group, expanded: !group.expanded } : group,
+    );
+    if (
+      buildingGroups.some(
+        (group, index) => group !== this.data.buildingGroups[index],
+      )
+    ) {
+      haptic("light");
+      this.setData({ buildingGroups });
+    }
   },
   selectBuilding(event: WechatMiniprogram.TouchEvent) {
     const selected = this.data.allBuildings.find(

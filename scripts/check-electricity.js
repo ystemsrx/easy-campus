@@ -171,7 +171,7 @@ async function main() {
       "../../../store/session": {},
       "../../../utils/appearance": { resolveAppearance: () => ({}) },
       "../../../utils/date": { formatDateTime: (value) => value },
-      "../../../utils/haptics": {},
+      "../../../utils/haptics": { haptic() {} },
       "../../../utils/navigation": {},
       "../../utils/refresh-flight": {},
       "../../utils/refresh-feedback": {},
@@ -219,10 +219,99 @@ async function main() {
       `宿舍楼搜索未正确匹配：${input}`,
     );
     assert.deepEqual(
-      view.data.buildingRows.flatMap((row) => row.items),
-      view.data.buildings,
+      [
+        ...view.data.buildingGroups.flatMap((group) =>
+          group.rows.flatMap((row) => row.items),
+        ),
+        ...view.data.otherBuildingRows.flatMap((row) => row.items),
+      ]
+        .map((building) => building.id)
+        .sort(),
+      expectedIds.slice().sort(),
     );
   }
+  view.data.allBuildings = [
+    { id: "v10", name: "李村10号" },
+    { id: "g12", name: "桃园12舍（东区）" },
+    { id: "other", name: "中心宿舍楼" },
+    { id: "g2", name: "桃园2舍(西区)" },
+    { id: "v2", name: "李村2号（新）" },
+    { id: "v212", name: "李村2栋1号2单元" },
+    { id: "v310", name: "李村3栋1号" },
+    { id: "v220", name: "李村2栋2号" },
+    { id: "v211", name: "李村2栋1号1单元" },
+    { id: "v210", name: "李村2栋1号" },
+    { id: "b151", name: "斑竹村151号22栋" },
+    { id: "b136", name: "斑竹村136号15栋1单元" },
+    { id: "b144", name: "斑竹村144号19栋" },
+    { id: "b137", name: "斑竹村137号15栋2单元" },
+    { id: "b146", name: "斑竹村146号" },
+    { id: "s14", name: "石岗村14" },
+    { id: "w18", name: "文伽村18栋" },
+    { id: "store-b", name: "北区门面B" },
+    { id: "doctoral-b", name: "博士生公寓B栋" },
+    { id: "postdoctoral-b", name: "博士后公寓B栋" },
+    { id: "store-a", name: "门面A（东）" },
+    { id: "doctoral-a", name: "博士生公寓A栋（北）" },
+    { id: "postdoctoral-a", name: "博士后公寓A栋" },
+    { id: "g1", name: "竹园1舍" },
+  ];
+  page.openBuildingPicker.call(view);
+  assert.deepEqual(
+    view.data.buildingGroups.map((group) => group.title),
+    [
+      "桃园",
+      "竹园",
+      "博士生公寓",
+      "博士后公寓",
+      "斑竹村",
+      "李村",
+      "石岗村",
+      "文伽村",
+      "门面",
+    ],
+  );
+  assert.ok(
+    view.data.buildingGroups.every((group) => !group.expanded),
+    "分组默认折叠",
+  );
+  assert.deepEqual(
+    view.data.buildingGroups.map((group) =>
+      group.rows.flatMap((row) => row.items.map((item) => item.id)),
+    ),
+    [
+      ["g2", "g12"],
+      ["g1"],
+      ["doctoral-b", "doctoral-a"],
+      ["postdoctoral-b", "postdoctoral-a"],
+      ["b146", "b136", "b137", "b144", "b151"],
+      ["v2", "v10", "v210", "v211", "v212", "v220", "v310"],
+      ["s14"],
+      ["w18"],
+      ["store-b", "store-a"],
+    ],
+  );
+  assert.deepEqual(
+    view.data.otherBuildingRows.flatMap((row) =>
+      row.items.map((item) => item.id),
+    ),
+    ["other"],
+  );
+  assert.equal(
+    view.data.buildingGroups[0].rows[0].items[0].name,
+    "桃园2舍(西区)",
+  );
+  page.toggleBuildingGroup.call(view, {
+    currentTarget: { dataset: { id: "garden:桃园" } },
+  });
+  assert.equal(view.data.buildingGroups[0].expanded, true);
+  assert.equal(view.data.buildingGroups[1].expanded, false);
+  page.onBuildingSearch.call(view, { detail: { value: "桃园12" } });
+  assert.equal(
+    view.data.buildingGroups[0].expanded,
+    true,
+    "搜索结果应可直接选择",
+  );
   assert.deepEqual(
     allBuildings,
     originalBuildings,
