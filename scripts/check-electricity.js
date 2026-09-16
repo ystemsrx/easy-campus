@@ -276,6 +276,11 @@ async function main() {
     "分组默认折叠",
   );
   assert.deepEqual(
+    view.data.buildingGroupRows.map((row) => row.groups.map((group) => group.title)),
+    [["桃园", "竹园"], ["博士生公寓", "博士后公寓"], ["斑竹村", "李村"], ["石岗村", "文伽村"], ["门面"]],
+    "分组应每行两个",
+  );
+  assert.deepEqual(
     view.data.buildingGroups.map((group) =>
       group.rows.flatMap((row) => row.items.map((item) => item.id)),
     ),
@@ -306,6 +311,23 @@ async function main() {
   });
   assert.equal(view.data.buildingGroups[0].expanded, true);
   assert.equal(view.data.buildingGroups[1].expanded, false);
+  view.data.motionClass = "motion-normal";
+  page.toggleBuildingGroup.call(view, {
+    currentTarget: { dataset: { id: "garden:竹园" } },
+  });
+  assert.equal(view.data.buildingGroups[0].expanded, false, "同排先收起原分组");
+  assert.equal(view.data.buildingGroups[1].expanded, false, "同排等待收起后再展开");
+  page.toggleBuildingGroup.call(view, {
+    currentTarget: { dataset: { id: "garden:竹园" } },
+  });
+  assert.equal(view.data.buildingGroups[1].expanded, false, "连续点击不应跳过收起动画");
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(view.data.buildingGroups[1].expanded, true);
+  page.toggleBuildingGroup.call(view, {
+    currentTarget: { dataset: { id: "doctoral:博士生公寓" } },
+  });
+  assert.equal(view.data.buildingGroups[1].expanded, true, "不同行可同时展开");
+  assert.equal(view.data.buildingGroups[2].expanded, true);
   page.onBuildingSearch.call(view, { detail: { value: "桃园12" } });
   assert.equal(
     view.data.buildingGroups[0].expanded,
@@ -317,6 +339,10 @@ async function main() {
     originalBuildings,
     "搜索不得修改楼栋原始名称与编号",
   );
+  view.data.buildingId = "g2";
+  page.openBuildingPicker.call(view);
+  assert.equal(view.data.buildingGroups[0].expanded, true, "再次打开应展开已选宿舍楼所在组");
+  assert.equal(view.data.buildingGroups[1].expanded, false);
   for (const [subsidy, expected] of [
     [0, "0.00 度"],
     [119.29, "119.29 度"],

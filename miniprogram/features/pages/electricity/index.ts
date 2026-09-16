@@ -93,6 +93,11 @@ interface ElectricityBuildingGroup {
   rows: ElectricityBuildingRow[];
 }
 
+interface ElectricityBuildingGroupRow {
+  id: string;
+  groups: ElectricityBuildingGroup[];
+}
+
 interface ElectricityRefreshInput {
   buildingId: string;
   buildingName: string;
@@ -117,6 +122,14 @@ let activeSnapshot: ElectricitySnapshot | null = null;
 let bindingToastShowTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastHideTimer: ReturnType<typeof setTimeout> | undefined;
 let bindingToastUnmountTimer: ReturnType<typeof setTimeout> | undefined;
+const buildingGroupTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const buildingGroupPendingIds = new Map<number, string>();
+
+function clearBuildingGroupTimers(): void {
+  buildingGroupTimers.forEach((timer) => clearTimeout(timer));
+  buildingGroupTimers.clear();
+  buildingGroupPendingIds.clear();
+}
 
 function formatDecimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(2) : "—";
@@ -471,6 +484,14 @@ function toBuildingGroups(
   return { groups, otherRows: toBuildingRows(others) };
 }
 
+function toBuildingGroupRows(groups: ElectricityBuildingGroup[]): ElectricityBuildingGroupRow[] {
+  const rows: ElectricityBuildingGroupRow[] = [];
+  for (let index = 0; index < groups.length; index += 2) {
+    rows.push({ id: groups[index].id, groups: groups.slice(index, index + 2) });
+  }
+  return rows;
+}
+
 function isBindingCooldownActive(
   binding: ElectricityCachedData["binding"],
   fallbackTimestamp = "",
@@ -498,6 +519,7 @@ Page({
     allBuildings: [] as ElectricityBuilding[],
     buildings: [] as ElectricityBuilding[],
     buildingGroups: [] as ElectricityBuildingGroup[],
+    buildingGroupRows: [] as ElectricityBuildingGroupRow[],
     otherBuildingRows: [] as ElectricityBuildingRow[],
     buildingId: "",
     buildingName: "",
@@ -542,10 +564,12 @@ Page({
   },
   onHide() {
     markRefreshPageHidden(this.data.refreshPageToken);
+    clearBuildingGroupTimers();
   },
   onUnload() {
     markRefreshPageHidden(this.data.refreshPageToken);
     clearBindingToastTimers();
+    clearBuildingGroupTimers();
   },
   applyAppearance() {
     this.setData(resolveAppearance());
@@ -557,6 +581,7 @@ Page({
       accountRequestSequence += 1;
       buildingRequestSequence += 1;
       clearBindingToastTimers();
+      clearBuildingGroupTimers();
       this.setData({
         optionsLoading: false,
         querying: false,
@@ -569,6 +594,7 @@ Page({
         buildingSearchFocused: false,
         buildingPickerVisible: false,
         buildingGroups: [],
+        buildingGroupRows: [],
         otherBuildingRows: [],
         bindingEditing: false,
         roomNumber: "",
@@ -718,10 +744,12 @@ Page({
               .map((group) => group.id)
           : [],
       );
+      clearBuildingGroupTimers();
       this.setData({
         allBuildings: result.buildings,
         buildings,
         buildingGroups: grouped.groups,
+        buildingGroupRows: toBuildingGroupRows(grouped.groups),
         otherBuildingRows: grouped.otherRows,
         buildingId: selected?.id || "",
         buildingName: selected?.name || "",
@@ -796,20 +824,30 @@ Page({
       return;
     }
     haptic("light");
+    clearBuildingGroupTimers();
     const grouped = toBuildingGroups(this.data.allBuildings);
+    const selectedGroup = grouped.groups.find((group) =>
+      group.rows.some((row) =>
+        row.items.some((building) => building.id === this.data.buildingId),
+      ),
+    );
+    if (selectedGroup) selectedGroup.expanded = true;
     this.setData({
       buildingPickerVisible: true,
       draftBuildingId: this.data.buildingId,
       buildingQuery: "",
       buildings: this.data.allBuildings,
       buildingGroups: grouped.groups,
+      buildingGroupRows: toBuildingGroupRows(grouped.groups),
       otherBuildingRows: grouped.otherRows,
     });
   },
   closeBuildingPicker() {
+    clearBuildingGroupTimers();
     this.setData({ buildingPickerVisible: false });
   },
   onBuildingSearch(event: WechatMiniprogram.Input): string {
+    clearBuildingGroupTimers();
     const buildingQuery = normalizeBuildingSearchText(
       String(event.detail.value || ""),
     );
@@ -824,6 +862,7 @@ Page({
       buildingQuery,
       buildings,
       buildingGroups: grouped.groups,
+      buildingGroupRows: toBuildingGroupRows(grouped.groups),
       otherBuildingRows: grouped.otherRows,
     });
     return buildingQuery;
@@ -836,17 +875,43 @@ Page({
   },
   toggleBuildingGroup(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const buildingGroups = this.data.buildingGroups.map((group) =>
+    const index = this.data.buildingGroups.findIndex((group) => group.id === id);
+    if (index < 0) return;
+    const rowIndex = Math.floor(index / 2);
+    const existingTimer = buildingGroupTimers.get(rowIndex);
+    if (existingTimer) {
+      if (buildingGroupPendingIds.get(rowIndex) === id) return;
+      clearTimeout(existingTimer);
+      buildingGroupTimers.delete(rowIndex);
+      buildingGroupPendingIds.delete(rowIndex);
+    }
+    const target = this.data.buildingGroups[index];
+    const neighborIndex = index % 2 === 0 ? index + 1 : index - 1;
+    const neighbor = this.data.buildingGroups[neighborIndex];
+    haptic("light");
+    if (!target.expanded && neighbor?.expanded) {
+      const collapsed = this.data.buildingGroups.map((group, groupIndex) =>
+        groupIndex === neighborIndex ? { ...group, expanded: false } : group,
+      );
+      this.setData({ buildingGroups: collapsed, buildingGroupRows: toBuildingGroupRows(collapsed) });
+      const delay = this.data.motionClass === "motion-reduced" ? 0 : 280;
+      const timer = setTimeout(() => {
+        buildingGroupTimers.delete(rowIndex);
+        buildingGroupPendingIds.delete(rowIndex);
+        if (!this.data.buildingPickerVisible) return;
+        const groups = this.data.buildingGroups.map((group) =>
+          group.id === id ? { ...group, expanded: true } : group,
+        );
+        this.setData({ buildingGroups: groups, buildingGroupRows: toBuildingGroupRows(groups) });
+      }, delay);
+      buildingGroupTimers.set(rowIndex, timer);
+      buildingGroupPendingIds.set(rowIndex, id);
+      return;
+    }
+    const groups = this.data.buildingGroups.map((group) =>
       group.id === id ? { ...group, expanded: !group.expanded } : group,
     );
-    if (
-      buildingGroups.some(
-        (group, index) => group !== this.data.buildingGroups[index],
-      )
-    ) {
-      haptic("light");
-      this.setData({ buildingGroups });
-    }
+    this.setData({ buildingGroups: groups, buildingGroupRows: toBuildingGroupRows(groups) });
   },
   selectBuilding(event: WechatMiniprogram.TouchEvent) {
     const selected = this.data.allBuildings.find(
@@ -854,6 +919,7 @@ Page({
         building.id === String(event.currentTarget.dataset.id || ""),
     );
     if (!selected) return;
+    clearBuildingGroupTimers();
     haptic("light");
     this.setData({
       draftBuildingId: selected.id,

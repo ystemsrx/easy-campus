@@ -75,13 +75,15 @@
   <bottom-sheet visible="{{buildingPickerVisible}}" expanded="{{true}}" scrollable="{{false}}" title="选择宿舍楼" theme="{{theme}}" bindclose="closeBuildingPicker" reduced-motion="{{motionClass === 'motion-reduced'}}">
     <view class="building-search {{buildingSearchFocused ? 'building-search--focused' : ''}}"><lucide-icon name="search" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{25}}"></lucide-icon><input value="{{buildingQuery}}" placeholder="搜索宿舍楼" placeholder-class="building-search-placeholder" bindinput="onBuildingSearch" bindfocus="onBuildingSearchFocus" bindblur="onBuildingSearchBlur" /></view>
     <scroll-view class="building-picker-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" bounces>
-      <view wx:for="{{buildingGroups}}" wx:key="id" wx:for-item="group" class="building-group">
-        <view class="building-group-heading" data-id="{{group.id}}" bindtap="toggleBuildingGroup" hover-class="building-group-heading--pressed" aria-role="button" aria-expanded="{{group.expanded}}" aria-label="{{group.title}}，{{group.count}}栋">
-          <text class="building-group-title">{{group.title}}</text>
-          <text class="building-group-count">{{group.count}}</text>
-          <view class="building-group-chevron {{group.expanded ? 'building-group-chevron--expanded' : ''}}"><lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{22}}"></lucide-icon></view>
+      <view wx:for="{{buildingGroupRows}}" wx:key="id" wx:for-item="groupRow" class="building-group-row">
+        <view class="building-group-headings">
+          <view wx:for="{{groupRow.groups}}" wx:key="id" wx:for-item="group" class="building-group-heading" data-id="{{group.id}}" bindtap="toggleBuildingGroup" hover-class="building-group-heading--pressed" aria-role="button" aria-expanded="{{group.expanded}}" aria-label="{{group.title}}，{{group.count}}栋">
+            <text class="building-group-title">{{group.title}}</text>
+            <text class="building-group-count">{{group.count}}</text>
+            <view class="building-group-chevron {{group.expanded ? 'building-group-chevron--expanded' : ''}}"><lucide-icon name="chevron-right" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{22}}"></lucide-icon></view>
+          </view>
         </view>
-        <view class="building-group-content" style="height: {{group.expanded ? group.height : 0}}rpx" aria-hidden="{{!group.expanded}}">
+        <view wx:for="{{groupRow.groups}}" wx:key="id" wx:for-item="group" class="building-group-content" style="height: {{group.expanded ? group.height : 0}}rpx" aria-hidden="{{!group.expanded}}">
           <view wx:for="{{group.rows}}" wx:key="id" wx:for-item="row" class="building-row">
             <view wx:for="{{row.items}}" wx:key="id" wx:for-item="building" class="building-option {{draftBuildingId === building.id ? 'building-option--active' : ''}}" data-id="{{building.id}}" bindtap="selectBuilding" hover-class="building-option--pressed">
               <text>{{building.name}}</text>
