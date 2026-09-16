@@ -486,6 +486,10 @@
   margin-top: 20rpx;
 }
 
+.filter-panel-head--ownership {
+  margin-top: 28rpx;
+}
+
 .filter-keyword,
 .keyword-option {
   display: flex;
@@ -776,6 +780,23 @@
   min-width: 108rpx;
 }
 
+.course-card-aside {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 158rpx;
+  min-width: 0;
+}
+
+.course-ownership {
+  margin-top: 16rpx;
+  color: var(--guide-muted);
+  font-size: 19rpx;
+  line-height: 1.35;
+  text-align: right;
+}
+
 .course-score-value {
   color: var(--guide-clay-deep);
   font-family: Georgia, "Times New Roman", serif;
@@ -799,7 +820,9 @@
   flex-direction: row;
   align-items: center;
   gap: 13rpx;
-  margin-top: 22rpx;
+  margin-top: 20rpx;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .course-thought-lock {

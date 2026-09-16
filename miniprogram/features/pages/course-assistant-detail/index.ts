@@ -78,6 +78,7 @@ interface DetailView extends CourseAssistantCourseDetail {
   typeKicker: string;
   teacherLabel: string;
   creditsLabel: string;
+  courseOwnershipLabel: string;
   averageLabel: string;
   ratingLabel: string;
   recommendationLabel: string;
@@ -279,6 +280,7 @@ function toDetailView(detail: CourseAssistantCourseDetail): DetailView {
       detail.credits === null
         ? "学分未提供"
         : `${formatCredits(detail.credits)} 学分`,
+    courseOwnershipLabel: (detail.courseOwnerships || []).join("，"),
     averageLabel:
       detail.averageScore === null ? "—" : detail.averageScore.toFixed(1),
     ratingLabel: detail.rating === null ? "—" : detail.rating.toFixed(1),

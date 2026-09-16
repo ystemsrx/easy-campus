@@ -73,6 +73,7 @@ interface CourseCardView extends CourseAssistantCourse {
   typeLabel: string;
   teacherLabel: string;
   creditsLabel: string;
+  courseOwnershipLabel: string;
   scoreLabel: string;
   ratingLabel: string;
   favorite: boolean;
@@ -139,6 +140,7 @@ const COURSE_TYPE_OPTIONS: CourseAssistantCourseType[] = [
   "international",
 ];
 const CATALOG_PAGE_SIZE = 40;
+const COURSE_OWNERSHIP_OPTIONS = ["思想政治", "心理健康", "公共艺术", "人文社科"];
 
 function reviewContentLength(value: string) {
   return Array.from(value.trim()).length;
@@ -223,6 +225,8 @@ Page({
     filterOpen: false,
     filterPanelHeight: 0,
     selectedKeyword: "",
+    selectedOwnership: "",
+    courseOwnershipOptions: COURSE_OWNERSHIP_OPTIONS,
     catalogSort: "average_score" as CourseAssistantCatalogSort,
     catalogSortLabel: "历史均分",
     sortMenuMounted: false,
@@ -294,6 +298,8 @@ Page({
         sortMenuOpen: false,
         filterOpen: false,
         filterPanelHeight: 0,
+        selectedKeyword: "",
+        selectedOwnership: "",
         courses: [],
         catalogLoadingMore: false,
         catalogPage: 1,
@@ -402,6 +408,7 @@ Page({
       this.data.courseType,
       this.data.searchQuery,
       this.data.selectedKeyword,
+      this.data.selectedOwnership,
       this.data.catalogSort,
     );
     this.setData({
@@ -416,6 +423,10 @@ Page({
         type: this.data.courseType,
         q: this.data.searchQuery.trim() || undefined,
         keyword: this.data.selectedKeyword || undefined,
+        ownership:
+          this.data.courseType === "general_elective"
+            ? this.data.selectedOwnership || undefined
+            : undefined,
         sort: this.data.catalogSort,
       });
       if (request !== catalogRequestSequence || !isSessionLeaseCurrent(lease)) {
@@ -476,13 +487,25 @@ Page({
               favoriteKeys.has(course.courseKey) &&
               course.type === this.data.courseType &&
               (!query ||
-                [course.displayName, course.courseName, ...course.teacherNames]
+                [
+                  course.displayName,
+                  course.courseName,
+                  ...course.teacherNames,
+                  ...(course.courseOwnerships || []).flatMap((label) => [
+                    label,
+                    `${label}类`,
+                  ]),
+                ]
                   .join(" ")
                   .toLocaleLowerCase()
                   .includes(query)) &&
               (!this.data.selectedKeyword ||
                 course.keywords.some(
                   (keyword) => keyword.text === this.data.selectedKeyword,
+                )) &&
+              (!this.data.selectedOwnership ||
+                (course.courseOwnerships || []).includes(
+                  this.data.selectedOwnership,
                 )),
           )
           .sort(
@@ -565,6 +588,7 @@ Page({
         this.data.courseType,
         this.data.searchQuery,
         this.data.selectedKeyword,
+        this.data.selectedOwnership,
         this.data.catalogSort,
       ),
     );
@@ -590,14 +614,16 @@ Page({
     const lease = captureSessionLease();
     const searchQuery = this.data.searchQuery.trim();
     const selectedKeyword = this.data.selectedKeyword;
+    const selectedOwnership = this.data.selectedOwnership;
     const catalogSort = this.data.catalogSort;
-    if (!lease || searchQuery || selectedKeyword) {
+    if (!lease || searchQuery || selectedKeyword || selectedOwnership) {
       return;
     }
     const cacheKey = catalogCacheKey(
       type,
       searchQuery,
       selectedKeyword,
+      selectedOwnership,
       catalogSort,
     );
     if (catalogCache.has(cacheKey)) return;
@@ -662,6 +688,7 @@ Page({
       {
         courseType: type,
         selectedKeyword: "",
+        selectedOwnership: "",
         filterOpen: false,
         filterPanelHeight: 0,
         sortMenuMounted: false,
@@ -858,6 +885,32 @@ Page({
         catalogPage: 1,
         catalogHasMore: true,
       },
+      () => this.updateFilterPanelHeight(),
+    );
+    void this.loadCatalog();
+  },
+  selectFilterOwnership(event: WechatMiniprogram.TouchEvent) {
+    const ownership = String(event.currentTarget.dataset.ownership || "");
+    if (!COURSE_OWNERSHIP_OPTIONS.includes(ownership)) return;
+    haptic("light");
+    catalogCourses = [];
+    this.setData(
+      {
+        selectedOwnership:
+          ownership === this.data.selectedOwnership ? "" : ownership,
+        courses: [],
+        catalogPage: 1,
+        catalogHasMore: true,
+      },
+      () => this.updateFilterPanelHeight(),
+    );
+    void this.loadCatalog();
+  },
+  clearFilterOwnership() {
+    if (!this.data.selectedOwnership) return;
+    catalogCourses = [];
+    this.setData(
+      { selectedOwnership: "", courses: [], catalogPage: 1, catalogHasMore: true },
       () => this.updateFilterPanelHeight(),
     );
     void this.loadCatalog();
@@ -1232,6 +1285,7 @@ function toCourseCard(
       course.credits === null
         ? "学分未提供"
         : `${formatCredits(course.credits)} 学分`,
+    courseOwnershipLabel: (course.courseOwnerships || []).join("，"),
     scoreLabel:
       course.averageScore === null ? "—" : course.averageScore.toFixed(1),
     ratingLabel: course.rating === null ? "暂无想法" : course.rating.toFixed(1),
@@ -1289,9 +1343,10 @@ function catalogCacheKey(
   type: CourseAssistantCourseType,
   query: string,
   keyword: string,
+  ownership: string,
   sort: CourseAssistantCatalogSort,
 ): string {
-  return `${type}\u0000${query.trim()}\u0000${keyword}\u0000${sort}`;
+  return `${type}\u0000${query.trim()}\u0000${keyword}\u0000${ownership}\u0000${sort}`;
 }
 
 function isEligibleCourse(

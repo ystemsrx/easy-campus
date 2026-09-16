@@ -270,6 +270,7 @@ export function demoGrades(): GradesData {
     department: "计算机与信息科学学院",
     courseNatureCode: i < 3 ? "01" : "03",
     courseNature: i < 3 ? "必修" : "通识选修",
+    courseOwnership: i < 3 ? null : "人文社科,公共艺术",
     gradeNatureCode: "01",
     gradeNature: "初修",
     credits: i < 3 ? 3 : 2,

@@ -58,6 +58,7 @@
       <view class="info-grid">
         <view class="info-cell"><text class="info-label">授课教师</text><text class="info-value" overflow="ellipsis" max-lines="2">{{detail.teacherLabel}}</text></view>
         <view class="info-cell"><text class="info-label">课程学分</text><text class="info-value">{{detail.creditsLabel}}</text></view>
+        <view wx:if="{{detail.type === 'general_elective' && detail.courseOwnershipLabel}}" class="info-cell info-cell--wide"><text class="info-label">课程归属</text><text class="info-value">{{detail.courseOwnershipLabel}}</text></view>
       </view>
 
       <view wx:if="{{detail.keywords.length}}" class="impression-panel">

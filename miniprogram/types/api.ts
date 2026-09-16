@@ -458,6 +458,7 @@ export interface GradeCourse {
   department: string;
   courseNatureCode: string | null;
   courseNature: string | null;
+  courseOwnership: string | null;
   gradeNatureCode: string | null;
   gradeNature: string | null;
   credits: number | null;
@@ -582,6 +583,7 @@ export interface CourseAssistantCourse {
   displayName: string;
   sportName: string | null;
   teacherNames: string[];
+  courseOwnerships: string[];
   credits: number | null;
   averageScore: number | null;
   rating: number | null;
@@ -622,6 +624,7 @@ export interface CourseAssistantGrade {
   displayName: string;
   sportName: string | null;
   courseNature: string | null;
+  courseOwnership: string | null;
   academicYear: string | null;
   academicYearStart: number | null;
   term: number | null;
@@ -667,6 +670,7 @@ export interface CourseAssistantCatalogQuery {
   type?: CourseAssistantCourseType;
   q?: string;
   keyword?: string;
+  ownership?: string;
   sort?: CourseAssistantCatalogSort;
 }
 
