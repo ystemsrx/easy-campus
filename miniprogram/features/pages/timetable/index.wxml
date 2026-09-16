@@ -98,16 +98,7 @@
 
   </view>
 
-  <swiper
-    wx:if="{{weekPages.length}}"
-    class="week-swiper"
-    current="{{weekIndex}}"
-    duration="{{motionClass === 'motion-reduced' ? 0 : 240}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}"
-    easing-function="easeOutCubic"
-    bindchange="onWeekChange"
-    cache-extent="1"
-  >
-    <swiper-item wx:for="{{weekPages}}" wx:for-item="weekPage" wx:key="weekNumber">
+  <template name="timetable-week-grid">
       <view wx:if="{{weekPage.ready}}" class="week-page">
         <view class="week-grid-head">
           <view class="month-head">
@@ -145,7 +136,7 @@
                 style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%; padding-top: {{course.topInsetPx}}px;"
               >
                 <view
-                  class="grid-course grid-course--{{course.tone}} pressable"
+                  class="grid-course grid-course--{{course.tone}} {{enteringWeekIndex === weekPage.weekNumber - 1 && enteringCourseIds[course.id] ? 'grid-course--entering' : ''}} pressable"
                   data-id="{{course.id}}"
                   bindtap="openCourse"
                   hover-class="grid-course--pressed"
@@ -168,8 +159,28 @@
         </view>
 
       </view>
+  </template>
+
+  <swiper
+    wx:if="{{weekPages.length && swipeWeeks}}"
+    class="week-swiper"
+    current="{{weekIndex}}"
+    duration="{{motionClass === 'motion-reduced' ? 0 : 240}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}"
+    easing-function="easeOutCubic"
+    bindchange="onWeekChange"
+    cache-extent="1"
+  >
+    <swiper-item wx:for="{{weekPages}}" wx:for-item="weekPage" wx:key="weekNumber">
+      <template is="timetable-week-grid" data="{{weekPage:weekPage,periodRows:periodRows,enteringWeekIndex:enteringWeekIndex,enteringCourseIds:enteringCourseIds}}"/>
     </swiper-item>
   </swiper>
+
+  <view wx:elif="{{weekPages.length}}" class="week-static"
+    bindtouchstart="onWeekTouchStart"
+    bindtouchend="onWeekTouchEnd"
+    bindtouchcancel="onWeekTouchCancel">
+    <template is="timetable-week-grid" data="{{weekPage:weekPages[weekIndex],periodRows:periodRows,enteringWeekIndex:enteringWeekIndex,enteringCourseIds:enteringCourseIds}}"/>
+  </view>
 
   <view wx:else class="timetable-empty">
     <block wx:if="{{hasHydrated}}"><text>暂无本地课表</text><text>可从左上角菜单手动刷新</text></block>
@@ -286,6 +297,11 @@
         </view>
         <text class="menu-action-label">{{refreshing ? '正在刷新' : '刷新课表'}}</text>
         <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view class="menu-action menu-switch-row">
+        <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="calendar-range" tone="sage" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">滑动切换</text>
+        <app-switch class="menu-switch" checked="{{swipeWeeks}}" bindchange="onSwipeWeeksChange" label="滑动切换周次"></app-switch>
       </view>
     </view>
     <view class="menu-panel menu-panel--semester">

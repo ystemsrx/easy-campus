@@ -14,6 +14,7 @@ import {
   prewarmTimetableFirstScreen,
   timetableGridLayoutMetrics,
   timetableMaxPeriod,
+  newlyOccupiedCourseIds,
   type TimetableGridLayoutMetrics,
   type TimetablePeriodRow,
   type TimetableWeekPage,
@@ -65,6 +66,7 @@ import type {
 import { resolveAppearance } from "../../../utils/appearance";
 import { formatScore } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
+import { touchPoint } from "../../../utils/glass-drag";
 import { preloadTimetableThemeAssets } from "../../../utils/icon-preload";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
 import {
@@ -236,7 +238,17 @@ const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
 const HEADER_BUTTON_GAP_RPX = 12;
 const TIMETABLE_MENU_LEFT_RPX = 88;
-const MAIN_MENU_HEIGHT = 516;
+const MAIN_MENU_HEIGHT = 588;
+const SWIPE_WEEKS_STORAGE_KEY = "timetable-swipe-weeks-v1";
+const COURSE_ENTRANCE_MS = 280;
+
+function loadSwipeWeeks(): boolean {
+  try {
+    return wx.getStorageSync(SWIPE_WEEKS_STORAGE_KEY) !== false;
+  } catch {
+    return true;
+  }
+}
 const MENU_TRANSITION_MS = 260;
 const WEEK_MENU_TRANSITION_MS = 260;
 const CLAWD_BASELINE_HANDOFF_MS = 80;
@@ -1299,6 +1311,8 @@ let weekMenuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let menuOpenTimer: ReturnType<typeof setTimeout> | undefined;
 let menuUnmountTimer: ReturnType<typeof setTimeout> | undefined;
 let weekBuildTimer: ReturnType<typeof setTimeout> | undefined;
+let courseEntranceTimer: ReturnType<typeof setTimeout> | undefined;
+let weekSwipeStart: { x: number; y: number; id: number } | null = null;
 let companionGazeTimer: ReturnType<typeof setTimeout> | undefined;
 let clawdSceneTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingCompanionGaze: TimetableGazeTarget | null = null;
@@ -1739,6 +1753,9 @@ Page({
     weekScrollIntoView: "",
     weekMenuListHeight: 114,
     menuHeight: MAIN_MENU_HEIGHT,
+    swipeWeeks: loadSwipeWeeks(),
+    enteringWeekIndex: -1,
+    enteringCourseIds: {} as Record<string, boolean>,
     semesterMenuHeight: 250,
     semesterShortLabel: "选择学期",
     semesterId: "",
@@ -1789,6 +1806,8 @@ Page({
     clawdSequenceRevision += 1;
     resetClawdSceneScheduler();
     cancelPendingWeekBuilds();
+    this.clearCourseEntrance();
+    weekSwipeStart = null;
     cancelCompanionGazeUpdate();
     activeAccount = "";
     activeTimetable = null;
@@ -1803,6 +1822,7 @@ Page({
     this.setData(
       {
         ...visualPreferences,
+        swipeWeeks: loadSwipeWeeks(),
         compactHeader,
         refreshPageToken,
         ...backgroundMetrics(compactHeader),
@@ -1829,6 +1849,7 @@ Page({
   },
   onHide() {
     markRefreshPageHidden(this.data.refreshPageToken);
+    weekSwipeStart = null;
     this.stopClawdSceneSequence();
   },
   onUnload() {
@@ -1847,6 +1868,8 @@ Page({
     clawdSequenceRevision += 1;
     resetClawdSceneScheduler();
     cancelPendingWeekBuilds();
+    this.clearCourseEntrance();
+    weekSwipeStart = null;
     cancelCompanionGazeUpdate();
     passRateRequestSequence += 1;
   },
@@ -2033,6 +2056,7 @@ Page({
       pendingVisibleRequestId = null;
       visibleCourses = [];
       cancelPendingWeekBuilds();
+      this.clearCourseEntrance();
       cancelCompanionGazeUpdate();
       clearTimetableMenuTimers();
       clearClawdSceneTimer();
@@ -2302,6 +2326,7 @@ Page({
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
+    this.clearCourseEntrance();
     const maxWeek = timetableWeekCount(timetable);
     const cachedWeekDates = new Map(
       activeSnapshot?.data.semester.id === timetable.semester.id
@@ -2363,6 +2388,8 @@ Page({
         weekNumber,
         currentWeekNumber: detectedWeek,
         weekIndex: weekNumber - 1,
+        enteringWeekIndex: -1,
+        enteringCourseIds: {},
         weekLabel: `第 ${weekNumber} 周`,
         maxWeek,
         weekMenuListHeight: weekMenuListHeight(maxWeek),
@@ -2393,26 +2420,40 @@ Page({
       this.data.periodRows.length || timetableMaxPeriod(activeTimetable);
     const weekIndex = normalizedWeek - 1;
     const weekPage = this.data.weekPages[weekIndex];
+    const nextPage = weekPage?.ready
+      ? weekPage
+      : buildTimetableWeekPage(
+          activeTimetable,
+          normalizedWeek,
+          maxPeriod,
+          timetableGridLayoutMetrics(
+            maxPeriod,
+            Number(this.data.headerHeight) || 64,
+          ),
+          activeSnapshot?.weekDates.find(
+            (week) => week.weekNumber === normalizedWeek,
+          )?.dates,
+        );
+    this.clearCourseEntrance();
+    const enteringCourseIds =
+      !this.data.swipeWeeks && this.data.motionClass !== "motion-reduced"
+        ? newlyOccupiedCourseIds(
+            this.data.weekPages[this.data.weekIndex],
+            nextPage,
+          )
+        : {};
+    const hasEnteringCourses = Object.keys(enteringCourseIds).length > 0;
     const pagePatch = weekPage?.ready
       ? {}
       : {
-          [`weekPages[${weekIndex}]`]: buildTimetableWeekPage(
-            activeTimetable,
-            normalizedWeek,
-            maxPeriod,
-            timetableGridLayoutMetrics(
-              maxPeriod,
-              Number(this.data.headerHeight) || 64,
-            ),
-            activeSnapshot?.weekDates.find(
-              (week) => week.weekNumber === normalizedWeek,
-            )?.dates,
-          ),
+          [`weekPages[${weekIndex}]`]: nextPage,
         };
     this.setData({
       weekNumber: normalizedWeek,
       weekIndex,
       weekLabel: `第 ${normalizedWeek} 周`,
+      enteringWeekIndex: hasEnteringCourses ? weekIndex : -1,
+      enteringCourseIds,
       periodRows: buildTimetablePeriodRows(
         activeTimetable,
         maxPeriod,
@@ -2420,7 +2461,20 @@ Page({
       ),
       ...pagePatch,
     });
+    if (hasEnteringCourses) {
+      courseEntranceTimer = setTimeout(() => {
+        courseEntranceTimer = undefined;
+        if (pageAlive)
+          this.setData({ enteringWeekIndex: -1, enteringCourseIds: {} });
+      }, COURSE_ENTRANCE_MS);
+    }
     if (feedback) haptic("light");
+  },
+  clearCourseEntrance() {
+    if (courseEntranceTimer !== undefined) {
+      clearTimeout(courseEntranceTimer);
+      courseEntranceTimer = undefined;
+    }
   },
   onWeekChange(event: WechatMiniprogram.SwiperChange) {
     if (!activeTimetable) return;
@@ -2430,6 +2484,34 @@ Page({
     );
     if (weekNumber === this.data.weekNumber) return;
     this.setWeek(weekNumber, true);
+  },
+  onWeekTouchStart(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.swipeWeeks || event.touches.length !== 1) {
+      weekSwipeStart = null;
+      return;
+    }
+    const touch = event.touches[0];
+    weekSwipeStart = { ...touchPoint(touch), id: touch.identifier };
+  },
+  onWeekTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    const start = weekSwipeStart;
+    weekSwipeStart = null;
+    if (!start || this.data.swipeWeeks) return;
+    const touch = event.changedTouches.find(
+      (item) => item.identifier === start.id,
+    );
+    if (!touch) return;
+    const end = touchPoint(touch);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    const nextWeek = this.data.weekNumber + (dx < 0 ? 1 : -1);
+    if (nextWeek >= 1 && nextWeek <= this.data.maxWeek) {
+      this.setWeek(nextWeek, true);
+    }
+  },
+  onWeekTouchCancel() {
+    weekSwipeStart = null;
   },
   selectWeek(event: WechatMiniprogram.TouchEvent) {
     const weekNumber = Number(event.currentTarget.dataset.week);
@@ -2573,6 +2655,18 @@ Page({
     this.closeTimetableMenu();
   },
   stopPropagation() {},
+  onSwipeWeeksChange(event: WechatMiniprogram.SwitchChange) {
+    const swipeWeeks = event.detail.value;
+    weekSwipeStart = null;
+    this.clearCourseEntrance();
+    this.setData({ swipeWeeks, enteringWeekIndex: -1, enteringCourseIds: {} });
+    try {
+      wx.setStorageSync(SWIPE_WEEKS_STORAGE_KEY, swipeWeeks);
+    } catch {
+      // Keep the selected mode for this visit if storage is unavailable.
+    }
+    haptic("light");
+  },
   companionComponent(): TimetableCompanionInstance | null {
     return this.selectComponent(
       "#timetable-companion",

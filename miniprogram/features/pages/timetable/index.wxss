@@ -444,7 +444,8 @@
   transform: rotate(-90deg);
 }
 
-.week-swiper {
+.week-swiper,
+.week-static {
   position: relative;
   z-index: 2;
   flex: 1;
@@ -685,6 +686,18 @@
 
 .grid-course--pressed {
   transform: scale(0.94);
+}
+
+.grid-course--entering {
+  animation-name: course-enter;
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes course-enter {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .grid-course-name {
@@ -1278,6 +1291,13 @@
 
 .menu-action-label {
   flex: 1;
+  min-width: 0;
+}
+
+.menu-switch {
+  flex: none;
+  transform: scale(0.82);
+  transform-origin: right center;
 }
 
 .menu-action-value {
@@ -1984,4 +2004,8 @@
 .motion-reduced .timetable-companion-frame {
   animation-duration: 1ms;
   animation-iteration-count: 1;
+}
+
+.motion-reduced .grid-course--entering {
+  animation-name: none;
 }

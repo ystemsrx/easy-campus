@@ -3322,4 +3322,50 @@ assert(
   "教学日历必须使用微信标准右侧页面转场",
 );
 
+const oldWeek = {
+  ready: true,
+  gridDays: [
+    { courses: [{ id: "old", periodStart: 1, periodEnd: 2 }] },
+    { courses: [] },
+  ],
+};
+const newWeek = {
+  ready: true,
+  gridDays: [
+    {
+      courses: [
+        { id: "replacement", periodStart: 2, periodEnd: 3 },
+        { id: "later", periodStart: 4, periodEnd: 5 },
+      ],
+    },
+    { courses: [{ id: "different-day", periodStart: 1, periodEnd: 2 }] },
+  ],
+};
+assert(
+  JSON.stringify(timetableRender.newlyOccupiedCourseIds(oldWeek, newWeek)) ===
+    JSON.stringify({ later: true, "different-day": true }),
+  "原位置已有课程时应直接切换，空位置的新课程才缩放入场",
+);
+assert(
+  Object.keys(timetableRender.newlyOccupiedCourseIds({ ready: false }, newWeek))
+    .length === 0,
+  "尚未加载的旧周不能触发课程入场动画",
+);
+assert(
+  timetablePageTemplate.includes(
+    'wx:if="{{weekPages.length && swipeWeeks}}"',
+  ) &&
+    timetablePageTemplate.includes(
+      'wx:elif="{{weekPages.length}}" class="week-static"',
+    ) &&
+    timetablePageTemplate.includes('bindtouchend="onWeekTouchEnd"') &&
+    timetablePageTemplate.includes('bindchange="onSwipeWeeksChange"') &&
+    timetablePageTemplate.indexOf('bindtap="onRefresh"') <
+      timetablePageTemplate.indexOf('class="menu-action menu-switch-row"') &&
+    timetablePageTemplate.includes("enteringCourseIds[course.id]") &&
+    timetablePageScript.includes("this.setWeek(nextWeek, true)") &&
+    timetablePageScript.includes("SWIPE_WEEKS_STORAGE_KEY"),
+  "关闭滑动动效后仍须识别左右手势并保存设置",
+);
+
 console.log("Timetable preview checks passed.");

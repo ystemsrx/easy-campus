@@ -47,6 +47,30 @@ export interface TimetableWeekPage {
   gridDays: TimetableGridDay[];
 }
 
+/** Only animate courses entering cells that were empty in the previous week. */
+export function newlyOccupiedCourseIds(
+  previous: TimetableWeekPage | undefined,
+  next: TimetableWeekPage,
+): Record<string, boolean> {
+  const entering: Record<string, boolean> = {};
+  if (!previous?.ready || !next.ready) return entering;
+  next.gridDays.forEach((day, index) => {
+    const oldCourses = previous.gridDays[index]?.courses || [];
+    day.courses.forEach((course) => {
+      if (
+        !oldCourses.some(
+          (old) =>
+            old.periodStart <= course.periodEnd &&
+            old.periodEnd >= course.periodStart,
+        )
+      ) {
+        entering[course.id] = true;
+      }
+    });
+  });
+  return entering;
+}
+
 export interface TimetablePeriodRow {
   period: number;
   startTime: string;
