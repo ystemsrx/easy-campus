@@ -29,3 +29,11 @@ export function buildAppShare(): WechatMiniprogram.Page.ICustomShareContent {
     imageUrl: nativeCover(),
   };
 }
+
+export function buildCompanionShare(code: string): WechatMiniprogram.Page.ICustomShareContent {
+  return {
+    title: "邀请你成为我的上课搭子",
+    path: `/pages/home/index?companionCode=${encodeURIComponent(code)}`,
+    imageUrl: nativeCover(),
+  };
+}

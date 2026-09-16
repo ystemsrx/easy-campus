@@ -6,6 +6,7 @@ import {
   type CapsuleScrollHost,
 } from "../../utils/capsule-backdrop";
 import { buildAppShare } from "../../utils/app-share";
+import { bindCompanion } from "../../services/timetable-companions";
 import { isDemoSession } from "../../demo/identity";
 import { prepareDemoData } from "../../demo/bootstrap";
 import { MOTION } from "../../utils/motion";
@@ -35,7 +36,7 @@ import {
   refreshElectricityOnForeground,
   refreshExamsOnForeground,
 } from "../../services/cache-refresh";
-import { getErrorMessage } from "../../services/request";
+import { getErrorMessage, isRateLimitError } from "../../services/request";
 import {
   claimAutomaticRefresh,
   FIFTEEN_DAYS_MS,
@@ -276,6 +277,8 @@ let lastPublicationRequestAt = 0;
 let lastPublicationRequestSessionKey = "";
 let publicationRefreshQueued = false;
 let homeVisible = false;
+const PENDING_COMPANION_CODE_KEY = "pending-companion-share-code";
+let companionBindInFlight = false;
 let homeReady = false;
 let homeActivationTimer: ReturnType<typeof setTimeout> | undefined;
 let homeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -867,7 +870,11 @@ Page({
     announcementScrollHeight: 0,
     activeAnnouncement: null as PublicationPreview | null,
   },
-  onLoad() {
+  onLoad(options?: Record<string, string | undefined>) {
+    const code = String(options?.companionCode || "").toUpperCase();
+    if (/^[A-Z0-9]{6}$/.test(code)) {
+      try { wx.setStorageSync(PENDING_COMPANION_CODE_KEY, code); } catch { /* Storage may be unavailable. */ }
+    }
     initializeCapsuleBackdrop(this);
     registerHomeAuthenticationHost(this);
     homeVisible = false;
@@ -931,6 +938,7 @@ Page({
       return;
     }
     homeVisible = true;
+    void this.acceptSharedCompanion();
     resumeServiceOrder();
     attachCapsuleBackdrop(this, "home");
     if (this.data.authenticated) {
@@ -953,6 +961,28 @@ Page({
       authenticationRevealPrepared = false;
       this.scheduleHomeActivation(delay);
     }
+  },
+  async acceptSharedCompanion() {
+    if (companionBindInFlight) return;
+    let code = "";
+    try { code = String(wx.getStorageSync(PENDING_COMPANION_CODE_KEY) || ""); } catch { return; }
+    if (!/^[A-Z0-9]{6}$/.test(code)) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    companionBindInFlight = true;
+    try {
+      wx.removeStorageSync(PENDING_COMPANION_CODE_KEY);
+      await bindCompanion(code);
+      if (homeVisible && isSessionLeaseCurrent(lease)) {
+        const toast = this.selectComponent("#rate-limit-toast") as { show?: (value: string) => void } | null;
+        toast?.show?.("已添加");
+      }
+    } catch (error) {
+      if (homeVisible && isSessionLeaseCurrent(lease) && !isRateLimitError(error)) {
+        const toast = this.selectComponent("#rate-limit-toast") as { show?: (value: string) => void } | null;
+        toast?.show?.(getErrorMessage(error) || "添加失败，请重试");
+      }
+    } finally { companionBindInFlight = false; }
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
     detachCapsuleBackdrop(this);

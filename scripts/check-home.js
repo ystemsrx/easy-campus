@@ -233,7 +233,7 @@ assert(
   /cachedHomeRenderState\(account: string\)[\s\S]*?resolveHomeIdentity\(getSession\(\), loadCurrentUser\(\)\)/.test(
     homeScript,
   ) &&
-    /onLoad\(\)[\s\S]*?registerHomeAuthenticationHost\(this\);[\s\S]*?this\.hydrateCachedHomeIfNeeded\(account, true\)/.test(
+    /onLoad\([^)]*\)[\s\S]*?registerHomeAuthenticationHost\(this\);[\s\S]*?this\.hydrateCachedHomeIfNeeded\(account, true\)/.test(
       homeScript,
     ) &&
     /onShow\(\)[\s\S]*?this\.hydrateCachedHomeIfNeeded\(account\)/.test(
@@ -332,7 +332,7 @@ assert(
     ) &&
     homeScript.includes("publicationRefreshQueued = true") &&
     homeScript.includes("void this.loadPublicationFeed(true)") &&
-    /onLoad\(\)[\s\S]*?lastPublicationRequestAt = 0;/.test(homeScript) &&
+    /onLoad\([^)]*\)[\s\S]*?lastPublicationRequestAt = 0;/.test(homeScript) &&
     !homeScript.includes("setInterval(() => this.loadPublicationFeed"),
   "主页重新显示时必须静默同步公告与通知，以八秒间隔限制重复请求且不得定时轮询",
 );

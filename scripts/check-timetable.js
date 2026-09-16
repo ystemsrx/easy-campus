@@ -954,6 +954,84 @@ const alignedWeekPage = timetableRender.buildTimetableWeekPage(
   13,
   alignedGridMetrics,
 );
+const overlapOwn = { ...data, courses: [course("mine", "我的课", arrangement("mine", 3, 4, "10:00", "11:40"))] };
+const overlapPartner = { ...data, courses: [course("theirs", "伙伴课", arrangement("theirs", 2, 5, "08:55", "12:30"))] };
+const togetherPage = timetableRender.buildCompanionWeekPage(
+  overlapOwn, overlapPartner, 1, 13, alignedGridMetrics,
+);
+const mondayCourses = togetherPage.gridDays[0].courses;
+assert(
+  mondayCourses.length === 2 &&
+    mondayCourses[0].partner && mondayCourses[0].periodStart === 2 && mondayCourses[0].periodEnd === 5 &&
+    mondayCourses[0].nameRows.map((row) => row.text).join("").includes("伙伴课") &&
+    mondayCourses[1].id.includes("mine"),
+  "双人课表须保留伙伴完整课程块和名称，再将本人的课程排在上层",
+);
+const fullOverlapPartner = { ...data, courses: [course("their-full", "完全重叠", arrangement("their-full", 3, 4, "10:00", "11:40"))] };
+const fullOverlapCourses = timetableRender.buildCompanionWeekPage(
+  overlapOwn, fullOverlapPartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses;
+assert(
+  fullOverlapCourses.length === 2 && fullOverlapCourses[0].partner &&
+    fullOverlapCourses[0].periodStart === 3 && fullOverlapCourses[0].periodEnd === 4 &&
+    fullOverlapCourses[0].nameRows.length === 0 &&
+    fullOverlapCourses[1].id.includes("mine"),
+  "完全重叠时保留两块课程，但本人课程应完整盖住伙伴课程",
+);
+const multiplePartner = { ...data, courses: [
+  course("their-a", "伙伴甲", arrangement("their-a", 2, 3, "08:55", "10:35")),
+  course("their-b", "伙伴乙", arrangement("their-b", 4, 5, "10:40", "12:30")),
+] };
+const multipleCourses = timetableRender.buildCompanionWeekPage(
+  overlapOwn, multiplePartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses;
+assert(
+  multipleCourses.length === 3 && multipleCourses[0].partner && multipleCourses[1].partner &&
+    multipleCourses[2].id.includes("mine") &&
+    multipleCourses[0].periodStart === 2 && multipleCourses[0].periodEnd === 3 &&
+    multipleCourses[1].periodStart === 4 && multipleCourses[1].periodEnd === 5,
+  "多门伙伴课程与本人课程重叠时不得拆分或丢弃任何课程块",
+);
+const longPartner = { ...data, courses: [course("their-short", "伙伴课程名称非常非常长", arrangement("their-short", 2, 2, "08:55", "09:40"))] };
+const shortPartnerCourse = timetableRender.buildCompanionWeekPage(
+  { ...data, courses: [] }, longPartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses[0];
+const tallPartner = { ...data, courses: [course("their-tall", "伙伴课程名称非常非常长", arrangement("their-tall", 2, 5, "08:55", "12:30"))] };
+const tallPartnerCourse = timetableRender.buildCompanionWeekPage(
+  { ...data, courses: [] }, tallPartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses[0];
+const partlyVisibleCourse = timetableRender.buildCompanionWeekPage(
+  overlapOwn, tallPartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses[0];
+const topCoveredOwn = { ...data, courses: [course("my-top", "我的课", arrangement("my-top", 2, 3, "08:55", "10:35"))] };
+const bottomVisibleCourse = timetableRender.buildCompanionWeekPage(
+  topCoveredOwn, tallPartner, 1, 13, alignedGridMetrics,
+).gridDays[0].courses[0];
+const layeredPartners = { ...data, courses: [
+  ...tallPartner.courses,
+  course("their-front", "另一门伙伴课", arrangement("their-front", 3, 4, "10:00", "11:40")),
+] };
+const backPartnerCourse = timetableRender.buildCompanionWeekPage(
+  { ...data, courses: [] }, layeredPartners, 1, 13, alignedGridMetrics,
+).gridDays[0].courses[0];
+const nameTopPx = (course) => Number(course.nameStyle.match(/margin-top:([\d.]+)px/)?.[1] || 0);
+assert(
+  shortPartnerCourse.partner && shortPartnerCourse.nameRows.map((row) => row.text).join("").endsWith("…") &&
+    shortPartnerCourse.nameRows.slice(0, -1).every((row) => !row.text.includes("…")) &&
+    tallPartnerCourse.nameRows.every((row) => !row.text.includes("…")) &&
+    tallPartnerCourse.nameRows.length > shortPartnerCourse.nameRows.length &&
+    tallPartnerCourse.nameRows.length > partlyVisibleCourse.nameRows.length &&
+    tallPartnerCourse.nameRows.length > backPartnerCourse.nameRows.length &&
+    partlyVisibleCourse.nameRows.length >= 1 &&
+    nameTopPx(tallPartnerCourse) > 0 &&
+    nameTopPx(bottomVisibleCourse) > alignedGridMetrics.rowHeightPx * 2,
+  "伙伴课名须按实际露出高度决定行数和省略，并在可见区域上下居中",
+);
+assert(
+  timetableRender.buildCompanionWeekPage(overlapPartner, overlapPartner, 1, 13, alignedGridMetrics)
+    .gridDays[0].courses.every((item) => item.partnerOnly && !item.partner),
+  "仅看伙伴时保留课程文字，并标记为灰色伙伴块",
+);
 const alignedCourse = alignedWeekPage.gridDays
   .flatMap((day) => day.courses)
   .find(Boolean);
@@ -3378,6 +3456,71 @@ assert(
     timetablePageScript.includes("this.setWeek(nextWeek, true)") &&
     timetablePageScript.includes("SWIPE_WEEKS_STORAGE_KEY"),
   "关闭滑动动效后仍须识别左右手势并保存设置",
+);
+
+assert(
+  timetablePageScript.includes("const menuTimetable = companionTimetable === timetable") &&
+    timetablePageScript.includes("semesters: timetableSemesterOptions(menuTimetable.semesters)") &&
+    timetablePageScript.includes("semesterShortLabel: shortAcademicSemesterLabel(menuTimetable.semester)") &&
+    timetablePageScript.includes("getCompanionTimetable(partner.id, semesterId)") &&
+    timetablePageScript.includes("timetable.semester.id !== semesterId"),
+  "伙伴视图只使用本人选择的学期",
+);
+
+assert(
+  timetablePageTemplate.includes("semesterOpen ? 'timetable-menu--semester' : ''") &&
+    timetablePageStyles.includes(".timetable-menu--semester .menu-panel--semester") &&
+    !timetablePageStyles.includes(".timetable-menu--submenu:not(.timetable-menu--custom) .menu-panel--semester"),
+  "选择学期面板只能由学期菜单打开，不能透出在伙伴二级菜单后面",
+);
+assert(
+  /\.timetable-menu--companion-options\s+\.menu-panel--companions\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none;[^}]*transform:\s*translateX\(-28%\);/s.test(timetablePageStyles) &&
+    timetablePageStyles.includes(".grid-course-slot--partner { z-index: 1; }") &&
+    timetablePageStyles.includes(".grid-course-slot:not(.grid-course-slot--partner) { z-index: 2; }") &&
+    /\.grid-course--partner\s*\{[^}]*box-shadow:\s*none;/s.test(timetablePageStyles) &&
+    !timetablePageTemplate.includes('<lucide-icon wx:if="{{course.partner}}" name="user-round"'),
+  "伙伴三级菜单应向左推出二级面板，课程完整叠放且显示名称",
+);
+assert(
+  !/\.grid-course--partner\s+\.grid-course-text-line\s*\{[^}]*text-overflow:\s*ellipsis;/s.test(timetablePageStyles),
+  "伙伴课名不得对每一行应用样式级省略号",
+);
+
+const companionService = fs.readFileSync(path.resolve(__dirname, "../miniprogram/services/timetable-companions.ts"), "utf8");
+const appShare = fs.readFileSync(path.resolve(__dirname, "../miniprogram/utils/app-share.ts"), "utf8");
+const homePageScript = fs.readFileSync(path.resolve(__dirname, "../miniprogram/pages/home/index.ts"), "utf8");
+const companionCodeRow = timetablePageTemplate.split("\n").find((line) => line.includes('class="companion-own-code"')) || "";
+assert(
+  companionService.includes('"/teaching/companions/bind"') &&
+    companionService.includes('"/teaching/companions/code", { method: "POST", data: {} }') &&
+    timetablePageScript.includes("companionMenuHeight(state.partners.length + state.requests.length)") &&
+    timetablePageTemplate.includes('open-type="share" data-companion-share="1"') &&
+    appShare.includes("邀请你成为我的上课搭子") &&
+    appShare.includes("/pages/home/index?companionCode=") &&
+    homePageScript.includes("await bindCompanion(code)") &&
+    timetablePageScript.includes("await bindCompanion(this.data.companionInput)") &&
+    companionCodeRow.indexOf('class="companion-code') < companionCodeRow.indexOf('bindtap="copyCompanionCode"') &&
+    companionCodeRow.indexOf('bindtap="copyCompanionCode"') < companionCodeRow.indexOf('bindtap="rotateCompanion"') &&
+    companionCodeRow.indexOf('bindtap="rotateCompanion"') < companionCodeRow.indexOf('open-type="share"') &&
+    timetablePageStyles.includes(".companion-own-code .companion-round { flex: 0 0 50rpx;") &&
+    timetablePageStyles.includes("min-width: 50rpx; max-width: 50rpx;"),
+  "伙伴码按钮应发送有效 JSON、自动调整菜单高度，分享进入或输入码都应直接绑定",
+);
+assert(
+  companionService.includes('`/teaching/companions/${id}`, { method: "DELETE", data: {} }') &&
+    timetablePageTemplate.includes('class="companion-delete-row"><view class="menu-action companion-delete pressable" bindtap="removeSelectedCompanion"') &&
+    timetablePageStyles.includes('.companion-delete-row { border-bottom: 1rpx solid #f0eee9;') &&
+    timetablePageStyles.includes('.companion-delete { display: inline-flex;') &&
+    timetablePageStyles.includes('.menu-panel--companion-options > .menu-action { border-bottom: 1rpx solid #f0eee9;') &&
+    timetablePageScript.includes('menuHeight: 324') &&
+    timetablePageScript.includes('identityCardTone(gender)') &&
+    timetablePageTemplate.includes('{{companionOnlyLabel}}') &&
+    timetablePageScript.includes('await removeCompanion(partner.id)') &&
+    timetablePageScript.includes('this.companionFeedback("已删除")') &&
+    timetablePageScript.includes('this.companionFeedback("已添加")') &&
+    homePageScript.includes('toast?.show?.("已添加")') &&
+    !timetablePageScript.includes('showModal({ title: "删除伙伴"'),
+  "伙伴三级菜单底部应支持直接删除，并统一添加与删除提示",
 );
 
 console.log("Timetable preview checks passed.");

@@ -1,4 +1,5 @@
-import { buildAppShare } from "../../../utils/app-share";
+import { buildAppShare, buildCompanionShare } from "../../../utils/app-share";
+import { bindCompanion, decideCompanion, getCompanions, getCompanionTimetable, removeCompanion, rotateCompanionCode, type CompanionPerson } from "../../../services/timetable-companions";
 import { CUSTOM_COLORS, customFillIsVertical, loadCustomBackground, loadCustomColor, readableBackgroundText, saveCustomColor } from "../../../data/timetable-custom";
 import { syncTimetableBackground, uploadTimetableBackground } from "../../../services/timetable-background";
 import {
@@ -10,7 +11,7 @@ import {
 } from "../../../data/timetable";
 import {
   buildTimetablePeriodRows,
-  buildTimetableWeekPage,
+  buildCompanionWeekPage,
   buildTimetableWeekPlaceholder,
   getPrewarmedTimetableFirstScreen,
   prewarmTimetableFirstScreen,
@@ -69,6 +70,7 @@ import type {
 import { resolveAppearance } from "../../../utils/appearance";
 import { formatScore } from "../../../utils/format";
 import { haptic } from "../../../utils/haptics";
+import { identityCardTone } from "../../../utils/profile";
 import { touchPoint } from "../../../utils/glass-drag";
 import { preloadTimetableThemeAssets } from "../../../utils/icon-preload";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
@@ -241,7 +243,14 @@ const BACKGROUND_HEIGHT = 1920;
 const MODAL_HEADER_EDGE_INSET_RPX = 24;
 const HEADER_BUTTON_GAP_RPX = 12;
 const TIMETABLE_MENU_LEFT_RPX = 88;
-const MAIN_MENU_HEIGHT = 666;
+const MAIN_MENU_HEIGHT = 704;
+function companionMenuHeight(count: number): number {
+  return Math.min(680, 304 + Math.max(0, count) * 93);
+}
+function companionOnlyLabel(gender?: string): string {
+  const tone = identityCardTone(gender);
+  return tone === "female" ? "仅看她的" : tone === "male" ? "仅看他的" : "仅看对方的";
+}
 const CUSTOM_MENU_HEIGHT = 486;
 const CUSTOM_MENU_WITH_IMAGE_HEIGHT = 558;
 const SWIPE_WEEKS_STORAGE_KEY = "timetable-swipe-weeks-v1";
@@ -1306,6 +1315,17 @@ interface TimetableRefreshOutcome {
 }
 
 let activeTimetable: TimetableData | null = null;
+let companionTimetable: TimetableData | null = null;
+let companionRequestSequence = 0;
+let companionPollTimer: ReturnType<typeof setTimeout> | undefined;
+let companionCopyTimer: ReturnType<typeof setTimeout> | undefined;
+
+function stopCompanionTimers(): void {
+  if (companionPollTimer !== undefined) clearTimeout(companionPollTimer);
+  if (companionCopyTimer !== undefined) clearTimeout(companionCopyTimer);
+  companionPollTimer = undefined;
+  companionCopyTimer = undefined;
+}
 let visibleCourses: TimetableCourse[] = [];
 const timetableRequestsInFlight = new Map<string, InFlightTimetableRequest>();
 let activeAccount = "";
@@ -1755,7 +1775,11 @@ function cancelCompanionGazeUpdate(): void {
 }
 
 Page({
-  onShareAppMessage: buildAppShare,
+  onShareAppMessage(event?: { from?: string; target?: { dataset?: { companionShare?: string } } }) {
+    return event?.from === "button" && String(event.target?.dataset?.companionShare) === "1" && this.data.companionCode
+      ? buildCompanionShare(this.data.companionCode)
+      : buildAppShare();
+  },
   data: {
     ...INITIAL_TIMETABLE_VISUAL_PREFERENCES,
     compactHeader: false,
@@ -1765,6 +1789,17 @@ Page({
     customColor: loadCustomColor(),
     ...customBackgroundPatch(),
     customOpen: false,
+    companionsOpen: false,
+    companionOptionsOpen: false,
+    companionCode: "",
+    companionInput: "",
+    companionPartners: [] as CompanionPerson[],
+    companionRequests: [] as CompanionPerson[],
+    selectedCompanion: null as CompanionPerson | null,
+    companionOnlyLabel: "仅看对方的",
+    companionMode: "" as "" | "only" | "together",
+    companionBusy: false,
+    companionCopied: false,
     uploadingBackground: false,
     clawdSceneSrc: "",
     clawdScenePositionStyle: CLAWD_DEFAULT_POSITION_STYLE,
@@ -1836,6 +1871,7 @@ Page({
     cancelCompanionGazeUpdate();
     activeAccount = "";
     activeTimetable = null;
+    companionTimetable = null;
     activeSnapshot = null;
     defaultSemesterId = "";
     visibleRequestSequence += 1;
@@ -1857,12 +1893,22 @@ Page({
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    void this.syncCompanions();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
     void this.syncCustomBackground();
   },
   onShow() {
     if (!ensureAuthenticated()) return;
+    if (this.data.companionCopied) this.setData({ companionCopied: false });
+    if (companionPollTimer !== undefined) clearTimeout(companionPollTimer);
+    const pollCompanions = () => {
+      companionPollTimer = undefined;
+      if (!pageAlive || !isRefreshPageVisible(this.data.refreshPageToken)) return;
+      void this.syncCompanions();
+      companionPollTimer = setTimeout(pollCompanions, 30000);
+    };
+    companionPollTimer = setTimeout(pollCompanions, 30000);
     markRefreshPageVisible(this.data.refreshPageToken);
     this.setData(
       {
@@ -1874,16 +1920,19 @@ Page({
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    void this.syncCompanions();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
     void this.syncCustomBackground();
   },
   onHide() {
+    stopCompanionTimers();
     markRefreshPageHidden(this.data.refreshPageToken);
     weekSwipeStart = null;
     this.stopClawdSceneSequence();
   },
   onUnload() {
+    stopCompanionTimers();
     pageAlive = false;
     markRefreshPageHidden(this.data.refreshPageToken);
     if (weekMenuOpenTimer !== undefined) {
@@ -1928,6 +1977,7 @@ Page({
         this.data.clawdSceneMediaClass)
     ) {
       this.setData({
+        companionPartners: [], companionRequests: [], companionCode: "", selectedCompanion: null, companionMode: "",
         clawdSceneSrc: "",
         clawdSceneMotionClass: "",
         clawdSceneMediaClass: "",
@@ -2058,8 +2108,9 @@ Page({
         weekBuildTimer = setTimeout(buildNext, 0);
         return;
       }
-      const page = buildTimetableWeekPage(
+      const page = buildCompanionWeekPage(
         timetable,
+        companionTimetable,
         weekNumber,
         maxPeriod,
         layoutMetrics,
@@ -2086,6 +2137,8 @@ Page({
       passRateRequestSequence += 1;
       pendingVisibleRequestId = null;
       visibleCourses = [];
+      companionTimetable = null;
+      companionRequestSequence += 1;
       cancelPendingWeekBuilds();
       this.clearCourseEntrance();
       cancelCompanionGazeUpdate();
@@ -2101,6 +2154,8 @@ Page({
         menuOpen: false,
         semesterOpen: false,
         customOpen: false,
+        companionsOpen: false,
+        companionOptionsOpen: false,
         weekMenuMounted: false,
         weekMenuOpen: false,
         weekScrollIntoView: "",
@@ -2358,19 +2413,30 @@ Page({
     }
   },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
+    if (this.data.companionMode === "only" && companionTimetable && timetable !== companionTimetable) {
+      activeTimetable = companionTimetable;
+      timetable = companionTimetable;
+    }
     this.clearCourseEntrance();
+    const menuTimetable = companionTimetable === timetable
+      ? activeSnapshot?.data || timetable
+      : timetable;
     const maxWeek = timetableWeekCount(timetable);
     const cachedWeekDates = new Map(
-      activeSnapshot?.data.semester.id === timetable.semester.id
+      (!companionTimetable || companionTimetable !== timetable) && activeSnapshot?.data.semester.id === timetable.semester.id
         ? activeSnapshot.weekDates.map((week) => [week.weekNumber, week.dates])
         : [],
     );
-    const maxPeriod = timetableMaxPeriod(timetable);
+    const maxPeriod = Math.max(
+      timetableMaxPeriod(timetable),
+      companionTimetable && companionTimetable !== timetable
+        ? timetableMaxPeriod(companionTimetable) : 0,
+    );
     const layoutMetrics = timetableGridLayoutMetrics(
       maxPeriod,
       Number(this.data.headerHeight) || 64,
     );
-    const prewarmed = activeSnapshot
+    const prewarmed = !companionTimetable && activeSnapshot
       ? getPrewarmedTimetableFirstScreen(
           activeAccount,
           activeSnapshot,
@@ -2389,7 +2455,7 @@ Page({
           : prewarmed?.weekNumber || timetableWeekForDisplay(timetable),
       ),
     );
-    const firstScreen = prewarmed?.weekNumber === weekNumber ? prewarmed : null;
+    const firstScreen = !companionTimetable && prewarmed?.weekNumber === weekNumber ? prewarmed : null;
     const periodCourses = firstScreen
       ? firstScreen.courses
       : coursesForWeek(timetable, weekNumber);
@@ -2403,8 +2469,9 @@ Page({
     const weekMenuRows = timetableWeekMenuRows(weekPages);
     weekPages[weekNumber - 1] = firstScreen
       ? firstScreen.weekPage
-      : buildTimetableWeekPage(
+      : buildCompanionWeekPage(
           timetable,
+          companionTimetable,
           weekNumber,
           maxPeriod,
           layoutMetrics,
@@ -2413,10 +2480,10 @@ Page({
     visibleCourses = periodCourses;
     this.setData(
       {
-        semesterShortLabel: shortAcademicSemesterLabel(timetable.semester),
-        semesterId: timetable.semester.id,
-        semesters: timetableSemesterOptions(timetable.semesters),
-        semesterMenuHeight: submenuHeight(timetable.semesters.length),
+        semesterShortLabel: shortAcademicSemesterLabel(menuTimetable.semester),
+        semesterId: menuTimetable.semester.id,
+        semesters: timetableSemesterOptions(menuTimetable.semesters),
+        semesterMenuHeight: submenuHeight(menuTimetable.semesters.length),
         weekNumber,
         currentWeekNumber: detectedWeek,
         weekIndex: weekNumber - 1,
@@ -2454,15 +2521,16 @@ Page({
     const weekPage = this.data.weekPages[weekIndex];
     const nextPage = weekPage?.ready
       ? weekPage
-      : buildTimetableWeekPage(
+      : buildCompanionWeekPage(
           activeTimetable,
+          companionTimetable,
           normalizedWeek,
           maxPeriod,
           timetableGridLayoutMetrics(
             maxPeriod,
             Number(this.data.headerHeight) || 64,
           ),
-          activeSnapshot?.weekDates.find(
+          (companionTimetable === activeTimetable ? null : activeSnapshot)?.weekDates.find(
             (week) => week.weekNumber === normalizedWeek,
           )?.dates,
         );
@@ -2563,6 +2631,8 @@ Page({
     const semester = String(event.currentTarget.dataset.semester || "");
     this.closeTimetableMenu();
     if (!semester || semester === this.data.semesterId) return;
+    companionTimetable = null;
+    this.setData({ selectedCompanion: null, companionMode: "" });
     haptic("light");
     const querySemester = semester === defaultSemesterId ? undefined : semester;
     const cached = loadTimetableSnapshot(activeAccount, querySemester);
@@ -2641,7 +2711,9 @@ Page({
         menuOpen: false,
         semesterOpen: false,
         customOpen: false,
-        menuHeight: MAIN_MENU_HEIGHT,
+        companionsOpen: false,
+        companionOptionsOpen: false,
+        menuHeight: MAIN_MENU_HEIGHT + (this.data.companionMode ? 72 : 0),
       },
       () => {
         wx.nextTick(() => {
@@ -2669,6 +2741,8 @@ Page({
           menuMounted: false,
           semesterOpen: false,
           customOpen: false,
+          companionsOpen: false,
+          companionOptionsOpen: false,
           menuHeight: MAIN_MENU_HEIGHT,
         });
       }
@@ -2687,7 +2761,136 @@ Page({
   },
   backToMainMenu() {
     haptic("light");
-    this.setData({ semesterOpen: false, customOpen: false, menuHeight: MAIN_MENU_HEIGHT });
+    this.setData({ semesterOpen: false, customOpen: false, companionsOpen: false, companionOptionsOpen: false, menuHeight: MAIN_MENU_HEIGHT + (this.data.companionMode ? 72 : 0) });
+  },
+  backToCompanions() {
+    this.setData({ companionOptionsOpen: false, companionsOpen: true, menuHeight: companionMenuHeight(this.data.companionPartners.length + this.data.companionRequests.length) });
+  },
+  openCompanions() {
+    haptic("light");
+    this.setData({ companionsOpen: true, companionOptionsOpen: false, menuHeight: companionMenuHeight(this.data.companionPartners.length + this.data.companionRequests.length) });
+    void this.syncCompanions();
+  },
+  showOwnTimetable() {
+    companionTimetable = null;
+    this.setData({ selectedCompanion: null, companionMode: "" });
+    if (activeSnapshot?.data) {
+      activeTimetable = activeSnapshot.data;
+      this.applyTimetable(activeTimetable, true);
+    }
+    this.closeTimetableMenu();
+  },
+  async syncCompanions() {
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const sequence = ++companionRequestSequence;
+    try {
+      const state = await getCompanions();
+      if (!pageAlive || !isSessionLeaseCurrent(lease) || sequence !== companionRequestSequence) return;
+      const selected = this.data.selectedCompanion;
+      const currentPartner = selected && state.partners.find((person) => person.id === selected.id);
+      const stillBound = !!currentPartner;
+      this.setData({ companionCode: state.code, companionPartners: state.partners,
+        companionRequests: state.requests,
+        ...(this.data.companionsOpen ? { menuHeight: companionMenuHeight(state.partners.length + state.requests.length) } : {}),
+        ...(currentPartner ? { selectedCompanion: currentPartner, companionOnlyLabel: companionOnlyLabel(currentPartner.gender) } : {}),
+        ...(!stillBound && selected ? { selectedCompanion: null, companionMode: "" } : {}) });
+      if (!stillBound && selected) { companionTimetable = null; if (activeSnapshot?.data) { activeTimetable = activeSnapshot.data; this.applyTimetable(activeTimetable, true); } }
+    } catch { /* Keep the last visible state offline. */ }
+  },
+  onCompanionInput(event: WechatMiniprogram.Input) {
+    const code = String(event.detail.value || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+    this.setData({ companionInput: code });
+    return code;
+  },
+  companionFeedback(message: string) {
+    const toast = this.selectComponent("#rate-limit-toast") as { show?: (value: string) => void } | null;
+    toast?.show?.(message);
+  },
+  async bindCompanionCode() {
+    if (this.data.companionInput.length !== 6 || this.data.companionBusy) return;
+    this.setData({ companionBusy: true });
+    try {
+      await bindCompanion(this.data.companionInput);
+      this.setData({ companionInput: "" });
+      await this.syncCompanions();
+      this.companionFeedback("已添加");
+    } catch (error) { if (!isRateLimitError(error)) this.companionFeedback(getErrorMessage(error) || "添加失败，请重试"); }
+    finally { this.setData({ companionBusy: false }); }
+  },
+  async answerCompanionRequest(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.companionBusy) return;
+    const id = Number(event.currentTarget.dataset.id);
+    const decision = event.currentTarget.dataset.decision as "accept" | "reject";
+    this.setData({ companionBusy: true });
+    try { await decideCompanion(id, decision); await this.syncCompanions(); }
+    catch (error) { if (!isRateLimitError(error)) this.companionFeedback(getErrorMessage(error) || "操作失败，请重试"); }
+    finally { this.setData({ companionBusy: false }); }
+  },
+  async rotateCompanion() {
+    if (this.data.companionBusy) return;
+    this.setData({ companionBusy: true });
+    try { const { code } = await rotateCompanionCode(); this.setData({ companionCode: code }); this.companionFeedback("已更换"); }
+    catch (error) { if (!isRateLimitError(error)) this.companionFeedback(getErrorMessage(error) || "更换失败，请重试"); }
+    finally { this.setData({ companionBusy: false }); }
+  },
+  copyCompanionCode() {
+    if (!this.data.companionCode) return;
+    wx.setClipboardData({ data: this.data.companionCode, showToast: false, success: () => {
+      this.setData({ companionCopied: true });
+      if (companionCopyTimer !== undefined) clearTimeout(companionCopyTimer);
+      companionCopyTimer = setTimeout(() => { companionCopyTimer = undefined; if (pageAlive) this.setData({ companionCopied: false }); }, 3000);
+    } });
+  },
+  openCompanionOptions(event: WechatMiniprogram.TouchEvent) {
+    const partner = this.data.companionPartners.find((person) => person.id === Number(event.currentTarget.dataset.id));
+    if (partner) this.setData({ selectedCompanion: partner, companionOnlyLabel: companionOnlyLabel(partner.gender), companionOptionsOpen: true, companionsOpen: false, menuHeight: 324 });
+  },
+  async removeSelectedCompanion() {
+    const partner = this.data.selectedCompanion;
+    if (!partner || this.data.companionBusy) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    this.setData({ companionBusy: true });
+    try {
+      await removeCompanion(partner.id);
+      if (!pageAlive || !isSessionLeaseCurrent(lease)) return;
+      companionTimetable = null;
+      const partners = this.data.companionPartners.filter((person) => person.id !== partner.id);
+      this.setData({ selectedCompanion: null, companionMode: "", companionOptionsOpen: false, companionsOpen: true,
+        companionPartners: partners,
+        menuHeight: companionMenuHeight(partners.length + this.data.companionRequests.length) });
+      if (activeSnapshot?.data) {
+        activeTimetable = activeSnapshot.data;
+        this.applyTimetable(activeTimetable, true);
+      }
+      void this.syncCompanions();
+      this.companionFeedback("已删除");
+    } catch (error) { if (!isRateLimitError(error)) this.companionFeedback(getErrorMessage(error) || "删除失败，请重试"); }
+    finally { if (pageAlive && isSessionLeaseCurrent(lease)) this.setData({ companionBusy: false }); }
+  },
+  async selectCompanionMode(event: WechatMiniprogram.TouchEvent) {
+    const mode = event.currentTarget.dataset.mode as "only" | "together";
+    const partner = this.data.selectedCompanion;
+    if (!partner || !activeSnapshot?.data) return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    this.setData({ companionBusy: true });
+    try {
+      const semesterId = this.data.semesterId;
+      const timetable = await getCompanionTimetable(partner.id, semesterId);
+      if (!isSessionLeaseCurrent(lease) || !pageAlive) return;
+      if (!timetable || timetable.semester.id !== semesterId) {
+        this.companionFeedback("伙伴暂无该学期课表");
+        return;
+      }
+      companionTimetable = timetable;
+      this.setData({ companionMode: mode });
+      activeTimetable = mode === "only" ? timetable : activeSnapshot.data;
+      this.applyTimetable(activeTimetable, true);
+      this.closeTimetableMenu();
+    } catch (error) { if (!isRateLimitError(error)) this.companionFeedback(getErrorMessage(error) || "读取失败，请重试"); }
+    finally { this.setData({ companionBusy: false }); }
   },
   async syncCustomBackground() {
     const lease = captureSessionLease();
@@ -2868,6 +3071,7 @@ Page({
     });
   },
   async openCoursePassRate() {
+    if (this.data.companionMode === "only") return;
     const selectedCourse = this.data.selectedCourse;
     if (!selectedCourse || this.data.passRateLoading) return;
     const semester = activeTimetable?.semester.id || this.data.semesterId;

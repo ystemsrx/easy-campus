@@ -22,6 +22,8 @@ export interface TimetableDayOption {
 }
 
 export interface TimetableGridCourse extends TimetableCourse {
+  partner?: boolean;
+  partnerOnly?: boolean;
   topPercent: string;
   heightPercent: string;
   topInsetPx: string;
@@ -322,6 +324,98 @@ export function buildTimetableWeekPage(
         .map((course) => toGridCourse(course, maxPeriod, metrics)),
     })),
   };
+}
+
+function partnerCourseWithName(
+  course: TimetableGridCourse,
+  ownCourses: TimetableGridCourse[],
+  metrics: TimetableGridLayoutMetrics,
+): TimetableGridCourse {
+  // Only the label uses the uncovered interval; the partner card itself stays whole.
+  let visibleStart = 0;
+  let visibleLength = 0;
+  let runStart = 0;
+  for (let period = course.periodStart; period <= course.periodEnd + 1; period += 1) {
+    const uncovered = period <= course.periodEnd && !ownCourses.some(
+      (own) => own.periodStart <= period && own.periodEnd >= period,
+    );
+    if (uncovered && !runStart) runStart = period;
+    if (!uncovered && runStart) {
+      const length = period - runStart;
+      if (length > visibleLength) {
+        visibleStart = runStart;
+        visibleLength = length;
+      }
+      runStart = 0;
+    }
+  }
+  const coveredBeforeName = visibleStart > course.periodStart;
+  const topOffsetPx = coveredBeforeName
+    ? (visibleStart - course.periodStart) * metrics.rowHeightPx + metrics.courseHeightExtensionPx
+    : 0;
+  const availableHeight = Math.max(
+    0,
+    visibleLength * metrics.rowHeightPx - metrics.contentInsetPx -
+      (coveredBeforeName ? metrics.courseHeightExtensionPx : 0),
+  );
+  const nameFontSizePx = Math.max(1, Math.min(
+    metrics.nameFontSizePx,
+    (metrics.contentWidthPx - 2) / 3.15,
+  ));
+  const lineHeight = nameFontSizePx * 1.12;
+  const maxLines = visibleLength ? Math.max(1, Math.min(4, Math.floor(availableHeight / lineHeight))) : 0;
+  const maxCharacters = maxLines * 3;
+  const characters = Array.from(course.name.trim());
+  const visibleName = !maxCharacters ? [] : characters.length > maxCharacters
+    ? [...characters.slice(0, maxCharacters - 1), "…"]
+    : characters;
+  const nameRows = Array.from({ length: Math.ceil(visibleName.length / 3) }, (_, index) => ({
+    key: `name-${index}`,
+    text: visibleName.slice(index * 3, index * 3 + 3).join(""),
+  }));
+  const centeredTopPx = topOffsetPx + Math.max(
+    0,
+    (availableHeight - nameRows.length * lineHeight) / 2,
+  );
+  const nameStyle = [
+    `font-size:${nameFontSizePx.toFixed(2)}px`,
+    `line-height:${lineHeight.toFixed(2)}px`,
+    `max-height:${(lineHeight * maxLines).toFixed(2)}px`,
+    `margin-top:${centeredTopPx.toFixed(2)}px`,
+  ].join(";");
+  return { ...course, id: `partner:${course.id}`, partner: true, nameRows, nameLines: maxLines, nameStyle };
+}
+
+export function buildCompanionWeekPage(
+  timetable: TimetableData,
+  companion: TimetableData | null,
+  week: number,
+  maxPeriod: number,
+  metrics: TimetableGridLayoutMetrics,
+  dates?: string[],
+): TimetableWeekPage {
+  const own = buildTimetableWeekPage(timetable, week, maxPeriod, metrics, dates);
+  if (!companion) return own;
+  if (companion === timetable) return { ...own, gridDays: own.gridDays.map((day) => ({
+    ...day, courses: day.courses.map((course) => ({ ...course, partnerOnly: true })),
+  })) };
+  const firstDate = own.days[0]?.date;
+  const companionWeek = firstDate && Array.from(
+    { length: timetableWeekCount(companion) }, (_, index) => index + 1,
+  ).find((number) => weekDateKeys(companion, number)[0] === firstDate);
+  if (!companionWeek) return own;
+  const partnerPage = buildTimetableWeekPage(companion, companionWeek, maxPeriod, metrics);
+  return { ...own, gridDays: own.gridDays.map((day, index) => ({
+    ...day,
+    courses: [
+      ...partnerPage.gridDays[index].courses.map((course, courseIndex, partnerCourses) =>
+        partnerCourseWithName(course, [
+          ...day.courses,
+          ...partnerCourses.slice(courseIndex + 1),
+        ], metrics)),
+      ...day.courses,
+    ],
+  })) };
 }
 
 export function buildTimetablePeriodRows(

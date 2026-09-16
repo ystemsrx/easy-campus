@@ -85,6 +85,7 @@
       </view>
       <view class="header-button pressable" style="width: {{headerControlSize}}px; height: {{headerControlSize}}px;" bindtap="toggleMenu" hover-class="header-button--pressed" aria-role="button" aria-label="课表菜单" aria-expanded="{{menuOpen}}">
         <view class="menu-glyph {{menuOpen ? 'menu-glyph--open' : ''}}"><view></view><view></view><view></view></view>
+        <view wx:if="{{companionRequests.length}}" class="companion-dot"></view>
       </view>
     </view>
 
@@ -137,11 +138,11 @@
                 wx:for="{{day.courses}}"
                 wx:for-item="course"
                 wx:key="id"
-                class="grid-course-slot"
+                class="grid-course-slot {{course.partner ? 'grid-course-slot--partner' : ''}}"
                 style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%; padding-top: {{course.topInsetPx}}px;"
               >
                 <view
-                  class="grid-course grid-course--{{course.tone}} {{enteringWeekIndex === weekPage.weekNumber - 1 && enteringCourseIds[course.id] ? 'grid-course--entering' : ''}} pressable"
+                  class="grid-course grid-course--{{course.tone}} {{course.partner ? 'grid-course--partner' : ''}} {{course.partnerOnly ? 'grid-course--partner-only' : ''}} {{enteringWeekIndex === weekPage.weekNumber - 1 && enteringCourseIds[course.id] ? 'grid-course--entering' : ''}} pressable"
                   data-id="{{course.id}}"
                   bindtap="openCourse"
                   hover-class="grid-course--pressed"
@@ -151,10 +152,10 @@
                   <view class="grid-course-name" style="{{course.nameStyle}}">
                     <text wx:for="{{course.nameRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
                   </view>
-                  <view wx:if="{{course.locationRows.length}}" class="grid-course-room" style="{{course.locationStyle}}">
+                  <view wx:if="{{!course.partner && course.locationRows.length}}" class="grid-course-room" style="{{course.locationStyle}}">
                     <text wx:for="{{course.locationRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
                   </view>
-                  <view wx:if="{{course.teacherRows.length}}" class="grid-course-teacher" style="{{course.teacherStyle}}">
+                  <view wx:if="{{!course.partner && course.teacherRows.length}}" class="grid-course-teacher" style="{{course.teacherStyle}}">
                     <text wx:for="{{course.teacherRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
                   </view>
                 </view>
@@ -239,7 +240,7 @@
 
   <view
     wx:if="{{menuMounted}}"
-    class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen || customOpen ? 'timetable-menu--submenu' : ''}} {{customOpen ? 'timetable-menu--custom' : ''}}"
+    class="timetable-menu {{menuOpen ? 'timetable-menu--open' : ''}} {{semesterOpen || customOpen || companionsOpen || companionOptionsOpen ? 'timetable-menu--submenu' : ''}} {{semesterOpen ? 'timetable-menu--semester' : ''}} {{customOpen ? 'timetable-menu--custom' : ''}} {{companionsOpen ? 'timetable-menu--companions' : ''}} {{companionOptionsOpen ? 'timetable-menu--companion-options' : ''}}"
     style="top: {{menuTop}}px; height: {{menuHeight}}rpx; transform-origin: {{menuOriginX}}px {{menuOriginY}}px;"
     catchtap="stopPropagation"
   >
@@ -291,6 +292,13 @@
         <text class="menu-action-value">{{semesterShortLabel}}</text>
         <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
       </view>
+      <view class="menu-action pressable" bindtap="openCompanions" hover-class="pressing">
+        <view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="user-round" tone="sage" size="{{25}}"></lucide-icon></view>
+        <text class="menu-action-label">伙伴课表 <text class="companion-count">({{companionPartners.length}}/5)</text></text>
+        <view wx:if="{{companionRequests.length}}" class="companion-dot companion-dot--inline"></view>
+        <lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon>
+      </view>
+      <view wx:if="{{companionMode}}" class="menu-action pressable" bindtap="showOwnTimetable"><view class="menu-action-icon menu-action-icon--blue"><lucide-icon name="user-round" tone="sage" size="{{25}}"></lucide-icon></view><text class="menu-action-label">我的课表</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
       <view class="menu-action pressable" bindtap="openCalendar" hover-class="pressing">
         <view class="menu-action-icon"><lucide-icon name="calendar-range" tone="coral" size="{{25}}"></lucide-icon></view>
         <text class="menu-action-label">查看校历</text>
@@ -359,6 +367,21 @@
         </view>
       </scroll-view>
     </view>
+    <view class="menu-panel menu-panel--companions">
+      <view class="submenu-header"><view class="submenu-back pressable" bindtap="backToMainMenu"><lucide-icon name="arrow-left" tone="ink" size="{{24}}"></lucide-icon></view><text>伙伴课表 <text class="companion-count">({{companionPartners.length}}/5)</text></text></view>
+      <view class="companion-add"><input value="{{companionInput}}" maxlength="6" placeholder="输入6位伙伴码" placeholder-class="companion-placeholder" bindinput="onCompanionInput" aria-label="伙伴码" /><view class="companion-round {{companionInput.length === 6 ? '' : 'companion-round--disabled'}}" bindtap="bindCompanionCode" aria-role="button" aria-label="添加伙伴"><lucide-icon name="user-round" tone="ink" size="{{25}}"></lucide-icon></view></view>
+      <scroll-view class="companion-list" type="list" scroll-y enhanced show-scrollbar="{{false}}"><view class="companion-list-inner">
+        <view wx:for="{{companionRequests}}" wx:key="requestId" class="companion-row"><view class="companion-person"><text>{{item.name}}</text><text class="companion-student-id">{{item.studentId}}</text></view><view class="companion-round companion-answer" data-id="{{item.requestId}}" data-decision="reject" bindtap="answerCompanionRequest"><lucide-icon name="x" tone="danger" size="{{23}}"></lucide-icon></view><view class="companion-round companion-answer" data-id="{{item.requestId}}" data-decision="accept" bindtap="answerCompanionRequest"><lucide-icon name="check" tone="sage" size="{{23}}"></lucide-icon></view></view>
+        <view wx:for="{{companionPartners}}" wx:key="id" class="companion-row pressable" data-id="{{item.id}}" bindtap="openCompanionOptions"><view class="companion-person"><text>{{item.name}}</text><text class="companion-student-id">{{item.studentId}}</text></view><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+      </view></scroll-view>
+      <view class="companion-own-code"><text class="companion-code tnum">{{companionCode || '······'}}</text><view class="companion-round" bindtap="copyCompanionCode" aria-role="button" aria-label="复制伙伴码"><lucide-icon name="{{companionCopied ? 'check' : 'copy'}}" tone="ink" size="{{23}}"></lucide-icon></view><view class="companion-round" bindtap="rotateCompanion" aria-role="button" aria-label="更换伙伴码"><lucide-icon name="refresh-cw" tone="ink" size="{{23}}"></lucide-icon></view><button class="companion-round companion-share" open-type="share" data-companion-share="1" disabled="{{!companionCode}}" aria-label="分享伙伴码"><lucide-icon name="share" tone="ink" size="{{23}}"></lucide-icon></button></view>
+    </view>
+    <view class="menu-panel menu-panel--companion-options">
+      <view class="submenu-header"><view class="submenu-back pressable" bindtap="backToCompanions"><lucide-icon name="arrow-left" tone="ink" size="{{24}}"></lucide-icon></view><text>{{selectedCompanion ? selectedCompanion.name : '伙伴课表'}}</text></view>
+      <view class="menu-action pressable" data-mode="only" bindtap="selectCompanionMode"><text class="menu-action-label">{{companionOnlyLabel}}</text><lucide-icon wx:if="{{companionMode === 'only'}}" name="check" tone="coral" size="{{22}}"></lucide-icon></view>
+      <view class="menu-action pressable" data-mode="together" bindtap="selectCompanionMode"><text class="menu-action-label">同时显示</text><lucide-icon wx:if="{{companionMode === 'together'}}" name="check" tone="coral" size="{{22}}"></lucide-icon></view>
+      <view class="companion-delete-row"><view class="menu-action companion-delete pressable" bindtap="removeSelectedCompanion" aria-role="button" aria-label="删除伙伴" aria-disabled="{{companionBusy}}"><text class="menu-action-label">删除伙伴</text></view></view>
+    </view>
   </view>
 
   <bottom-sheet visible="{{courseSheetVisible}}" expanded="{{true}}" scrollable="{{false}}" expanded-height="{{courseSheetHeight}}" title="课程详情" theme="{{theme}}" bindclose="closeCourse" reduced-motion="{{motionClass === 'motion-reduced'}}">
@@ -372,7 +395,7 @@
               <text class="course-sheet-title display-title">{{selectedCourse.name}}</text>
               <text class="course-sheet-teacher" overflow="ellipsis" max-lines="1">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text>
             </view>
-            <view class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
+            <view wx:if="{{companionMode !== 'only'}}" class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
               <text>查看通过率</text>
               <lucide-icon name="chevron-right" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : ('white')}}" size="{{28}}"></lucide-icon>
             </view>
