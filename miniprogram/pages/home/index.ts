@@ -205,6 +205,7 @@ interface PublicationPreview extends Publication {
   timeLabel: string;
   isLong: boolean;
   expanded: boolean;
+  bodyHeightPx?: number;
 }
 
 interface ExamPreview {
@@ -476,7 +477,9 @@ function publicationPreview(
       compact: publication.kind === "notification",
       theme,
     }),
-    previewText: plainText,
+    previewText:
+      plainText ||
+      (publication.kind === "announcement" ? "查看全文" : "查看内容"),
     timeLabel: formatDateTime(publication.startsAt),
     isLong: plainText.length > 78 || publication.contentMarkdown.includes("\n"),
     expanded,
@@ -1650,17 +1653,23 @@ Page({
     try {
       const feed = await getPublicationFeed();
       if (!homeVisible || !isSessionLeaseCurrent(lease)) return;
-      const expandedIds = new Set(
+      const expandedItems = new Map(
         this.data.publications
           .filter((item) => item.kind === "notification" && item.expanded)
-          .map((item) => item.id),
+          .map((item) => [item.id, item] as const),
       );
-      const publications = sortPublicationsNewestFirst(feed.items).map((item) =>
-        publicationPreview(
-          item,
-          item.kind === "notification" && expandedIds.has(item.id),
-          this.data.theme,
-        ),
+      const publications = sortPublicationsNewestFirst(feed.items).map(
+        (item) => ({
+          ...publicationPreview(
+            item,
+            item.kind === "notification" && expandedItems.has(item.id),
+            this.data.theme,
+          ),
+          bodyHeightPx:
+            expandedItems.get(item.id)?.contentMarkdown === item.contentMarkdown
+              ? expandedItems.get(item.id)?.bodyHeightPx
+              : undefined,
+        }),
       );
       this.setData(
         {
@@ -1886,7 +1895,8 @@ Page({
   },
   onPublicationTap(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const publication = this.data.publications.find((item) => item.id === id);
+    const index = this.data.publications.findIndex((item) => item.id === id);
+    const publication = this.data.publications[index];
     if (!publication) return;
     if (publication.kind === "announcement") {
       haptic("light");
@@ -1900,6 +1910,14 @@ Page({
     const publicationUnreadCount = wasUnread
       ? Math.max(0, this.data.publicationUnreadCount - 1)
       : this.data.publicationUnreadCount;
+    const expanding = publication.isLong && !publication.expanded;
+    const collapsedHeightPx = Math.ceil(
+      (30 * (wx.getWindowInfo().windowWidth || 375)) / 750,
+    );
+    if (publicationBodyMeasureTimer !== undefined) {
+      clearTimeout(publicationBodyMeasureTimer);
+      publicationBodyMeasureTimer = undefined;
+    }
     this.setData(
       {
         publications: this.data.publications.map((item) =>
@@ -1908,6 +1926,9 @@ Page({
                 ...item,
                 isRead: true,
                 expanded: item.isLong ? !item.expanded : item.expanded,
+                bodyHeightPx: item.isLong
+                  ? collapsedHeightPx
+                  : item.bodyHeightPx,
               }
             : item,
         ),
@@ -1919,15 +1940,55 @@ Page({
       },
       () => {
         if (!publication.isLong) return;
-        if (publicationBodyMeasureTimer !== undefined) {
-          clearTimeout(publicationBodyMeasureTimer);
+        if (!expanding) {
+          publicationBodyMeasureTimer = setTimeout(() => {
+            publicationBodyMeasureTimer = undefined;
+            this.measurePublicationPanel(false);
+          }, 380);
+          return;
         }
-        // Match the body's max-height transition before reading its final size.
-        const delay = publication.expanded ? 280 : 460;
-        publicationBodyMeasureTimer = setTimeout(() => {
-          publicationBodyMeasureTimer = undefined;
-          this.measurePublicationPanel(false);
-        }, delay);
+        const measureExpandedBody = (attempt: number) => {
+          this.createSelectorQuery()
+            .select(`#publication-body-content-${index}`)
+            .boundingClientRect()
+            .exec((results) => {
+              if (
+                this.data.publications[index]?.id !== id ||
+                !this.data.publications[index].expanded
+              )
+                return;
+              const measuredHeight = Math.ceil(
+                Number(results?.[0]?.height || 0),
+              );
+              if (measuredHeight <= collapsedHeightPx && attempt < 3) {
+                publicationBodyMeasureTimer = setTimeout(() => {
+                  publicationBodyMeasureTimer = undefined;
+                  measureExpandedBody(attempt + 1);
+                }, 32);
+                return;
+              }
+              const height =
+                measuredHeight > collapsedHeightPx ? measuredHeight : undefined;
+              this.setData(
+                {
+                  publications: this.data.publications.map((item) =>
+                    item.id === id ? { ...item, bodyHeightPx: height } : item,
+                  ),
+                },
+                () => {
+                  if (height === undefined) {
+                    this.measurePublicationPanel(false);
+                    return;
+                  }
+                  publicationBodyMeasureTimer = setTimeout(() => {
+                    publicationBodyMeasureTimer = undefined;
+                    this.measurePublicationPanel(false);
+                  }, 380);
+                },
+              );
+            });
+        };
+        wx.nextTick(() => measureExpandedBody(0));
       },
     );
     haptic("light");

@@ -73,8 +73,14 @@ function inlineMarkdown(
       /`([^`\n]+)`/g,
       '<code style="padding:2px 6px;border-radius:6px;background:rgba(127,127,127,.12);font-family:monospace;">$1</code>',
     )
-    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/__([^_\n]+)__/g, "<strong>$1</strong>")
+    .replace(
+      /\*\*([^*\n]+)\*\*/g,
+      '<span style="display:inline;font-weight:700;">$1</span>',
+    )
+    .replace(
+      /__([^_\n]+)__/g,
+      '<span style="display:inline;font-weight:700;">$1</span>',
+    )
     .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2")
     .replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1$2");
   return value.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => {
@@ -116,6 +122,8 @@ export function renderMarkdownBlocks(
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   let code: { language: string; lines: string[] } | null = null;
+  const blockMargin = (normal: string): string =>
+    options.compact ? `${richBlocks.length ? 8 : 0}px 0 0` : normal;
 
   const flushRichBlocks = () => {
     if (!richBlocks.length) return;
@@ -148,7 +156,7 @@ export function renderMarkdownBlocks(
   const flushParagraph = () => {
     if (!paragraph.length) return;
     richBlocks.push(
-      `<p style="margin:0 0 14px;line-height:1.72;">${paragraph
+      `<p style="margin:${blockMargin("0 0 14px")};line-height:1.72;">${paragraph
         .map((line) => inlineMarkdown(line, accent, mediaUrls))
         .join("<br />")}</p>`,
     );
@@ -158,7 +166,7 @@ export function renderMarkdownBlocks(
     if (!list) return;
     const tag = list.ordered ? "ol" : "ul";
     richBlocks.push(
-      `<${tag} style="margin:0 0 14px;padding-left:22px;line-height:1.72;">${list.items
+      `<${tag} style="margin:${blockMargin("0 0 14px")};padding-left:22px;line-height:1.72;">${list.items
         .map((item) => `<li>${inlineMarkdown(item, accent, mediaUrls)}</li>`)
         .join("")}</${tag}>`,
     );
@@ -189,7 +197,7 @@ export function renderMarkdownBlocks(
       const level = heading[1].length;
       const size = [0, 24, 21, 18, 16][level];
       richBlocks.push(
-        `<h${level} style="margin:${level === 1 ? 0 : 8}px 0 12px;color:${headingColor};font-size:${size}px;line-height:1.35;">${inlineMarkdown(heading[2], accent, mediaUrls)}</h${level}>`,
+        `<h${level} style="margin:${blockMargin(`${level === 1 ? 0 : 8}px 0 12px`)};color:${headingColor};font-size:${size}px;line-height:1.35;">${inlineMarkdown(heading[2], accent, mediaUrls)}</h${level}>`,
       );
       continue;
     }
@@ -198,7 +206,7 @@ export function renderMarkdownBlocks(
       flushParagraph();
       flushList();
       richBlocks.push(
-        `<blockquote style="margin:0 0 14px;padding:10px 14px;border-left:3px solid ${accent};border-radius:0 10px 10px 0;color:${mutedColor};background:${mutedBackground};line-height:1.65;">${inlineMarkdown(quote[1], accent, mediaUrls)}</blockquote>`,
+        `<blockquote style="margin:${blockMargin("0 0 14px")};padding:10px 14px;border-left:3px solid ${accent};border-radius:0 10px 10px 0;color:${mutedColor};background:${mutedBackground};line-height:1.65;">${inlineMarkdown(quote[1], accent, mediaUrls)}</blockquote>`,
       );
       continue;
     }
@@ -229,10 +237,13 @@ export function renderMarkdownBlocks(
 
 export function stripMarkdown(markdown: string): string {
   return markdown
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, (_match, alt: string) => alt || "图片")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/```[\s\S]*?```/g, (value) => value.replace(/```[^\n]*/g, ""))
-    .replace(/^[#>*+\-\d.)\s]+/gm, "")
+    .replace(/^ {0,3}#{1,6}\s+/gm, "")
+    .replace(/^ {0,3}>\s?/gm, "")
+    .replace(/^ {0,3}[-*+]\s+/gm, "")
+    .replace(/^ {0,3}\d+[.)]\s+/gm, "")
     .replace(/[*_`~]/g, "")
     .replace(/\s+/g, " ")
     .trim();

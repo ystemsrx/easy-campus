@@ -28,7 +28,7 @@ function loadTypeScriptModule(relativePath) {
 }
 
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
-const { renderMarkdown, renderMarkdownBlocks } =
+const { renderMarkdown, renderMarkdownBlocks, stripMarkdown } =
   loadTypeScriptModule("utils/markdown.ts");
 const { resolvePublicationPanelHeight, sortPublicationsNewestFirst } =
   loadTypeScriptModule("utils/publications.ts");
@@ -791,7 +791,7 @@ assert(
     !homeStyles.includes(".publication-row--pressed") &&
     !homeStyles.includes(".publication-row--unread") &&
     !publicationRowStyle.includes("background") &&
-    (publicationTapHandler.match(/this\.setData\(/g) || []).length === 1 &&
+    (publicationTapHandler.match(/this\.setData\(/g) || []).length === 2 &&
     publicationTapHandler.includes('publication.kind === "announcement"') &&
     publicationTapHandler.includes("isRead: true") &&
     publicationTapHandler.includes("expanded:") &&
@@ -802,35 +802,44 @@ assert(
 const compactNotification = renderMarkdown("第一行\n第二行", {
   compact: true,
 });
+const shortNotification = renderMarkdown("短通知", { compact: true });
+const compactParagraphs = renderMarkdown("第一段\n\n第二段", { compact: true });
+const inlineBoldNotification = renderMarkdown("1111**2222**1111", {
+  compact: true,
+});
 assert(
-  compactNotification.includes("font-size:14px") &&
+  stripMarkdown("1111**2222**1111") === "111122221111" &&
+    stripMarkdown("# 2026 通知\n1. 第一项\n2. 第二项") ===
+      "2026 通知 第一项 第二项" &&
+    stripMarkdown("![](media://12345678-1234-1234-1234-123456789abc)") ===
+      "图片" &&
+    compactNotification.includes("font-size:14px") &&
+    shortNotification.includes('<p style="margin:0px 0 0;') &&
+    !shortNotification.includes("margin:0 0 14px") &&
+    compactParagraphs.includes('<p style="margin:8px 0 0;') &&
+    renderMarkdown("公告正文").includes('<p style="margin:0 0 14px;') &&
+    inlineBoldNotification.includes(
+      '1111<span style="display:inline;font-weight:700;">2222</span>1111',
+    ) &&
+    !inlineBoldNotification.includes("<strong>") &&
     homeScript.includes('compact: publication.kind === "notification"') &&
     homeTemplate.includes('class="publication-body-preview"') &&
     homeTemplate.includes('class="publication-body-content"') &&
-    !homeTemplate.includes('<rich-text wx:if="{{item.expanded}}"') &&
+    homeTemplate.includes("item.expanded || !item.isLong") &&
+    (homeTemplate.match(/mode="compat" nodes="\{\{block\.html\}\}"/g) || [])
+      .length === 2 &&
+    homeTemplate.includes('id="publication-body-content-{{index}}"') &&
+    homeTemplate.includes("item.bodyHeightPx ? 'height: '") &&
     publicationBodyStyle.includes("font-size: 20rpx;") &&
-    publicationBodyStyle.includes("max-height: 30rpx;") &&
-    publicationBodyStyle.includes(
-      "transition: max-height 280ms cubic-bezier(0.22, 1, 0.36, 1);",
-    ) &&
-    publicationBodyExpandedStyle.includes("max-height: 300rpx;") &&
-    publicationBodyExpandedStyle.includes("transition-duration: 460ms;") &&
-    publicationBodyExpandedStyle.includes(
-      "transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);",
-    ) &&
-    publicationBodyPreviewStyle.includes(
-      "transition: opacity 100ms ease 180ms;",
-    ) &&
-    publicationBodyContentStyle.includes(
-      "transition: opacity 100ms ease 180ms;",
-    ) &&
-    expandedPublicationBodyPreviewStyle.includes(
-      "transition: opacity 140ms ease;",
-    ) &&
-    expandedPublicationBodyContentStyle.includes(
-      "transition: opacity 220ms ease 90ms;",
-    ),
-  "多行通知必须使用较小正文字号和稳定内容节点平滑展开、折叠",
+    publicationBodyStyle.includes("height: 30rpx;") &&
+    publicationBodyStyle.includes("transition: height 360ms") &&
+    publicationBodyExpandedStyle.includes("height: auto;") &&
+    !publicationBodyPreviewStyle.includes("position: absolute") &&
+    publicationBodyPreviewStyle.includes("display: block;") &&
+    publicationBodyContentStyle.includes("display: none;") &&
+    expandedPublicationBodyPreviewStyle.includes("display: none;") &&
+    expandedPublicationBodyContentStyle.includes("display: block;"),
+  "消息摘要不得误删数字，通知正文须可见并平滑展开，行内加粗不能单独换行",
 );
 const orderedPublications = sortPublicationsNewestFirst([
   {

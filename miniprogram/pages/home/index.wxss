@@ -277,7 +277,7 @@
 .publication-popover-layer { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1000; opacity: 0; transition: opacity 260ms ease; pointer-events: none; }
 .publication-popover-layer--open { opacity: 1; pointer-events: auto; }
 .publication-popover-dismiss { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: transparent; }
-.publication-popover { position: absolute; right: 24rpx; left: 24rpx; display: flex; flex-direction: column; height: 380rpx; max-height: 62vh; overflow: hidden; border-radius: 52rpx; background: #fff; box-shadow: var(--shadow-pop); transform: scale(0.6); transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+.publication-popover { position: absolute; right: 24rpx; left: 24rpx; display: flex; flex-direction: column; height: 380rpx; max-height: 62vh; overflow: hidden; border-radius: 52rpx; background: #fff; box-shadow: var(--shadow-pop); transform: scale(0.6); transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), height 360ms cubic-bezier(0.22, 1, 0.36, 1); }
 .publication-popover-layer--open .publication-popover { transform: scale(1); }
 .publication-popover-header { display: flex; flex: none; flex-direction: row; align-items: baseline; justify-content: space-between; padding: 30rpx 34rpx 8rpx; }
 .publication-popover-title { color: #16161a; font-size: 34rpx; font-weight: 700; }
@@ -300,12 +300,13 @@
 .publication-title { flex: 1; min-width: 0; color: #16161a; font-size: 25rpx; font-weight: 750; }
 .publication-time { flex: none; max-width: 128rpx; color: #b5b0a3; font-size: 17rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .publication-preview { display: block; margin-top: 5rpx; color: #8b8578; font-size: 21rpx; line-height: 1.55; }
-.publication-body { position: relative; display: block; max-height: 30rpx; margin-top: 5rpx; overflow: hidden; color: #8b8578; font-size: 20rpx; line-height: 1.5; transition: max-height 280ms cubic-bezier(0.22, 1, 0.36, 1); }
-.publication-body--expanded { max-height: 300rpx; transition-duration: 460ms; transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1); }
-.publication-body-preview { position: absolute; z-index: 1; top: 0; right: 0; left: 0; display: block; opacity: 1; transition: opacity 100ms ease 180ms; }
-.publication-body-content { opacity: 0; transition: opacity 100ms ease 180ms; }
-.publication-body--expanded .publication-body-preview { opacity: 0; pointer-events: none; transition: opacity 140ms ease; }
-.publication-body--expanded .publication-body-content { opacity: 1; transition: opacity 220ms ease 90ms; }
+.publication-body { box-sizing: content-box; height: 30rpx; min-width: 0; margin-top: 5rpx; overflow: hidden; color: #8b8578; font-size: 20rpx; line-height: 1.5; transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1); }
+.publication-body--expanded { height: auto; }
+.publication-body--short { height: auto; overflow: visible; transition: none; }
+.publication-body-preview { display: block; width: 100%; }
+.publication-body-content { display: none; width: 100%; }
+.publication-body--expanded .publication-body-preview { display: none; }
+.publication-body--expanded .publication-body-content { display: block; }
 .publication-type { display: block; margin-top: 6rpx; color: #b85c38; font-size: 18rpx; font-weight: 700; }
 .publication-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 28rpx 20rpx; }
 .publication-empty-bell { display: flex; flex: none; align-items: center; justify-content: center; width: 86rpx; height: 86rpx; border-radius: 30rpx; color: #a39e92; background: #f6f3ec; }
