@@ -1,4 +1,5 @@
 import type {
+  AcademicSemesterOption,
   TimetableArrangement,
   TimetableCourseData,
   TimetableData,
@@ -756,6 +757,21 @@ export function timetableWeekCount(data: TimetableData): number {
     data.summary.maxWeek,
     data.semesterCalendar?.totalWeeks || 0,
   );
+}
+
+export function visibleTimetableSemesters(
+  semesters: AcademicSemesterOption[],
+  timetableForSemester: (semesterId: string) => TimetableData | null,
+): AcademicSemesterOption[] {
+  return semesters.filter((semester) => {
+    if (semester.term !== 3) return true;
+    const timetable = timetableForSemester(semester.id);
+    if (timetable?.semester.id !== semester.id) return false;
+    return Boolean(
+      timetable?.courses.some((course) => course.arrangements.length) ||
+      timetable?.additionalCourses.length,
+    );
+  });
 }
 
 export function buildTimetableWeekDateCache(

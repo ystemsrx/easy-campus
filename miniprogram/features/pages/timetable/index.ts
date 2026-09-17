@@ -10,6 +10,7 @@ import {
   teachingWeekForDate,
   timetableWeekCount,
   timetableWeekForDisplay,
+  visibleTimetableSemesters,
   type TimetableCourse,
 } from "../../../data/timetable";
 import {
@@ -1432,8 +1433,14 @@ function resetClawdSceneScheduler(): void {
 
 function timetableSemesterOptions(
   semesters: AcademicSemesterOption[],
+  account: string,
+  selected: TimetableData,
 ): TimetableSemesterOption[] {
-  return semesters.map((semester) => ({
+  return visibleTimetableSemesters(semesters, (semesterId) => {
+    if (selected.semester.id === semesterId) return selected;
+    const snapshot = loadTimetableSnapshot(account, semesterId);
+    return snapshot && !snapshot.deleted ? snapshot.data : null;
+  }).map((semester) => ({
     ...semester,
     displayLabel: timetableSemesterMenuLabel(semester),
   }));
@@ -2483,6 +2490,11 @@ Page({
     const menuTimetable = companionTimetable === timetable
       ? activeSnapshot?.data || timetable
       : timetable;
+    const menuSemesters = timetableSemesterOptions(
+      menuTimetable.semesters,
+      activeAccount,
+      menuTimetable,
+    );
     const maxWeek = timetableWeekCount(timetable);
     const cachedWeekDates = new Map(
       (!companionTimetable || companionTimetable !== timetable) && activeSnapshot?.data.semester.id === timetable.semester.id
@@ -2544,8 +2556,8 @@ Page({
       {
         semesterShortLabel: shortAcademicSemesterLabel(menuTimetable.semester),
         semesterId: menuTimetable.semester.id,
-        semesters: timetableSemesterOptions(menuTimetable.semesters),
-        semesterMenuHeight: submenuHeight(menuTimetable.semesters.length),
+        semesters: menuSemesters,
+        semesterMenuHeight: submenuHeight(menuSemesters.length),
         weekNumber,
         currentWeekNumber: detectedWeek,
         weekIndex: weekNumber - 1,
@@ -2821,6 +2833,56 @@ Page({
   },
   openSemesterMenu() {
     haptic("light");
+    const account = activeAccount;
+    const source = companionTimetable === activeTimetable
+      ? activeSnapshot?.data || activeTimetable
+      : activeTimetable || activeSnapshot?.data;
+    if (source) {
+      const semesters = timetableSemesterOptions(
+        source.semesters,
+        account,
+        source,
+      );
+      const menuHeight = submenuHeight(semesters.length);
+      this.setData({
+        semesters,
+        semesterMenuHeight: menuHeight,
+        semesterOpen: true,
+        menuHeight,
+      });
+      for (const semester of source.semesters) {
+        if (
+          semester.term !== 3 ||
+          semester.id === source.semester.id ||
+          loadTimetableSnapshot(account, semester.id)
+        ) {
+          continue;
+        }
+        void this.loadTimetable(false, semester.id).then(() => {
+          if (
+            !pageAlive ||
+            activeAccount !== account ||
+            !this.data.semesterOpen
+          ) return;
+          const latest = companionTimetable === activeTimetable
+            ? activeSnapshot?.data || activeTimetable
+            : activeTimetable || activeSnapshot?.data;
+          if (!latest) return;
+          const options = timetableSemesterOptions(
+            latest.semesters,
+            account,
+            latest,
+          );
+          const height = submenuHeight(options.length);
+          this.setData({
+            semesters: options,
+            semesterMenuHeight: height,
+            menuHeight: height,
+          });
+        });
+      }
+      return;
+    }
     this.setData({
       semesterOpen: true,
       menuHeight: this.data.semesterMenuHeight,

@@ -231,7 +231,17 @@ export function buildScheduleDayView(
   const selected = days.find((day) => day.weekday === weekday);
   if (!selected) return null;
   const selectedDate = scheduleDateFromKey(selected.date);
-  const teachingWeek = teachingWeekForDate(timetable, selectedDate);
+  const current = timetable?.currentSemester;
+  const currentIsSelectedDate =
+    current &&
+    selected.date >= current.startDate &&
+    selected.date <= current.endDate;
+  const teachingWeek = teachingWeekForDate(
+    currentIsSelectedDate && timetable && current.id !== timetable.semester.id
+      ? { ...timetable, semester: current, semesterCalendar: null }
+      : timetable,
+    selectedDate,
+  );
   const entries = buildScheduleEntries(timetable, selected.date, plans);
   return {
     selectedWeekday: weekday,

@@ -83,6 +83,18 @@ export function vacationLabelForDate(
   dateKey: string,
 ): VacationLabel | null {
   const calendar = timetable?.semesterCalendar;
+  const current = timetable?.currentSemester;
+  if (current && dateKey >= current.startDate && dateKey <= current.endDate) {
+    return null;
+  }
+  if (
+    current &&
+    calendar &&
+    current.startDate > calendar.endDate &&
+    dateKey > current.endDate
+  ) {
+    return vacationAfterTerm(current.term);
+  }
   if (timetable && calendar?.semesterId === timetable.semester.id) {
     if (dateKey < calendar.startDate) {
       return vacationBeforeTerm(timetable.semester.term);
@@ -92,7 +104,6 @@ export function vacationLabelForDate(
     }
   }
 
-  const current = timetable?.currentSemester;
   if (current) {
     if (dateKey < current.startDate) {
       return vacationBeforeTerm(current.term);

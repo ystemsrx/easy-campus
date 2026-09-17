@@ -671,6 +671,54 @@ const summerSemester = {
   term: 3,
   label: "2025-2026 · 第三学期",
 };
+const emptySemester = (semester) => ({
+  semester,
+  courses: [],
+  additionalCourses: [],
+});
+const firstSemester = { ...summerSemester, id: "2025-1", term: 1 };
+const secondSemester = { ...summerSemester, id: "2025-2", term: 2 };
+const listedWithEmptyThird = timetable.visibleTimetableSemesters(
+  [firstSemester, secondSemester, summerSemester],
+  () => emptySemester(summerSemester),
+);
+assert(
+  timetable.timetableWeekCount({
+    ...emptySemester(secondSemester),
+    summary: { maxWeek: 0 },
+    semesterCalendar: { totalWeeks: 18 },
+  }) === 18,
+  "零课程的第一、二学期仍须保留校历周次供空课表展示",
+);
+assert(
+  listedWithEmptyThird.map((semester) => semester.id).join(",") ===
+    "2025-1,2025-2",
+  "第一、二学期即使零课程仍须留在菜单，零课程第三学期须隐藏",
+);
+assert(
+  timetable.visibleTimetableSemesters(
+    [summerSemester],
+    () => ({
+      ...emptySemester(summerSemester),
+      courses: [{ arrangements: [{}] }],
+    }),
+  ).length === 1 &&
+    timetable.visibleTimetableSemesters(
+      [summerSemester],
+      () => ({
+        ...emptySemester(firstSemester),
+        courses: [{ arrangements: [{}] }],
+      }),
+    ).length === 0 &&
+    timetable.visibleTimetableSemesters(
+      [summerSemester],
+      () => ({
+        ...emptySemester(summerSemester),
+        additionalCourses: [{}],
+      }),
+    ).length === 1,
+  "第三学期有排课或实践课时必须显示",
+);
 assert(
   semesterFormat.shortAcademicSemesterLabel(summerSemester) === "25-26 夏",
   "第三学期的课表短名称必须映射为夏",
@@ -3498,7 +3546,8 @@ assert(
 
 assert(
   timetablePageScript.includes("const menuTimetable = companionTimetable === timetable") &&
-    timetablePageScript.includes("semesters: timetableSemesterOptions(menuTimetable.semesters)") &&
+    timetablePageScript.includes("semesters: menuSemesters") &&
+    timetablePageScript.includes("this.loadTimetable(false, semester.id).then") &&
     timetablePageScript.includes("semesterShortLabel: shortAcademicSemesterLabel(menuTimetable.semester)") &&
     timetablePageScript.includes("getCompanionTimetable(partner.id, semesterId)") &&
     timetablePageScript.includes("timetable.semester.id !== semesterId"),

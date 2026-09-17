@@ -22,11 +22,56 @@ function loadScheduleData() {
   return moduleRecord.exports;
 }
 
+function loadScheduleRender(scheduleModule) {
+  const timetablePath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "timetable.ts",
+  );
+  const renderPath = path.resolve(
+    __dirname,
+    "..",
+    "miniprogram",
+    "data",
+    "schedule-render.ts",
+  );
+  const load = (sourcePath, resolve) => {
+    const output = ts.transpileModule(readSource(sourcePath, "utf8"), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2020,
+      },
+    }).outputText;
+    const record = { exports: {} };
+    new Function("module", "exports", "require", output)(
+      record,
+      record.exports,
+      resolve,
+    );
+    return record.exports;
+  };
+  const timetableModule = load(timetablePath, require);
+  return load(renderPath, (request) => {
+    if (request === "./timetable") return timetableModule;
+    if (request === "./schedule") return scheduleModule;
+    if (request === "../utils/date") {
+      return {
+        formatFriendlyDate: (date) => date,
+        toDateString: (date) => date.toISOString().slice(0, 10),
+      };
+    }
+    return require(request);
+  });
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 const schedule = loadScheduleData();
+const scheduleRender = loadScheduleRender(schedule);
 const laidOut = schedule.layoutScheduleOverlaps([
   { id: "course", top: 0, height: 100 },
   { id: "plan", top: 50, height: 100 },
@@ -77,6 +122,38 @@ const summerTimetable = {
 assert(
   schedule.vacationLabelForDate(summerTimetable, "2026-08-19") === "暑假",
   "第二学期结束到第一学期开始之间必须显示暑假",
+);
+const thirdTermTimetable = {
+  semester: { id: "2025-2", term: 2 },
+  semesterCalendar: {
+    semesterId: "2025-2",
+    startDate: "2026-02-23",
+    endDate: "2026-07-12",
+    weeks: [],
+  },
+  currentSemester: {
+    id: "2025-3",
+    term: 3,
+    startDate: "2026-07-20",
+    endDate: "2026-08-09",
+  },
+};
+assert(
+  schedule.vacationLabelForDate(thirdTermTimetable, "2026-07-15") === "暑假" &&
+    schedule.vacationLabelForDate(thirdTermTimetable, "2026-07-20") === null &&
+    schedule.vacationLabelForDate(thirdTermTimetable, "2026-08-09") === null &&
+    schedule.vacationLabelForDate(thirdTermTimetable, "2026-08-10") === "暑假",
+  "第二学期与第三学期之间保留暑假，第三学期内不得显示暑假",
+);
+const thirdTermDay = scheduleRender.buildScheduleDayView(
+  { ...thirdTermTimetable, courses: [], additionalCourses: [] },
+  [{ weekday: 1, date: "2026-07-20", isToday: true }],
+  [],
+  1,
+);
+assert(
+  thirdTermDay.teachingWeekLabel === "第 1 教学周",
+  "已进入第三学期时，即使保留第二学期课表也必须显示第三学期教学周",
 );
 const winterTimetable = {
   semester: { id: "2025-2", term: 2 },
