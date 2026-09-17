@@ -218,6 +218,10 @@ const pageStyles = readSource(
     "index.wxss",
   ),
   "utf8",
+).replace(/([^;{}])}/g, "$1;}");
+assert(
+  !/import\s+\w+\s*=\s*WechatMiniprogram/.test(pageScript),
+  "日程页类型别名不得在开发者工具中生成动态 require",
 );
 const dashedCornerAssets = [24, 30].map((size) =>
   readSource(
@@ -309,7 +313,7 @@ assert(
     dashedCornerAssets.every(
       (asset) =>
         asset.includes('stroke-dasharray="6 3"') &&
-        asset.includes('stroke-linecap="butt"'),
+        !asset.includes('stroke-linecap=') || asset.includes('stroke-linecap="butt"'),
     ) &&
     template.includes('class="entry-strike entry-strike--title"') &&
     template.includes('class="entry-strike entry-strike--meta"') &&
@@ -339,8 +343,8 @@ assert(
 assert(
   renderScript.includes("export function prewarmScheduleFirstScreen(") &&
     renderScript.includes("buildScheduleWeekView(") &&
-    pageScript.includes("getPrewarmedScheduleFirstScreen(account)") &&
-    pageScript.includes("Object.assign(patch, prewarmed.view)") &&
+    pageScript.includes("getWarmScreen(account)") &&
+    /Object\.assign\(patch,\s*warm\.view\)/.test(pageScript) &&
     pageScript.includes("getPreloadedTimetable()") &&
     pageScript.includes("getPreloadedSchedule()"),
   "日程页必须复用启动时预构建的首屏与静默请求",
@@ -350,11 +354,11 @@ assert(
     pageScript.includes("getTimetableRevision()") &&
     pageScript.includes("getScheduleRevision()") &&
     pageScript.includes("scheduleSourcesAreCurrent(account)") &&
-    /onShow\(\)[\s\S]*?this\.hydrateCachedScheduleIfNeeded\(account\)[\s\S]*?this\.scheduleBackgroundRefresh\(SCHEDULE_RETURN_REFRESH_DELAY_MS\)/.test(
+    /onShow\(\)[\s\S]*?this\.hydrateCachedScheduleIfNeeded\(account\)[\s\S]*?this\.scheduleBackgroundRefresh\(REFRESH_DELAY\)/.test(
       pageScript,
     ) &&
-    pageScript.includes("const SCHEDULE_RETURN_REFRESH_DELAY_MS = 520;") &&
-    /scheduleBackgroundRefresh\(delay: number\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?this\.loadTimetable\(\)[\s\S]*?this\.syncSchedule\(\)/.test(
+    /const REFRESH_DELAY\s*=\s*520;/.test(pageScript) &&
+    /scheduleBackgroundRefresh\(delay:\s*number\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?this\.loadTimetable\(\)[\s\S]*?this\.syncSchedule\(\)/.test(
       pageScript,
     ),
   "日程页返回时必须按数据版本复用页面状态，并在底栏动画结束后静默同步",
@@ -373,18 +377,17 @@ assert(
   "图例项目必须保持独立宽度且不得被附加说明挤压重叠",
 );
 assert(
-  pageScript.includes(
-    '"/features/pages/timetable/index?source=schedule",\n      "wx://cupertino-modal"',
-  ) &&
+  !template.includes('bindtap="openTimetable"') &&
+    !pageScript.includes("openTimetable()") &&
     timetableScript.includes('options.source === "schedule"') &&
     timetableScript.includes("MODAL_HEADER_EDGE_INSET_RPX") &&
     timetableScript.includes("backgroundMetrics(this.data.compactHeader)") &&
     homeScript.includes('navigateTo("/features/pages/timetable/index")'),
-  "日程的模态课表入口必须使用等边距紧凑顶部，同时保持首页原生安全区布局",
+  "日程页不显示课表跳转按钮，课程详情和首页入口仍保持正确导航",
 );
 assert(
   template.includes(
-    `name="plus" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : (visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'white')}}"`,
+    `name="plus" tone="{{liquidGlass?(theme==='dark'?'white':'ink'):(visualTheme==='minimal'?(theme==='dark'?'white':'ink'):'white')}}"`,
   ) && !template.includes('name="plus" tone="white"'),
   "极简主题浅色模式的日程新增按钮必须使用深色加号",
 );

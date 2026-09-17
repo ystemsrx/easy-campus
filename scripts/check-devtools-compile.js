@@ -16,6 +16,12 @@ function checkScheduleScrollWorklet(code) {
   );
   let factory;
   function visit(node) {
+    if (ts.isCallExpression(node) && node.expression.getText(source) === "require") {
+      assert(
+        node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]),
+        "Schedule page compiler emitted a require with a non-string argument",
+      );
+    }
     if (
       ts.isPropertyAssignment(node) &&
       node.name.getText(source) === "_onGlassDayScroll_worklet_factory_"

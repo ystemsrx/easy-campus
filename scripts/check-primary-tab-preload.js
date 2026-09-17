@@ -139,10 +139,10 @@ assert(
     preload.includes(
       "prewarmSchedulePager(firstScreen, () => isActive(state))",
     ) &&
-    schedulePage.includes("prewarmed?.pager ||") &&
+    schedulePage.includes("warm?.pager ||") &&
     scheduleRender.includes("buildScheduleWeekView(") &&
-    schedulePage.includes("getPrewarmedScheduleFirstScreen(account)") &&
-    schedulePage.includes("Object.assign(patch, prewarmed.view)") &&
+    schedulePage.includes("getWarmScreen(account)") &&
+    /Object\.assign\(patch,\s*warm\.view\)/.test(schedulePage) &&
     schedulePage.includes("getPreloadedTimetable()") &&
     schedulePage.includes("getPreloadedSchedule()"),
   "日程页必须直接消费启动阶段准备好的首屏和共享请求",

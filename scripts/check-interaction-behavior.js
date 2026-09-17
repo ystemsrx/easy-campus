@@ -30,6 +30,7 @@ function runtime(overrides = {}) {
     removeStorageSync: (key) => storage.delete(key),
     getWindowInfo: () => ({ windowWidth: 375 }),
     worklet: {
+      timing: (target) => target,
       shared: (initial) => {
         let value = initial;
         const listeners = new Set();
@@ -261,7 +262,7 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     assert.equal(
       page.appliedStyles.size,
-      48,
+      134,
       "Bind every marker, strip and glyph after its node exists",
     );
     assert.deepEqual(
@@ -277,12 +278,42 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     const origin = render.scheduleDayIndex(page.data.selectedDate);
     const slot = Math.floor(origin / 7) % 3;
+    page.setCalendarMode(event({ mode: "month" }));
+    const monthMarker = page.appliedStyles.get(".orb-live").transform;
+    const cell = origin - page._motion.grid.value;
+    const row = Math.floor(cell / 7);
+    const column = (cell % 7) + 1;
     page.onDayScrollStart();
     for (const progress of [0.1, 0.25, 0.5, 0.75, 0.4, 0.1, 0]) {
       page.onDayScrollUpdate(event({}, { dx: 375 * progress }));
       const marker = page.appliedStyles.get(
         ".week-selection-slot-" + slot,
       ).transform;
+      if (progress > 0) {
+        assert.notEqual(
+          page.appliedStyles.get(".orb-live").transform,
+          monthMarker,
+          "Month selector must move before the date is committed",
+        );
+      }
+      assert.ok(
+        Math.abs(
+          Number(
+            page.appliedStyles.get(`.md-${row}-${column}-selected`).opacity,
+          ) -
+            (1 - progress),
+        ) < 1e-7,
+        "Selected month date fades while the agenda is swiped",
+      );
+      assert.ok(
+        Math.abs(
+          Number(
+            page.appliedStyles.get(`.md-${row}-${column + 1}-selected`)
+              .opacity,
+          ) - progress,
+        ) < 1e-7,
+        "Incoming month date gains the selected color during the swipe",
+      );
       const x = Number(/translateX\((.*)px\)/.exec(marker)[1]);
       assert.ok(Math.abs(x - ((4 + progress) * 335) / 7) < 1e-7);
       for (const [weekday, weight] of [
@@ -319,7 +350,7 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     assert.equal(
       page.styleBindings,
-      48,
+      134,
       "Keyed header nodes keep their bindings across window resets and tab returns",
     );
   }
@@ -333,7 +364,7 @@ function checkScheduleMotionMount() {
   );
   const header = template.slice(
     template.indexOf('class="week-viewport"'),
-    template.indexOf("<swiper"),
+    template.indexOf('class="month-calendar'),
   );
   assert.ok(
     !header.includes("transform:"),
@@ -344,6 +375,157 @@ function checkScheduleMotionMount() {
       !styles.includes(".week-day--active"),
     "Committed selection must not abruptly override animated glyph opacity",
   );
+}
+
+function checkScheduleMonthBrowsingAndFold() {
+  const template = fs.readFileSync(path.join(root, "pages/schedule/index.wxml"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "pages/schedule/index.wxss"), "utf8");
+  assert.ok(!template.includes('class="orb-lock"'));
+  assert.match(template, /class="month-calendar[^>]*><view class="orb-slot" style="transform:translateX\(\{\{monthOffset\*100\}\}%\);"><view class="orb orb-live"><text class="orb-caption tnum">\{\{days\[selectedWeekday-1\]\.dateLabel\}\}<\/text><\/view><\/view><view wx:for="\{\{monthPanels\}\}"/);
+  assert.ok(!template.includes('wx:elif="{{panel.monthSelected}}" class="orb"'));
+  assert.match(template, /class="mp mp-\{\{panelIndex\}\} ms-\{\{panel\.monthSelected\?1:0\}\}"/);
+  assert.match(template, /\{\{swiping\|\|mx\?'month-moving':''\}\}/);
+  assert.match(styles, /\.ms-0 \.month-date\{opacity:1!important\}/);
+  assert.match(styles, /\.ms-0 \.month-date--selected,\.month-moving \.month-date--selected\{visibility:hidden\}/);
+  assert.match(styles, /\.month-moving \.month-day--selected \.month-date--selected\{visibility:visible;opacity:1!important\}/);
+  assert.match(styles, /\.mp\{position:absolute;z-index:1;/);
+  assert.match(styles, /\.orb-slot\{position:absolute;z-index:0;/);
+  const env = runtime();
+  const page = env.page("pages/schedule/index");
+  page.onLoad();
+  env.flushRenders();
+  page.onReady();
+  page.navigateScheduleDate("2026-09-18");
+  env.flushRenders();
+  page.setCalendarMode(event({ mode: "month" }));
+  const selected = page.data.selectedDate;
+  const selectedMarker = page.appliedStyles.get(".orb-live").transform;
+  page.changeCalendarMonth(1);
+  assert.equal(page.data.selectedDate, selected);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-09");
+  const width = page._motion.weekWidth.value;
+  assert.equal(page.data.mx + page.data.monthOffset * width, -width);
+  assert.equal(page.data.monthPanels[2].monthAnchor.slice(0, 7), "2026-10");
+  env.timers.shift()();
+  assert.equal(page.data.mx + page.data.monthOffset * width, -width);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-10");
+  assert.equal(page.data.monthSelected, false);
+  assert.equal(page.data.monthPanels[1].monthSelected, false);
+  assert.equal(page.data.monthPanels[0].monthSelected, true);
+  assert.equal(page.data.monthOffset, -1);
+  assert.equal(page.appliedStyles.get(".orb-live").transform, selectedMarker);
+  assert.deepEqual(
+    page.data.monthPanels.map((panel) => panel.monthAnchor.slice(0, 7)),
+    ["2026-09", "2026-10", "2026-11"],
+  );
+  page.changeCalendarMonth(-1);
+  assert.equal(page.data.mx + page.data.monthOffset * width, 0);
+  env.timers.shift()();
+  assert.equal(page.data.mx + page.data.monthOffset * width, 0);
+  assert.equal(page.data.monthSelected, true);
+  assert.equal(page.data.monthOffset, 0);
+  assert.equal(page.appliedStyles.get(".orb-live").transform, selectedMarker);
+  page.changeCalendarMonth(1);
+  env.timers.shift()();
+  page.selectDay(event({ date: "2026-10-05" }));
+  env.flushRenders();
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  assert.equal(page.data.monthSelected, true);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-10");
+  page.monthStart({ touches: [{ clientX: 200, clientY: 100 }] });
+  page.monthMove({ touches: [{ clientX: 110, clientY: 102 }] });
+  assert.equal(page.data.mx, -90);
+  assert.equal(page.data.swiping, true);
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  page.monthEnd({ changedTouches: [{ clientX: 110, clientY: 102 }] });
+  env.timers.shift()();
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-11");
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  assert.equal(page.data.monthSelected, false);
+
+  page.setCalendarMode(event({ mode: "week" }));
+  page.onCalendarFoldStart({ touches: [{ clientY: 100 }] });
+  page.onCalendarFoldMove({ touches: [{ clientY: 220 }] });
+  assert.ok(page.data.foldProgress > 0 && page.data.foldProgress < 1);
+  page.onCalendarFoldEnd({ changedTouches: [{ clientY: 220 }] });
+  assert.equal(page.data.monthOpen, true);
+  assert.equal(page.data.foldProgress, 1);
+  page.onCalendarFoldStart({ touches: [{ clientY: 300 }] });
+  page.onCalendarFoldMove({ touches: [{ clientY: 160 }] });
+  page.onCalendarFoldEnd({ changedTouches: [{ clientY: 160 }] });
+  assert.equal(page.data.monthOpen, false);
+  assert.equal(page.data.foldProgress, 0);
+}
+
+function checkScheduleSelectorStraightLine() {
+  const env = runtime();
+  const render = env.load("data/schedule-render");
+  const page = env.page("pages/schedule/index");
+  page.onLoad();
+  env.flushRenders();
+  page.onReady();
+  page.setData({ selectedDate: "2026-09-11" });
+  page.rebuildWeek(true);
+  env.flushRenders();
+  page.setCalendarMode(event({ mode: "month" }));
+  page.navigateScheduleDate("2026-09-26");
+  env.flushRenders();
+  const motion = page._motion;
+  assert.equal(motion.from.value, render.scheduleDayIndex("2026-09-11"));
+  assert.equal(motion.to.value, render.scheduleDayIndex("2026-09-26"));
+  const point = (position) => {
+    motion.position.value = position;
+    const match = /translate\(([-\d.]+)px,([-\d.]+)px\)/.exec(
+      page.appliedStyles.get(".orb-live").transform,
+    );
+    return [Number(match[1]), Number(match[2])];
+  };
+  const start = point(motion.from.value);
+  const middle = point((motion.from.value + motion.to.value) / 2);
+  const end = point(motion.to.value);
+  for (let axis = 0; axis < 2; axis += 1)
+    assert.ok(Math.abs(middle[axis] - (start[axis] + end[axis]) / 2) < 1e-7);
+}
+function checkScheduleMonthReturnAfterDaySwipe() {
+  for (const browseCount of [1, 2]) {
+    const env = runtime();
+    const render = env.load("data/schedule-render");
+    const page = env.page("pages/schedule/index");
+    page.onLoad();
+    env.flushRenders();
+    page.onReady();
+    page.navigateScheduleDate("2026-09-18");
+    env.flushRenders();
+    page.setCalendarMode(event({ mode: "month" }));
+    for (let index = 0; index < browseCount; index += 1) {
+      page.changeCalendarMonth(1);
+      env.timers.shift()();
+    }
+    assert.equal(page._motion.shade.value, 0);
+    const offset = render.scheduleDayIndex("2026-09-18") - page._motion.grid.value;
+    const selectedGlyph = `.md-${Math.floor(offset / 7)}-${(offset % 7) + 1}-selected`;
+    page.onDayScrollStart();
+    page.onDayScrollUpdate(event({}, { dx: 150 }));
+    assert.equal(Number(page.appliedStyles.get(selectedGlyph).opacity), 0);
+    page.onDayChange({ detail: { current: page.data.dayCurrent + 1 }, currentTarget: { dataset: { windowStart: page.data.dayPages[0].selectedDate } } });
+    page.onDayScrollEnd(event({}, { dx: 375 }));
+    env.flushRenders();
+    assert.equal(page.data.selectedDate, "2026-09-19");
+    assert.equal(page.data.monthAnchor.slice(0, 7), `2026-${String(9 + browseCount).padStart(2, "0")}`);
+    assert.equal(page.data.mx, page._motion.weekWidth.value);
+    env.timers.shift()();
+    env.flushRenders();
+    assert.equal(page.data.monthAnchor.slice(0, 7), "2026-09");
+    assert.equal(page.data.monthOffset, 0);
+    assert.equal(page.data.mx, 0);
+    assert.equal(page._motion.shade.value, 1);
+    assert.equal(Number(page.appliedStyles.get(selectedGlyph).opacity), 0);
+    assert.equal(Number(page.appliedStyles.get(".orb-caption").opacity), 1);
+    const incomingOffset = render.scheduleDayIndex("2026-09-19") - page._motion.grid.value;
+    const incomingGlyph = `.md-${Math.floor(incomingOffset / 7)}-${(incomingOffset % 7) + 1}-selected`;
+    assert.equal(Number(page.appliedStyles.get(incomingGlyph).opacity), 1);
+    assert.equal(page.data.monthPanels[1].monthSelected, true);
+  }
 }
 function checkSchedule() {
   const env = runtime();
@@ -1250,6 +1432,9 @@ async function checkFeedback() {
 
 async function main() {
   checkScheduleMotionMount();
+  checkScheduleMonthBrowsingAndFold();
+  checkScheduleSelectorStraightLine();
+  checkScheduleMonthReturnAfterDaySwipe();
   checkScheduleSettling();
   checkSchedule();
   await checkRoomsAndDraftStorage();
