@@ -347,6 +347,12 @@ function selectorController(file, width) {
     "utils/glass-drag": drag,
     "store/preferences": store,
     "store/session": { getSession: () => ({ token: "test" }) },
+    "store/navigation": load("store/navigation"),
+    "utils/tab-navigation": {
+      openNavigation(id, success, fail) {
+        wx.switchTab({ url: load("store/navigation").navigationItem(id).pagePath, success, fail });
+      },
+    },
     "utils/appearance": { resolveAppearance, syncWindowBackground() {} },
     "utils/haptics": { haptic() {} },
     "utils/capsule-backdrop": {
@@ -363,7 +369,7 @@ function selectorController(file, width) {
       target: ts.ScriptTarget.ES2020,
     },
   }).outputText;
-  new Function("exports", "require", "Page", "Component", "wx", code)(
+  new Function("exports", "require", "Page", "Component", "wx", "getCurrentPages", code)(
     {},
     (name) =>
       dependencies[
@@ -372,6 +378,7 @@ function selectorController(file, width) {
     register,
     register,
     wx,
+    () => [{ route: "pages/home/index" }],
   );
   return {
     ...definition,

@@ -1,3 +1,5 @@
+import { navigationIndex, homeNavigationActions } from "../../store/navigation";
+import { openLaunchNavigation } from "../../utils/tab-navigation";
 import {
   attachCapsuleBackdrop,
   detachCapsuleBackdrop,
@@ -818,6 +820,7 @@ Page({
   onShareAppMessage: buildAppShare,
   onShareTimeline: buildTimelineShare,
   data: {
+    navigationActions: homeNavigationActions(),
     ...INITIAL_HOME_APPEARANCE,
     appName: APP_NAME,
     authenticated: INITIAL_HOME_AUTHENTICATED,
@@ -948,7 +951,13 @@ Page({
     this.scheduleHomeActivation(delay);
   },
   onShow() {
+    this.setData({ navigationActions: homeNavigationActions() });
     if (!ensureAuthenticated()) {
+      homeVisible = false;
+      clearHomeActivationTimer();
+      return;
+    }
+    if (openLaunchNavigation(() => this.onShow())) {
       homeVisible = false;
       clearHomeActivationTimer();
       return;
@@ -964,7 +973,7 @@ Page({
       this.prepareForAuthenticatedReveal();
     }
     this.getTabBar().setData({
-      selected: 0,
+      selected: navigationIndex("home"),
       themeClass: this.data.themeClass,
       visualThemeClass: this.data.visualThemeClass,
       motionClass: this.data.motionClass,
@@ -1123,7 +1132,7 @@ Page({
         }
         tabBar.setData(
           {
-            selected: 0,
+            selected: navigationIndex("home"),
             themeClass: state.appearance.themeClass,
             visualThemeClass: state.appearance.visualThemeClass,
             motionClass: state.appearance.motionClass,
@@ -2468,9 +2477,13 @@ Page({
       void navigateTo("/features/pages/inbox/index");
       return;
     }
+    if (route.startsWith("/pages/")) {
+      wx.switchTab({ url: route });
+      return;
+    }
     if (route) {
       if (MODAL_QUICK_ACTION_ROUTES.has(route)) {
-        void navigateTo(route, "wx://cupertino-modal");
+        void navigateTo(`${route}?modal=1`, "wx://cupertino-modal");
         return;
       }
       void navigateTo(route);
@@ -2478,6 +2491,11 @@ Page({
   },
   openTimetable() {
     haptic("light");
+    const replacement = this.data.navigationActions[2];
+    if (replacement) {
+      wx.switchTab({ url: replacement.pagePath });
+      return;
+    }
     void navigateTo("/features/pages/timetable/index");
   },
   openGrades() {

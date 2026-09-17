@@ -1,5 +1,8 @@
 @import "../../../styles/pass-rate-palette.wxss";
 
+.pass-rate-page { display: flex; flex-direction: column; }
+.pass-rate-page .page-scroll { flex: 1; min-height: 0; height: 0; }
+
 .page.pass-rate-page.theme-light,
 .page.pass-rate-page.theme-dark {
   --color-bg-elevated: var(--pass-surface);
@@ -132,3 +135,5 @@
 .page.pass-rate-page .pass-hero .course-switch text { color: var(--pass-accent); }
 .semester-menu-option--active .semester-menu-count,
 .course-picker-row--active .picker-name { color: var(--pass-accent); }
+
+.feature-navigation-page .page-content { padding-bottom: calc(152rpx + env(safe-area-inset-bottom)); }

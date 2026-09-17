@@ -1,7 +1,7 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+<view class="page {{navigationTab ? 'feature-navigation-page' : ''}} rooms-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <navigation-bar wx:if="{{navigationReady}}" title="空教室" back inset-back="{{insetBack}}" transparent theme="{{theme}}"></navigation-bar>
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-    <navigation-bar title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="rooms-content page-content {{optionsLoading && !campuses.length ? 'rooms-content--loading' : ''}}">
       <view wx:if="{{optionsLoading && !campuses.length}}" class="rooms-loading" aria-role="alert">
         <view class="rooms-loading-spinner"></view>
@@ -130,4 +130,5 @@
     </view>
   </view>
 </view>
+<custom-navigation wx:if="{{navigationTab}}" embedded current="/features/pages/rooms/index"></custom-navigation>
 <screen-watermark></screen-watermark>

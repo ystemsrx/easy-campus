@@ -1,0 +1,50 @@
+<rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+<view class="page navigation-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <navigation-bar title="导航栏" back transparent theme="{{theme}}"></navigation-bar>
+  <view class="editor-heading"><text class="editor-title display-title">常用的，放在手边</text><view class="editor-reset pressable" bindtap="reset" hover-class="pressing" aria-role="button" aria-label="恢复默认导航">重置</view></view>
+  <view class="selected-section">
+    <view class="editor-section-heading"><text>我的导航</text><text class="editor-capacity">{{selectedCount}} / 4</text></view>
+    <view class="navigation-editor {{dragging ? 'navigation-editor--ready' : ''}} {{editorOver ? 'navigation-editor--over' : ''}}">
+      <view class="tabbar-shell tabbar-shell--editor {{count === 4 ? 'tabbar-shell--four' : ''}} {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}"><view class="tabbar-material nav-track" style="width: {{count * 152 + 72}}rpx;">
+        <view wx:for="{{cards}}" wx:key="id" id="nav-{{item.id}}" class="editor-nav-card {{dragId === item.id && item.navIndex >= 0 ? 'editor-card--source' : ''}} {{replacementId === item.id ? 'editor-card--replace' : ''}} {{landingIds[0] === item.id || landingIds[1] === item.id ? 'editor-card--landing' : ''}}" style="{{item.navStyle}} {{item.navIndex >= 0 && (landingIds[0] === item.id || landingIds[1] === item.id) ? 'opacity: ' + landingOpacity + ' !important;' : ''}}" data-id="{{item.id}}" data-origin="nav" bindtouchstart="onTouchStart" catchtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel" bindtap="onCardTap" aria-role="button" aria-label="调整{{item.text}}" aria-hidden="{{item.navIndex < 0}}">
+          <view class="editor-nav-icon"><lucide-icon name="{{item.icon}}" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : 'muted'}}" size="{{36}}"></lucide-icon></view><text class="editor-nav-label">{{item.text}}</text>
+        </view>
+      </view>
+      </view><text class="editor-tip">{{tip}}</text>
+    </view>
+  </view>
+  <view class="editor-section-heading available-heading"><text>备选页面</text><text class="editor-hint">{{selectedCount === 4 ? '拖到哪格就替换' : '整张卡片拖到上方'}}</text></view>
+  <view class="available-frame">
+    <scroll-view class="available-scroll" type="list" scroll-y="{{!dragging}}" scroll-top="{{scrollTop}}" bindscroll="onAvailableScroll" enhanced show-scrollbar="{{false}}">
+      <view class="available-track" style="height: {{availableHeight}}rpx;">
+        <view wx:for="{{cards}}" wx:key="id" id="available-{{item.id}}" class="editor-available-card card {{dragId === item.id && item.availableIndex >= 0 ? 'editor-card--source' : ''}} {{landingIds[0] === item.id || landingIds[1] === item.id ? 'editor-card--landing' : ''}}" style="{{item.availableStyle}} {{item.availableIndex >= 0 && (landingIds[0] === item.id || landingIds[1] === item.id) ? 'opacity: ' + landingOpacity + ' !important;' : ''}}" data-id="{{item.id}}" data-origin="available" bindtouchstart="onTouchStart" catchtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel" bindtap="onCardTap" aria-role="button" aria-label="添加或替换为{{item.text}}" aria-hidden="{{item.availableIndex < 0}}">
+          <view class="editor-page-icon"><lucide-icon name="{{item.icon}}" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{40}}"></lucide-icon></view><view class="editor-page-copy"><text class="editor-page-name">{{item.text}}</text><text class="editor-page-description">{{item.description}}</text></view>
+        </view>
+      </view>
+      <view class="available-bottom-space"></view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{toast}}" class="editor-toast" aria-role="alert"><text>{{toast}}</text><view wx:if="{{canUndo}}" class="editor-undo" bindtap="undo" aria-role="button">撤销</view></view>
+  <view class="proxy-layer tabbar-shell {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <view wx:for="{{proxies}}" wx:key="id" class="editor-proxy {{item.capsule ? 'editor-proxy--capsule' : ''}} {{flying ? 'editor-proxy--flying' : ''}}" style="{{item.style}} opacity: {{item.opacity}};" aria-hidden="{{true}}">
+    <view class="proxy-surface proxy-shadow" style="{{item.surfaceStyle}} opacity: {{item.shadowOpacity}};"></view><view class="proxy-surface proxy-capsule-surface" style="{{item.surfaceStyle}} opacity: {{item.capsuleOpacity}};"></view><view class="proxy-surface proxy-row-surface card" style="{{item.surfaceStyle}} opacity: {{item.rowOpacity}};"></view>
+    <view class="proxy-icon" style="{{item.iconStyle}}"><view class="proxy-icon-surface" style="opacity: {{item.iconSurfaceOpacity}};"></view><lucide-icon name="{{item.icon}}" tone="{{item.iconTone}}" size="{{item.iconSize}}"></lucide-icon></view><text class="proxy-label" style="{{item.labelStyle}}">{{item.text}}</text><text class="proxy-description" style="{{item.descriptionStyle}}">{{item.description}}</text>
+  </view>
+  </view>
+  <bottom-sheet visible="{{!!sheet}}" title="{{sheetTitle}}" theme="{{theme}}" bindclose="closeSheet" reduced-motion="{{motionClass === 'motion-reduced'}}">
+    <view class="editor-sheet-body">
+      <block wx:if="{{sheet === 'edit'}}">
+        <view class="editor-sheet-actions"><view class="editor-button editor-button--secondary {{selectedIndex === 0 ? 'editor-button--disabled' : ''}}" data-offset="-1" bindtap="moveSelected" hover-class="pressing" aria-role="button" aria-disabled="{{selectedIndex === 0}}">向左移</view><view class="editor-button editor-button--secondary {{selectedIndex === count - 1 ? 'editor-button--disabled' : ''}}" data-offset="1" bindtap="moveSelected" hover-class="pressing" aria-role="button" aria-disabled="{{selectedIndex === count - 1}}">向右移</view></view>
+        <view class="editor-order"><text wx:for="{{choices}}" wx:key="id" class="editor-order-chip {{selectedId === item.id ? 'editor-order-chip--active' : ''}}">{{item.text}}</text></view>
+        <view wx:if="{{selectedId !== 'profile'}}" class="editor-remove {{count <= 3 ? 'editor-button--disabled' : ''}}" bindtap="removeSelected" aria-role="button" aria-disabled="{{count <= 3}}">{{count <= 3 ? '至少保留 3 个导航' : '移回备选'}}</view>
+        <view class="editor-button editor-button--primary" bindtap="closeSheet" hover-class="pressing" aria-role="button">完成</view>
+      </block>
+      <block wx:elif="{{sheet === 'add'}}">
+        <view wx:if="{{count < 4}}" class="editor-button editor-button--primary editor-add" bindtap="addSelected" hover-class="pressing" aria-role="button">添加到导航栏</view>
+        <text class="editor-sheet-label">{{count < 4 ? '或替换一项' : '选择替换项'}}</text>
+        <view class="editor-replace-grid"><view wx:for="{{replacementChoices}}" wx:key="id" class="editor-replace-choice" data-id="{{item.id}}" bindtap="replaceSelected" hover-class="pressing" aria-role="button" aria-label="替换{{item.text}}"><lucide-icon name="{{item.icon}}" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{36}}"></lucide-icon><text>{{item.text}}</text></view></view>
+      </block>
+    </view>
+  </bottom-sheet>
+</view>
+<screen-watermark></screen-watermark>

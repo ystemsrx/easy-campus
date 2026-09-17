@@ -99,6 +99,9 @@
 
 .tabbar-indicator--1 { transform: translateX(100%); }
 .tabbar-indicator--2 { transform: translateX(200%); }
+.tabbar-indicator--3 { transform: translateX(300%); }
+.tabbar-shell--four .tabbar-material { width: 680rpx; }
+.tabbar-shell--four .tabbar-item { gap: 6rpx; }
 
 .tabbar-item {
   position: relative;

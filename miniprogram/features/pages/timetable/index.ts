@@ -1820,6 +1820,7 @@ Page({
       : buildAppShare();
   },
   data: {
+    navigationTab: false,
     ...INITIAL_TIMETABLE_VISUAL_PREFERENCES,
     compactHeader: false,
     ...backgroundMetrics(),
@@ -1890,6 +1891,7 @@ Page({
     observedRefreshFlightId: 0,
   },
   onLoad(options: Record<string, string | undefined>) {
+    this.setData({ navigationTab: options.navigationTab === "1" });
     requestedCourseId = options.courseId ? decodeURIComponent(options.courseId) : "";
     pageAlive = true;
     const refreshPageToken = createRefreshPageToken();

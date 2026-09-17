@@ -11,6 +11,7 @@ import { prewarmTimetableFirstScreen } from "./data/timetable-render";
 import { loadTimetableThemeId } from "./data/timetable-theme";
 import { preloadPrimaryTabAssets, preloadTimetableThemeAssets } from "./utils/icon-preload";
 import { registerAuthenticationRoute } from "./utils/navigation";
+import { prepareLaunchNavigation } from "./utils/tab-navigation";
 
 App<IAppOption>({
   globalData: {
@@ -20,7 +21,8 @@ App<IAppOption>({
     selectedGrade: null,
     foregroundEntryId: 0,
   },
-  onLaunch() {
+  onLaunch(options) {
+    prepareLaunchNavigation(options?.path, options?.query);
     registerAuthenticationRoute();
     this.globalData.session = loadSession();
     this.globalData.user = loadCurrentUser();

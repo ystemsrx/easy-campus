@@ -4,6 +4,7 @@
 
   <scroll-view class="personalization-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="personalization-content page-content page-enter">
+      <view class="personalization-card card personalization-navigation pressable" bindtap="openNavigationSettings" hover-class="pressing" aria-role="button" aria-label="自定义导航栏"><view class="personalization-row"><text class="personalization-title">导航栏</text><lucide-icon name="chevron-right" tone="muted" size="{{28}}"></lucide-icon></view></view>
       <view class="personalization-card card">
         <view class="appearance-setting">
           <text class="personalization-title">外观</text>

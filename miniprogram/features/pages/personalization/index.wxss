@@ -420,3 +420,5 @@
 
 .personalization-bottom-space { height: calc(48rpx + env(safe-area-inset-bottom)); }
 .personalization-row { flex-wrap: nowrap; }
+
+.personalization-navigation { margin-bottom: 20rpx; }

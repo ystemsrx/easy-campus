@@ -1,3 +1,4 @@
+import { navigationIndex } from "../../store/navigation";
 import {
   getCourseGrabStatus,
   loadCourseGrabStatus,
@@ -142,6 +143,7 @@ Page({
   onShareAppMessage: buildAppShare,
   onShareTimeline: buildTimelineShare,
   data: {
+    homeRemoved: false,
     ...INITIAL_PROFILE_APPEARANCE,
     appName: APP_NAME,
     loading: false,
@@ -205,6 +207,7 @@ Page({
     this._capsuleOffset.value = offset;
   },
   onShow() {
+    this.setData({ homeRemoved: navigationIndex("home") < 0 });
     this.resetContactPress();
     if (!ensureAuthenticated()) {
       return;
@@ -289,7 +292,7 @@ Page({
   },
   syncTabBarAppearance() {
     this.getTabBar().setData({
-      selected: 2,
+      selected: navigationIndex("profile"),
       hidden: this.data.feedbackVisible,
       themeClass: this.data.themeClass,
       visualThemeClass: this.data.visualThemeClass,

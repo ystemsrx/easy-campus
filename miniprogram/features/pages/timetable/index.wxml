@@ -465,4 +465,5 @@
   </bottom-sheet>
   <refresh-confirmation id="refresh-confirmation" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></refresh-confirmation>
 </view>
+<custom-navigation wx:if="{{navigationTab}}" embedded auto-dismiss current="/features/pages/timetable/index"></custom-navigation>
 <screen-watermark></screen-watermark>

@@ -1,3 +1,4 @@
+import { navigationIndex } from "../../store/navigation";
 import {
   initializeCapsuleBackdrop,
   attachCapsuleBackdrop,
@@ -181,6 +182,7 @@ Page({
   _headerBindingsStarted: false,
   _nativeCurrent: 7 + currentIsoWeekday() - 1,
   data: {
+    homeRemoved: false,
     ...INITIAL_SCHEDULE_APPEARANCE,
     currentTime: "",
     monthLabel: "",
@@ -368,6 +370,7 @@ Page({
     );
   },
   onShow() {
+    this.setData({ homeRemoved: navigationIndex("home") < 0 });
     if (!ensureAuthenticated()) return;
     scheduleVisible = true;
     attachCapsuleBackdrop(this, "schedule");
@@ -377,7 +380,7 @@ Page({
     const tabBar = this.getTabBar();
     if (tabBar) {
       tabBar.setData({
-        selected: 1,
+        selected: navigationIndex("schedule"),
         themeClass: this.data.themeClass,
         visualThemeClass: this.data.visualThemeClass,
         motionClass: this.data.motionClass,

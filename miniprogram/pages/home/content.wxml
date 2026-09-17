@@ -48,12 +48,18 @@
     transition-duration="{{motionClass === 'motion-reduced' ? 0 : 260}}"
     bind:tap="openTimetable"
     aria-role="button"
-    aria-label="展开完整课表"
+    aria-label="{{navigationActions[2] ? navigationActions[2].text : '展开完整课表'}}"
   >
     <view class="today-card pressable" hover-class="today-card--pressed">
       <view class="ambient-blob today-blob today-blob--one"></view>
       <view class="ambient-blob today-blob today-blob--two"></view>
       <view class="today-content">
+        <block wx:if="{{navigationActions[2]}}">
+          <view class="today-head"><view><text class="today-kicker">{{navigationActions[2].description}}</text><text class="today-count">{{navigationActions[2].text}}</text></view><view class="timetable-pill"><text>查看{{navigationActions[2].text}}</text><lucide-icon name="chevron-right" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{24}}"></lucide-icon></view></view>
+          <view wx:if="{{navigationActions[2].id === 'schedule' && plans.length}}" class="today-course-list"><view wx:for="{{plans}}" wx:key="id" class="today-course-row"><lucide-icon name="calendar-days" tone="{{visualTheme === 'default' || theme === 'dark' ? 'white' : 'ink'}}" size="{{28}}"></lucide-icon><view class="today-course-copy"><text class="today-course-name" overflow="ellipsis" max-lines="1">{{item.title}}</text></view></view></view>
+          <view wx:elif="{{navigationActions[2].id === 'schedule'}}" class="today-empty"><text class="today-empty-title">暂无待办</text></view>
+        </block>
+        <block wx:else>
         <view class="today-head">
           <view>
             <text class="today-kicker">今日课程</text>
@@ -74,6 +80,7 @@
         <view wx:else class="today-empty">
           <text class="today-empty-title">今日无课</text>
         </view>
+        </block>
       </view>
     </view>
   </open-container>
@@ -161,8 +168,7 @@
       </view>
     </open-container>
     <view class="side-actions">
-      <view class="side-action card pressable" data-route="/features/pages/pass-rates/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--pass-rate"><lucide-icon name="chart-no-axes-column-increasing" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}" size="{{27}}"></lucide-icon></view><text>通过率</text></view>
-      <view class="side-action card pressable" data-route="/features/pages/rooms/index" bindtap="onQuickAction" hover-class="pressing"><view class="side-action-icon side-action-icon--rooms"><lucide-icon name="door-open" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'blue'}}" size="{{27}}"></lucide-icon></view><text>空教室</text></view>
+      <view wx:for="{{navigationActions}}" wx:key="id" wx:if="{{index < 2}}" class="side-action card pressable" data-route="{{item.pagePath}}" bindtap="onQuickAction" hover-class="pressing" aria-role="button" aria-label="{{item.text}}"><view class="side-action-icon {{index === 0 ? 'side-action-icon--pass-rate' : 'side-action-icon--rooms'}}"><lucide-icon name="{{item.icon}}" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : (index === 0 ? 'sage' : 'blue')}}" size="{{27}}"></lucide-icon></view><text>{{item.text}}</text></view>
     </view>
   </view>
 

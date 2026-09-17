@@ -1,6 +1,7 @@
 import { getSession } from "../store/session";
 
 type SkylineRouteType =
+  | "easy-swu-tab-instant"
   | "wx://bottom-sheet"
   | "wx://upwards"
   | "wx://zoom"

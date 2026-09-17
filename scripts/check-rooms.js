@@ -69,14 +69,15 @@ assert(
 );
 
 assert(
-  template.includes('inset-back="{{true}}"') &&
+  template.includes('inset-back="{{insetBack}}"') &&
+    template.includes('wx:if="{{navigationReady}}"') &&
     !template.includes("找个地方自习"),
-  "空教室页返回按钮必须与通过率页使用同一内缩位置，且不再显示副标题",
+  "空教室页返回按钮必须按打开方式定位，且不再显示副标题",
 );
 
 assert(
   template.includes(
-    'title="空教室" back="{{true}}" inset-back="{{true}}" transparent="{{true}}"',
+    'title="空教室" back inset-back="{{insetBack}}" transparent',
   ) &&
     !navigationScript.includes("insetTitle:") &&
     navigationTemplate.includes("back && insetBack") &&
@@ -92,7 +93,7 @@ assert(
     /\.nav-shell--dark \.nav-title\s*\{[\s\S]*?color:\s*#f7f3e9;/.test(
       navigationStyles,
     ),
-  "空教室标题必须使用衬线字并与内缩返回按钮在同一行",
+  "空教室标题必须使用衬线字并与标准返回按钮在同一行",
 );
 
 assert(

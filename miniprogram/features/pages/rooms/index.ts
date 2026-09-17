@@ -173,6 +173,9 @@ function toRoomView(room: EmptyRoom): RoomView {
 Page({
   onShareAppMessage: buildAppShare,
   data: {
+    navigationTab: false,
+    navigationReady: false,
+    insetBack: false,
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     visualTheme: "default",
@@ -216,7 +219,8 @@ Page({
     page: 1,
     totalPages: 1,
   },
-  onLoad() {
+  onLoad(options: Record<string, string | undefined>) {
+    this.setData({ navigationTab: options?.navigationTab === "1", insetBack: options?.modal === "1", navigationReady: true });
     this.applyAppearance();
   },
   onShow() {

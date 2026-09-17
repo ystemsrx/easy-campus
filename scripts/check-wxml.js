@@ -535,7 +535,9 @@ if (
   passRateTemplate.includes('scroll-into-view="{{coursePickerTarget}}"') ||
   !passRateTemplate.includes("({{item.courses.length}})") ||
   passRateTemplate.includes("back-offset") ||
-  !passRateTemplate.includes('inset-back="{{true}}"') ||
+  !passRateTemplate.includes(
+    'wx:if="{{navigationReady}}" title="通过率" back inset-back="{{insetBack}}" transparent',
+  ) ||
   !passRateScript.includes("function toCourseRows(") ||
   !passRateScript.includes("function coursePickerState(") ||
   !passRateScript.includes("shortAcademicSemesterLabel(") ||

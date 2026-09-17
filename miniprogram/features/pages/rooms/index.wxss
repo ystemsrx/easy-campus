@@ -1,3 +1,6 @@
+.rooms-page { display: flex; flex-direction: column; }
+.rooms-page .page-scroll { flex: 1; min-height: 0; height: 0; }
+
 .rooms-content {
   padding-top: 20rpx;
   padding-bottom: 50rpx;
@@ -827,3 +830,5 @@
 .motion-reduced .period-pill,
 .motion-reduced .period-number,
 .motion-reduced .period-time { transition-duration: 0ms; }
+
+.feature-navigation-page .page-content { padding-bottom: calc(152rpx + env(safe-area-inset-bottom)); }

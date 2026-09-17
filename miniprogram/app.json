@@ -33,22 +33,29 @@
         "pages/service-order/index",
         "pages/course-assistant/index",
         "pages/course-assistant-detail/index",
-        "pages/course-grab/index"
+        "pages/course-grab/index",
+        "pages/navigation/index"
       ]
     }
   ],
   "preloadRule": {
     "pages/home/index": {
       "network": "all",
-      "packages": ["features"]
+      "packages": [
+        "features"
+      ]
     },
     "pages/schedule/index": {
       "network": "all",
-      "packages": ["features"]
+      "packages": [
+        "features"
+      ]
     },
     "pages/profile/index": {
       "network": "all",
-      "packages": ["features"]
+      "packages": [
+        "features"
+      ]
     }
   },
   "usingComponents": {

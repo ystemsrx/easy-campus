@@ -163,6 +163,9 @@ function componentViews(course: PassRateCourse): ComponentView[] {
 Page({
   onShareAppMessage: buildAppShare,
   data: {
+    navigationTab: false,
+    navigationReady: false,
+    insetBack: false,
     theme: "light" as "light" | "dark",
     themeClass: "theme-light",
     visualTheme: "default",
@@ -190,7 +193,8 @@ Page({
     cohortLabel: "",
     ownScore: -1,
   },
-  onLoad() {
+  onLoad(options: Record<string, string | undefined>) {
+    this.setData({ navigationTab: options?.navigationTab === "1", insetBack: options?.modal === "1", navigationReady: true });
     activePassRateSessionKey = "";
     this.setData(resolveAppearance());
   },

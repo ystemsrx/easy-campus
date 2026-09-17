@@ -1,7 +1,7 @@
-<view wx:if="{{!hidden}}" class="tabbar-shell {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+<view wx:if="{{!hidden}}" class="tabbar-shell {{dismissed ? 'tabbar-shell--dismissed' : ''}} {{items.length === 4 ? 'tabbar-shell--four' : ''}} {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}" aria-hidden="{{dismissed}}">
   <view class="tabbar-material" bindtouchstart="onSelectorTouchStart" catchtouchmove="{{liquidGlass ? 'onSelectorTouchMove' : ''}}" bindtouchend="onSelectorTouchEnd" bindtouchcancel="onSelectorTouchCancel">
-    <capsule-rim-anchor class="tabbar-optics" enabled="{{liquidGlass}}" source="{{selected === 1 ? 'schedule' : (selected === 2 ? 'profile' : 'home')}}"/>
-    <view class="tabbar-indicator tabbar-indicator--{{selected}} {{selectorDragging ? 'glass-selector--dragging' : ''}}" style="{{selectorDragStyle}}"></view>
+    <capsule-rim-anchor wx:if="{{!embedded}}" class="tabbar-optics" enabled="{{liquidGlass}}" source="{{source}}"/>
+    <view wx:if="{{selected >= 0}}" class="tabbar-indicator tabbar-indicator--{{selected}} {{selectorDragging ? 'glass-selector--dragging' : ''}}" style="width: calc((100% - 20rpx) / {{items.length}}); {{selectorDragStyle}}"></view>
     <view
       wx:for="{{items}}"
       wx:key="pagePath"

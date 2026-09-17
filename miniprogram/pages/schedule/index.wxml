@@ -1,7 +1,7 @@
 <import src="./day-content.wxml"/>
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page schedule-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
-  <navigation-bar transparent theme="{{theme}}"></navigation-bar>
+  <navigation-bar back="{{homeRemoved}}" transparent theme="{{theme}}"></navigation-bar>
   <view class="schedule-top page-content">
       <view class="schedule-header">
         <view class="schedule-header-copy">

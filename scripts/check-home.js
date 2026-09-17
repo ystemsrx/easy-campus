@@ -94,6 +94,8 @@ const contentServiceScript = readSource(
 const homeNoticeHandler = homeScript.slice(
   homeScript.lastIndexOf("  openNotice("),
 );
+assert(!homeTemplate.includes("navigation-recovery"), "被移出的导航必须替换概览现有入口，不能追加长条卡片");
+assert(homeTemplate.includes('wx:if="{{navigationActions[2]}}"'), "课表入口被替换时必须在原卡片内展示目标页面");
 const appScript = readSource(
   path.resolve(__dirname, "..", "miniprogram", "app.ts"),
   "utf8",
@@ -166,7 +168,7 @@ assert(
 assert(
   homeScript.includes('"/features/pages/pass-rates/index"') &&
     homeScript.includes('"/features/pages/rooms/index"') &&
-    /onQuickAction\(event:[\s\S]*?MODAL_QUICK_ACTION_ROUTES\.has\(route\)[\s\S]*?navigateTo\(route, "wx:\/\/cupertino-modal"\)/.test(
+    /onQuickAction\(event:[\s\S]*?MODAL_QUICK_ACTION_ROUTES\.has\(route\)[\s\S]*?navigateTo\(`\$\{route\}\?modal=1`, "wx:\/\/cupertino-modal"\)/.test(
       homeScript,
     ),
   "首页通过率和空教室入口必须保留原生抽屉转场",
@@ -462,9 +464,9 @@ assert(
 );
 
 assert(
-  /side-action-icon--rooms[\s\S]*?name="door-open" tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'blue'\}\}"/.test(
-    homeTemplate,
-  ) &&
+  homeTemplate.includes('name="{{item.icon}}"') &&
+    homeTemplate.includes("index === 0 ? 'sage' : 'blue'") &&
+    fs.readFileSync(path.resolve(__dirname, "../miniprogram/store/navigation.ts"), "utf8").includes('icon: "door-open"') &&
     /campus-icon--notice[\s\S]*?name="megaphone" tone="\{\{visualTheme === 'minimal' \? \(theme === 'dark' \? 'white' : 'ink'\) : 'blue'\}\}"/.test(
       homeTemplate,
     ) &&
@@ -983,7 +985,7 @@ assert(
 
 assert(
   homeTemplate.includes(
-    "tone=\"{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'sage'}}\"",
+    "tone=\"{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : (index === 0 ? 'sage' : 'blue')}}\"",
   ) &&
     /\.page\.theme-style-minimal \.side-action-icon--pass-rate,[\s\S]*?\.page\.theme-style-minimal \.side-action-icon--rooms\s*\{[^}]*border:\s*0;[^}]*background-color:\s*transparent;/.test(
       appStyles,

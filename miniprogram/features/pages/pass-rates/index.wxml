@@ -1,7 +1,7 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
-<view class="page pass-rate-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+<view class="page {{navigationTab ? 'feature-navigation-page' : ''}} pass-rate-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
+  <navigation-bar wx:if="{{navigationReady}}" title="通过率" back inset-back="{{insetBack}}" transparent theme="{{theme}}"></navigation-bar>
   <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
-    <navigation-bar title="通过率" back="{{true}}" inset-back="{{true}}" transparent="{{true}}" theme="{{theme}}"></navigation-bar>
     <view class="pass-rate-content page-content page-enter">
       <loading-view wx:if="{{loading && !course}}" label="正在整理课程统计" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
       <empty-state wx:elif="{{errorMessage && !course}}" icon="circle-alert" icon-tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : (theme === 'dark' ? 'pass-danger-dark' : 'pass-danger')}}" title="通过率加载失败" description="{{errorMessage}}" action-text="重新加载" bindaction="retry"></empty-state>
@@ -83,4 +83,5 @@
     </view>
   </view>
 </view>
+<custom-navigation wx:if="{{navigationTab}}" embedded current="/features/pages/pass-rates/index"></custom-navigation>
 <screen-watermark></screen-watermark>

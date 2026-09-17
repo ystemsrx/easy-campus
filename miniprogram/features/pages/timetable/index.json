@@ -2,6 +2,7 @@
   "navigationStyle": "custom",
   "disableScroll": true,
   "usingComponents": {
-    "pass-rate-card": "/components/pass-rate-card/pass-rate-card"
+    "pass-rate-card": "/components/pass-rate-card/pass-rate-card",
+    "custom-navigation": "/custom-tab-bar/index"
   }
 }

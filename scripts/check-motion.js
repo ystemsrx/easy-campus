@@ -79,6 +79,7 @@ function runtime() {
       "getApp",
       "setTimeout",
       "clearTimeout",
+      "getCurrentPages",
       code,
     )(
       exports,
@@ -95,6 +96,7 @@ function runtime() {
       () => ({ globalData: { preferences } }),
       setTimer,
       clearTimer,
+      () => [{ route: "pages/home/index" }],
     );
     return exports;
   }

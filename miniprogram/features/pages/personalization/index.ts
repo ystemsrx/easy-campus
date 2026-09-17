@@ -6,7 +6,7 @@ import {
   syncWindowBackground,
 } from "../../../utils/appearance";
 import { haptic } from "../../../utils/haptics";
-import { ensureAuthenticated } from "../../../utils/navigation";
+import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
 import {
   GLASS_DRAG_DATA,
   startGlassDrag,
@@ -57,6 +57,9 @@ Page({
     liquidGlass: false,
     appearanceOptions: APPEARANCE_OPTIONS,
     visualThemeOptions: VISUAL_THEME_OPTIONS,
+  },
+  openNavigationSettings() {
+    void navigateTo("/features/pages/navigation/index");
   },
   onLoad() {
     this.applyPreferences();
