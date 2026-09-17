@@ -74,21 +74,6 @@
     </view>
   </view>
 
-  <view class="section-header"><view><text class="section-title">成为开发者</text></view></view>
-  <view class="settings-card card">
-    <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'open-platform' ? 'setting-row--pressed' : ''}}" bindtap="openPlatform" aria-role="button" aria-label="开放平台，构建自己的App">
-      <view class="setting-copy"><text class="setting-title">开放平台</text><text class="setting-caption">构建自己的App</text></view>
-      <view class="platform-setting-value"><text>探索</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
-    </view>
-    <view class="developer-card">
-      <text class="developer-copy">克隆仓库开始开发：</text>
-      <view class="terminal-card">
-        <view class="terminal-head"><view class="terminal-dot terminal-dot--red"></view><view class="terminal-dot terminal-dot--yellow"></view><view class="terminal-dot terminal-dot--green"></view><text>bash</text></view>
-        <scroll-view class="terminal-code-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="terminal-code-line"><text class="terminal-token terminal-token--git" selectable user-select>git</text><text class="terminal-token terminal-token--action" selectable user-select>clone</text><text class="terminal-token terminal-token--option" selectable user-select>--depth</text><text class="terminal-token terminal-token--number" selectable user-select>1</text><text class="terminal-token terminal-token--repository" selectable user-select>git@github.com:ystemsrx/easy-campus.git</text></view></scroll-view>
-      </view>
-    </view>
-  </view>
-
   <view class="section-header"><view><text class="section-title">帮助</text></view></view>
   <view class="settings-card card">
     <button class="contact-entry" plain hover-class="none" bindtap="onContactTap" aria-label="联系客服">
@@ -108,6 +93,21 @@
     <view class="setting-row setting-row--action" bindtap="openFeedback" aria-role="button" aria-label="提交反馈">
       <view class="setting-copy"><text class="setting-title">反馈</text><text class="setting-caption">问题、建议与使用体验</text></view>
       <view class="feedback-setting-value"><text>填写</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+    </view>
+  </view>
+
+  <view class="section-header"><view><text class="section-title">成为开发者</text></view></view>
+  <view class="settings-card card">
+    <view class="setting-row setting-row--divided setting-row--action {{openingSetting === 'open-platform' ? 'setting-row--pressed' : ''}}" bindtap="openPlatform" aria-role="button" aria-label="开放平台，构建自己的App">
+      <view class="setting-copy"><text class="setting-title">开放平台</text><text class="setting-caption">构建自己的App</text></view>
+      <view class="platform-setting-value"><text>探索</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+    </view>
+    <view class="developer-card">
+      <text class="developer-copy">克隆仓库开始开发：</text>
+      <view class="terminal-card">
+        <view class="terminal-head"><view class="terminal-dot terminal-dot--red"></view><view class="terminal-dot terminal-dot--yellow"></view><view class="terminal-dot terminal-dot--green"></view><text>bash</text></view>
+        <scroll-view class="terminal-code-scroll" type="list" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="terminal-code-line"><text class="terminal-token terminal-token--git" selectable user-select>git</text><text class="terminal-token terminal-token--action" selectable user-select>clone</text><text class="terminal-token terminal-token--option" selectable user-select>--depth</text><text class="terminal-token terminal-token--number" selectable user-select>1</text><text class="terminal-token terminal-token--repository" selectable user-select>git@github.com:ystemsrx/easy-campus.git</text></view></scroll-view>
+      </view>
     </view>
   </view>
 
