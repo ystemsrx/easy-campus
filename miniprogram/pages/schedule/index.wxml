@@ -50,7 +50,42 @@
     </swiper-item>
   </swiper>
 
-  <bottom-sheet visible="{{creating}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator" reduced-motion="{{motionClass === 'motion-reduced'}}">
+  <bottom-sheet visible="{{creating}}" expanded="{{true}}" expanded-height="{{creatorSheetHeight}}" animate-height="{{true}}" scrollable="{{false}}" title="{{editingPlanId ? '编辑日程' : editingCourseId ? '编辑课程' : creatorMode === 'course' ? '添加课程' : '添加待办'}}" theme="{{theme}}" bindclose="closeCreator" reduced-motion="{{motionClass === 'motion-reduced'}}">
+    <view wx:if="{{!editingPlanId && !editingCourseId}}" class="creator-switch">
+      <view class="creator-switch-indicator {{creatorMode === 'course' ? 'creator-switch-indicator--course' : ''}}"></view>
+      <view class="creator-switch-option" data-mode="plan" bindtap="switchCreatorMode">日程</view>
+      <view class="creator-switch-option" data-mode="course" bindtap="switchCreatorMode">课程</view>
+    </view>
+    <scroll-view wx:if="{{creatorMode === 'course'}}" class="creator-course-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="creator-form creator-course-form">
+        <text class="creator-label">课程名 <text class="creator-required">*</text></text>
+        <input class="creator-title" value="{{title}}" placeholder="课程名" placeholder-class="creator-placeholder" maxlength="80" bindinput="onTitleInput" />
+        <view class="creator-optional-row">
+          <view class="creator-optional-field"><text class="creator-label">地点 <text class="creator-optional">（可选）</text></text><input class="creator-title" value="{{courseLocation}}" placeholder="上课地点" placeholder-class="creator-placeholder" maxlength="80" bindinput="onCourseLocationInput" /></view>
+          <view class="creator-optional-field"><text class="creator-label">教师 <text class="creator-optional">（可选）</text></text><input class="creator-title" value="{{courseTeacher}}" placeholder="授课教师" placeholder-class="creator-placeholder" maxlength="80" bindinput="onCourseTeacherInput" /></view>
+        </view>
+        <view class="creator-collapse-heading" bindtap="toggleCourseTime">
+          <text>上课时间 <text class="creator-required">*</text></text><text class="creator-collapse-summary">{{courseWeekdays.length && coursePeriods.length ? '已选 ' + courseWeekdays.length + ' 天 · ' + coursePeriods.length + ' 节' : '请选择'}}</text><view class="creator-collapse-chevron {{courseTimeOpen ? 'creator-collapse-chevron--open' : ''}}"><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
+        <view class="creator-collapse-body" style="max-height: {{courseTimeOpen ? courseTimeExpandHeight : 0}}rpx;">
+          <view class="creator-weekdays">
+            <view wx:for="{{courseWeekdayOptions}}" wx:key="weekday" class="creator-weekday {{item.selected ? 'creator-weekday--active' : ''}}" data-weekday="{{item.weekday}}" bindtap="selectCourseWeekday">{{item.label}}</view>
+          </view>
+          <view class="creator-periods">
+            <view wx:for="{{coursePeriodOptions}}" wx:key="period" class="creator-pill creator-period-pill {{item.selected ? 'creator-pill--active' : ''}}" data-period="{{item.period}}" bindtap="toggleCoursePeriod"><text>第 {{item.period}} 节</text><text class="creator-period-time">{{item.time}}</text></view>
+          </view>
+        </view>
+        <view class="creator-collapse-heading" bindtap="toggleCourseWeeks">
+          <text>选择周次 <text class="creator-required">*</text></text><text class="creator-collapse-summary">{{courseWeeks.length ? '已选 ' + courseWeeks.length + ' 周' : '请选择'}}</text><view class="creator-collapse-chevron {{courseWeeksOpen ? 'creator-collapse-chevron--open' : ''}}"><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
+        </view>
+        <view class="creator-collapse-body" style="max-height: {{courseWeeksOpen ? courseWeeksExpandHeight : 0}}rpx;">
+          <view class="creator-weeks">
+            <view wx:for="{{courseWeekOptions}}" wx:key="week" class="creator-week-option {{item.selected ? 'creator-week-option--active' : ''}}" data-week="{{item.week}}" bindtap="toggleCourseWeek"><text class="creator-week-number">{{item.week}} 周</text><text class="creator-week-date">{{item.dateLabel}}</text></view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <block wx:else>
     <view class="creator-form">
       <input class="creator-title" value="{{title}}" placeholder="要做什么？" placeholder-class="creator-placeholder" maxlength="80" bindinput="onTitleInput" />
       <text class="creator-label">开始</text>
@@ -64,9 +99,12 @@
         <picker mode="time" value="{{endTime}}" bindchange="onEndTimeChange"><view class="creator-value tnum"><text>{{endTime}}</text></view></picker>
       </view>
     </view>
+    </block>
     <view slot="footer" class="creator-footer">
       <button wx:if="{{editingPlanId}}" class="danger-button creator-delete" hover-class="button-pressed" bindtap="deletePlan">删除</button>
-      <button class="primary-button creator-submit" hover-class="button-pressed" bindtap="savePlan">{{editingPlanId ? '保存' : '添加到日程'}}</button>
+      <button wx:if="{{editingCourseId}}" class="danger-button creator-delete" hover-class="button-pressed" disabled="{{savingCourse}}" bindtap="showDeleteCourseActions">删除</button>
+      <button wx:if="{{creatorMode === 'course'}}" class="primary-button creator-submit" hover-class="button-pressed" disabled="{{savingCourse}}" bindtap="saveCourse">{{savingCourse ? '保存中' : editingCourseId ? '保存' : '添加课程'}}</button>
+      <button wx:else class="primary-button creator-submit" hover-class="button-pressed" bindtap="savePlan">{{editingPlanId ? '保存' : '添加到日程'}}</button>
     </view>
   </bottom-sheet>
   <include src="./live-glass.wxml"/>

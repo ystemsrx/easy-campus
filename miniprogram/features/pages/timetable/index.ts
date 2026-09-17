@@ -1,4 +1,7 @@
 import { buildAppShare, buildCompanionShare } from "../../../utils/app-share";
+import { withCustomCourses } from "../../../data/custom-courses";
+import { getScheduleRevision, loadScheduleData } from "../../../store/schedule";
+import { getPreloadedSchedule } from "../../../services/primary-tab-preload";
 import { bindCompanion, decideCompanion, getCompanions, getCompanionTimetable, removeCompanion, rotateCompanionCode, type CompanionPerson } from "../../../services/timetable-companions";
 import { CUSTOM_COLORS, customFillIsVertical, loadCustomBackground, loadCustomColor, readableBackgroundText, saveCustomColor } from "../../../data/timetable-custom";
 import { syncTimetableBackground, uploadTimetableBackground } from "../../../services/timetable-background";
@@ -18,6 +21,7 @@ import {
   timetableGridLayoutMetrics,
   timetableMaxPeriod,
   newlyOccupiedCourseIds,
+  withTimetableCornerAssets,
   type TimetableGridLayoutMetrics,
   type TimetablePeriodRow,
   type TimetableWeekPage,
@@ -29,6 +33,7 @@ import {
   TIMETABLE_THEME_STORAGE_KEY,
   timetableThemePatch,
   type TimetableThemeId,
+  type TimetableThemePatch,
 } from "../../../data/timetable-theme";
 import {
   getErrorMessage,
@@ -1327,6 +1332,8 @@ function stopCompanionTimers(): void {
   companionCopyTimer = undefined;
 }
 let visibleCourses: TimetableCourse[] = [];
+let requestedCourseId = "";
+let appliedScheduleRevision = 0;
 const timetableRequestsInFlight = new Map<string, InFlightTimetableRequest>();
 let activeAccount = "";
 let defaultSemesterId = "";
@@ -1727,6 +1734,13 @@ function timetableVisualPreferencesPatch(
   };
 }
 
+function decoratedWeekPages(
+  pages: TimetableWeekPage[],
+  sources: TimetableThemePatch["courseCornerSources"],
+): TimetableWeekPage[] {
+  return pages.map((page) => withTimetableCornerAssets(page, sources));
+}
+
 const INITIAL_TIMETABLE_VISUAL_PREFERENCES = timetableVisualPreferencesPatch();
 
 function customBackgroundPatch() {
@@ -1850,6 +1864,7 @@ Page({
     observedRefreshFlightId: 0,
   },
   onLoad(options: Record<string, string | undefined>) {
+    requestedCourseId = options.courseId ? decodeURIComponent(options.courseId) : "";
     pageAlive = true;
     const refreshPageToken = createRefreshPageToken();
     markRefreshPageVisible(refreshPageToken);
@@ -1893,6 +1908,7 @@ Page({
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    void this.syncCustomCourses();
     void this.syncCompanions();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
@@ -1910,9 +1926,11 @@ Page({
     };
     companionPollTimer = setTimeout(pollCompanions, 30000);
     markRefreshPageVisible(this.data.refreshPageToken);
+    const visualPreferences = timetableVisualPreferencesPatch();
     this.setData(
       {
-        ...timetableVisualPreferencesPatch(),
+        ...visualPreferences,
+        weekPages: decoratedWeekPages(this.data.weekPages, visualPreferences.courseCornerSources),
         customColor: loadCustomColor(),
         ...customBackgroundPatch(),
         ...backgroundMetrics(this.data.compactHeader),
@@ -1920,6 +1938,7 @@ Page({
       () => this.syncClawdSceneSequence(),
     );
     this.hydrate();
+    void this.syncCustomCourses();
     void this.syncCompanions();
     this.syncActiveTimetableRefresh();
     this.syncTimetableIfNeeded();
@@ -2108,14 +2127,14 @@ Page({
         weekBuildTimer = setTimeout(buildNext, 0);
         return;
       }
-      const page = buildCompanionWeekPage(
+      const page = withTimetableCornerAssets(buildCompanionWeekPage(
         timetable,
         companionTimetable,
         weekNumber,
         maxPeriod,
         layoutMetrics,
         cachedWeekDates.get(weekNumber),
-      );
+      ), this.data.courseCornerSources);
       this.setData({ [`weekPages[${index}]`]: page }, () => {
         if (sequence === weekBuildSequence) {
           weekBuildTimer = setTimeout(buildNext, 16);
@@ -2412,10 +2431,25 @@ Page({
       }
     }
   },
+  async syncCustomCourses() {
+    try {
+      await getPreloadedSchedule();
+      if (pageAlive && activeTimetable && appliedScheduleRevision !== getScheduleRevision()) {
+        this.applyTimetable(activeTimetable, true);
+      }
+    } catch {
+      // Locally saved courses remain available until the next sync.
+    }
+  },
   applyTimetable(timetable: TimetableData, preserveWeek: boolean) {
     if (this.data.companionMode === "only" && companionTimetable && timetable !== companionTimetable) {
       activeTimetable = companionTimetable;
       timetable = companionTimetable;
+    }
+    if (this.data.companionMode !== "only") {
+      timetable = withCustomCourses(timetable, loadScheduleData(activeAccount).courses) || timetable;
+      activeTimetable = timetable;
+      appliedScheduleRevision = getScheduleRevision();
     }
     this.clearCourseEntrance();
     const menuTimetable = companionTimetable === timetable
@@ -2436,7 +2470,7 @@ Page({
       maxPeriod,
       Number(this.data.headerHeight) || 64,
     );
-    const prewarmed = !companionTimetable && activeSnapshot
+    const prewarmed = !companionTimetable && !timetable.courses.some((course) => course.userAdded) && activeSnapshot
       ? getPrewarmedTimetableFirstScreen(
           activeAccount,
           activeSnapshot,
@@ -2467,7 +2501,7 @@ Page({
       ),
     );
     const weekMenuRows = timetableWeekMenuRows(weekPages);
-    weekPages[weekNumber - 1] = firstScreen
+    weekPages[weekNumber - 1] = withTimetableCornerAssets(firstScreen
       ? firstScreen.weekPage
       : buildCompanionWeekPage(
           timetable,
@@ -2476,7 +2510,7 @@ Page({
           maxPeriod,
           layoutMetrics,
           cachedWeekDates.get(weekNumber),
-        );
+        ), this.data.courseCornerSources);
     visibleCourses = periodCourses;
     this.setData(
       {
@@ -2498,14 +2532,23 @@ Page({
           : buildTimetablePeriodRows(timetable, maxPeriod, periodCourses),
         weekPages,
       },
-      () =>
+      () => {
         this.queueRemainingWeekPages(
           timetable,
           maxPeriod,
           layoutMetrics,
           weekNumber,
           cachedWeekDates,
-        ),
+        );
+        if (requestedCourseId) {
+          const id = requestedCourseId;
+          requestedCourseId = "";
+          const targetWeek = Number(/:w(\d+)$/.exec(id)?.[1]);
+          if (targetWeek && targetWeek !== weekNumber) this.setWeek(targetWeek);
+          const course = visibleCourses.find((item) => item.id === id);
+          if (course) this.setData({ selectedCourse: course, courseSheetHeight: courseSheetHeight(course), courseSheetVisible: true });
+        }
+      },
     );
   },
   setWeek(weekNumber: number, feedback = false) {
@@ -2521,7 +2564,7 @@ Page({
     const weekPage = this.data.weekPages[weekIndex];
     const nextPage = weekPage?.ready
       ? weekPage
-      : buildCompanionWeekPage(
+      : withTimetableCornerAssets(buildCompanionWeekPage(
           activeTimetable,
           companionTimetable,
           normalizedWeek,
@@ -2533,7 +2576,7 @@ Page({
           (companionTimetable === activeTimetable ? null : activeSnapshot)?.weekDates.find(
             (week) => week.weekNumber === normalizedWeek,
           )?.dates,
-        );
+        ), this.data.courseCornerSources);
     this.clearCourseEntrance();
     const enteringCourseIds =
       !this.data.swipeWeeks && this.data.motionClass !== "motion-reduced"
@@ -2945,7 +2988,11 @@ Page({
   },
   activateCustomTheme(color?: string) {
     this.clearCompanionGaze();
-    this.setData(timetableThemePatch("custom", this.data.companionColor, color || this.data.customColor), () => this.syncClawdSceneSequence());
+    const patch = timetableThemePatch("custom", this.data.companionColor, color || this.data.customColor);
+    this.setData({
+      ...patch,
+      weekPages: decoratedWeekPages(this.data.weekPages, patch.courseCornerSources),
+    }, () => this.syncClawdSceneSequence());
     try { wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, "custom"); } catch { /* Keep this visit's theme. */ }
   },
   closeMenus() {
@@ -3007,7 +3054,10 @@ Page({
     const id = String(event.currentTarget.dataset.theme || "default");
     const patch = timetableThemePatch(id, this.data.companionColor);
     if (patch.timetableThemeId !== "companion") this.clearCompanionGaze();
-    this.setData(patch, () => this.syncClawdSceneSequence());
+    this.setData({
+      ...patch,
+      weekPages: decoratedWeekPages(this.data.weekPages, patch.courseCornerSources),
+    }, () => this.syncClawdSceneSequence());
     preloadTimetableThemeAssets(patch.timetableThemeId);
     if (activeAccount && activeSnapshot) {
       try {

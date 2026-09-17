@@ -167,8 +167,10 @@ assert(
 );
 assert(
   template.includes('scrollable="{{false}}"') &&
-    !template.includes('expanded="{{true}}"'),
-  "添加待办抽屉必须绕开 Skyline 插槽列表测量并按内容自适应高度",
+    template.includes('expanded-height="{{creatorSheetHeight}}"') &&
+    template.includes('animate-height="{{true}}"') &&
+    pageScript.includes('creatorSheetHeight: creatorMode === "course" ? 70 : 58'),
+  "添加抽屉必须绕开 Skyline 插槽列表测量并平滑调整高度",
 );
 assert(
   renderScript.includes("const allEntries = [...courses, ...planEntries]") &&
@@ -207,8 +209,9 @@ assert(
     template.includes("plan-border-corner--top-right") &&
     template.includes("plan-border-corner--bottom-right") &&
     template.includes("plan-border-corner--bottom-left") &&
-    template.includes("schedule-dashed-corner-24.svg") &&
-    template.includes("schedule-dashed-corner-30.svg") &&
+    template.includes('src="{{item.cornerAsset}}"') &&
+    renderScript.includes("/assets/images/schedule-dashed-corner-24.svg") &&
+    renderScript.includes("/assets/images/schedule-dashed-corner-30.svg") &&
     template.includes("plan-check--checked") &&
     template.includes('name="check" tone="white" size="{{28}}"') &&
     /\.plan-dashed-border\s*\{[^}]*border:\s*3rpx dashed #c2767a;[^}]*border-radius:\s*30rpx;/s.test(

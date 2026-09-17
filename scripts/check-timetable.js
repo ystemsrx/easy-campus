@@ -144,6 +144,20 @@ function loadTimetableTheme() {
     (request) => {
       if (request === "./timetable-custom")
         return { loadCustomColor: () => "#0862ad", loadCustomBackground: () => null };
+      if (request === "./timetable-corner-assets") {
+        const assetsSource = fs.readFileSync(path.join(path.dirname(sourcePath), "timetable-corner-assets.ts"), "utf8");
+        const assetsOutput = ts.transpileModule(assetsSource, {
+          compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+        }).outputText;
+        const assetsModule = { exports: {} };
+        new Function("module", "exports", assetsOutput)(assetsModule, assetsModule.exports);
+        return assetsModule.exports;
+      }
+      if (request === "../store/pet") {
+        const petSource = fs.readFileSync(path.join(path.dirname(sourcePath), "../store/pet.ts"), "utf8");
+        return { PET_COLORS: [...petSource.matchAll(/\{ id: "([a-z]+)", label: "[^"]+", value: "(#[0-9a-f]{6})" \}/g)]
+          .map(([, id, value]) => ({ id, value })) };
+      }
       if (request === "../store/session") return { getSession: () => null };
       return require(request);
     },
@@ -953,6 +967,30 @@ const alignedWeekPage = timetableRender.buildTimetableWeekPage(
   1,
   13,
   alignedGridMetrics,
+);
+const userAddedPage = timetableRender.withTimetableCornerAssets(
+  timetableRender.buildTimetableWeekPage(
+    { ...data, courses: data.courses.map((item) => ({ ...item, userAdded: true })) },
+    1,
+    13,
+    alignedGridMetrics,
+  ),
+  timetableTheme.timetableThemePatch("default", "#111214").courseCornerSources,
+);
+const userAddedGridCourses = userAddedPage.gridDays.flatMap((day) => day.courses);
+assert(
+  userAddedGridCourses.length > 0 &&
+    userAddedGridCourses.every((item) => item.cornerAsset?.endsWith("course-corner-white-13.svg")),
+  "Custom timetable courses must carry their corner asset directly for WXML rendering",
+);
+const companionCornerPage = timetableRender.withTimetableCornerAssets(
+  userAddedPage,
+  timetableTheme.timetableThemePatch("companion", "#ff3e51").courseCornerSources,
+);
+assert(
+  companionCornerPage.gridDays.flatMap((day) => day.courses)
+    .every((item) => item.cornerAsset?.includes("course-corner-red-")),
+  "Theme changes must update the custom course corner asset",
 );
 const overlapOwn = { ...data, courses: [course("mine", "我的课", arrangement("mine", 3, 4, "10:00", "11:40"))] };
 const overlapPartner = { ...data, courses: [course("theirs", "伙伴课", arrangement("theirs", 2, 5, "08:55", "12:30"))] };

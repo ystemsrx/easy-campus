@@ -168,6 +168,7 @@ const session = {
 };
 const lease = { account: "a", userId: "1", token: "synthetic", signedInAt: 1 };
 const preload = load("services/primary-tab-preload.ts", {
+  "../data/custom-courses": { withCustomCourses: (timetable) => timetable },
   "../demo/bootstrap": { prepareDemoData: () => false },
   "../data/timetable-theme": { loadTimetableThemeId: () => "default" },
   "../utils/icon-preload": { preloadTimetableThemeAssets: () => undefined },

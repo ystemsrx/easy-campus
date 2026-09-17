@@ -5,17 +5,11 @@ import type {
 } from "../types/api";
 
 export type TimetableTone =
-  | "blue"
-  | "cyan"
-  | "purple"
-  | "green"
-  | "orange"
-  | "rose"
-  | "yellow"
-  | "mint";
+  "blue" | "cyan" | "purple" | "green" | "orange" | "rose" | "yellow" | "mint";
 
 export interface TimetableCourse {
   id: string;
+  userAdded?: boolean;
   courseId: string;
   arrangementId: string;
   weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -195,10 +189,7 @@ function courseVisualDistance(
 function firstArrangementSlot(node: TimetableToneNode): number {
   return node.arrangements.reduce(
     (minimum, arrangement) =>
-      Math.min(
-        minimum,
-        arrangement.weekday * 100 + arrangement.periodStart,
-      ),
+      Math.min(minimum, arrangement.weekday * 100 + arrangement.periodStart),
     Number.POSITIVE_INFINITY,
   );
 }
@@ -499,6 +490,7 @@ function toCourse(
     : course.teacherNames;
   return {
     id: `${arrangement.id}:w${week}`,
+    userAdded: course.userAdded || false,
     courseId: course.id,
     arrangementId: arrangement.id,
     weekday: validStart ? isoWeekday(validStart) : arrangement.weekday,
@@ -527,9 +519,10 @@ function toCourse(
     weekText: arrangement.weekText,
     weeks: arrangement.weeks,
     name: course.courseName,
-    teacher: teacherNames.join("、") || "教师待定",
+    teacher: teacherNames.join("、") || (course.userAdded ? "" : "教师待定"),
     teacherNames,
-    location: arrangement.location.display || "地点待定",
+    location:
+      arrangement.location.display || (course.userAdded ? "" : "地点待定"),
     campus: arrangement.location.campus,
     tone,
     credits: course.credits,
@@ -658,7 +651,8 @@ export function coursesForWeek(
             week,
             toneMap.get(timetableCourseColorKey(course)) || TONES[0],
           ),
-        ),
+        )
+        .filter((occurrence) => !course.userAdded || !course.excludedDates?.includes(occurrence.date || "")),
     )
     .sort(
       (left, right) =>

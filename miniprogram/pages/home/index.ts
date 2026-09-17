@@ -102,6 +102,7 @@ import {
   remainingCourses,
   type TimetableCourse,
 } from "../../data/timetable";
+import { withCustomCourses } from "../../data/custom-courses";
 import type {
   CredentialState,
   CurrentUserData,
@@ -673,8 +674,12 @@ function cachedDashboardState(
   const cached =
     cleanupTeachingPreview(account) || loadTeachingPreview(account);
   const timetable = loadTimetableSnapshot(account);
+  const visibleTimetable = withCustomCourses(
+    timetable?.data || null,
+    loadScheduleData(account).courses,
+  );
   const grades = cachedHomeGrades(account, preferences);
-  const semesterBoundary = startedCurrentSemester(timetable?.data || null);
+  const semesterBoundary = startedCurrentSemester(visibleTimetable);
   const messages = (cached?.messages || [])
     .filter((message) =>
       isCurrentSemesterTimestamp(message.createdAt, semesterBoundary),
@@ -686,7 +691,7 @@ function cachedDashboardState(
     semesterBoundary,
   ).slice(0, HOME_PREVIEW_ITEM_LIMIT);
   return {
-    timetable: timetable?.data || null,
+    timetable: visibleTimetable,
     patch: {
       messages,
       notices,
@@ -1436,7 +1441,16 @@ Page({
   },
   hydratePlanPreviews(account: string) {
     if (!account) return;
-    this.setData(planPreviewPatch(account), () => {
+    activeTimetable = withCustomCourses(
+      loadTimetableSnapshot(account)?.data || activeTimetable,
+      loadScheduleData(account).courses,
+    );
+    const now = new Date();
+    this.setData({
+      ...planPreviewPatch(account),
+      todayCourses: todayCoursePreview(now),
+      remainingCourseCount: remainingCourses(activeTimetable, now).length,
+    }, () => {
       markHomeSourcesHydrated(account, ["schedule"]);
     });
   },
@@ -1509,7 +1523,10 @@ Page({
         deleted: result.meta.deleted,
       });
     }
-    activeTimetable = loadTimetableSnapshot(account)?.data || result.data;
+    activeTimetable = withCustomCourses(
+      loadTimetableSnapshot(account)?.data || result.data,
+      loadScheduleData(account).courses,
+    );
     if (!homeVisible) return;
     const now = new Date();
     lastHomeClockKey = homeClockKey(now);

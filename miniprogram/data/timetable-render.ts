@@ -24,6 +24,7 @@ export interface TimetableDayOption {
 export interface TimetableGridCourse extends TimetableCourse {
   partner?: boolean;
   partnerOnly?: boolean;
+  cornerAsset?: string;
   topPercent: string;
   heightPercent: string;
   topInsetPx: string;
@@ -47,6 +48,22 @@ export interface TimetableWeekPage {
   ready: boolean;
   days: TimetableDayOption[];
   gridDays: TimetableGridDay[];
+}
+
+export function withTimetableCornerAssets(
+  page: TimetableWeekPage,
+  sources: Record<string, string>,
+): TimetableWeekPage {
+  if (!page.ready) return page;
+  return {
+    ...page,
+    gridDays: page.gridDays.map((day) => ({
+      ...day,
+      courses: day.courses.map((course) => course.userAdded
+        ? { ...course, cornerAsset: sources[course.tone] || "" }
+        : course),
+    })),
+  };
 }
 
 /** Only animate courses entering cells that were empty in the previous week. */

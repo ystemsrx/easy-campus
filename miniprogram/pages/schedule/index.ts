@@ -15,7 +15,13 @@ import {
   saveInteractionDraft,
   clearInteractionDraft,
 } from "../../store/interaction-drafts";
-import { currentIsoWeekday } from "../../data/timetable";
+import {
+  currentIsoWeekday,
+  timetableWeekCount,
+  timetableWeekForDisplay,
+  weekDateKeys,
+} from "../../data/timetable";
+import { withCustomCourses } from "../../data/custom-courses";
 import { defaultPlanEnd, nextWholeHour } from "../../data/schedule";
 import {
   buildScheduleDateView,
@@ -58,13 +64,18 @@ import {
   loadTimetableSnapshot,
   saveTimetableSnapshot,
 } from "../../store/timetable";
-import type { LocalSchedulePlan, TimetableData } from "../../types/api";
+import type {
+  LocalScheduleCourse,
+  LocalSchedulePlan,
+  TimetableData,
+} from "../../types/api";
 import { resolveAppearance } from "../../utils/appearance";
 import { toDateString } from "../../utils/date";
 import { haptic } from "../../utils/haptics";
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 
 let activeTimetable: TimetableData | null = null;
+const COURSE_DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 let activeAccount = "";
 let timetableRequestLease: SessionLease | null = null;
 let scheduleSyncLease: SessionLease | null = null;
@@ -188,6 +199,31 @@ Page({
     focusedPlanId: "",
     timelineHeight: SCHEDULE_TIMELINE_HEIGHT,
     creating: false,
+    creatorMode: "plan" as "plan" | "course",
+    creatorSheetHeight: 58,
+    courseTimeOpen: false,
+    courseWeeksOpen: false,
+    courseTimeExpandHeight: 0,
+    courseWeeksExpandHeight: 0,
+    courseLocation: "",
+    courseTeacher: "",
+    savingCourse: false,
+    editingCourseId: "",
+    editingCourseDate: "",
+    courseWeekdays: [currentIsoWeekday()] as number[],
+    courseWeekdayOptions: COURSE_DAY_LABELS.map((label, index) => ({ weekday: index + 1, label, selected: index + 1 === currentIsoWeekday() })),
+    coursePeriods: [] as number[],
+    courseWeeks: [] as number[],
+    coursePeriodOptions: [] as Array<{
+      period: number;
+      time: string;
+      selected: boolean;
+    }>,
+    courseWeekOptions: [] as Array<{
+      week: number;
+      dateLabel: string;
+      selected: boolean;
+    }>,
     title: "",
     startDate: toDateString(new Date()),
     startTime: "20:00",
@@ -413,13 +449,19 @@ Page({
           : null;
       activeAccount = account;
       if (prewarmed) {
-        activeTimetable = prewarmed.timetable;
+        activeTimetable = withCustomCourses(
+          prewarmed.timetable,
+          schedule.courses,
+        );
         activeSchedulePrewarmRevision = prewarmed.revision;
         activeTimetableStoredAt = prewarmed.timetableStoredAt;
         activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
         Object.assign(patch, prewarmed.view);
       } else {
-        activeTimetable = timetable?.data || null;
+        activeTimetable = withCustomCourses(
+          timetable?.data || null,
+          schedule.courses,
+        );
         activeSchedulePrewarmRevision = 0;
         activeTimetableStoredAt = timetable?.localStoredAt || 0;
         activeScheduleUpdatedAt = schedule.clientUpdatedAt;
@@ -479,7 +521,10 @@ Page({
       activeSchedulePrewarmRevision = prewarmed.revision;
       return false;
     }
-    activeTimetable = prewarmed.timetable;
+    activeTimetable = withCustomCourses(
+      prewarmed.timetable,
+      prewarmed.schedule.courses,
+    );
     activeSchedulePrewarmRevision = prewarmed.revision;
     activeTimetableStoredAt = prewarmed.timetableStoredAt;
     activeScheduleUpdatedAt = prewarmed.scheduleUpdatedAt;
@@ -515,7 +560,10 @@ Page({
       const current = loadTimetableSnapshot(lease.account);
       const storedAt = current?.localStoredAt || 0;
       if (storedAt !== activeTimetableStoredAt) {
-        activeTimetable = current?.data || result.data;
+        activeTimetable = withCustomCourses(
+          current?.data || result.data,
+          loadScheduleData(activeAccount).courses,
+        );
         activeTimetableStoredAt = storedAt;
         this.rebuildWeek();
       }
@@ -553,7 +601,10 @@ Page({
       }
       const local = loadTimetableSnapshot(lease.account);
       if (!shouldStoreServerSnapshot(local, result.meta, true)) return;
-      activeTimetable = result.data;
+      activeTimetable = withCustomCourses(
+        result.data,
+        loadScheduleData(activeAccount).courses,
+      );
       const snapshot = saveTimetableSnapshot(lease.account, result.data, {
         serverFetchedAt: result.meta.fetchedAt,
         deleted: result.meta.deleted,
@@ -596,7 +647,7 @@ Page({
     const data = saveScheduleData(activeAccount, plans);
     activeScheduleUpdatedAt = data.clientUpdatedAt;
     void putLocalSchedule(data).catch(() => {
-      // 本地写入已经完成，服务端将在下次进入页面时追平。
+      wx.showToast({ title: "已保存在本机，稍后同步", icon: "none" });
     });
   },
   replaceDayWindow(patch: Record<string, unknown>) {
@@ -860,8 +911,44 @@ Page({
     const defaultEnd = defaultPlanEnd(startDate, startTime);
     this.setTabBarHidden(true);
     const draft = loadInteractionDraft(activeAccount, "schedule");
+    const periods = activeTimetable?.periods || [];
+    const defaultWeek = activeTimetable
+      ? timetableWeekForDisplay(activeTimetable)
+      : 1;
+    const weekCount = activeTimetable ? timetableWeekCount(activeTimetable) : 0;
     this.setData({
       creating: true,
+      creatorMode: "plan",
+      creatorSheetHeight: 58,
+      courseTimeOpen: false,
+      courseWeeksOpen: false,
+      courseTimeExpandHeight: 112 + Math.ceil(periods.length / 3) * 112,
+      courseWeeksExpandHeight: 20 + Math.ceil(weekCount / 3) * 108,
+      courseLocation: "",
+      courseTeacher: "",
+      savingCourse: false,
+      editingCourseId: "",
+      editingCourseDate: "",
+      courseWeekdays: [currentIsoWeekday(scheduleDateFromKey(this.data.selectedDate))],
+      courseWeekdayOptions: COURSE_DAY_LABELS.map((label, index) => ({ weekday: index + 1, label, selected: index + 1 === currentIsoWeekday(scheduleDateFromKey(this.data.selectedDate)) })),
+      coursePeriods: [],
+      courseWeeks: [defaultWeek],
+      coursePeriodOptions: periods.map((period) => ({
+        period: period.period,
+        time: `${period.startTime}–${period.endTime}`,
+        selected: false,
+      })),
+      courseWeekOptions: Array.from({ length: weekCount }, (_, index) => {
+        const week = index + 1;
+        const dates = weekDateKeys(activeTimetable, week);
+        const start = dates[0]?.slice(5).replace("-", "/");
+        const end = dates[6]?.slice(5).replace("-", "/");
+        return {
+          week,
+          dateLabel: start && end ? `${start}–${end}` : "日期待定",
+          selected: week === defaultWeek,
+        };
+      }),
       focusedPlanId: "",
       title: "",
       startDate,
@@ -873,6 +960,40 @@ Page({
     });
   },
   openPlanEditor(event: WechatMiniprogram.TouchEvent) {
+    if (String(event.currentTarget.dataset.kind || "") === "course") {
+      const id = String(event.currentTarget.dataset.id || "");
+      const course = loadScheduleData(activeAccount).courses.find((candidate) =>
+        id.startsWith(`${candidate.id}:arrangement-`),
+      );
+      if (course) {
+        this.openCreator();
+        this.setData({
+          creatorMode: "course",
+          creatorSheetHeight: 70,
+          editingPlanId: "",
+          editingCourseId: course.id,
+          editingCourseDate: String(event.currentTarget.dataset.date || ""),
+          title: course.name,
+          courseLocation: course.location,
+          courseTeacher: course.teacher,
+          courseWeekdays: course.weekdays?.length ? course.weekdays : [course.weekday],
+          courseWeekdayOptions: this.data.courseWeekdayOptions.map((option) => ({
+            ...option,
+            selected: (course.weekdays?.length ? course.weekdays : [course.weekday]).includes(option.weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7),
+          })),
+          coursePeriods: course.periods,
+          coursePeriodOptions: this.data.coursePeriodOptions.map((option) => ({ ...option, selected: course.periods.includes(option.period) })),
+          courseWeeks: course.weeks,
+          courseWeekOptions: this.data.courseWeekOptions.map((option) => ({ ...option, selected: course.weeks.includes(option.week) })),
+        });
+      } else if (id) {
+        void navigateTo(
+          `/features/pages/timetable/index?source=schedule&courseId=${encodeURIComponent(id)}`,
+          "wx://cupertino-modal",
+        );
+      }
+      return;
+    }
     if (String(event.currentTarget.dataset.kind || "") !== "plan") return;
     const id = String(event.currentTarget.dataset.id || "");
     const plan = loadScheduleData(activeAccount).plans.find(
@@ -884,6 +1005,10 @@ Page({
     const draft = loadInteractionDraft(activeAccount, "schedule", plan.id);
     this.setData({
       creating: true,
+      creatorMode: "plan",
+      creatorSheetHeight: 58,
+      editingCourseId: "",
+      editingCourseDate: "",
       focusedPlanId: "",
       editingPlanId: plan.id,
       title: plan.title,
@@ -896,6 +1021,7 @@ Page({
     });
   },
   saveCreatorDraft() {
+    if (this.data.creatorMode === "course") return;
     const {
       title,
       startDate,
@@ -913,8 +1039,164 @@ Page({
     );
   },
   closeCreator() {
-    this.setData({ creating: false, editingPlanId: "" });
+    this.setData({ creating: false, editingPlanId: "", editingCourseId: "", editingCourseDate: "" });
     this.setTabBarHidden(false);
+  },
+  switchCreatorMode(event: WechatMiniprogram.TouchEvent) {
+    if (this.data.editingPlanId || this.data.editingCourseId) return;
+    const creatorMode =
+      event.currentTarget.dataset.mode === "course" ? "course" : "plan";
+    if (creatorMode === this.data.creatorMode) return;
+    haptic("light");
+    this.setData({
+      creatorMode,
+      title: "",
+      creatorSheetHeight: creatorMode === "course" ? 70 : 58,
+    });
+  },
+  toggleCourseTime() {
+    const courseTimeOpen = !this.data.courseTimeOpen;
+    this.setData({
+      courseTimeOpen,
+      creatorSheetHeight: courseTimeOpen || this.data.courseWeeksOpen ? 86 : 70,
+    });
+  },
+  toggleCourseWeeks() {
+    const courseWeeksOpen = !this.data.courseWeeksOpen;
+    this.setData({
+      courseWeeksOpen,
+      creatorSheetHeight: courseWeeksOpen || this.data.courseTimeOpen ? 86 : 70,
+    });
+  },
+  onCourseLocationInput(event: WechatMiniprogram.Input) {
+    this.setData({ courseLocation: event.detail.value });
+  },
+  onCourseTeacherInput(event: WechatMiniprogram.Input) {
+    this.setData({ courseTeacher: event.detail.value });
+  },
+  selectCourseWeekday(event: WechatMiniprogram.TouchEvent) {
+    const weekday = Number(event.currentTarget.dataset.weekday);
+    const courseWeekdays = this.data.courseWeekdays.includes(weekday)
+      ? this.data.courseWeekdays.filter((value) => value !== weekday)
+      : [...this.data.courseWeekdays, weekday].sort((a, b) => a - b);
+    this.setData({ courseWeekdays, courseWeekdayOptions: this.data.courseWeekdayOptions.map((option) => ({ ...option, selected: courseWeekdays.includes(option.weekday) })) });
+  },
+  toggleCoursePeriod(event: WechatMiniprogram.TouchEvent) {
+    const period = Number(event.currentTarget.dataset.period);
+    const coursePeriods = this.data.coursePeriods.includes(period)
+      ? this.data.coursePeriods.filter((value) => value !== period)
+      : [...this.data.coursePeriods, period].sort((a, b) => a - b);
+    this.setData({
+      coursePeriods,
+      coursePeriodOptions: this.data.coursePeriodOptions.map((option) => ({
+        ...option,
+        selected: coursePeriods.includes(option.period),
+      })),
+    });
+  },
+  toggleCourseWeek(event: WechatMiniprogram.TouchEvent) {
+    const week = Number(event.currentTarget.dataset.week);
+    const courseWeeks = this.data.courseWeeks.includes(week)
+      ? this.data.courseWeeks.filter((value) => value !== week)
+      : [...this.data.courseWeeks, week].sort((a, b) => a - b);
+    this.setData({
+      courseWeeks,
+      courseWeekOptions: this.data.courseWeekOptions.map((option) => ({
+        ...option,
+        selected: courseWeeks.includes(option.week),
+      })),
+    });
+  },
+  async saveCourse() {
+    if (this.data.savingCourse) return;
+    const name = this.data.title.trim();
+    if (!name)
+      return void wx.showToast({ title: "请输入课程名", icon: "none" });
+    if (!this.data.coursePeriods.length)
+      return void wx.showToast({ title: "请选择上课节次", icon: "none" });
+    if (!this.data.courseWeekdays.length)
+      return void wx.showToast({ title: "请选择星期", icon: "none" });
+    if (!this.data.courseWeeks.length)
+      return void wx.showToast({ title: "请选择周次", icon: "none" });
+    if (!activeTimetable)
+      return void wx.showToast({ title: "课表尚未读取", icon: "none" });
+    const existing = loadScheduleData(activeAccount);
+    const editingCourseId = this.data.editingCourseId;
+    const previous = editingCourseId
+      ? existing.courses.find((item) => item.id === editingCourseId)
+      : undefined;
+    if (editingCourseId && !previous)
+      return void wx.showToast({ title: "这门课程已删除", icon: "none" });
+    const course: LocalScheduleCourse = {
+      id: previous?.id || `custom-${Date.now()}`,
+      semesterId: activeTimetable.semester.id,
+      name,
+      location: this.data.courseLocation.trim(),
+      teacher: this.data.courseTeacher.trim(),
+      weekday: this.data.courseWeekdays[0] as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+      weekdays: this.data.courseWeekdays as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>,
+      periods: this.data.coursePeriods,
+      weeks: this.data.courseWeeks,
+      excludedDates: previous?.excludedDates,
+    };
+    this.setData({ savingCourse: true });
+    await this.persistCourses(previous
+      ? existing.courses.map((item) => item.id === previous.id ? course : item)
+      : [...existing.courses, course]);
+    this.setData({ creating: false, title: "", savingCourse: false, editingCourseId: "", editingCourseDate: "" });
+    this.setTabBarHidden(false);
+    this.rebuildWeek();
+  },
+  async persistCourses(courses: LocalScheduleCourse[]) {
+    const existing = loadScheduleData(activeAccount);
+    const data = saveScheduleData(activeAccount, existing.plans, courses);
+    activeScheduleUpdatedAt = data.clientUpdatedAt;
+    activeTimetable = withCustomCourses(activeTimetable, data.courses);
+    try {
+      await putLocalSchedule(data);
+    } catch {
+      wx.showToast({ title: "已保存在本机，稍后同步", icon: "none" });
+    }
+  },
+  showDeleteCourseActions() {
+    if (!this.data.editingCourseId || this.data.savingCourse) return;
+    wx.showActionSheet({
+      itemList: ["删除本次", "删除全部"],
+      success: ({ tapIndex }) => {
+        const all = tapIndex === 1;
+        if (!all && !this.data.editingCourseDate) return;
+        const lease = captureSessionLease();
+        if (!lease || lease.account !== activeAccount) return;
+        wx.showModal({
+          title: all ? "删除课程" : "删除本次课程",
+          content: all ? "确定删除这门课程的所有上课安排？" : "确定只删除这一天的课程？",
+          confirmText: "删除",
+          confirmColor: "#c0452d",
+          success: (result) => {
+            if (result.confirm && isSessionLeaseCurrent(lease))
+              void this.deleteCourse(all);
+          },
+        });
+      },
+    });
+  },
+  async deleteCourse(all: boolean) {
+    const id = this.data.editingCourseId;
+    const date = this.data.editingCourseDate;
+    const existing = loadScheduleData(activeAccount);
+    const course = existing.courses.find((item) => item.id === id);
+    if (!course || (!all && !date)) return;
+    const courses = all
+      ? existing.courses.filter((item) => item.id !== id)
+      : existing.courses.map((item) => item.id === id
+        ? { ...item, excludedDates: [...new Set([...(item.excludedDates || []), date])].sort() }
+        : item);
+    this.setData({ savingCourse: true });
+    await this.persistCourses(courses);
+    haptic("medium");
+    this.setData({ creating: false, savingCourse: false, editingCourseId: "", editingCourseDate: "" });
+    this.setTabBarHidden(false);
+    this.rebuildWeek();
   },
   onTitleInput(event: WechatMiniprogram.Input) {
     this.setData({ title: event.detail.value });

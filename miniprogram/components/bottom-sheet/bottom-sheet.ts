@@ -16,6 +16,7 @@ Component({
     theme: { type: String, value: "light" },
     expanded: { type: Boolean, value: false },
     expandedHeight: { type: Number, value: 86 },
+    animateHeight: { type: Boolean, value: false },
     compactHeader: { type: Boolean, value: false },
     scrollable: { type: Boolean, value: false },
     safeArea: { type: Boolean, value: true },

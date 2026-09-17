@@ -1,3 +1,4 @@
+import { withCustomCourses } from "../data/custom-courses";
 import {
   prewarmScheduleFirstScreen,
   prewarmSchedulePager,
@@ -98,7 +99,7 @@ function warmSchedule(
     }
     const firstScreen = prewarmScheduleFirstScreen(
       state.account,
-      state.timetable,
+      withCustomCourses(state.timetable, state.schedule.courses),
       state.schedule,
       {
         timetableStoredAt: state.timetableStoredAt,
@@ -184,19 +185,29 @@ async function preloadSchedule(
   ) {
     resolved = storeScheduleData(state.account, {
       plans: [],
+      courses: [],
       clientUpdatedAt: result.meta.fetchedAt || null,
     });
-  } else if (local.clientUpdatedAt) {
+  } else if (
+    local.clientUpdatedAt &&
+    new Date(local.clientUpdatedAt).getTime() >
+      new Date(result.data.clientUpdatedAt || 0).getTime()
+  ) {
     if (JSON.stringify(local) !== JSON.stringify(result.data)) {
       const saved = await putLocalSchedule(local);
       if (isActive(state) && saved.meta.deleted) {
         resolved = storeScheduleData(state.account, {
           plans: [],
+          courses: [],
           clientUpdatedAt: saved.meta.fetchedAt || null,
         });
       }
     }
-  } else if (result.data.clientUpdatedAt || result.data.plans.length) {
+  } else if (
+    result.data.clientUpdatedAt ||
+    result.data.plans.length ||
+    result.data.courses?.length
+  ) {
     resolved = storeScheduleData(state.account, result.data);
   }
 
@@ -287,6 +298,6 @@ export function getPreloadedSchedule(): Promise<LocalScheduleData> {
   const state = ensurePreload();
   return (
     state?.schedulePromise ||
-    Promise.resolve({ plans: [], clientUpdatedAt: null })
+    Promise.resolve({ plans: [], courses: [], clientUpdatedAt: null })
   );
 }

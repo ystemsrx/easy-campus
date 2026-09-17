@@ -1,5 +1,7 @@
 import { loadCustomBackground, loadCustomColor } from "./timetable-custom";
+import { TIMETABLE_CORNER_ASSETS } from "./timetable-corner-assets";
 import { getSession } from "../store/session";
+import { PET_COLORS } from "../store/pet";
 
 export type TimetableThemeId =
   "default" | "companion" | "clawd" | "snack" | "vivid" | "custom";
@@ -28,6 +30,7 @@ export interface TimetableThemePatch {
   companionBackgroundClass: "" | "timetable-companion-background--plain";
   themeStyle: string;
   headerIconTone: "white" | "ink";
+  courseCornerSources: Record<(typeof COURSE_TONE_IDS)[number], string>;
 }
 
 type RgbColor = readonly [number, number, number];
@@ -47,6 +50,7 @@ const COURSE_TONE_IDS = [
   "yellow",
   "mint",
 ] as const;
+
 const DEFAULT_COURSE_PALETTE: TimetableCoursePalette = [
   "#0862ad",
   "#0862ad",
@@ -359,6 +363,15 @@ export function timetableThemePatch(
       : selected.id === "companion"
       ? companionBackgroundColor(companionColor)
       : selected.backgroundColor;
+  const companionColorId = PET_COLORS.find(
+    (color) => color.value === safeHexColor(companionColor),
+  )?.id as keyof typeof TIMETABLE_CORNER_ASSETS.companion | undefined;
+  const companionCorners = TIMETABLE_CORNER_ASSETS.companion[
+    companionColorId || "black"
+  ];
+  const commonCorner = selectedId === "default" || selectedId === "custom"
+    ? TIMETABLE_CORNER_ASSETS.white
+    : TIMETABLE_CORNER_ASSETS.soft;
   return {
     timetableThemeId: selectedId,
     backgroundColor,
@@ -373,5 +386,11 @@ export function timetableThemePatch(
       backgroundColor,
     ),
     headerIconTone: selectedId === "default" ? "white" : "ink",
+    courseCornerSources: Object.fromEntries(COURSE_TONE_IDS.map((tone) => [
+      tone,
+      selectedId === "companion"
+        ? companionCorners[tone]
+        : commonCorner,
+    ])) as TimetableThemePatch["courseCornerSources"],
   };
 }

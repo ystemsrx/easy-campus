@@ -24,6 +24,18 @@ function load(relative) {
 
 const { dominantEdgeColor, imageEdgeColors, customFillIsVertical, readableBackgroundText, loadCustomColor, CUSTOM_COLORS } = load("data/timetable-custom.ts");
 const { timetableThemePatch } = load("data/timetable-theme.ts");
+const defaultCornerPath = timetableThemePatch("default", "#111214").courseCornerSources.blue;
+const defaultCorner = fs.readFileSync(path.join(root, defaultCornerPath.slice(1)), "utf8");
+assert.match(defaultCorner, /M1\.5 13A11\.5 11\.5 0 0 1 13 1\.5/);
+assert.match(defaultCorner, /stroke-width="3" stroke-dasharray="6 3"/);
+for (const theme of ["default", "custom", "clawd", "snack", "vivid", "companion"]) {
+  const corners = timetableThemePatch(theme, "#ff3e51").courseCornerSources;
+  for (const source of Object.values(corners)) {
+    assert.ok(source.startsWith("/features/assets/timetable/"), source);
+    assert.ok(fs.existsSync(path.join(root, source.slice(1))), source);
+  }
+}
+assert.match(timetableThemePatch("companion", "#ff3e51").courseCornerSources.blue, /course-corner-red-blue-13\.svg$/);
 assert.equal(CUSTOM_COLORS.length, 15, "five colors should fit on each of three rows");
 assert.deepEqual(CUSTOM_COLORS.slice(10), ["#f6d9d2", "#f5e7c9", "#dcebdc", "#d8eaf0", "#e7ddf0"]);
 global.wx.getStorageSync = () => null;
@@ -89,6 +101,8 @@ for (const color of ["#000000", "#ffffff", "#f01010", "#1010f0", "#10f010", "#f0
 const pageScript = fs.readFileSync(path.join(root, "features/pages/timetable/index.ts"), "utf8");
 const pageMarkup = fs.readFileSync(path.join(root, "features/pages/timetable/index.wxml"), "utf8");
 const pageStyle = fs.readFileSync(path.join(root, "features/pages/timetable/index.wxss"), "utf8");
+assert.match(pageMarkup, /src="\{\{course\.cornerAsset\}\}"/);
+assert.doesNotMatch(pageMarkup, /courseCornerSources\[course\.tone\]/);
 assert.ok(pageScript.includes("--timetable-custom-header-text") && pageScript.includes("--timetable-custom-scale-text"));
 assert.ok(pageStyle.includes(".timetable-theme--custom .period-time") && pageStyle.includes(".timetable-theme--custom .grid-day-head"));
 assert.match(pageMarkup, /wx:if="\{\{customImagePath\}\}"[^>]*bindtap="activateSavedBackground"/);

@@ -5,6 +5,7 @@ import {
   teachingWeekForDate,
   timeToMinutes,
   type TimetableCourse,
+  type TimetableTone,
 } from "./timetable";
 import {
   layoutScheduleOverlaps,
@@ -30,6 +31,7 @@ export interface ScheduleDayOption {
 interface ScheduleEntryBase {
   id: string;
   kind: "course" | "plan";
+  userAdded?: boolean;
   title: string;
   subtitle: string;
   startTime: string;
@@ -44,6 +46,7 @@ interface ScheduleEntryBase {
 
 export interface ScheduleEntry extends ScheduleEntryBase, ScheduleColumnLayout {
   displayMeta: string;
+  cornerAsset: string;
 }
 
 export interface ScheduleDayView {
@@ -76,6 +79,16 @@ export interface PrewarmedScheduleFirstScreen {
 }
 
 const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+const COURSE_CORNER_ASSETS: Record<TimetableTone, { 24: string; 30: string }> = {
+  blue: { 24: "/assets/images/schedule-course-corner-blue-24.svg", 30: "/assets/images/schedule-course-corner-blue-30.svg" },
+  cyan: { 24: "/assets/images/schedule-course-corner-cyan-24.svg", 30: "/assets/images/schedule-course-corner-cyan-30.svg" },
+  purple: { 24: "/assets/images/schedule-course-corner-purple-24.svg", 30: "/assets/images/schedule-course-corner-purple-30.svg" },
+  green: { 24: "/assets/images/schedule-course-corner-green-24.svg", 30: "/assets/images/schedule-course-corner-green-30.svg" },
+  orange: { 24: "/assets/images/schedule-course-corner-orange-24.svg", 30: "/assets/images/schedule-course-corner-orange-30.svg" },
+  rose: { 24: "/assets/images/schedule-course-corner-rose-24.svg", 30: "/assets/images/schedule-course-corner-rose-30.svg" },
+  yellow: { 24: "/assets/images/schedule-course-corner-yellow-24.svg", 30: "/assets/images/schedule-course-corner-yellow-30.svg" },
+  mint: { 24: "/assets/images/schedule-course-corner-mint-24.svg", 30: "/assets/images/schedule-course-corner-mint-30.svg" },
+};
 const DAY_START = 8 * 60;
 const DAY_END = 22 * 60 + 30;
 const RPX_PER_MINUTE = 1.55;
@@ -150,8 +163,9 @@ export function buildScheduleEntries(
   ).map((course) => ({
     id: course.id,
     kind: "course" as const,
+    userAdded: course.userAdded,
     title: course.name,
-    subtitle: `${course.location} · ${course.teacher}`,
+    subtitle: [course.location, course.teacher].filter(Boolean).join(" · "),
     startTime: course.startTime,
     endTime: course.endTime,
     timeLabel: `${course.periodLabel} · ${course.startTime}–${course.endTime}`,
@@ -197,9 +211,14 @@ export function buildScheduleEntries(
     .map((entry) => layoutScheduleOverlaps([entry])[0]);
   return [...timeline, ...outside].map((entry) => ({
     ...entry,
+    cornerAsset: entry.userAdded
+      ? COURSE_CORNER_ASSETS[entry.tone as TimetableTone][entry.compact ? 24 : 30]
+      : entry.compact
+        ? "/assets/images/schedule-dashed-corner-24.svg"
+        : "/assets/images/schedule-dashed-corner-30.svg",
     displayMeta: entry.compact
       ? entry.timeLabel
-      : `${entry.timeLabel} · ${entry.subtitle}`,
+      : [entry.timeLabel, entry.subtitle].filter(Boolean).join(" · "),
   }));
 }
 

@@ -10,7 +10,7 @@
 
   <view wx:if="{{day.earlyEntries.length}}" class="outside-card card">
     <text class="outside-label">08:00 之前</text>
-    <view wx:for="{{day.earlyEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+    <view wx:for="{{day.earlyEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" data-date="{{day.selectedDate}}" bindtap="openPlanEditor">
       <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
       <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
     </view>
@@ -25,19 +25,20 @@
       <view
         wx:for="{{day.timelineEntries}}"
         wx:key="id"
-        class="timeline-entry timeline-entry--{{item.tone}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}}"
+        class="timeline-entry timeline-entry--{{item.tone}} {{item.userAdded ? 'timeline-entry--custom' : ''}} {{item.done ? 'timeline-entry--done' : ''}} {{item.compact ? 'timeline-entry--compact' : ''}}"
         style="top: {{item.top}}rpx; height: {{item.height}}rpx; left: calc({{item.leftPercent}}% + {{item.leftInset}}rpx); width: calc({{item.widthPercent}}% - {{item.widthInset}}rpx);"
         id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}"
         data-id="{{item.id}}"
         data-kind="{{item.kind}}"
+        data-date="{{day.selectedDate}}"
         bindtap="openPlanEditor"
       >
-        <view wx:if="{{item.kind === 'plan'}}" class="plan-dashed-border"></view>
-        <view wx:if="{{item.kind === 'plan'}}" class="plan-border-corners">
-          <image class="plan-border-corner plan-border-corner--top-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
-          <image class="plan-border-corner plan-border-corner--top-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
-          <image class="plan-border-corner plan-border-corner--bottom-right" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
-          <image class="plan-border-corner plan-border-corner--bottom-left" src="{{item.compact ? '/assets/images/schedule-dashed-corner-24.svg' : '/assets/images/schedule-dashed-corner-30.svg'}}" mode="scaleToFill" draggable="{{false}}"></image>
+        <view wx:if="{{item.kind === 'plan' || item.userAdded}}" class="plan-dashed-border"></view>
+        <view wx:if="{{item.kind === 'plan' || item.userAdded}}" class="plan-border-corners">
+          <image class="plan-border-corner plan-border-corner--top-left" src="{{item.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--top-right" src="{{item.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--bottom-right" src="{{item.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+          <image class="plan-border-corner plan-border-corner--bottom-left" src="{{item.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
         </view>
         <view wx:if="{{item.kind === 'plan'}}" class="plan-check {{item.done ? 'plan-check--checked' : ''}}" data-id="{{item.id}}" catchtap="togglePlan">
           <lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon>
@@ -62,7 +63,7 @@
 
   <view wx:if="{{day.lateEntries.length}}" class="outside-card card">
     <text class="outside-label">22:30 之后</text>
-    <view wx:for="{{day.lateEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" bindtap="openPlanEditor">
+    <view wx:for="{{day.lateEntries}}" wx:key="id" id="{{capsuleReplica ? 'rim-' : ''}}entry-{{day.slot}}-{{item.id}}" class="outside-entry {{item.done ? 'outside-entry--done' : ''}}" data-id="{{item.id}}" data-kind="{{item.kind}}" data-date="{{day.selectedDate}}" bindtap="openPlanEditor">
       <view wx:if="{{item.kind === 'plan'}}" class="outside-check" data-id="{{item.id}}" catchtap="togglePlan" aria-role="button" aria-label="{{item.done ? '标为未完成' : '完成'}}{{item.title}}"><view class="plan-check {{item.done ? 'plan-check--checked' : ''}}"><lucide-icon wx:if="{{item.done}}" name="check" tone="white" size="{{28}}"></lucide-icon></view></view>
       <view class="outside-copy"><text class="outside-title">{{item.title}}</text><text class="outside-meta">{{item.timeLabel}}</text><text wx:if="{{item.subtitle !== '日程'}}" class="outside-meta">{{item.subtitle}}</text></view>
     </view>

@@ -307,7 +307,7 @@ assert(
   /hydrateServerGrade\([\s\S]*?useServer &&[\s\S]*?homeVisible &&[\s\S]*?getSession\(\)\?\.user\.account === account[\s\S]*?this\.setData\(/.test(
     homeScript,
   ) &&
-    /hydrateServerTimetable\([\s\S]*?activeTimetable = loadTimetableSnapshot\(account\)\?\.data \|\| result\.data;[\s\S]*?if \(!homeVisible\) return;[\s\S]*?this\.setData\(/.test(
+    /hydrateServerTimetable\([\s\S]*?activeTimetable = withCustomCourses\([\s\S]*?loadTimetableSnapshot\(account\)\?\.data \|\| result\.data,[\s\S]*?\);[\s\S]*?if \(!homeVisible\) return;[\s\S]*?this\.setData\(/.test(
       homeScript,
     ),
   "首页异步资料完成时只能更新仍在显示的页面，避免切到其他 Tab 后争抢渲染线程",

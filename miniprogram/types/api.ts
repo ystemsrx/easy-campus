@@ -803,8 +803,22 @@ export interface LocalSchedulePlan {
   done: boolean;
 }
 
+export interface LocalScheduleCourse {
+  id: string;
+  semesterId: string;
+  name: string;
+  location: string;
+  teacher: string;
+  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  weekdays?: Array<1 | 2 | 3 | 4 | 5 | 6 | 7>;
+  periods: number[];
+  weeks: number[];
+  excludedDates?: string[];
+}
+
 export interface LocalScheduleData {
   plans: LocalSchedulePlan[];
+  courses: LocalScheduleCourse[];
   clientUpdatedAt: string | null;
 }
 
@@ -919,6 +933,8 @@ export interface TimetableArrangement {
 
 export interface TimetableCourseData {
   id: string;
+  userAdded?: boolean;
+  excludedDates?: string[];
   courseCode: string;
   courseName: string;
   teachingClass: string | null;

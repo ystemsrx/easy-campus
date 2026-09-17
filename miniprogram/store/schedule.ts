@@ -1,4 +1,8 @@
-import type { LocalScheduleData, LocalSchedulePlan } from "../types/api";
+import type {
+  LocalScheduleCourse,
+  LocalScheduleData,
+  LocalSchedulePlan,
+} from "../types/api";
 
 const PREFIX = "easy-swu:schedule:";
 const LEGACY_KEY = "easy-swu:schedule-plans";
@@ -17,12 +21,13 @@ function validPlans(value: unknown): value is LocalSchedulePlan[] {
 }
 
 export function loadScheduleData(account: string): LocalScheduleData {
-  if (!account.trim()) return { plans: [], clientUpdatedAt: null };
+  if (!account.trim()) return { plans: [], courses: [], clientUpdatedAt: null };
   const stored = wx.getStorageSync(storageKey(account)) as
     Partial<LocalScheduleData> | undefined;
   if (stored && validPlans(stored.plans)) {
     return {
       plans: stored.plans,
+      courses: Array.isArray(stored.courses) ? stored.courses : [],
       clientUpdatedAt:
         typeof stored.clientUpdatedAt === "string"
           ? stored.clientUpdatedAt
@@ -35,16 +40,21 @@ export function loadScheduleData(account: string): LocalScheduleData {
     wx.removeStorageSync(LEGACY_KEY);
     return migrated;
   }
-  return { plans: [], clientUpdatedAt: null };
+  return { plans: [], courses: [], clientUpdatedAt: null };
 }
 
 export function saveScheduleData(
   account: string,
   plans: LocalSchedulePlan[],
+  courses: LocalScheduleCourse[] = loadScheduleData(account).courses,
 ): LocalScheduleData {
+  const previous = new Date(
+    loadScheduleData(account).clientUpdatedAt || 0,
+  ).getTime();
   const data: LocalScheduleData = {
     plans,
-    clientUpdatedAt: new Date().toISOString(),
+    courses,
+    clientUpdatedAt: new Date(Math.max(Date.now(), previous + 1)).toISOString(),
   };
   if (!account.trim()) return data;
   try {
@@ -62,6 +72,7 @@ export function storeScheduleData(
 ): LocalScheduleData {
   const normalized: LocalScheduleData = {
     plans: validPlans(data.plans) ? data.plans : [],
+    courses: Array.isArray(data.courses) ? data.courses : [],
     clientUpdatedAt: data.clientUpdatedAt || new Date().toISOString(),
   };
   if (account.trim()) {

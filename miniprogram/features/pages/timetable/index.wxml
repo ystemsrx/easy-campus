@@ -142,13 +142,20 @@
                 style="top: {{course.topPercent}}%; height: {{course.heightPercent}}%; padding-top: {{course.topInsetPx}}px;"
               >
                 <view
-                  class="grid-course grid-course--{{course.tone}} {{course.partner ? 'grid-course--partner' : ''}} {{course.partnerOnly ? 'grid-course--partner-only' : ''}} {{enteringWeekIndex === weekPage.weekNumber - 1 && enteringCourseIds[course.id] ? 'grid-course--entering' : ''}} pressable"
+                  class="grid-course grid-course--{{course.tone}} {{course.userAdded ? 'grid-course--custom' : ''}} {{course.partner ? 'grid-course--partner' : ''}} {{course.partnerOnly ? 'grid-course--partner-only' : ''}} {{enteringWeekIndex === weekPage.weekNumber - 1 && enteringCourseIds[course.id] ? 'grid-course--entering' : ''}} pressable"
                   data-id="{{course.id}}"
                   bindtap="openCourse"
                   hover-class="grid-course--pressed"
                   aria-role="button"
                   aria-label="{{course.name}}，{{course.location}}"
                 >
+                  <view wx:if="{{course.userAdded}}" class="grid-course-dashed-border" aria-hidden="true"></view>
+                  <view wx:if="{{course.userAdded}}" class="grid-course-border-corners">
+                    <image class="grid-course-border-corner grid-course-border-corner--top-left" src="{{course.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+                    <image class="grid-course-border-corner grid-course-border-corner--top-right" src="{{course.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+                    <image class="grid-course-border-corner grid-course-border-corner--bottom-right" src="{{course.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+                    <image class="grid-course-border-corner grid-course-border-corner--bottom-left" src="{{course.cornerAsset}}" mode="scaleToFill" draggable="{{false}}"></image>
+                  </view>
                   <view class="grid-course-name" style="{{course.nameStyle}}">
                     <text wx:for="{{course.nameRows}}" wx:for-item="row" wx:key="key" class="grid-course-text-line">{{row.text}}</text>
                   </view>
@@ -393,16 +400,16 @@
             <view class="course-sheet-hero-copy">
               <text class="course-sheet-kicker" overflow="ellipsis" max-lines="1">{{selectedCourse.periodLabel}} · {{selectedCourse.weekText}}</text>
               <text class="course-sheet-title display-title">{{selectedCourse.name}}</text>
-              <text class="course-sheet-teacher" overflow="ellipsis" max-lines="1">{{selectedCourse.teacher}} · {{selectedCourse.activityTypeLabel}}</text>
+              <text wx:if="{{selectedCourse.teacher || selectedCourse.activityTypeLabel}}" class="course-sheet-teacher" overflow="ellipsis" max-lines="1">{{selectedCourse.teacher}}{{selectedCourse.teacher && selectedCourse.activityTypeLabel ? ' · ' : ''}}{{selectedCourse.activityTypeLabel}}</text>
             </view>
-            <view wx:if="{{companionMode !== 'only'}}" class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
+            <view wx:if="{{companionMode !== 'only' && !selectedCourse.userAdded}}" class="course-pass-rate-action pressable" bindtap="openCoursePassRate" hover-class="course-pass-rate-action--pressed" aria-role="button" aria-label="查看{{selectedCourse.name}}通过率">
               <text>查看通过率</text>
               <lucide-icon name="chevron-right" tone="{{liquidGlass ? (theme === 'dark' ? 'white' : 'ink') : ('white')}}" size="{{28}}"></lucide-icon>
             </view>
           </view>
         </view>
         <view class="course-sheet-info card">
-          <view class="course-sheet-row"><text>上课地点</text><text>{{selectedCourse.location}}</text></view>
+          <view wx:if="{{selectedCourse.location}}" class="course-sheet-row"><text>上课地点</text><text>{{selectedCourse.location}}</text></view>
           <view class="course-sheet-row"><text>上课时间</text><text>{{selectedCourse.displayTimeLabel}}</text></view>
           <view class="course-sheet-row"><text>教学周次</text><text>{{selectedCourse.weekText}}</text></view>
           <view wx:if="{{selectedCourse.credits !== null}}" class="course-sheet-row"><text>学分</text><text>{{selectedCourse.credits}}</text></view>

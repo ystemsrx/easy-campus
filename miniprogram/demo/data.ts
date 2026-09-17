@@ -242,6 +242,7 @@ export function demoTimetable(): TimetableData {
 export function demoSchedule(): LocalScheduleData {
   return {
     clientUpdatedAt: new Date().toISOString(),
+    courses: [],
     plans: ["图书馆自习", "英语听力练习", "课程小组讨论", "整理本周笔记"].map(
       (title, i) => ({
         id: `demo-plan-${i}`,

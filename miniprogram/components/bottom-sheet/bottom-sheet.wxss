@@ -46,6 +46,8 @@
 }
 .sheet-card--no-safe-area { padding-bottom: 0; }
 .sheet-card--expanded { height: 86vh; }
+.sheet-card--height-animated { transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1), opacity 200ms ease-out, height 260ms ease; }
+.motion-reduced .sheet-card--height-animated { transition: opacity 120ms ease-out; }
 .sheet-card--expanded .sheet-content { height: 0; }
 
 .sheet-handle {
