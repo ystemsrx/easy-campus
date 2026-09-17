@@ -19,6 +19,35 @@ export interface CachedBackground {
   width: number;
   height: number;
   edges: TimetableEdgeColors;
+  dominantColor?: string;
+}
+
+export type CustomBackgroundMode = "fit" | "fill" | "center" | "span";
+export const CUSTOM_BACKGROUND_MODES: readonly { id: CustomBackgroundMode; label: string }[] = [
+  { id: "fit", label: "适应" },
+  { id: "fill", label: "填充" },
+  { id: "center", label: "居中" },
+  { id: "span", label: "跨区" },
+];
+const modeOverrides = new Map<string, CustomBackgroundMode>();
+
+function modeKey(userId: string | number): string {
+  return `easy-swu:timetable-background-mode:v1:${userId}`;
+}
+
+export function loadCustomBackgroundMode(userId: string | number): CustomBackgroundMode {
+  const current = modeOverrides.get(String(userId));
+  if (current) return current;
+  try {
+    const value = wx.getStorageSync(modeKey(userId));
+    return CUSTOM_BACKGROUND_MODES.some((mode) => mode.id === value)
+      ? value as CustomBackgroundMode : "fit";
+  } catch { return "fit"; }
+}
+
+export function saveCustomBackgroundMode(userId: string | number, mode: CustomBackgroundMode): void {
+  modeOverrides.set(String(userId), mode);
+  try { wx.setStorageSync(modeKey(userId), mode); } catch { /* Keep this visit's mode. */ }
 }
 
 function key(userId: string | number): string {
@@ -37,7 +66,7 @@ export function loadCustomBackground(userId: string | number): CachedBackground 
       Number.isInteger(value.height) && value.height > 0 &&
       value.edges && (["top", "bottom", "left", "right"] as const)
         .every((edge) => validColor(value.edges[edge]))
-      ? value : null;
+      ? { ...value, dominantColor: validColor(value.dominantColor) ? value.dominantColor : undefined } : null;
   } catch { return null; }
 }
 
@@ -62,6 +91,22 @@ export function customFillIsVertical(background: CachedBackground | null): boole
     const { windowWidth, windowHeight } = wx.getWindowInfo();
     return background.width * windowHeight >= background.height * windowWidth;
   } catch { return true; }
+}
+
+export function centeredBackgroundSize(
+  image: Pick<CachedBackground, "width" | "height">,
+  viewport: { width: number; height: number; pixelRatio?: number },
+): { width: number; height: number } {
+  const pixelRatio = Number.isFinite(viewport.pixelRatio) && Number(viewport.pixelRatio) > 0
+    ? Number(viewport.pixelRatio) : 1;
+  const naturalWidth = image.width / pixelRatio;
+  const naturalHeight = image.height / pixelRatio;
+  const fit = Math.min(
+    1,
+    Math.max(1, viewport.width) / naturalWidth,
+    Math.max(1, viewport.height) / naturalHeight,
+  );
+  return { width: naturalWidth * fit, height: naturalHeight * fit };
 }
 
 export function readableBackgroundText(color: string): "#000000" | "#ffffff" {
@@ -107,7 +152,25 @@ export function dominantEdgeColor(data: Uint8ClampedArray, width: number, height
     .reduce((color, channel) => color + channel, "#");
 }
 
-export function imageEdgeColors(path: string): Promise<Pick<CachedBackground, "width" | "height" | "edges">> {
+export function dominantImageColor(data: Uint8ClampedArray): string {
+  const buckets = new Map<number, { count: number; r: number; g: number; b: number }>();
+  for (let offset = 0; offset + 3 < data.length; offset += 4) {
+    if (data[offset + 3] < 128) continue;
+    const r = data[offset], g = data[offset + 1], b = data[offset + 2];
+    const bucket = (r >> 4) << 8 | (g >> 4) << 4 | (b >> 4);
+    const tally = buckets.get(bucket) || { count: 0, r: 0, g: 0, b: 0 };
+    tally.count++; tally.r += r; tally.g += g; tally.b += b;
+    buckets.set(bucket, tally);
+  }
+  const winner = [...buckets.values()].sort((left, right) => right.count - left.count)[0];
+  return winner
+    ? ([winner.r, winner.g, winner.b] as number[])
+      .map((value) => Math.round(value / winner.count).toString(16).padStart(2, "0"))
+      .reduce((color, channel) => color + channel, "#")
+    : "#ffffff";
+}
+
+export function imageEdgeColors(path: string): Promise<Pick<CachedBackground, "width" | "height" | "edges"> & { dominantColor: string }> {
   return new Promise((resolve, reject) => {
     const loader = wx.createOffscreenCanvas({ type: "2d", width: 1, height: 1 });
     const image = loader.createImage();
@@ -127,10 +190,17 @@ export function imageEdgeColors(path: string): Promise<Pick<CachedBackground, "w
         const left = dominantEdgeColor(verticalContext.getImageData(0, 0, 1, height).data, 1, height, "left");
         verticalContext.drawImage(image, width - 1, 0, 1, height, 0, 0, 1, height);
         const right = dominantEdgeColor(verticalContext.getImageData(0, 0, 1, height).data, 1, height, "left");
+        const sampleWidth = Math.min(64, width);
+        const sampleHeight = Math.min(64, height);
+        const sample = wx.createOffscreenCanvas({ type: "2d", width: sampleWidth, height: sampleHeight });
+        const sampleContext = sample.getContext("2d");
+        sampleContext.drawImage(image, 0, 0, width, height, 0, 0, sampleWidth, sampleHeight);
+        const dominantColor = dominantImageColor(sampleContext.getImageData(0, 0, sampleWidth, sampleHeight).data);
         resolve({
           width,
           height,
           edges: { top, bottom, left, right },
+          dominantColor,
         });
       } catch (error) { reject(error); }
     };

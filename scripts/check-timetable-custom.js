@@ -9,12 +9,12 @@ global.wx = {
   getStorageSync(key) { return key === "easy-swu:timetable-course-color:v1" ? "#f1c9c1" : null; },
 };
 function load(relative) {
-  if (cache.has(relative)) return cache.get(relative).exports;
   const filename = path.resolve(root, relative);
+  if (cache.has(filename)) return cache.get(filename).exports;
   const source = fs.readFileSync(filename, "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const module = { exports: {} };
-  cache.set(relative, module);
+  cache.set(filename, module);
   new Function("module", "exports", "require", js)(module, module.exports, (id) => {
     if (id === "../store/session") return { getSession: () => ({ user: { id: 7 } }) };
     return load(path.relative(root, path.resolve(path.dirname(filename), id + ".ts")));
@@ -22,7 +22,7 @@ function load(relative) {
   return module.exports;
 }
 
-const { dominantEdgeColor, imageEdgeColors, customFillIsVertical, readableBackgroundText, loadCustomColor, CUSTOM_COLORS } = load("data/timetable-custom.ts");
+const { dominantEdgeColor, dominantImageColor, centeredBackgroundSize, imageEdgeColors, customFillIsVertical, readableBackgroundText, loadCustomColor, loadCustomBackgroundMode, saveCustomBackgroundMode, CUSTOM_COLORS } = load("data/timetable-custom.ts");
 const { timetableThemePatch } = load("data/timetable-theme.ts");
 const defaultCornerPath = timetableThemePatch("default", "#111214").courseCornerSources.blue;
 const defaultCorner = fs.readFileSync(path.join(root, defaultCornerPath.slice(1)), "utf8");
@@ -50,9 +50,16 @@ assert.equal(dominantEdgeColor(pixels, 5, 5, "top"), "#f01010");
 assert.equal(dominantEdgeColor(pixels, 5, 5, "bottom"), "#1010f0");
 assert.equal(dominantEdgeColor(pixels, 5, 5, "left"), "#10f010");
 assert.equal(dominantEdgeColor(pixels, 5, 5, "right"), "#f0f0f0");
+assert.equal(dominantImageColor(pixels), "#000000");
+assert.equal(loadCustomBackgroundMode("mode-test"), "fit");
+global.wx.setStorageSync = () => {};
+saveCustomBackgroundMode("mode-test", "center");
+assert.equal(loadCustomBackgroundMode("mode-test"), "center");
 global.wx.getWindowInfo = () => ({ windowWidth: 375, windowHeight: 800 });
 assert.equal(customFillIsVertical({ width: 1200, height: 500 }), true);
 assert.equal(customFillIsVertical({ width: 300, height: 1200 }), false);
+assert.deepEqual(centeredBackgroundSize({ width: 960, height: 720 }, { width: 375, height: 667, pixelRatio: 3 }), { width: 320, height: 240 });
+assert.deepEqual(centeredBackgroundSize({ width: 2048, height: 2048 }, { width: 375, height: 667, pixelRatio: 3 }), { width: 375, height: 375 });
 global.wx.createOffscreenCanvas = ({ width, height }) => {
   let sourceX = 0, sourceY = 0;
   return {
@@ -109,9 +116,17 @@ assert.match(pageMarkup, /wx:if="\{\{customImagePath\}\}"[^>]*bindtap="activateS
 assert.match(pageMarkup, /class="custom-saved-background-image" src="\{\{customImagePath\}\}"/);
 assert.match(pageScript, /activateSavedBackground\(\)\s*\{[^}]*activateCustomTheme\(\)/);
 assert.match(pageScript, /customMenuHeight\(!!this\.data\.customImagePath\)/);
-assert.match(pageScript, /CUSTOM_MENU_WITH_IMAGE_HEIGHT = 558/);
+assert.match(pageScript, /CUSTOM_MENU_WITH_IMAGE_HEIGHT = 742/);
 assert.match(pageMarkup, /wx:for="\{\{customColors\}\}"[^>]*class="custom-color-slot"/);
 assert.match(pageStyle, /\.custom-color-slot\s*\{[^}]*flex:\s*0 0 20%/);
+assert.match(pageMarkup, /custom-wallpaper-mode-picker/);
+assert.match(pageMarkup, /bindtap="selectCustomBackgroundMode"/);
+assert.match(pageMarkup, /customBackgroundMode === 'fit'[^>]*mode="aspectFit"/);
+assert.match(pageMarkup, /customBackgroundMode === 'fill'[^>]*mode="scaleToFill"/);
+assert.match(pageMarkup, /customBackgroundMode === 'center'[^>]*mode="scaleToFill"/);
+assert.match(pageMarkup, /wx:else class="timetable-background timetable-background--custom"[^>]*mode="aspectFill"/);
+assert.doesNotMatch(pageMarkup, /mode="\{\{customImageMode\}\}"/);
+assert.match(pageStyle, /\.custom-wallpaper-mode-active\s*\{[^}]*transition:\s*transform 280ms/);
 const warmed = [];
 let backgroundVersion = "v1";
 global.wx.getStorageSync = (key) => key === "easy-swu:timetable-custom:v2:7" ? {
@@ -119,7 +134,11 @@ global.wx.getStorageSync = (key) => key === "easy-swu:timetable-custom:v2:7" ? {
   filePath: `wxfile://${backgroundVersion}.jpg`,
   width: 1200, height: 500,
   edges: { top: "#f01010", bottom: "#1010f0", left: "#10f010", right: "#f0f0f0" },
+  dominantColor: "#345678",
 } : null;
+saveCustomBackgroundMode(7, "center");
+assert.equal(timetableThemePatch("custom", "#111214").backgroundColor, "#345678");
+saveCustomBackgroundMode(7, "fit");
 global.wx.getImageInfo = ({ src, complete }) => { warmed.push(src); complete(); };
 const { preloadTimetableThemeAssets } = load("utils/icon-preload.ts");
 preloadTimetableThemeAssets("custom");
@@ -130,6 +149,6 @@ assert.deepEqual(warmed, ["wxfile://v1.jpg", "wxfile://v2.jpg"]);
 imageEdgeColors("test.jpg").then((image) => {
   assert.deepEqual(image, { width: 5, height: 5, edges: {
     top: "#f01010", bottom: "#1010f0", left: "#10f010", right: "#f0f0f0",
-  } });
+  }, dominantColor: "#000000" });
   console.log("Custom timetable edge color and course contrast checks passed.");
 }).catch((error) => { console.error(error); process.exitCode = 1; });

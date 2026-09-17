@@ -1,4 +1,4 @@
-import { loadCustomBackground, loadCustomColor } from "./timetable-custom";
+import { loadCustomBackground, loadCustomBackgroundMode, loadCustomColor } from "./timetable-custom";
 import { TIMETABLE_CORNER_ASSETS } from "./timetable-corner-assets";
 import { getSession } from "../store/session";
 import { PET_COLORS } from "../store/pet";
@@ -357,9 +357,15 @@ export function timetableThemePatch(
       : selected.id === "companion"
       ? companionCoursePalette(companionColor)
       : selected.palette || DEFAULT_COURSE_PALETTE;
+  const customBackground = selectedId === "custom"
+    ? loadCustomBackground(getSession()?.user.id || "") : null;
+  const customBackgroundMode = selectedId === "custom"
+    ? loadCustomBackgroundMode(getSession()?.user.id || "") : "fit";
   const backgroundColor =
     selectedId === "custom"
-      ? (loadCustomBackground(getSession()?.user.id || "")?.edges.top || "#f3f2f6")
+      ? (customBackgroundMode === "fit"
+        ? customBackground?.edges.top
+        : customBackground?.dominantColor || customBackground?.edges.top) || "#f3f2f6"
       : selected.id === "companion"
       ? companionBackgroundColor(companionColor)
       : selected.backgroundColor;

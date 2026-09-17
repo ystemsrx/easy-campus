@@ -3,8 +3,8 @@ import { withCustomCourses } from "../../../data/custom-courses";
 import { getScheduleRevision, loadScheduleData } from "../../../store/schedule";
 import { getPreloadedSchedule } from "../../../services/primary-tab-preload";
 import { bindCompanion, decideCompanion, getCompanions, getCompanionTimetable, removeCompanion, rotateCompanionCode, type CompanionPerson } from "../../../services/timetable-companions";
-import { CUSTOM_COLORS, customFillIsVertical, loadCustomBackground, loadCustomColor, readableBackgroundText, saveCustomColor } from "../../../data/timetable-custom";
-import { syncTimetableBackground, uploadTimetableBackground } from "../../../services/timetable-background";
+import { CUSTOM_BACKGROUND_MODES, CUSTOM_COLORS, centeredBackgroundSize, customFillIsVertical, loadCustomBackground, loadCustomBackgroundMode, loadCustomColor, readableBackgroundText, saveCustomBackgroundMode, saveCustomColor } from "../../../data/timetable-custom";
+import { ensureTimetableBackgroundColor, syncTimetableBackground, uploadTimetableBackground } from "../../../services/timetable-background";
 import {
   coursesForWeek,
   teachingWeekForDate,
@@ -256,8 +256,8 @@ function companionOnlyLabel(gender?: string): string {
   const tone = identityCardTone(gender);
   return tone === "female" ? "仅看她的" : tone === "male" ? "仅看他的" : "仅看对方的";
 }
-const CUSTOM_MENU_HEIGHT = 486;
-const CUSTOM_MENU_WITH_IMAGE_HEIGHT = 558;
+const CUSTOM_MENU_HEIGHT = 670;
+const CUSTOM_MENU_WITH_IMAGE_HEIGHT = 742;
 const SWIPE_WEEKS_STORAGE_KEY = "timetable-swipe-weeks-v1";
 const COURSE_ENTRANCE_MS = 280;
 
@@ -1356,6 +1356,7 @@ let weekBuildSequence = 0;
 let visibleRequestSequence = 0;
 let pendingVisibleRequestId: number | null = null;
 let passRateRequestSequence = 0;
+let backgroundModeSequence = 0;
 let pageAlive = false;
 
 function timetableRequestKey(lease: SessionLease, semester?: string): string {
@@ -1743,14 +1744,38 @@ function decoratedWeekPages(
 
 const INITIAL_TIMETABLE_VISUAL_PREFERENCES = timetableVisualPreferencesPatch();
 
+function centeredBackgroundStyle(cached: ReturnType<typeof loadCustomBackground>): string {
+  if (!cached) return "";
+  let viewport = { width: 375, height: 667, pixelRatio: 1 };
+  try {
+    const info = wx.getWindowInfo();
+    viewport = {
+      width: info.windowWidth || 375,
+      height: info.windowHeight || 667,
+      pixelRatio: info.pixelRatio || 1,
+    };
+  } catch { /* Keep the fallback viewport. */ }
+  const size = centeredBackgroundSize(cached, viewport);
+  return `width:${size.width.toFixed(2)}px;height:${size.height.toFixed(2)}px;`;
+}
+
 function customBackgroundPatch() {
-  const cached = loadCustomBackground(getSession()?.user.id || "");
+  const userId = getSession()?.user.id || "";
+  const cached = loadCustomBackground(userId);
+  const mode = loadCustomBackgroundMode(userId);
   const edges = cached?.edges || { top: "#f3f2f6", bottom: "#f3f2f6", left: "#f3f2f6", right: "#f3f2f6" };
+  const dominantColor = cached?.dominantColor || edges.top;
+  const headerColor = mode === "center" ? dominantColor : edges.top;
+  const scaleColor = mode === "center" ? dominantColor : edges.left;
   return {
     customImagePath: cached?.filePath || "",
     customFillVertical: customFillIsVertical(cached),
     customEdges: edges,
-    customTextStyle: `--timetable-custom-header-text:${readableBackgroundText(edges.top)};--timetable-custom-scale-text:${readableBackgroundText(edges.left)};`,
+    customDominantColor: dominantColor,
+    customBackgroundMode: mode,
+    customModeIndex: CUSTOM_BACKGROUND_MODES.findIndex((item) => item.id === mode),
+    customCenterImageStyle: centeredBackgroundStyle(cached),
+    customTextStyle: `--timetable-custom-header-text:${readableBackgroundText(headerColor)};--timetable-custom-scale-text:${readableBackgroundText(scaleColor)};`,
   };
 }
 
@@ -1800,6 +1825,7 @@ Page({
     ...backgroundMetrics(),
     timetableThemes: TIMETABLE_THEME_OPTIONS,
     customColors: CUSTOM_COLORS,
+    customBackgroundModes: CUSTOM_BACKGROUND_MODES,
     customColor: loadCustomColor(),
     ...customBackgroundPatch(),
     customOpen: false,
@@ -2986,11 +3012,31 @@ Page({
     this.activateCustomTheme(color);
     haptic("light");
   },
-  activateCustomTheme(color?: string) {
+  async selectCustomBackgroundMode(event: WechatMiniprogram.TouchEvent) {
+    const chosen = CUSTOM_BACKGROUND_MODES.find(
+      (item) => item.id === event.currentTarget.dataset.mode,
+    );
+    if (!chosen || this.data.uploadingBackground) return;
+    if (chosen.id === this.data.customBackgroundMode && this.data.timetableThemeId === "custom") return;
+    const lease = captureSessionLease();
+    if (!lease) return;
+    const sequence = ++backgroundModeSequence;
+    const cached = loadCustomBackground(lease.userId);
+    if (chosen.id !== "fit" && cached && !cached.dominantColor) {
+      try { await ensureTimetableBackgroundColor(); } catch { /* Keep the cached edge color. */ }
+    }
+    if (!pageAlive || sequence !== backgroundModeSequence || !isSessionLeaseCurrent(lease)) return;
+    saveCustomBackgroundMode(lease.userId, chosen.id);
+    preloadTimetableThemeAssets("custom");
+    this.activateCustomTheme(undefined, customBackgroundPatch());
+    haptic("light");
+  },
+  activateCustomTheme(color?: string, backgroundPatch?: ReturnType<typeof customBackgroundPatch>) {
     this.clearCompanionGaze();
     const patch = timetableThemePatch("custom", this.data.companionColor, color || this.data.customColor);
     this.setData({
       ...patch,
+      ...backgroundPatch,
       weekPages: decoratedWeekPages(this.data.weekPages, patch.courseCornerSources),
     }, () => this.syncClawdSceneSequence());
     try { wx.setStorageSync(TIMETABLE_THEME_STORAGE_KEY, "custom"); } catch { /* Keep this visit's theme. */ }
@@ -3245,6 +3291,7 @@ Page({
     this.setData({
       ...backgroundMetrics(this.data.compactHeader),
       customFillVertical: customFillIsVertical(loadCustomBackground(getSession()?.user.id || "")),
+      customCenterImageStyle: centeredBackgroundStyle(loadCustomBackground(getSession()?.user.id || "")),
       ...(selectedCourse
         ? { courseSheetHeight: courseSheetHeight(selectedCourse) }
         : {}),

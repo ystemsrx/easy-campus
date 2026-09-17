@@ -33,6 +33,22 @@ export function syncTimetableBackground(): Promise<string | null> {
   return pending;
 }
 
+export async function ensureTimetableBackgroundColor(): Promise<void> {
+  const lease = captureSessionLease();
+  if (!lease) return;
+  const cached = loadCustomBackground(lease.userId);
+  if (!cached || cached.dominantColor) return;
+  const { dominantColor } = await imageEdgeColors(cached.filePath);
+  const current = loadCustomBackground(lease.userId);
+  if (
+    isSessionLeaseCurrent(lease) &&
+    current?.version === cached.version &&
+    current.filePath === cached.filePath
+  ) {
+    saveCustomBackground(lease.userId, { ...current, dominantColor });
+  }
+}
+
 async function syncBackground(): Promise<string | null> {
   const requestGeneration = generation;
   const lease = captureSessionLease();
@@ -41,6 +57,9 @@ async function syncBackground(): Promise<string | null> {
   if (!version || !isSessionLeaseCurrent(lease)) return null;
   const cached = loadCustomBackground(lease.userId);
   if (cached?.version === version && await fileExists(cached.filePath)) {
+    if (!cached.dominantColor) {
+      try { await ensureTimetableBackgroundColor(); } catch { /* Keep cached edges available offline. */ }
+    }
     return generation === requestGeneration && isSessionLeaseCurrent(lease) ? cached.filePath : null;
   }
   const legacy = legacyCustomBackground(lease.userId);

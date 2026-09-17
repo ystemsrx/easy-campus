@@ -143,7 +143,7 @@ function loadTimetableTheme() {
     moduleRecord.exports,
     (request) => {
       if (request === "./timetable-custom")
-        return { loadCustomColor: () => "#0862ad", loadCustomBackground: () => null };
+        return { loadCustomColor: () => "#0862ad", loadCustomBackground: () => null, loadCustomBackgroundMode: () => "fit" };
       if (request === "./timetable-corner-assets") {
         const assetsSource = fs.readFileSync(path.join(path.dirname(sourcePath), "timetable-corner-assets.ts"), "utf8");
         const assetsOutput = ts.transpileModule(assetsSource, {
