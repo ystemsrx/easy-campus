@@ -143,7 +143,7 @@ for (const page of declaredPages) {
     "utf8",
   );
   if (
-    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s+reduced-motion="\{\{motionClass === 'motion-reduced'\}\}"(?:\s+force-black="\{\{true\}\}")?\s*>/.test(
+    !/<rate-limit-toast\s+id="rate-limit-toast"\s+theme="\{\{theme\}\}"\s+visual-theme="\{\{visualTheme\}\}"\s+reduced-motion="\{\{motionClass\s*===\s*'motion-reduced'\}\}"(?:\s+force-black="\{\{true\}\}")?\s*>/.test(
       template,
     )
   ) {

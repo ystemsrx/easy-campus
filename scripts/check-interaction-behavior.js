@@ -30,6 +30,7 @@ function runtime(overrides = {}) {
     removeStorageSync: (key) => storage.delete(key),
     getWindowInfo: () => ({ windowWidth: 375 }),
     worklet: {
+      timing: (target) => target,
       shared: (initial) => {
         let value = initial;
         const listeners = new Set();
@@ -261,7 +262,7 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     assert.equal(
       page.appliedStyles.size,
-      48,
+      134,
       "Bind every marker, strip and glyph after its node exists",
     );
     assert.deepEqual(
@@ -277,12 +278,55 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     const origin = render.scheduleDayIndex(page.data.selectedDate);
     const slot = Math.floor(origin / 7) % 3;
+    page.setCalendarMode(event({ mode: "month" }));
+    const monthMarker = page.appliedStyles.get(".orb-live").transform;
+    const cell = origin - page._motion.grid.value;
+    const row = Math.floor(cell / 7);
+    const column = (cell % 7) + 1;
     page.onDayScrollStart();
     for (const progress of [0.1, 0.25, 0.5, 0.75, 0.4, 0.1, 0]) {
       page.onDayScrollUpdate(event({}, { dx: 375 * progress }));
       const marker = page.appliedStyles.get(
         ".week-selection-slot-" + slot,
       ).transform;
+      if (progress > 0) {
+        assert.notEqual(
+          page.appliedStyles.get(".orb-live").transform,
+          monthMarker,
+          "Month selector must move before the date is committed",
+        );
+      }
+      assert.ok(
+        Math.abs(
+          Number(
+            page.appliedStyles.get(`.md-${row}-${column}-selected`).opacity,
+          ) -
+            (1 - progress),
+        ) < 1e-7,
+        "Selected month date fades while the agenda is swiped",
+      );
+      assert.ok(
+        Math.abs(
+          Number(page.appliedStyles.get(`.md-${row}-${column}-normal`).opacity) -
+            (1 - (1 - progress) ** 4),
+        ) < 1e-7,
+        "The black month glyph fades out in step with the white glyph",
+      );
+      assert.ok(
+        Math.abs(
+          Number(
+            page.appliedStyles.get(`.md-${row}-${column + 1}-selected`)
+              .opacity,
+          ) - progress,
+        ) < 1e-7,
+        "Incoming month date gains the selected color during the swipe",
+      );
+      assert.ok(
+        Math.abs(
+          Number(page.appliedStyles.get(`.md-${row}-${column + 1}-normal`).opacity) -
+            (1 - progress ** 4),
+        ) < 1e-7,
+      );
       const x = Number(/translateX\((.*)px\)/.exec(marker)[1]);
       assert.ok(Math.abs(x - ((4 + progress) * 335) / 7) < 1e-7);
       for (const [weekday, weight] of [
@@ -299,7 +343,7 @@ function checkScheduleMotionMount() {
           assert.ok(
             Math.abs(
               Number(page.appliedStyles.get(selector).opacity) -
-                (selected ? weight : 1 - weight),
+                (selected ? weight : 1 - weight ** 4),
             ) < 1e-7,
           );
         }
@@ -319,7 +363,7 @@ function checkScheduleMotionMount() {
     env.flushRenders();
     assert.equal(
       page.styleBindings,
-      48,
+      134,
       "Keyed header nodes keep their bindings across window resets and tab returns",
     );
   }
@@ -333,7 +377,7 @@ function checkScheduleMotionMount() {
   );
   const header = template.slice(
     template.indexOf('class="week-viewport"'),
-    template.indexOf("<swiper"),
+    template.indexOf('class="month-calendar'),
   );
   assert.ok(
     !header.includes("transform:"),
@@ -343,6 +387,249 @@ function checkScheduleMotionMount() {
     !header.includes("week-day--active") &&
       !styles.includes(".week-day--active"),
     "Committed selection must not abruptly override animated glyph opacity",
+  );
+}
+
+function checkScheduleMonthBrowsingAndFold() {
+  const template = fs.readFileSync(path.join(root, "pages/schedule/index.wxml"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "pages/schedule/index.wxss"), "utf8");
+  assert.ok(!template.includes('class="orb-lock"'));
+  assert.match(template, /class="month-calendar[^>]*><view class="month-track" style="transform:translateX\(\{\{mx\}\}px\);"><view class="month-drag-layer"><view class="orb-slot" style="transform:translateX\(\{\{monthOffset\*100\}\}%\);opacity:\{\{selectionVisible\?1:0\}\};"><view class="orb orb-live"><\/view><\/view><view wx:for="\{\{monthPanels\}\}"/);
+  assert.ok(!template.includes('wx:elif="{{panel.monthSelected}}" class="orb"'));
+  assert.match(template, /wx:key="id" class="mp" style="left:\{\{panel\.slot\*100\}\}%;"/);
+  assert.ok(!template.includes("agenda-swiping"));
+  assert.match(template, /class="month-date-base \{\{panelIndex===1\?'md-'\+row\.row\+'-'\+item\.weekday\+'-normal':''\}\}"><text class="month-date-label">\{\{item\.dateLabel\}\}<\/text><\/view><view wx:if="\{\{panelIndex===1\|\|panel\.monthSelected&&!item\.outside&&item\.date===selectedDate\}\}" class="month-date month-date--selected \{\{panelIndex===1\?'md-'\+row\.row\+'-'\+item\.weekday\+'-selected':''\}\}"/);
+  assert.match(template, /\{\{selectionVisible\?'msv':''\}\}/);
+  assert.match(styles, /\.week-day-date-layer\{[^}]*top:-6rpx;[^}]*height:76rpx;/);
+  assert.match(styles, /\.month-date-base,\.month-date\{[^}]*top:-6rpx;[^}]*height:78rpx;/);
+  assert.match(styles, /\.msv \.mdy \.month-date-base\{opacity:0\}/);
+  assert.match(styles, /\.msv \.mdy \.month-date--selected\{opacity:1\}/);
+  assert.ok(!template.includes("orb-caption"));
+  assert.match(styles, /\.mp\{position:absolute;z-index:1;/);
+  assert.match(styles, /\.orb-slot\{position:absolute;z-index:0;/);
+  assert.match(styles, /\.month-drag \.month-track,\.month-drag \.month-week\{transition-duration:0ms\}/);
+  const env = runtime();
+  const page = env.page("pages/schedule/index");
+  const settle = () => env.timers.shift()();
+  page.onLoad();
+  env.flushRenders();
+  page.onReady();
+  page.goDate("2026-09-18");
+  env.flushRenders();
+  page.setCalendarMode(event({ mode: "month" }));
+  const selected = page.data.selectedDate;
+  assert.deepEqual(page.data.monthPanels.map((panel) => panel.id), [0, 1, 2]);
+  const selectedMarker = page.appliedStyles.get(".orb-live").transform;
+  let hiddenBeforeRebase = false;
+  page.onRenderPatch = (patch) => {
+    if (patch.monthAnchor?.slice(0, 7) === "2026-10")
+      hiddenBeforeRebase = page._motion.shade.value === 0;
+  };
+  page.turn(1);
+  assert.equal(page.data.selectedDate, selected);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-09");
+  const width = page._motion.weekWidth.value;
+  assert.equal(page.data.mx + page.data.monthOffset * width, -width);
+  assert.equal(page.data.monthPanels[2].monthAnchor.slice(0, 7), "2026-10");
+  settle();
+  assert.equal(hiddenBeforeRebase, true);
+  assert.equal(page.data.mx + page.data.monthOffset * width, -width);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-10");
+  assert.equal(page.data.monthSelected, false);
+  assert.equal(page.data.monthPanels[1].monthSelected, false);
+  assert.equal(page.data.monthPanels[0].monthSelected, true);
+  assert.equal(page.data.selectionVisible, false);
+  assert.equal(page.data.monthOffset, 0);
+  assert.equal(page.data.pg, 1);
+  assert.equal(page.data.selectionVisible, false);
+  assert.equal(page.appliedStyles.get(".orb-live").transform, selectedMarker);
+  assert.deepEqual(
+    page.data.monthPanels.map((panel) => panel.monthAnchor.slice(0, 7)),
+    ["2026-09", "2026-10", "2026-11"],
+  );
+  assert.deepEqual(page.data.monthPanels.map((panel) => panel.id), [0, 1, 2], "Keep the bound center panel node across month rebases");
+  page.turn(-1);
+  assert.equal(page.data.selectionVisible, true, "Reveal the returning month's digit before sliding it in");
+  assert.equal(page._motion.shade.value, 0, "Do not tint the month being left");
+  assert.equal(page.data.monthPanels[0].monthSelected, true);
+  assert.equal(page.data.mx + page.data.monthOffset * width, 0);
+  settle();
+  assert.equal(page.data.mx + page.data.monthOffset * width, 0);
+  assert.equal(page.data.monthSelected, true);
+  assert.equal(page.data.monthOffset, 0);
+  assert.equal(page.data.selectionVisible, true);
+  assert.equal(page.appliedStyles.get(".orb-live").transform, selectedMarker);
+  page.turn(1);
+  settle();
+  page.selectDay(event({ date: "2026-10-05" }));
+  env.flushRenders();
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  assert.equal(page.data.monthSelected, true);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-10");
+  page.monthStart({ touches: [{ clientX: 200, clientY: 100 }] });
+  page.monthMove({ touches: [{ clientX: 110, clientY: 102 }] });
+  assert.equal(page.data.mx, -width);
+  assert.equal(page.appliedStyles.get(".month-drag-layer").transform, "translateX(-90px)");
+  assert.equal(page.data.swiping, true);
+  let dragRenders = 0;
+  page.onRenderPatch = () => { dragRenders += 1; };
+  page.monthMove({ touches: [{ clientX: 80, clientY: 102 }] });
+  assert.equal(dragRenders, 0);
+  assert.equal(page.appliedStyles.get(".month-drag-layer").transform, "translateX(-120px)");
+  assert.equal(page.data.mx, -width, "Dragging must not re-render the month grid per frame");
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  page.monthEnd({ changedTouches: [{ clientX: 80, clientY: 102 }] });
+  assert.equal(page.data.mx + page._motion.drag.value, -2 * width);
+  settle();
+  assert.equal(page.data.mx + page._motion.drag.value, -2 * width);
+  assert.equal(page.data.pg, 2);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-11");
+  assert.equal(page.data.selectedDate, "2026-10-05");
+  assert.equal(page.data.monthSelected, false);
+
+  page.setCalendarMode(event({ mode: "week" }));
+  page.onCalendarFoldStart({ touches: [{ clientY: 100 }] });
+  page.onCalendarFoldMove({ touches: [{ clientY: 220 }] });
+  assert.ok(page.data.foldProgress > 0 && page.data.foldProgress < 1);
+  page.onCalendarFoldEnd({ changedTouches: [{ clientY: 220 }] });
+  assert.equal(page.data.monthOpen, true);
+  assert.equal(page.data.foldProgress, 1);
+  page.onCalendarFoldStart({ touches: [{ clientY: 300 }] });
+  page.onCalendarFoldMove({ touches: [{ clientY: 160 }] });
+  page.onCalendarFoldEnd({ changedTouches: [{ clientY: 160 }] });
+  assert.equal(page.data.monthOpen, false);
+  assert.equal(page.data.foldProgress, 0);
+}
+
+function checkScheduleSelectorStraightLine() {
+  const env = runtime();
+  const render = env.load("data/schedule-render");
+  const page = env.page("pages/schedule/index");
+  page.onLoad();
+  env.flushRenders();
+  page.onReady();
+  page.setData({ selectedDate: "2026-09-11" });
+  page.rebuildWeek(true);
+  env.flushRenders();
+  page.setCalendarMode(event({ mode: "month" }));
+  let preparedBeforeRender = false;
+  page.onRenderPatch = (patch) => {
+    if (patch.selectedDate === "2026-09-26")
+      preparedBeforeRender = page._motion.from.value === render.scheduleDayIndex("2026-09-11") &&
+        page._motion.to.value === render.scheduleDayIndex("2026-09-26");
+  };
+  page.goDate("2026-09-26");
+  env.flushRenders();
+  assert.equal(preparedBeforeRender, true, "Prepare both digit layers before changing the selected date");
+  const motion = page._motion;
+  assert.equal(motion.from.value, render.scheduleDayIndex("2026-09-11"));
+  assert.equal(motion.to.value, render.scheduleDayIndex("2026-09-26"));
+  const point = (position) => {
+    motion.position.value = position;
+    const match = /translate\(([-\d.]+)px,([-\d.]+)px\)/.exec(
+      page.appliedStyles.get(".orb-live").transform,
+    );
+    return [Number(match[1]), Number(match[2])];
+  };
+  const start = point(motion.from.value);
+  const middle = point((motion.from.value + motion.to.value) / 2);
+  const end = point(motion.to.value);
+  for (let axis = 0; axis < 2; axis += 1)
+    assert.ok(Math.abs(middle[axis] - (start[axis] + end[axis]) / 2) < 1e-7);
+  motion.position.value = (motion.from.value + motion.to.value) / 2;
+  const glyph = (day, layer) => {
+    const offset = day - motion.grid.value;
+    return Number(page.appliedStyles.get(`.md-${Math.floor(offset / 7)}-${(offset % 7) + 1}-${layer}`).opacity);
+  };
+  assert.equal(glyph(motion.from.value, "selected"), 0.5);
+  assert.equal(glyph(motion.to.value, "selected"), 0.5);
+  assert.equal(glyph(motion.from.value + 7, "selected"), 0);
+  assert.equal(glyph(motion.from.value + 7, "normal"), 1);
+}
+function checkScheduleMonthReturnAfterDaySwipe() {
+  for (const browseCount of [1, 2]) {
+    const env = runtime();
+    const render = env.load("data/schedule-render");
+    const page = env.page("pages/schedule/index");
+    page.onLoad();
+    env.flushRenders();
+    page.onReady();
+    page.goDate("2026-09-18");
+    env.flushRenders();
+    page.setCalendarMode(event({ mode: "month" }));
+    for (let index = 0; index < browseCount; index += 1) {
+      page.turn(1);
+      env.timers.shift()();
+    }
+    assert.equal(page._motion.shade.value, 0);
+    assert.equal(page.data.selectionVisible, false);
+    const offset = render.scheduleDayIndex("2026-09-18") - page._motion.grid.value;
+    const selectedGlyph = `.md-${Math.floor(offset / 7)}-${(offset % 7) + 1}-selected`;
+    page.onDayScrollStart();
+    page.onDayScrollUpdate(event({}, { dx: 150 }));
+    assert.equal(Number(page.appliedStyles.get(selectedGlyph).opacity), 0);
+    page.onDayChange({ detail: { current: page.data.dayCurrent + 1 }, currentTarget: { dataset: { windowStart: page.data.dayPages[0].selectedDate } } });
+    page.onDayScrollEnd(event({}, { dx: 375 }));
+    env.flushRenders();
+    assert.equal(page.data.selectedDate, "2026-09-19");
+    assert.equal(page.data.monthAnchor.slice(0, 7), `2026-${String(9 + browseCount).padStart(2, "0")}`);
+    assert.equal(page.data.mx, -(browseCount - 1) * page._motion.weekWidth.value);
+    env.timers.shift()();
+    env.flushRenders();
+    assert.equal(page.data.monthAnchor.slice(0, 7), "2026-09");
+    assert.equal(page.data.monthOffset, browseCount - 1);
+    assert.equal(page.data.mx, -(browseCount - 1) * page._motion.weekWidth.value);
+    assert.equal(page._motion.shade.value, 1);
+    assert.equal(Number(page.appliedStyles.get(selectedGlyph).opacity), 0);
+    assert.equal(Number(page.appliedStyles.get(selectedGlyph.replace("-selected", "-normal")).opacity), 1);
+    const incomingOffset = render.scheduleDayIndex("2026-09-19") - page._motion.grid.value;
+    const incomingGlyph = `.md-${Math.floor(incomingOffset / 7)}-${(incomingOffset % 7) + 1}-selected`;
+    assert.equal(Number(page.appliedStyles.get(incomingGlyph).opacity), 1);
+    assert.equal(page.data.monthPanels[1].monthSelected, true);
+  }
+}
+function checkScheduleCrossMonthDaySwipe() {
+  const env = runtime();
+  const render = env.load("data/schedule-render");
+  const page = env.page("pages/schedule/index");
+  page.onLoad();
+  env.flushRenders();
+  page.onReady();
+  page.goDate("2026-09-30");
+  env.flushRenders();
+  page.setCalendarMode(event({ mode: "month" }));
+  page.onDayScrollStart();
+  assert.equal(page._motion.active.value, 1);
+  page.onDayScrollUpdate(event({}, { dx: 180 }));
+  page.onDayChange(event({ windowStart: page.data.dayPages[0].selectedDate }, { current: page.data.dayCurrent + 1 }));
+  page.onDayScrollEnd(event({}, { dx: 375 }));
+  env.flushRenders();
+  assert.equal(page.data.selectedDate, "2026-10-01");
+  assert.equal(page._motion.active.value, 0);
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-09");
+  assert.equal(page.data.monthPanels[1].monthSelected, false);
+  assert.equal(page.data.selectionVisible, true, "Place the selector on the incoming page before its slide starts");
+  assert.equal(page.data.monthOffset, 1);
+  let whiteBeforeRebase = false;
+  page.onRenderPatch = (patch) => {
+    if (patch.monthAnchor?.slice(0, 7) !== "2026-10") return;
+    const offset = render.scheduleDayIndex("2026-10-01") - page._motion.grid.value;
+    const glyph = `.md-${Math.floor(offset / 7)}-${(offset % 7) + 1}`;
+    whiteBeforeRebase = page.appliedStyles.get(`${glyph}-selected`).opacity === "1" &&
+      page.appliedStyles.get(`${glyph}-normal`).opacity === "0";
+  };
+  env.timers.shift()();
+  env.flushRenders();
+  assert.equal(whiteBeforeRebase, true, "Keep the incoming date white while rebasing month cells");
+  assert.equal(page.data.monthAnchor.slice(0, 7), "2026-10");
+  assert.equal(page.data.monthPanels[1].monthSelected, true);
+  const selected = page.data.monthPanels[1].monthRows.flatMap((row) => row.days).filter((day) =>
+    !day.outside && day.date === page.data.selectedDate,
+  );
+  assert.deepEqual(selected.map((day) => day.date), ["2026-10-01"]);
+  assert.match(
+    fs.readFileSync(path.join(root, "pages/schedule/index.ts"), "utf8"),
+    /isToday:key===today&&!outside/,
   );
 }
 function checkSchedule() {
@@ -412,7 +699,7 @@ function checkSchedule() {
     );
     assert.equal(
       Number(page.animatedStyles.get(selector + "-normal")().opacity),
-      1 - selectedWeight,
+      1 - selectedWeight ** 4,
     );
   }
   function assertHeaderAligned(date) {
@@ -563,8 +850,8 @@ function checkSchedule() {
     env.flushRenders();
   }
   const datesBeforeTap = page.data.dayPages.map((day) => day.selectedDate);
-  page.navigateScheduleDate("2026-09-09");
-  page.navigateScheduleDate("2026-09-11");
+  page.goDate("2026-09-09");
+  page.goDate("2026-09-11");
   assert.deepEqual(
     page.data.dayPages.map((day) => day.selectedDate),
     datesBeforeTap,
@@ -640,7 +927,7 @@ function checkSchedule() {
   assert.equal(page.data.focusedPlanId, env.getPlans().at(-1).id);
   // A distant jump/rebase is non-animated. Its native callbacks cannot alter
   // the chosen date or add the internal repositioning to gesture progress.
-  page.navigateScheduleDate("2028-02-28");
+  page.goDate("2028-02-28");
   assert.equal(page.data.dayAnimated, false);
   const nativeCurrent = page.data.dayCurrent;
   page.onDayScrollStart();
@@ -659,7 +946,7 @@ function checkSchedule() {
   assert.equal(page.data.selectedDate, "2028-02-29");
   swipe(1);
   assert.equal(page.data.selectedDate, "2028-03-01");
-  page.navigateScheduleDate("2026-12-31");
+  page.goDate("2026-12-31");
   env.flushRenders();
   swipe(1);
   assert.equal(page.data.selectedDate, "2027-01-01");
@@ -677,7 +964,7 @@ function checkSchedule() {
   page.onDayScrollEnd(event({}, { dx: 0 }));
   env.flushJS();
   const distantDate = page.data.dayPages[0].selectedDate;
-  page.navigateScheduleDate(distantDate);
+  page.goDate(distantDate);
   assert.equal(
     page.data.dayAnimated,
     false,
@@ -686,7 +973,7 @@ function checkSchedule() {
   env.flushRenders();
   assertHeaderAligned(distantDate);
   page.setData({ motionClass: "motion-reduced" });
-  page.navigateScheduleDate("2027-01-03");
+  page.goDate("2027-01-03");
   env.flushRenders();
   assert.equal(
     page.data.selectedDate,
@@ -801,7 +1088,7 @@ function checkScheduleSettling() {
       "A superseded rebase must not briefly render its old target",
     );
   };
-  page.navigateScheduleDate("2030-01-01");
+  page.goDate("2030-01-01");
   page.onHide();
   env.flushRenders();
   assert.equal(page.data.selectedDate, keptDate);
@@ -1250,6 +1537,10 @@ async function checkFeedback() {
 
 async function main() {
   checkScheduleMotionMount();
+  checkScheduleMonthBrowsingAndFold();
+  checkScheduleSelectorStraightLine();
+  checkScheduleMonthReturnAfterDaySwipe();
+  checkScheduleCrossMonthDaySwipe();
   checkScheduleSettling();
   checkSchedule();
   await checkRoomsAndDraftStorage();
