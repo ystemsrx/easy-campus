@@ -1,4 +1,8 @@
-import { buildAppShare } from "../../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../../utils/app-share";
 import { APP_NAME } from "../../../config/app";
 import { getPreloadedCurrentUser } from "../../../services/primary-tab-preload";
 import { loadPreferences } from "../../../store/preferences";
@@ -31,6 +35,7 @@ function appVersion(): string {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   data: {
     ...INITIAL_APPEARANCE,
     appName: APP_NAME,
@@ -44,6 +49,7 @@ Page({
   pageVisible: false,
   profileJob: 0,
   onShow() {
+    enableTimelineShare();
     this.pageVisible = true;
     if (!ensureAuthenticated()) return;
     const appearance = resolveAppearance(loadPreferences());

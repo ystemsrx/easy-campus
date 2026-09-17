@@ -17,6 +17,7 @@ function runtime() {
     dimensions: [],
     exports: [],
     menus: [],
+    nativeMenus: [],
     previews: [],
     toasts: [],
     text: [],
@@ -108,6 +109,9 @@ function runtime() {
       if (state.menuError) options.fail({ errMsg: state.menuError });
       else options.success({});
     },
+    showShareMenu(options) {
+      state.nativeMenus.push(options.menus);
+    },
     previewImage(options) {
       state.previews.push(options);
       options.success({});
@@ -187,19 +191,38 @@ function runtime() {
 
 async function check() {
   const normal = runtime();
+  assert.deepEqual(normal.state.nativeMenus, [
+    ["shareAppMessage", "shareTimeline"],
+  ]);
   const nativeShare = normal.page.onShareAppMessage({ from: "menu" });
   assert.equal(nativeShare.path, "/pages/home/index");
   assert.equal(nativeShare.title, "西小易 · 便利校园");
   assert.equal(nativeShare.imageUrl, "wxfile://usr/app-share-cover-v2.jpg");
   assert.equal(normal.state.coverCopies.length, 1);
+  assert.deepEqual(normal.page.onShareTimeline(), {
+    title: "西小易 · 便利校园",
+    query: "",
+    imageUrl: "wxfile://usr/timeline-share-cover-v1.jpg",
+  });
+  assert.deepEqual(normal.state.coverCopies, [
+    {
+      source: "assets/share/app-cover.jpg",
+      target: nativeShare.imageUrl,
+    },
+    {
+      source: "assets/share/timeline-cover.jpg",
+      target: "wxfile://usr/timeline-share-cover-v1.jpg",
+    },
+  ]);
   assert.deepEqual(
     normal.page.onShareAppMessage({ from: "menu" }),
     nativeShare,
   );
+  normal.page.onShareTimeline();
   assert.equal(
     normal.state.coverCopies.length,
-    1,
-    "Repeated shares reuse the ready local cover",
+    2,
+    "Repeated shares reuse both ready local covers",
   );
   assert.equal(
     normal.state.dimensions.length,
@@ -342,6 +365,10 @@ async function check() {
   storageFull.state.coverCopyError = true;
   const fallbackCard = storageFull.page.onShareAppMessage({ from: "menu" });
   assert.equal(fallbackCard.imageUrl, "/assets/share/app-cover.jpg");
+  assert.equal(
+    storageFull.page.onShareTimeline().imageUrl,
+    "/assets/share/timeline-cover.jpg",
+  );
   assert.equal(fallbackCard.path, nativeShare.path);
   assert.equal(fallbackCard.title, nativeShare.title);
   assert.equal(storageFull.state.exports.length, 0);

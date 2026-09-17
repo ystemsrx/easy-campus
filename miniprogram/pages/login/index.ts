@@ -1,4 +1,8 @@
-import { buildAppShare } from "../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../utils/app-share";
 import { APP_NAME } from "../../config/app";
 import { cancelPendingLogin, login } from "../../services/auth";
 import { refreshExamsOnForeground } from "../../services/cache-refresh";
@@ -195,6 +199,7 @@ function routeAfterAuthentication(onFailure?: () => void): void {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   data: {
     appName: APP_NAME,
     account: "",
@@ -215,6 +220,7 @@ Page({
     ...INITIAL_LOGIN_APPEARANCE,
   },
   onLoad(query?: Record<string, string | undefined>) {
+    enableTimelineShare();
     currentMascot = "";
     routingToHome = false;
     pageActive = true;

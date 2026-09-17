@@ -49,6 +49,8 @@ Easy Campus 将常用的校园信息与服务集中在一个简洁的入口中�
 
 封面放在主包并通过 `packOptions.include` 显式保留，所有分包也可直接使用。每次小程序启动后的首次原生转发，将约 107 KiB 的成品封面复制到本地用户目录，供原生面板读取，之后复用；更换封面时更新本地文件名版本，避免原生缩略图缓存继续显示旧图。本地存储不可写时回退到代码包图片路径。原生转发与关于页圆形按钮的个人海报分享各自独立。实现依据：[onShareAppMessage](https://developers.weixin.qq.com/miniprogram/dev/reference/api/Page.html#onShareAppMessage-Object-object)、[copyFileSync](https://developers.weixin.qq.com/miniprogram/dev/api/file/FileSystemManager.copyFileSync.html)。
 
+首页、日程、我的、校园通知、关于和登录页也支持右上角“··· → 分享到朋友圈”。页面通过 `onShareTimeline` 返回统一标题，以及由 `logo-light.png` 转换而成的 `assets/share/timeline-cover.jpg`（640 × 640，1:1），并用 `wx.showShareMenu` 开启原生入口；好友转发继续使用 `app-cover.jpg`。朋友圈分享按微信规则打开分享时所在页面，不能指定好友转发使用的首页路径。分享链接不携带入口参数。实现依据：[分享到朋友圈](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/share-timeline.html)、[onShareTimeline](https://developers.weixin.qq.com/miniprogram/dev/reference/api/Page.html#onShareTimeline)、[showShareMenu](https://developers.weixin.qq.com/miniprogram/dev/api/share/wx.showShareMenu.html)。
+
 ## 使用说明
 
 登录校园账号后即可查看与本人相关的课程、成绩、考试等信息。部分功能依赖校园系统的开放状态；如数据存在差异，请以学校官方系统和通知为准。

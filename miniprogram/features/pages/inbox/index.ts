@@ -1,4 +1,8 @@
-import { buildAppShare } from "../../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../../utils/app-share";
 import {
   GLASS_DRAG_DATA,
   startGlassDrag,
@@ -416,6 +420,7 @@ function noticeSourceIdFromLink(link: string): string {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   data: {
     ...GLASS_DRAG_DATA,
     liquidGlass: false,
@@ -448,6 +453,7 @@ Page({
     observedNoticeRefreshFlightId: 0,
   },
   onLoad() {
+    enableTimelineShare();
     hydratedInboxAccount = "";
     messageRequestSequence += 1;
     noticeRequestSequence += 1;
@@ -955,6 +961,13 @@ Page({
     if (started) {
       messageRequestSequence += 1;
       haptic("light");
+    }
+  },
+  onRefresh() {
+    if (this.data.activeTab === 0) {
+      this.refreshMessages();
+    } else {
+      this.refreshNotices();
     }
   },
   refreshNotices() {

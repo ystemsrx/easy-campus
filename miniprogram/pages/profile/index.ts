@@ -9,7 +9,11 @@ import {
   invalidateCapsuleBackdrop,
   type CapsuleScrollHost,
 } from "../../utils/capsule-backdrop";
-import { buildAppShare } from "../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../utils/app-share";
 import {
   autoDormCheckPresentationPatch,
   getPrewarmedProfileFirstScreen,
@@ -136,6 +140,7 @@ function clearAuthenticationExitTimer(): void {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   data: {
     ...INITIAL_PROFILE_APPEARANCE,
     appName: APP_NAME,
@@ -175,6 +180,7 @@ Page({
     feedbackErrorMessage: "",
   },
   onLoad() {
+    enableTimelineShare();
     initializeCapsuleBackdrop(this);
     hydratedProfileSources = null;
     profileVisible = false;

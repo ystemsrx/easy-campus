@@ -5,7 +5,11 @@ import {
   initializeCapsuleBackdrop,
   type CapsuleScrollHost,
 } from "../../utils/capsule-backdrop";
-import { buildAppShare } from "../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../utils/app-share";
 import { bindCompanion } from "../../services/timetable-companions";
 import { isDemoSession } from "../../demo/identity";
 import { prepareDemoData } from "../../demo/bootstrap";
@@ -807,6 +811,7 @@ function clearHomeRefreshTimer(): void {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   data: {
     ...INITIAL_HOME_APPEARANCE,
     appName: APP_NAME,
@@ -876,6 +881,7 @@ Page({
     activeAnnouncement: null as PublicationPreview | null,
   },
   onLoad(options?: Record<string, string | undefined>) {
+    enableTimelineShare();
     const code = String(options?.companionCode || "").toUpperCase();
     if (/^[A-Z0-9]{6}$/.test(code)) {
       try { wx.setStorageSync(PENDING_COMPANION_CODE_KEY, code); } catch { /* Storage may be unavailable. */ }

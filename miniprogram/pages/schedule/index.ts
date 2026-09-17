@@ -5,7 +5,11 @@ import {
   invalidateCapsuleBackdrop,
   type CapsuleScrollHost,
 } from "../../utils/capsule-backdrop";
-import { buildAppShare } from "../../utils/app-share";
+import {
+  buildAppShare,
+  buildTimelineShare,
+  enableTimelineShare,
+} from "../../utils/app-share";
 import {
   loadInteractionDraft,
   saveInteractionDraft,
@@ -157,6 +161,7 @@ function clearScheduleRefreshTimer(): void {
 
 Page({
   onShareAppMessage: buildAppShare,
+  onShareTimeline: buildTimelineShare,
   _capsuleDayScroll: undefined as
     WechatMiniprogram.Skyline.SharedValue<number[]> | undefined,
   _motion: null as ScheduleMotion | null,
@@ -192,6 +197,7 @@ Page({
     editingPlanId: "",
   },
   onLoad() {
+    enableTimelineShare();
     initializeCapsuleBackdrop(this);
     pagerMoving = false;
     pagerDirty = false;

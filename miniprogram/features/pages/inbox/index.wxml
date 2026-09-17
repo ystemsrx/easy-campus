@@ -1,6 +1,11 @@
 <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
 <view class="page inbox-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}" bindtap="onPageTap">
-  <navigation-bar title="校园通知" back transparent theme="{{theme}}"></navigation-bar>
+  <navigation-bar title="校园通知" back extra-left transparent theme="{{theme}}">
+    <view slot="after-left" class="nav-refresh pressable {{(activeTab === 0 ? messageRefreshing : noticeRefreshing) ? 'nav-refresh--loading' : ''}}" bindtap="onRefresh" hover-class="nav-button-pressed" aria-role="button" aria-label="{{activeTab === 0 ? (messageRefreshing ? '正在刷新教务消息' : '刷新教务消息') : (noticeRefreshing ? '正在刷新学校通知' : '刷新学校通知')}}" aria-disabled="{{activeTab === 0 ? messageRefreshing : noticeRefreshing}}">
+      <image wx:if="{{activeTab === 0 ? messageRefreshing : noticeRefreshing}}" class="nav-refresh-spinner" src="{{theme === 'dark' ? '/assets/icons/refresh-spinner-white.svg' : '/assets/icons/refresh-spinner-ink.svg'}}" mode="aspectFit" draggable="{{false}}"></image>
+      <lucide-icon wx:else name="refresh-cw" tone="{{theme === 'dark' ? 'white' : 'ink'}}" size="{{30}}"></lucide-icon>
+    </view>
+  </navigation-bar>
 
   <view class="inbox-toolbar">
     <view class="segmented-control" aria-role="tablist" bindtouchstart="onSelectorTouchStart" catchtouchmove="{{liquidGlass ? 'onSelectorTouchMove' : ''}}" bindtouchend="onSelectorTouchEnd" bindtouchcancel="onSelectorTouchCancel">
@@ -12,7 +17,7 @@
 
   <swiper class="inbox-swiper" current="{{activeTab}}" duration="{{motionClass === 'motion-reduced' ? 0 : 240}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}" easing-function="easeOutCubic" bindchange="onSwiperChange" cache-extent="1">
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="{{theme === 'dark' ? 'white' : 'black'}}" refresher-threshold="68" refresher-triggered="{{messageRefreshing}}" bindrefresherrefresh="refreshMessages">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="inbox-content page-content">
           <view class="list-heading">
             <view class="list-heading-copy"><text class="list-title">教务消息</text></view>
@@ -71,14 +76,14 @@
           </view>
           <loading-view wx:elif="{{messageLoading}}" label="正在读取教务消息" reduced-motion="{{motionClass === 'motion-reduced'}}"></loading-view>
           <empty-state wx:elif="{{messageError}}" icon="circle-alert" icon-tone="danger" title="消息加载失败" description="{{messageError}}" action-text="重新加载" bindaction="refreshMessages"></empty-state>
-          <empty-state wx:elif="{{messageLoaded}}" icon="message-circle-more" title="没有符合条件的消息" description="更换筛选条件，或下拉刷新后再看看" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
+          <empty-state wx:elif="{{messageLoaded}}" icon="message-circle-more" title="没有符合条件的消息" description="试试其他筛选条件" action-text="调整筛选" bindaction="openMessageFilter"></empty-state>
         </view>
         <view class="inbox-bottom-space"></view>
       </scroll-view>
     </swiper-item>
 
     <swiper-item>
-      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled refresher-default-style="{{theme === 'dark' ? 'white' : 'black'}}" refresher-threshold="68" refresher-triggered="{{noticeRefreshing}}" bindrefresherrefresh="refreshNotices">
+      <scroll-view class="inbox-list" type="list" scroll-y enhanced show-scrollbar="{{false}}">
         <view class="inbox-content page-content">
           <view class="search-field notice-search {{noticeSearchFocused ? 'search-field--focus' : ''}}">
             <lucide-icon name="search" tone="muted" size="{{28}}"></lucide-icon>

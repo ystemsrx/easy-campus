@@ -247,15 +247,14 @@ if (
   );
 }
 if (
-  (
-    inboxTemplate.match(
-      /refresher-default-style="\{\{theme === 'dark' \? 'white' : 'black'\}\}"/g,
-    ) || []
-  ).length !== 2 ||
-  /slot="refresher"/.test(inboxTemplate)
+  inboxTemplate.includes("refresher-") ||
+  inboxTemplate.includes("bindrefresherrefresh") ||
+  !inboxTemplate.includes("back extra-left transparent") ||
+  !inboxTemplate.includes('slot="after-left" class="nav-refresh') ||
+  !inboxTemplate.includes('bindtap="onRefresh"')
 ) {
   failures.push(
-    "features/pages/inbox/index.wxml: 两个消息列表必须使用原生黑白刷新指示器，不得回退到缺失的自定义 refresher",
+    "features/pages/inbox/index.wxml: 消息与通知必须使用返回键旁的刷新按钮，不得声明原生下拉刷新",
   );
 }
 if (

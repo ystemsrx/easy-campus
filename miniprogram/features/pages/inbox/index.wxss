@@ -1,3 +1,11 @@
+.nav-refresh { box-sizing: border-box; display: flex; flex: none; align-items: center; justify-content: center; width: 76rpx; min-width: 76rpx; max-width: 76rpx; height: 76rpx; min-height: 76rpx; max-height: 76rpx; padding: 0; overflow: hidden; border-radius: 999rpx; color: #2b2620; background: #fff; box-shadow: 0 2rpx 4rpx rgba(20, 20, 30, 0.04), 0 14rpx 40rpx -12rpx rgba(20, 20, 30, 0.14); transition: transform 120ms ease-out, opacity 120ms ease-out; }
+.nav-button-pressed { transform: scale(0.93); opacity: 0.82; }
+.nav-refresh--loading { opacity: 1; }
+.nav-refresh-spinner { display: block; flex: none; width: 34rpx; min-width: 34rpx; height: 34rpx; min-height: 34rpx; max-height: 34rpx; border-radius: 999rpx; animation-name: inbox-refresh-spin; animation-duration: 720ms; animation-timing-function: linear; animation-iteration-count: infinite; }
+.theme-dark .nav-refresh { background: #2d2a24; }
+.motion-reduced .nav-refresh-spinner { animation-name: none; }
+@keyframes inbox-refresh-spin { to { transform: rotate(360deg); } }
+
 .inbox-page { display: flex; flex-direction: column; overflow: hidden; }
 .inbox-toolbar { flex: none; padding: 28rpx 48rpx 10rpx; background-color: var(--color-bg); }
 .segmented-control { position: relative; display: flex; flex-direction: row; padding: 7rpx; border-radius: 999rpx; background: rgba(43, 38, 32, 0.05); }
