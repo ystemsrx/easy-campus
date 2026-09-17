@@ -71,7 +71,8 @@
 .notice-title { flex: 1; min-width: 0; color: var(--color-text); font-size: 26rpx; font-weight: 750; line-height: 1.45; }
 .notice-meta { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 9rpx; }
 .notice-time { flex: none; max-width: 135rpx; color: #b5b0a3; font-size: 18rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notice-tag { display: inline-flex; padding: 5rpx 13rpx; border-radius: 999rpx; color: #a39e92; background: #f6f3ec; font-size: 18rpx; font-weight: 700; white-space: nowrap; }
+.notice-views { display: flex; flex: none; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 6rpx; color: #a39e92; font-size: 18rpx; font-weight: 700; white-space: nowrap; }
+.notice-views text { flex: none; white-space: nowrap; }
 .load-more,
 .end-caption { display: block; padding: 26rpx; color: #b5b0a3; font-size: 21rpx; text-align: center; }
 
@@ -142,7 +143,6 @@
 .inbox-page.theme-style-minimal .schedule-time-label,
 .inbox-page.theme-style-minimal .reschedule-arrow,
 .inbox-page.theme-style-minimal .notice-icon,
-.inbox-page.theme-style-minimal .notice-tag,
 .inbox-page.theme-style-minimal .search-clear {
   border: 1rpx solid var(--color-text);
   border-radius: var(--radius-control);
@@ -151,8 +151,7 @@
 }
 
 .inbox-page.theme-style-minimal .message-badge--blue,
-.inbox-page.theme-style-minimal .notice-icon,
-.inbox-page.theme-style-minimal .notice-tag {
+.inbox-page.theme-style-minimal .notice-icon {
   border-color: var(--color-accent-blue);
   color: var(--color-accent-blue);
   background-color: var(--color-accent-blue-soft);

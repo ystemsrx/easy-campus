@@ -92,7 +92,7 @@
               <view class="notice-item card pressable" data-id="{{item.id}}" data-link="{{item.link}}" data-title="{{item.title}}" data-published-at="{{item.publishedAt}}" bindtap="openNotice" hover-class="pressing" aria-role="link">
               <view class="notice-icon"><lucide-icon name="megaphone" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'coral'}}" size="{{34}}"></lucide-icon></view>
               <view class="notice-copy">
-                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><text class="notice-tag">学校通知</text></view></view>
+                <view class="notice-title-row"><text class="notice-title" overflow="ellipsis" max-lines="2">{{item.title}}</text><view class="notice-meta"><text class="notice-time">{{item.displayTime}}</text><view class="notice-views" aria-label="{{item.viewCount}} 人已观看"><lucide-icon name="eye" tone="muted" size="{{20}}"></lucide-icon><text>{{item.viewCount || 0}}</text></view></view></view>
               </view>
               </view>
             </view>

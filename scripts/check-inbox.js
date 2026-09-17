@@ -343,6 +343,20 @@ assert(
 
 const template = readSource(path.join(pageRoot, "index.wxml"), "utf8");
 const styles = readSource(path.join(pageRoot, "index.wxss"), "utf8");
+const noticeEye = readSource(
+  path.resolve(__dirname, "..", "miniprogram", "assets", "icons", "eye-muted.svg"),
+  "utf8",
+);
+assert(
+  template.includes('class="notice-views"') &&
+    template.includes('name="eye" tone="muted"') &&
+    template.includes("{{item.viewCount || 0}}") &&
+    noticeEye.includes('<path fill="#8b8b94" d="M12 9a3 3 0 0 1 3 3') &&
+    !template.includes('<text class="notice-tag">学校通知</text>') &&
+    styles.includes(".notice-views") &&
+    !styles.includes(".notice-tag"),
+  "学校通知列表必须显示眼睛图标和去重观看人数，并移除来源标签",
+);
 assert(
   template.includes('<navigation-bar title="校园通知"') &&
     !template.includes('title="学校通知与教务安排"'),

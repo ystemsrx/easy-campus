@@ -54,7 +54,10 @@ export function prepareDemoData(app?: IAppOption): boolean {
   saveElectricitySnapshot("demo", state.electricity, timestamp);
   saveTeachingPreview(
     "demo",
-    { messages: demoMessages(), notices: demoNotices() },
+    {
+      messages: demoMessages(),
+      notices: demoNotices().map((notice) => ({ ...notice, viewCount: 0 })),
+    },
     { fetchedAt: timestamp },
   );
   saveAutoDormCheckSnapshot("demo", state.dorm.status);

@@ -6,7 +6,6 @@ import { formatDateTime } from "../../../utils/date";
 import { haptic } from "../../../utils/haptics";
 import { ensureAuthenticated } from "../../../utils/navigation";
 import {
-  isNoticeDetailDue,
   loadNoticeDetailSnapshot,
   saveNoticeDetailSnapshot,
 } from "../../../store/notice-details";
@@ -156,7 +155,7 @@ Page({
     const lease = captureSessionLease();
     const cached = lease ? loadNoticeDetailSnapshot(lease.account, id) : null;
     if (cached) this.showDetail(cached.detail);
-    if (isNoticeDetailDue(cached)) void this.loadDetail();
+    void this.loadDetail();
   },
   onShow() {
     this.setData(resolveAppearance());

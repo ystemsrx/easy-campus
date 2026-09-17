@@ -330,13 +330,14 @@ export type TeachingMessage =
 
 export interface Notice {
   id: string;
+  viewCount: number;
   title: string;
   link: string;
   publishedAt: string;
   semesterId?: string | null;
 }
 
-export interface NoticeDetail extends Notice {
+export interface NoticeDetail extends Omit<Notice, "viewCount"> {
   publisher: string | null;
   contentHtml: string;
   contentBlocks?: NoticeContentBlock[];

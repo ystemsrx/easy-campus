@@ -166,9 +166,9 @@ export function demoRequest<T>(
   if (route === "/teaching/notices")
     return result(
       paginate(
-        demoNotices().filter(
-          (item) => !query.q || item.title.includes(query.q),
-        ),
+        demoNotices()
+          .map((notice) => ({ ...notice, viewCount: 0 }))
+          .filter((item) => !query.q || item.title.includes(query.q)),
         query,
       ),
     );

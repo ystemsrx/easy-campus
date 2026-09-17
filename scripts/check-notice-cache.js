@@ -132,7 +132,13 @@ async function run() {
   const freshPage = createPage();
   freshPage.onLoad({ id: id(21), title: "列表标题" });
   assert.equal(freshPage.data.contentHtml, fresh.contentHtml);
-  assert.equal(requests.length, 0, "Fresh local detail should skip the API");
+  assert.equal(requests.length, 1, "Opening cached detail still records the view");
+  requests[0].resolve({
+    data: fresh,
+    meta: { cached: true, fetchedAt: fetchedAt(21), refreshing: false },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(freshPage.data.contentHtml, fresh.contentHtml);
 
   const stale = detail(22, "旧正文");
   cache.saveNoticeDetailSnapshot("account-a", id(22), stale, {
@@ -142,8 +148,8 @@ async function run() {
   stalePage.onLoad({ id: id(22) });
   assert.equal(stalePage.data.contentHtml, stale.contentHtml);
   assert.equal(stalePage.data.loading, false);
-  assert.equal(requests.length, 1);
-  requests[0].resolve({
+  assert.equal(requests.length, 2);
+  requests[1].resolve({
     data: detail(22, "新正文"),
     meta: { cached: false, fetchedAt: fetchedAt(23), refreshing: false },
   });
@@ -157,16 +163,16 @@ async function run() {
   const refreshingPage = createPage();
   refreshingPage.onLoad({ id: id(24) });
   assert.equal(refreshingPage.data.contentHtml, "<p>服务端旧正文</p>");
-  requests[1].resolve({
+  requests[2].resolve({
     data: detail(24, "服务端旧正文"),
     meta: { cached: true, fetchedAt: fetchedAt(24), refreshing: true },
   });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(requests.length, 3);
-  assert.equal(requests[2].refresh, true);
-  assert.equal(requests[2].automatic, true);
+  assert.equal(requests.length, 4);
+  assert.equal(requests[3].refresh, true);
+  assert.equal(requests[3].automatic, true);
   assert.equal(refreshingPage.data.contentHtml, "<p>服务端旧正文</p>");
-  requests[2].resolve({
+  requests[3].resolve({
     data: detail(24, "学校新正文"),
     meta: { cached: false, fetchedAt: fetchedAt(25), refreshing: false },
   });
@@ -178,7 +184,7 @@ async function run() {
     fetchedAt: fetchedAt(23),
   }, Date.now() - 86_400_001);
   failedPage.onLoad({ id: id(23) });
-  requests[3].reject(new Error("offline"));
+  requests[4].reject(new Error("offline"));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(failedPage.data.contentHtml, "<p>保留正文</p>");
   assert.equal(failedPage.data.errorMessage, "");
