@@ -398,8 +398,15 @@ page {
   display: none;
 }
 
-.login-button--loading {
-  opacity: 0.85;
+.page.login-page .login-button.login-button--loading {
+  color: #fff9f5;
+  background-color: #a44931;
+  box-shadow: 0 12rpx 32rpx rgba(164, 73, 49, 0.24);
+  opacity: 1;
+}
+
+.login-button--loading .login-button-label {
+  color: #fff9f5;
 }
 
 .login-button--pressed {

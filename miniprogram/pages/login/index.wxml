@@ -27,7 +27,7 @@
           <image wx:if="{{mascotSrc}}" class="mascot-image" src="{{mascotSrc}}" mode="aspectFit"></image>
         </view>
 
-        <form class="login-form" bindsubmit="onSubmit">
+        <view class="login-form">
           <view class="field {{accountFocused ? 'field--focus' : ''}}">
             <view class="field-icon"><lucide-icon name="user-round" tone="muted" size="{{36}}"></lucide-icon></view>
             <input
@@ -73,15 +73,15 @@
             <view class="agreement-copy"><text>我已阅读并同意</text><text class="agreement-link" data-document="terms" catchtap="openLegalDocument" aria-role="link">《用户协议》</text><text>和</text><text class="agreement-link" data-document="privacy" catchtap="openLegalDocument" aria-role="link">《隐私政策》</text></view>
           </view>
 
-          <button class="login-button {{loading ? 'login-button--loading' : ''}}" form-type="submit" disabled="{{loading}}" hover-class="login-button--pressed">
+          <button class="login-button {{loading ? 'login-button--loading' : ''}}" bindtap="onSubmit" disabled="{{loading}}" hover-class="login-button--pressed">
             <view wx:if="{{loading}}" class="login-spinner"></view>
-            <text>{{loading ? '正在进入…' : '登录'}}</text>
+            <text class="login-button-label">{{loading ? '正在进入…' : '登录'}}</text>
           </button>
 
           <view class="login-clawd-mark-row" aria-hidden="true">
             <image class="login-clawd-mark" src="/assets/login/clawd-mark.svg" mode="aspectFit" draggable="{{false}}"></image>
           </view>
-        </form>
+        </view>
       </view>
     </view>
   </scroll-view>
