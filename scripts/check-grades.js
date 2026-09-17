@@ -656,6 +656,28 @@ assert(
     !gradeDetailStyles.includes("--text"),
   "成绩列表、详情总评和成绩组成必须使用独立的紫绿蓝黄红五档颜色",
 );
+const scoreTileStyles = [
+  ...gradesPageStyles
+    .slice(
+      gradesPageStyles.indexOf(".score-tile {"),
+      gradesPageStyles.indexOf(".score-value {"),
+    )
+    .matchAll(
+      /\.score-tile(?:--(?:great|good|average|warning|danger|muted))?\s*\{([^}]*)\}/g,
+    ),
+];
+assert(
+  scoreTileStyles.length === 7 &&
+    /width:\s*104rpx;[^}]*height:\s*104rpx;[^}]*border-radius:\s*50%;/.test(
+      scoreTileStyles[0][1],
+    ) &&
+    scoreTileStyles.every(
+      ([, declarations]) =>
+        /background:\s*(?:#[0-9a-f]+|rgba\([^;]+\));/i.test(declarations) &&
+        !declarations.includes("gradient("),
+    ),
+  "各科成绩分数徽章必须为正圆形，并使用纯色填充",
+);
 assert(
   teachingService.includes(
     'sort: query.sort === "default" ? undefined : query.sort',
