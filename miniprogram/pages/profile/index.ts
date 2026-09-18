@@ -168,7 +168,7 @@ Page({
     petVisible: false,
     autoDormCheckVisible: false,
     courseGrabVisible: false,
-    autoDormCheckTitle: "自动查寝",
+    autoDormCheckTitle: "小易打卡",
     autoDormCheckStatusLabel: "已关闭",
     autoDormCheckStatusTone: "muted" as
       "success" | "warning" | "danger" | "muted",

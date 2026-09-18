@@ -32,8 +32,8 @@
 
   <view class="section-header"><view><text class="section-title">校园互助</text></view></view>
   <view class="settings-card card">
-    <view class="setting-row {{autoDormCheckVisible || courseGrabVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开选课助手">
-      <view class="setting-copy"><text class="setting-title">选课助手</text><text class="setting-caption">通识与体育课程指南</text></view>
+    <view class="setting-row {{autoDormCheckVisible || courseGrabVisible ? 'setting-row--divided' : ''}} setting-row--action {{openingSetting === 'course-assistant' ? 'setting-row--pressed' : ''}}" bindtap="openCourseAssistant" aria-role="button" aria-label="打开小易选课">
+      <view class="setting-copy"><text class="setting-title">小易选课</text><text class="setting-caption">通识与体育课程指南</text></view>
       <view class="course-assistant-setting-value"><text>去看看</text><lucide-icon name="chevron-right" tone="muted" size="{{22}}"></lucide-icon></view>
     </view>
     <view wx:if="{{courseGrabVisible}}" class="setting-row setting-row--divided setting-row--action {{openingSetting === 'course-grab' ? 'setting-row--pressed' : ''}}" bindtap="openCourseGrab" aria-role="button" aria-label="打开抢课助手（实验）">

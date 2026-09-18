@@ -22,7 +22,7 @@ assert.ok(
 );
 
 const profile = read("miniprogram/pages/profile/index.wxml");
-assert.match(profile, />选课助手</);
+assert.match(profile, />小易选课</);
 assert.match(profile, /bindtap="openCourseAssistant"/);
 
 const page = read("miniprogram/features/pages/course-assistant/index.wxml");

@@ -143,7 +143,7 @@ assert(
     profileTemplate.includes('wx:if="{{autoDormCheckVisible}}"') &&
     profileTemplate.includes("{{autoDormCheckStatusLabel}}") &&
     profileTemplate.includes("{{autoDormCheckTitle}}") &&
-    profileScript.includes('return "自动查寝（限免）"') &&
+    profileScript.includes('return "小易打卡（限免）"') &&
     profileScript.includes("status.remainingDays > 0") &&
     profileScript.includes("status.remainingUses > 0") &&
     profileTemplate.includes(

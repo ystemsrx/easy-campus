@@ -85,15 +85,15 @@ export function autoDormCheckSettingTitle(
     "paymentEnabled" | "remainingDays" | "remainingUses"
   >,
 ): string {
-  if (status.paymentEnabled === false) return "自动查寝（限免）";
-  if (status.paymentEnabled !== true) return "自动查寝";
+  if (status.paymentEnabled === false) return "小易打卡（限免）";
+  if (status.paymentEnabled !== true) return "小易打卡";
   if (status.remainingDays > 0) {
-    return `自动查寝（${status.remainingDays}天）`;
+    return `小易打卡（${status.remainingDays}天）`;
   }
   if (status.remainingUses > 0) {
-    return `自动查寝（${status.remainingUses}次）`;
+    return `小易打卡（${status.remainingUses}次）`;
   }
-  return "自动查寝";
+  return "小易打卡";
 }
 
 export function profileUserPatch(user: CurrentUserData | null) {
@@ -130,7 +130,7 @@ export function autoDormCheckPresentationPatch(
   if (!status) {
     return {
       autoDormCheckVisible: demoAccount,
-      autoDormCheckTitle: "自动查寝",
+      autoDormCheckTitle: "小易打卡",
       autoDormCheckStatusLabel: "已关闭",
       autoDormCheckStatusTone: "muted" as const,
     };
