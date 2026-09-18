@@ -25,8 +25,8 @@
 .poster-edition { display: flex; flex: none; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8rpx; font-size: 11rpx; }
 .poster-dot { flex: none; width: 8rpx; height: 8rpx; border-radius: 50%; background-color: #153d30; }
 .poster-type { position: relative; margin-top: 24rpx; padding-left: 10rpx; padding-bottom: 18rpx; }
-.poster-take { display: block; color: #153d30; font-family: Georgia, "Times New Roman", serif; font-size: 104rpx; font-style: italic; letter-spacing: -5rpx; line-height: 1.1; white-space: nowrap; }
-.poster-easy { display: block; color: #153d30; font-family: Georgia, "Times New Roman", serif; font-size: 174rpx; font-style: italic; font-weight: 700; letter-spacing: -12rpx; line-height: 1.18; white-space: nowrap; }
+.poster-take { display: block; color: #153d30; font-family: "Easy SWU Serif", Georgia, "Times New Roman", serif; font-size: 104rpx; font-style: italic; letter-spacing: -5rpx; line-height: 1.1; white-space: nowrap; }
+.poster-easy { display: block; color: #153d30; font-family: "Easy SWU Serif", Georgia, "Times New Roman", serif; font-size: 174rpx; font-style: italic; font-weight: 700; letter-spacing: -12rpx; line-height: 1.18; white-space: nowrap; }
 .poster-art { position: absolute; top: 410rpx; left: 28rpx; width: 450rpx; height: 260rpx; }
 .poster-footer { position: absolute; right: 28rpx; bottom: 25rpx; left: 28rpx; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; justify-content: space-between; padding-top: 15rpx; border-top: 1rpx solid rgba(21, 61, 48, 0.45); }
 .poster-caption { flex: none; color: #153d30; font-size: 23rpx; font-weight: 700; letter-spacing: 2rpx; white-space: nowrap; }

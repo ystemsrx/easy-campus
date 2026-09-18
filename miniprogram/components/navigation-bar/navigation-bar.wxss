@@ -104,7 +104,7 @@
   max-width: 100%;
   color: #16161a;
   color: var(--visual-component-text, #16161a);
-  font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 42rpx;
   font-weight: 700;
   line-height: 1.08;

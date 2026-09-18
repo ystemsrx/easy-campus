@@ -150,7 +150,7 @@ page {
   --visual-component-icon-radius: 50%;
   --visual-component-card-shadow: 0 18rpx 52rpx -26rpx rgba(62, 110, 82, 0.18);
   --visual-component-pop-shadow: 0 28rpx 76rpx -30rpx rgba(62, 110, 82, 0.24);
-  --visual-component-font-display: Georgia, "Times New Roman", "Songti SC",
+  --visual-component-font-display: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC",
     "Noto Serif SC", SimSun, serif;
   --visual-component-art-filter: saturate(0.9);
 }
@@ -360,7 +360,7 @@ page {
 
 .display,
 .display-title {
-  font-family: Georgia, "Times New Roman", "Songti SC", "Noto Serif SC",
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", "Noto Serif SC",
     SimSun, serif;
   letter-spacing: -1rpx;
 }

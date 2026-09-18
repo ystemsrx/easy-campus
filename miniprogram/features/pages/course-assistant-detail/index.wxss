@@ -249,7 +249,7 @@
 .detail-rating-value {
   flex: none;
   color: var(--guide-clay-deep);
-  font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 31rpx;
   font-weight: 700;
 }
@@ -292,7 +292,7 @@
 
 .big-score {
   color: var(--guide-clay-deep);
-  font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 105rpx;
   font-weight: 900;
   line-height: 0.92;
@@ -326,7 +326,7 @@
 .recommendation-value {
   display: block;
   color: var(--guide-ink);
-  font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 43rpx;
   font-weight: 700;
   line-height: 1;
@@ -883,7 +883,7 @@
   border-radius: 26rpx;
   color: #fff8f2;
   background-color: var(--guide-clay);
-  font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+  font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;
   font-size: 27rpx;
   font-weight: 700;
   line-height: 91rpx;

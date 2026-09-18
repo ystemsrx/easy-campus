@@ -19,7 +19,7 @@
 .notice-native-list-body-rich-text { display: block; color: #3a352d; font-size: 27rpx; line-height: 1.75; word-break: normal; }
 .notice-rich-text .notice-doc { color: #3a352d; font-size: 27rpx; line-height: 1.85; }
 .notice-rich-text .notice-paragraph { margin: 0 0 24rpx; }
-.notice-rich-text .notice-heading-1 { margin: 40rpx 0 19rpx; color: #16161a; font-family: Georgia, "Songti SC", serif; font-size: 37rpx; font-weight: 750; line-height: 1.4; }
+.notice-rich-text .notice-heading-1 { margin: 40rpx 0 19rpx; color: #16161a; font-family: "Easy SWU Serif", Georgia, "Songti SC", serif; font-size: 37rpx; font-weight: 750; line-height: 1.4; }
 .notice-rich-text .notice-heading-2 { margin: 34rpx 0 16rpx; color: #16161a; font-size: 31rpx; font-weight: 750; line-height: 1.45; }
 .notice-rich-text .notice-heading-3 { margin: 28rpx 0 14rpx; color: #16161a; font-size: 28rpx; font-weight: 750; }
 .notice-rich-text .notice-list { margin: 16rpx 0 25rpx; padding-left: 42rpx; }

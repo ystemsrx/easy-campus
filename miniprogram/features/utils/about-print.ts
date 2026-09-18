@@ -71,9 +71,9 @@ function drawPoster(context: DrawingContext): void {
   trackedText(context, "EASY SWU", 28, 43, 1);
   context.font = "bold 10px sans-serif";
   trackedText(context, "FOR CAMPUS LIFE", 338, 43, 1);
-  context.font = "italic 104px Georgia, serif";
+  context.font = 'italic 104px "Easy SWU Serif", Georgia, serif';
   trackedText(context, "take it", 38, 171, -5);
-  context.font = "italic bold 174px Georgia, serif";
+  context.font = 'italic bold 174px "Easy SWU Serif", Georgia, serif';
   trackedText(context, "easy.", 28, 355, -12);
   context.save();
   context.translate(28, 410);

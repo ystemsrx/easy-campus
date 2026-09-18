@@ -172,7 +172,7 @@ assert(
 
 assert(
   appStyles.includes(
-    'font-family: Georgia, "Times New Roman", "Songti SC", "Noto Serif SC",',
+    'font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", "Noto Serif SC",',
   ) &&
     appStyles.includes("border: 0;\n  border-radius: 44rpx;") &&
     appStyles.includes(
@@ -183,7 +183,7 @@ assert(
     tabBarStyles.includes("--tab-pill: #2b2620;") &&
     tabBarStyles.includes("--tab-pill: #f7f3e9;") &&
     navigationStyles.includes(
-      'font-family: Georgia, "Times New Roman", "Songti SC", SimSun, serif;',
+      'font-family: "Easy SWU Serif", Georgia, "Times New Roman", "Songti SC", SimSun, serif;',
     ),
   "默认主题的字体、主色、通知红点和底栏必须保持原有样式",
 );

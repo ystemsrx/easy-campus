@@ -15,6 +15,7 @@ import {
 } from "./utils/icon-preload";
 import { registerAuthenticationRoute } from "./utils/navigation";
 import { prepareLaunchNavigation } from "./utils/tab-navigation";
+import { getApiUrl } from "./config/index";
 import { syncSessionDeviceInfo } from "./services/session-device-info";
 
 App<IAppOption>({
@@ -26,6 +27,12 @@ App<IAppOption>({
     foregroundEntryId: 0,
   },
   onLaunch(options) {
+    wx.loadFontFace({
+      family: "Easy SWU Serif",
+      source: `url("${getApiUrl("assets/fonts/source-han-serif-cn-semibold-v1.woff")}")`,
+      global: true,
+      fail: (error) => console.warn("衬线字体加载失败", error),
+    });
     prepareLaunchNavigation(options?.path, options?.query);
     registerAuthenticationRoute();
     this.globalData.session = loadSession();

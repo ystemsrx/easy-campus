@@ -19,7 +19,7 @@
   border-radius: 32rpx;
   color: var(--visual-component-primary, #b85c38);
   background-color: var(--visual-component-primary-soft, #f9eae2);
-  font-family: Georgia, "Songti SC", serif;
+  font-family: "Easy SWU Serif", Georgia, "Songti SC", serif;
   font-size: 34rpx;
   font-weight: 700;
 }
