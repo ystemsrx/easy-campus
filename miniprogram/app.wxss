@@ -21,8 +21,8 @@ page {
   overflow: hidden;
   color: #16161a;
   background: #f7f5ef;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "PingFang SC", "Hiragino Sans GB", sans-serif;
   font-size: 28rpx;
   line-height: 1.5;
 }
@@ -250,8 +250,8 @@ page {
   --radius-hero: 8rpx;
   --radius-control: 4rpx;
   --radius-icon: 0;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
+  --font-display: "Microsoft YaHei", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "PingFang SC", sans-serif;
   --theme-art-filter: grayscale(1) contrast(1.12);
   --theme-decoration-display: none;
   --theme-decoration-opacity: 0;
@@ -279,8 +279,8 @@ page {
   --visual-component-icon-radius: 0;
   --visual-component-card-shadow: none;
   --visual-component-pop-shadow: none;
-  --visual-component-font-display: -apple-system, BlinkMacSystemFont,
-    "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --visual-component-font-display: "Microsoft YaHei", -apple-system,
+    BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
   --visual-component-art-filter: grayscale(1) contrast(1.12);
 }
 
@@ -909,12 +909,6 @@ page {
 .page.theme-style-soft .preview-ring--two,
 .page.theme-style-soft .guide-ring--two {
   display: none;
-}
-
-.page.theme-style-minimal .display,
-.page.theme-style-minimal .display-title {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
 }
 
 .page.theme-style-minimal .ambient-blob {
