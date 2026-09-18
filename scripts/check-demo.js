@@ -31,13 +31,14 @@ function boot(storage = new Map()) {
   let page;
   let route = "pages/home/index";
   const wx = {
+    env: { USER_DATA_PATH: "wxfile://demo-user" },
     getStorageSync: (key) => structuredClone(storage.get(key)),
     setStorageSync: (key, value) => storage.set(key, structuredClone(value)),
     removeStorageSync: (key) => storage.delete(key),
     getAppBaseInfo: () => ({ theme: "light" }),
     getWindowInfo: () => ({ windowWidth: 375, windowHeight: 812 }),
     getAccountInfoSync: () => ({ miniProgram: { envVersion: "release" } }),
-    loadFontFace: () => {},
+    loadFontFace: ({ success }) => success?.(),
     nextTick: (callback) => callback(),
     setBackgroundColor: () => {},
     showToast: () => {},
@@ -73,6 +74,15 @@ function boot(storage = new Map()) {
     "getRandomValues",
   ]) {
     wx[name] = (input) => {
+      if (
+        name === "request" &&
+        /\/assets\/fonts\/(?:serif-font-manifest|source-han-serif)/.test(
+          input.url,
+        )
+      ) {
+        input.fail?.({ errMsg: "offline demo" });
+        return;
+      }
       network.push({ name, input });
       throw new Error(`Unexpected platform call: ${name}`);
     };
