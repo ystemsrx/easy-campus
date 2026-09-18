@@ -415,6 +415,13 @@ function checkScheduleMonthBrowsingAndFold() {
   env.flushRenders();
   page.onReady();
   page.goDate("2026-09-18");
+  if (page.data.selectedDate !== "2026-09-18") {
+    page.onDayChange(event(
+      { windowStart: page.data.dayPages[0].selectedDate },
+      { current: page.data.dayCurrent },
+    ));
+    page.endScroll(page._motion.start.value, page._motion.sequence.value);
+  }
   env.flushRenders();
   page.setCalendarMode(event({ mode: "month" }));
   const selected = page.data.selectedDate;

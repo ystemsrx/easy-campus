@@ -37,6 +37,7 @@ function boot(storage = new Map()) {
     getAppBaseInfo: () => ({ theme: "light" }),
     getWindowInfo: () => ({ windowWidth: 375, windowHeight: 812 }),
     getAccountInfoSync: () => ({ miniProgram: { envVersion: "release" } }),
+    loadFontFace: () => {},
     nextTick: (callback) => callback(),
     setBackgroundColor: () => {},
     showToast: () => {},
