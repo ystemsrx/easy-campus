@@ -21,6 +21,7 @@ import { getDevicePublicKey } from "./device-proof";
 import { DEMO_PASSWORD, demoLoginData, isDemoAccount } from "../demo/identity";
 import { prepareDemoData } from "../demo/bootstrap";
 import { refreshProfileOnForeground } from "./profile-refresh";
+import { collectSessionDeviceInfo } from "./session-device-info";
 
 let loginRequestRevision = 0;
 
@@ -46,7 +47,12 @@ export async function login(
     ? demoLoginData()
     : await apiRequest<LoginData>("/auth/login", {
         method: "POST",
-        data: { account: account.trim(), password, devicePublicKey },
+        data: {
+          account: account.trim(),
+          password,
+          devicePublicKey,
+          deviceInfo: collectSessionDeviceInfo(),
+        },
         authenticated: false,
         retry: false,
         timeout: 70000,

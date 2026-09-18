@@ -9,9 +9,13 @@ import { beginAutomaticRefreshCycle } from "./store/cache-policy";
 import { loadTimetableSnapshot } from "./store/timetable";
 import { prewarmTimetableFirstScreen } from "./data/timetable-render";
 import { loadTimetableThemeId } from "./data/timetable-theme";
-import { preloadPrimaryTabAssets, preloadTimetableThemeAssets } from "./utils/icon-preload";
+import {
+  preloadPrimaryTabAssets,
+  preloadTimetableThemeAssets,
+} from "./utils/icon-preload";
 import { registerAuthenticationRoute } from "./utils/navigation";
 import { prepareLaunchNavigation } from "./utils/tab-navigation";
+import { syncSessionDeviceInfo } from "./services/session-device-info";
 
 App<IAppOption>({
   globalData: {
@@ -47,6 +51,7 @@ App<IAppOption>({
     beginAutomaticRefreshCycle();
     startHeartbeat();
     const session = this.globalData.session;
+    syncSessionDeviceInfo();
     void refreshExamsOnForeground(session);
     setTimeout(() => preloadPrimaryTabs(session), 0);
   },
