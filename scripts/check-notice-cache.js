@@ -14,9 +14,9 @@ const transpile = (file) =>
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
 const cache = {};
-new Function("require", "exports", "wx", transpile("store/notice-details.ts"))(
+new Function("require", "exports", "wx", transpile("features/store/notice-details.ts"))(
   (name) => {
-    if (name === "./cache-policy")
+    if (name === "../../store/cache-policy")
       return {
         DAY_MS: 86_400_000,
         timestampValue: (value) => (value ? Date.parse(value) || 0 : 0),
@@ -96,7 +96,7 @@ async function run() {
       captureSessionLease: () => ({ account: "account-a" }),
       isSessionLeaseCurrent: () => true,
     },
-    "../../../store/notice-details": cache,
+    "../../store/notice-details": cache,
     "../../utils/notice-attachments": {
       canPreviewAttachment: () => false,
       downloadNoticeAttachment() {},

@@ -141,6 +141,7 @@ const featureOnlyModules = [
   ["services", "utilities.ts"],
   ["store", "calendar.ts"],
   ["store", "course-assistant.ts"],
+  ["store", "notice-details.ts"],
   ["utils", "course-assistant.ts"],
   ["utils", "refresh-feedback.ts"],
   ["utils", "refresh-flight.ts"],

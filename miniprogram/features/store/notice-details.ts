@@ -1,5 +1,5 @@
-import type { NoticeDetail, QueryMeta } from "../types/api";
-import { DAY_MS, timestampValue } from "./cache-policy";
+import type { NoticeDetail, QueryMeta } from "../../types/api";
+import { DAY_MS, timestampValue } from "../../store/cache-policy";
 
 const STORAGE_KEY = "easy-swu:notice-details:v1";
 const SCHEMA_VERSION = 1;

@@ -134,7 +134,7 @@ const stubs = {
     captureSessionLease: () => ({}),
     isSessionLeaseCurrent: () => current,
   },
-  "../../../store/notice-details": {
+  "../../store/notice-details": {
     isNoticeDetailDue: () => true,
     loadNoticeDetailSnapshot: () => null,
     saveNoticeDetailSnapshot: () => null,

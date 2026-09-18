@@ -8,7 +8,7 @@ import { ensureAuthenticated } from "../../../utils/navigation";
 import {
   loadNoticeDetailSnapshot,
   saveNoticeDetailSnapshot,
-} from "../../../store/notice-details";
+} from "../../store/notice-details";
 import type {
   NoticeAttachment,
   NoticeContentBlock,
