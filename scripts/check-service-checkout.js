@@ -17,7 +17,6 @@ function harness() {
   const requests = [], storage = new Map(), timers = [], notices = [];
   const stubs = {
     "../../../services/request": { apiRequest: async (url, options) => { requests.push({ url, options }); return handler(url, options); }, getErrorMessage: (e, fallback) => e.message || fallback },
-    "../../../services/auto-dorm-check": { launchWechatPayment: async () => { launches++; if (outcome instanceof Error) throw outcome; return outcome; } },
     "../../../store/session": { captureSessionLease: () => ({ account }), isSessionLeaseCurrent: (lease) => lease.account === account, sessionLeaseKey: (lease) => lease.account },
     "../../../utils/navigation": { ensureAuthenticated() {}, navigateTo() {} },
     "../../../utils/appearance": { resolveAppearance: () => ({}), syncWindowBackground() {} },
@@ -26,7 +25,8 @@ function harness() {
     "../../utils/course-grab": { uuid: () => String(requests.length) },
     "../../../utils/service-order-return": { rememberServiceOrder() {} },
   };
-  const wx = { login: async () => ({ code: "login" }), setStorageSync: (k, v) => storage.set(k, v), getStorageSync: (k) => storage.get(k), removeStorageSync: (k) => storage.delete(k), showToast: (v) => notices.push(v) };
+  const wx = { login: async () => ({ code: "login" }), setStorageSync: (k, v) => storage.set(k, v), getStorageSync: (k) => storage.get(k), removeStorageSync: (k) => storage.delete(k), showToast: (v) => notices.push(v),
+    requestPayment: (options) => { launches++; if (outcome === "success") options.success(); else options.fail({ errMsg: outcome === "cancelled" ? "requestPayment:fail cancel" : "requestPayment:fail" }); } };
   function timeout(fn, ms) { const timer = { fn, ms, cancelled: false }; timers.push(timer); if (ms < 1000) setImmediate(() => { if (!timer.cancelled) fn(); }); return timer; }
   new Function("exports", "require", "Page", "wx", "setTimeout", "clearTimeout", compile(source))(
     {}, (name) => { assert(stubs[name], name); return stubs[name]; }, (value) => { definition = value; }, wx,
@@ -62,6 +62,9 @@ async function run() {
   assert.match(read("features/pages/service-order/index.wxss"), /@import "\.\.\/auto-dorm-check-payment\/index.wxss"/);
   assert.equal(JSON.parse(fs.readFileSync(path.resolve(root, "../project.config.json"))).appid, "wxcdfc32ad2fd7931c");
   assert.match(source, /onShareAppMessage: buildAppShare/);
+  assert.match(source, /options\.out_trade_no/);
+  assert.match(source, /service-orders\/by-trade-no/);
+  assert.match(source, /wx\.requestPayment/);
 
   const success = harness();
   assert.deepEqual(success.page.data.items.map((i) => i.price), ["1.00", "1.50"]);

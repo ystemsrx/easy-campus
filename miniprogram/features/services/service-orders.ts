@@ -2,6 +2,7 @@ import { apiRequest } from "../../services/request";
 import type { CourseGrabOrder } from "../../services/course-grab";
 export interface ServiceOrder {
   order_id: string; platform_name: string; amount_fen: number; billable_units: number; unit_price_fen: number;
+  out_trade_no: string | null;
   code_status: string; code_expires_at: number; payment_status: string; created_at: number; paid_at: number | null;
   payment_channel: string | null; payment_deadline: number | null;
   service_items: { id: string; name: string; quantity: number; billable_units: number }[];
@@ -21,7 +22,7 @@ export async function getServiceOrders(page: number) {
   return { items: data.items.map((o) => ({ id: o.order_id, title: o.platform_name, planName: o.platform_name, planId: "service_unit_050", statusLabel: serviceStatus(o),
     amountCents: o.amount_fen, status: o.payment_status === "PAID" ? "paid" : "pending", credited: o.payment_status === "PAID",
     paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null, createdAt: new Date(o.created_at).toISOString(),
-    outTradeNo: o.order_id, refundedCents: o.refunds.filter((r) => r.status === "SUCCEEDED").reduce((s, r) => s + r.amount_fen, 0),
+    outTradeNo: o.out_trade_no || o.order_id, refundedCents: o.refunds.filter((r) => r.status === "SUCCEEDED").reduce((s, r) => s + r.amount_fen, 0),
     refunds: [], refund: { refundable: false, amountCents: 0, unavailableReason: null, requiresApple: false },
   } as CourseGrabOrder & { title: string; statusLabel: string })),
     pagination: { page, totalPages: data.hasMore ? page + 1 : page } };

@@ -1,10 +1,9 @@
 import { apiRequest, getErrorMessage } from "../../../services/request";
-import { launchWechatPayment } from "../../../services/auto-dorm-check";
 import { captureSessionLease, isSessionLeaseCurrent, sessionLeaseKey, type SessionLease } from "../../../store/session";
 import { ensureAuthenticated, navigateTo } from "../../../utils/navigation";
 import { resolveAppearance, syncWindowBackground } from "../../../utils/appearance";
 import { buildAppShare } from "../../../utils/app-share";
-import type { WechatPaymentParameters } from "../../../types/api";
+import type { WechatJsapiPaymentParameters } from "../../../types/api";
 import { serviceStatus, type ServiceOrder } from "../../services/service-orders";
 import { uuid } from "../../utils/course-grab";
 import { rememberServiceOrder } from "../../../utils/service-order-return";
@@ -17,6 +16,31 @@ const flowRevisions = new WeakMap<object, number>();
 const progressTransitions = new WeakMap<object, { close?: ReturnType<typeof setTimeout> }>();
 type ServiceOrderResult = { order: ServiceOrder };
 const wait = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+function launchJsapiPayment(payment: WechatJsapiPaymentParameters): Promise<"success" | "cancelled"> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (result: "success" | "cancelled" | Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (result instanceof Error) reject(result);
+      else resolve(result);
+    };
+    const timer = setTimeout(() => finish(new Error("支付结果未返回，请查看订单")), 60_000);
+    wx.requestPayment({
+      timeStamp: payment.timeStamp,
+      nonceStr: payment.nonceStr,
+      package: payment.package,
+      signType: payment.signType,
+      paySign: payment.paySign,
+      success: () => finish("success"),
+      fail: (error) => {
+        if (/\bcancel(?:led|ed)?\b/i.test(error.errMsg || "")) finish("cancelled");
+        else finish(new Error("未能打开支付，请重试"));
+      },
+    });
+  });
+}
 const isFlowCurrent = (instance: object, revision: number, lease: SessionLease) =>
   activePages.has(instance) && flowRevisions.get(instance) === revision && isSessionLeaseCurrent(lease);
 const shouldPollOrder = (order: ServiceOrder) => ["PROCESSING", "RECONCILING"].includes(order.payment_status);
@@ -33,7 +57,7 @@ async function queryServicePayment(id: string): Promise<ServiceOrderResult> {
 Page({
   onShareAppMessage: buildAppShare,
   data: {
-    ...resolveAppearance(), code: "", id: "", order: null as ServiceOrder | null,
+    ...resolveAppearance(), code: "", id: "", tradeNo: "", order: null as ServiceOrder | null,
     items: [] as { id: string; name: string; price: string }[],
     price: "", status: "", refundSummary: "", busy: false, error: "", canPay: false,
     processing: false, checkingPayment: false, canResumePayment: false,
@@ -50,13 +74,13 @@ Page({
   onLoad(options: Record<string, string>) {
     activePages.add(this);
     flowRevisions.set(this, 0);
-    this.setData({ code: options.code || "", id: options.id || "" });
+    this.setData({ code: options.code || "", id: options.id || "", tradeNo: options.out_trade_no || "" });
   },
   onShow() {
     this._visible = true;
     const lease = captureSessionLease();
     if (!lease) {
-      rememberServiceOrder(this.data.code, this.data.id);
+      rememberServiceOrder(this.data.code, this.data.id, this.data.tradeNo);
       this.stopFlow();
       this.setData({ order: null, items: [], busy: false, canPay: false });
       ensureAuthenticated();
@@ -71,7 +95,7 @@ Page({
     const appearance = resolveAppearance();
     syncWindowBackground(appearance);
     this.setData(appearance);
-    if (!this.data.busy && (this.data.id || this.data.code)) void this.load();
+    if (!this.data.busy && (this.data.id || this.data.code || this.data.tradeNo)) void this.load();
   },
   onHide() {
     this._visible = false;
@@ -234,6 +258,8 @@ Page({
           if (!this.data.id || !isFlowCurrent(this, revision, lease)) throw error;
           order = await apiRequest<ServiceOrder>(`/service-orders/${this.data.id}`);
         }
+      } else if (this.data.tradeNo) {
+        order = await apiRequest<ServiceOrder>(`/service-orders/by-trade-no/${encodeURIComponent(this.data.tradeNo)}`);
       } else order = await apiRequest<ServiceOrder>(`/service-orders/${this.data.id}`);
       if (!isFlowCurrent(this, revision, lease)) return;
       this.apply(order);
@@ -318,14 +344,14 @@ Page({
         wx.setStorageSync(pendingKey(lease.account, this.data.id), true);
         if (!pending(lease.account, this.data.id)) throw new Error("订单保存失败，请稍后重试");
         attempted = true;
-        const created = await apiRequest<ServiceOrderResult & { payment: WechatPaymentParameters | null }>(
+        const created = await apiRequest<ServiceOrderResult & { payment: WechatJsapiPaymentParameters | null }>(
           `/service-orders/${this.data.id}/payment-attempts`,
           { method: "POST", retry: false, data: { code: this.data.code, login_code: login.code } });
         if (!current()) return;
         this.apply(created.order);
         result = created;
         if (created.payment && this._visible && this._launchAllowed) {
-          const outcome = await launchWechatPayment(created.payment);
+          const outcome = await launchJsapiPayment(created.payment);
           if (!current()) return;
           if (outcome === "cancelled") {
             this.setPaymentView({ processing: false, checkingPayment: true, pendingResult: true });
