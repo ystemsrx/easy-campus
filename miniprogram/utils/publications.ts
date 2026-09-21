@@ -12,6 +12,16 @@ export function resolvePublicationPanelHeight(
   return Math.max(1, Math.min(maximum, desired));
 }
 
+export function resolveAnnouncementScrollHeight(
+  maxScrollHeight: number,
+  contentHeight: number,
+  hasImage: boolean,
+): number {
+  const maximum = Math.max(1, maxScrollHeight);
+  const desired = hasImage ? maximum : contentHeight;
+  return Math.ceil(Math.max(1, Math.min(maximum, desired)));
+}
+
 function publicationTimestamp(publication: Publication): number {
   const startsAt = Date.parse(publication.startsAt);
   if (Number.isFinite(startsAt)) return startsAt;

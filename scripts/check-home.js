@@ -30,8 +30,11 @@ function loadTypeScriptModule(relativePath) {
 const { resolveHomeIdentity } = loadTypeScriptModule("utils/identity.ts");
 const { renderMarkdown, renderMarkdownBlocks, stripMarkdown } =
   loadTypeScriptModule("utils/markdown.ts");
-const { resolvePublicationPanelHeight, sortPublicationsNewestFirst } =
-  loadTypeScriptModule("utils/publications.ts");
+const {
+  resolveAnnouncementScrollHeight,
+  resolvePublicationPanelHeight,
+  sortPublicationsNewestFirst,
+} = loadTypeScriptModule("utils/publications.ts");
 const {
   isCurrentSemesterId,
   isCurrentSemesterTimestamp,
@@ -884,6 +887,15 @@ const announcementPresenter =
   /async presentAnnouncement\([\s\S]*?\n  \},\n  measureAnnouncementModal/.exec(
     homeScript,
   )?.[0] || "";
+assert(
+  resolveAnnouncementScrollHeight(420, 80, false) === 80 &&
+    resolveAnnouncementScrollHeight(420, 80, true) === 420 &&
+    resolveAnnouncementScrollHeight(420, 520, false) === 420 &&
+    /resolveAnnouncementScrollHeight\([\s\S]*?maxScrollHeight,[\s\S]*?contentHeight,[\s\S]*?Boolean\(this\.data\.activeAnnouncement\?\.media\.length\)/.test(
+      homeScript,
+    ),
+  "含图片的公告弹窗必须始终使用可用的最大高度",
+);
 assert(
   darkAnnouncement.includes("正文") &&
     darkAnnouncement.includes("color:#ddd5c7") &&

@@ -157,6 +157,7 @@ import {
 } from "../../utils/navigation";
 import { progressRingSource } from "../../utils/progress-ring";
 import {
+  resolveAnnouncementScrollHeight,
   resolvePublicationPanelHeight,
   sortPublicationsNewestFirst,
 } from "../../utils/publications";
@@ -2153,8 +2154,10 @@ Page({
             Number.isFinite(measuredContentHeight) && measuredContentHeight > 0
               ? measuredContentHeight
               : probeContentHeight;
-          const announcementScrollHeight = Math.ceil(
-            Math.min(maxScrollHeight, contentHeight),
+          const announcementScrollHeight = resolveAnnouncementScrollHeight(
+            maxScrollHeight,
+            contentHeight,
+            Boolean(this.data.activeAnnouncement?.media.length),
           );
           this.setData({ announcementScrollHeight }, () => {
             if (
