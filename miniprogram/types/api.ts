@@ -155,15 +155,6 @@ export interface WechatPaymentParameters {
   signature: string;
 }
 
-export interface WechatJsapiPaymentParameters {
-  mode: "jsapi";
-  timeStamp: string;
-  nonceStr: string;
-  package: string;
-  signType: "RSA";
-  paySign: string;
-}
-
 export interface AutoDormCheckPaymentOrderResult {
   order: AutoDormCheckPaymentOrder;
   entitlement: AutoDormCheckEntitlement;
