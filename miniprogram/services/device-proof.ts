@@ -22,6 +22,65 @@ export interface DeviceProofHeaders extends Record<string, string> {
 let keyPromise: Promise<StoredDeviceKey> | null = null;
 let sessionHashCache: { token: string; hash: string } | null = null;
 let serverClock: { origin: string; offsetMs: number } | null = null;
+let clockSyncFlight: { origin: string; promise: Promise<void> } | null = null;
+
+export async function ensureDeviceProofClock(force = false): Promise<void> {
+  const origin = apiOrigin();
+  if (!force && serverClock?.origin === origin) return;
+  if (clockSyncFlight?.origin === origin) return clockSyncFlight.promise;
+  const promise = new Promise<void>((resolve) => {
+    const url = getApiUrl("/system/time");
+    const startedAt = Date.now();
+    wx.request({
+      url,
+      method: "GET",
+      timeout: 3000,
+      header: { Accept: "application/json", "Cache-Control": "no-cache" },
+      success: (response) => {
+        const payload = response.data as {
+          success?: unknown;
+          data?: { serverTime?: unknown };
+        };
+        if (response.statusCode === 200 && payload?.success === true) {
+          synchronizeDeviceProofClockFromTimestamp(
+            payload.data?.serverTime,
+            startedAt,
+            url,
+          );
+        }
+        resolve();
+      },
+      fail: () => resolve(),
+    });
+  });
+  clockSyncFlight = { origin, promise };
+  try {
+    await promise;
+  } finally {
+    if (clockSyncFlight?.promise === promise) clockSyncFlight = null;
+  }
+}
+
+export function synchronizeDeviceProofClockFromTimestamp(
+  value: unknown,
+  requestStartedAt: number,
+  requestUrl: string,
+): void {
+  const receivedAt = Date.now();
+  const elapsed = receivedAt - requestStartedAt;
+  const timestamp = Number(value);
+  const origin = apiOrigin();
+  if (
+    requestUrl.split("/").slice(0, 3).join("/") !== origin ||
+    !Number.isSafeInteger(timestamp) ||
+    timestamp <= 0 ||
+    !Number.isFinite(elapsed) ||
+    elapsed < 0 ||
+    elapsed > 10_000
+  )
+    return;
+  serverClock = { origin, offsetMs: timestamp + elapsed / 2 - receivedAt };
+}
 
 export function synchronizeDeviceProofClock(
   headers: Record<string, unknown> | undefined,
@@ -54,7 +113,11 @@ export function synchronizeDeviceProofClock(
     return;
   // HTTP Date has second precision. Only use fresh, fast responses from the API;
   // a suspended app or debugger must not turn a long pause into a clock offset.
-  serverClock = { origin, offsetMs: timestamp + elapsed / 2 - receivedAt };
+  synchronizeDeviceProofClockFromTimestamp(
+    timestamp,
+    requestStartedAt,
+    requestUrl,
+  );
 }
 
 function apiOrigin(): string {

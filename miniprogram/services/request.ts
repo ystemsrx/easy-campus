@@ -23,9 +23,11 @@ import { goToLogin } from "../utils/navigation";
 import {
   canonicalRequestTarget,
   createDeviceProofHeaders,
+  ensureDeviceProofClock,
   getDevicePublicKey,
   hashRequestData,
   synchronizeDeviceProofClock,
+  synchronizeDeviceProofClockFromTimestamp,
 } from "./device-proof";
 import type { DeviceBinding } from "../types/api";
 
@@ -71,10 +73,7 @@ const CAMPUS_CREDENTIAL_INVALIDATION_CODES = new Set([
   "SWU_ACCOUNT_DISABLED",
   "SWU_AUTH_RESPONSE_UNEXPECTED",
 ]);
-const RETRYABLE_ERROR_CODES = new Set([
-  "SWU_SESSION_EXPIRED",
-  "DEVICE_TIMESTAMP_OUT_OF_RANGE",
-]);
+const RETRYABLE_ERROR_CODES = new Set(["SWU_SESSION_EXPIRED"]);
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const ACCOUNT_DEACTIVATED_ERROR_CODE = "ACCOUNT_DEACTIVATED";
 const STALE_SESSION_ERROR_CODE = "STALE_SESSION";
@@ -216,7 +215,10 @@ function toApiError(data: unknown, statusCode: number): ApiClientError {
   if (payload?.success === false && payload.error) {
     return new ApiClientError({
       code: payload.error.code || "REQUEST_FAILED",
-      message: payload.error.message || "请求失败，请稍后重试。",
+      message:
+        payload.error.code === "DEVICE_REQUEST_PENDING"
+          ? ""
+          : payload.error.message || "请求失败，请稍后重试。",
       statusCode,
       details: payload.error.details,
       requestId: payload.requestId,
@@ -368,6 +370,8 @@ async function createRequestProof(
       statusCode: 401,
     });
   }
+  await ensureDeviceProofClock();
+  if (!isSessionLeaseCurrent(lease)) throw staleSessionError();
   const method = options.method || "GET";
   const requestTarget = canonicalRequestTarget(path);
   const bodyHash = hashRequestData(options.data);
@@ -472,6 +476,14 @@ async function requestOnce<T>(
         }
 
         const error = toApiError(response.data, response.statusCode);
+        if (error.code === "DEVICE_TIMESTAMP_OUT_OF_RANGE") {
+          synchronizeDeviceProofClockFromTimestamp(
+            (error.details as { serverTimestamp?: unknown } | undefined)
+              ?.serverTimestamp,
+            requestStartedAt,
+            requestUrl,
+          );
+        }
         if (authenticated) {
           if (!isCredentialInvalidationCode(error.code)) {
             handleAuthenticatedRequestError(
@@ -566,21 +578,26 @@ async function requestEnvelope<T>(
         isFeedbackDailyLimitError(apiError)
           ? FEEDBACK_DAILY_LIMITED_MESSAGE
           : apiError.code === "TIMETABLE_BACKGROUND_DAILY_LIMITED"
-          ? "更换背景过于频繁"
-          : "访问速度太快了",
+            ? "更换背景过于频繁"
+            : "访问速度太快了",
       );
       throw error;
     }
+    const clockRetry =
+      context.authenticated &&
+      apiError.code === "DEVICE_TIMESTAMP_OUT_OF_RANGE";
     const retryable =
-      options.retry !== false &&
-      (apiError.code === "NETWORK_ERROR" ||
-        RETRYABLE_ERROR_CODES.has(apiError.code) ||
-        RETRYABLE_STATUS_CODES.has(apiError.statusCode));
+      clockRetry ||
+      (options.retry !== false &&
+        (apiError.code === "NETWORK_ERROR" ||
+          RETRYABLE_ERROR_CODES.has(apiError.code) ||
+          RETRYABLE_STATUS_CODES.has(apiError.statusCode)));
     if (!retryable) {
       throw error;
     }
 
-    await wait(360);
+    if (clockRetry) await ensureDeviceProofClock(true);
+    else await wait(360);
     if (context.authenticated && !isSessionLeaseCurrent(context.lease)) {
       throw staleSessionError();
     }
@@ -632,10 +649,10 @@ export async function teachingRequest<T>(
   path: string,
   options?: RequestOptions,
 ): Promise<{ data: T; meta: QueryMeta }> {
-  const envelope = (await requestEnvelope<T>(
-    path,
-    { timeout: 90000, ...options },
-  )) as TeachingSuccess<T>;
+  const envelope = (await requestEnvelope<T>(path, {
+    timeout: 90000,
+    ...options,
+  })) as TeachingSuccess<T>;
   return {
     data: envelope.data,
     meta: envelope.meta || { cached: false },
@@ -654,6 +671,11 @@ export function getErrorMessage(
   }
   if (isRateLimitError(error)) return "";
   if (isCredentialReauthError(error)) return "";
+  if (
+    error instanceof ApiClientError &&
+    error.code === "DEVICE_REQUEST_PENDING"
+  )
+    return "";
   if (error instanceof ApiClientError && error.message) {
     return error.message;
   }

@@ -275,6 +275,12 @@ function isBindingLimited(error: unknown): boolean {
   );
 }
 
+function isPendingDuplicate(error: unknown): boolean {
+  return (
+    error instanceof ApiClientError && error.code === "DEVICE_REQUEST_PENDING"
+  );
+}
+
 function electricityRefreshFlightKey(lease: SessionLease): string {
   return `electricity:${sessionLeaseKey(lease)}`;
 }
@@ -318,6 +324,16 @@ async function refreshElectricity(
       unavailable: false,
     };
   } catch (error) {
+    if (isPendingDuplicate(error)) {
+      return {
+        succeeded: false,
+        showFailureFeedback: false,
+        input,
+        result: null,
+        errorMessage: "",
+        unavailable: false,
+      };
+    }
     const unavailable = isUnavailable(error);
     return {
       succeeded: false,
@@ -484,7 +500,9 @@ function toBuildingGroups(
   return { groups, otherRows: toBuildingRows(others) };
 }
 
-function toBuildingGroupRows(groups: ElectricityBuildingGroup[]): ElectricityBuildingGroupRow[] {
+function toBuildingGroupRows(
+  groups: ElectricityBuildingGroup[],
+): ElectricityBuildingGroupRow[] {
   const rows: ElectricityBuildingGroupRow[] = [];
   for (let index = 0; index < groups.length; index += 2) {
     rows.push({ id: groups[index].id, groups: groups.slice(index, index + 2) });
@@ -875,7 +893,9 @@ Page({
   },
   toggleBuildingGroup(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const index = this.data.buildingGroups.findIndex((group) => group.id === id);
+    const index = this.data.buildingGroups.findIndex(
+      (group) => group.id === id,
+    );
     if (index < 0) return;
     const rowIndex = Math.floor(index / 2);
     const existingTimer = buildingGroupTimers.get(rowIndex);
@@ -893,7 +913,10 @@ Page({
       const collapsed = this.data.buildingGroups.map((group, groupIndex) =>
         groupIndex === neighborIndex ? { ...group, expanded: false } : group,
       );
-      this.setData({ buildingGroups: collapsed, buildingGroupRows: toBuildingGroupRows(collapsed) });
+      this.setData({
+        buildingGroups: collapsed,
+        buildingGroupRows: toBuildingGroupRows(collapsed),
+      });
       const delay = this.data.motionClass === "motion-reduced" ? 0 : 280;
       const timer = setTimeout(() => {
         buildingGroupTimers.delete(rowIndex);
@@ -902,7 +925,10 @@ Page({
         const groups = this.data.buildingGroups.map((group) =>
           group.id === id ? { ...group, expanded: true } : group,
         );
-        this.setData({ buildingGroups: groups, buildingGroupRows: toBuildingGroupRows(groups) });
+        this.setData({
+          buildingGroups: groups,
+          buildingGroupRows: toBuildingGroupRows(groups),
+        });
       }, delay);
       buildingGroupTimers.set(rowIndex, timer);
       buildingGroupPendingIds.set(rowIndex, id);
@@ -911,7 +937,10 @@ Page({
     const groups = this.data.buildingGroups.map((group) =>
       group.id === id ? { ...group, expanded: !group.expanded } : group,
     );
-    this.setData({ buildingGroups: groups, buildingGroupRows: toBuildingGroupRows(groups) });
+    this.setData({
+      buildingGroups: groups,
+      buildingGroupRows: toBuildingGroupRows(groups),
+    });
   },
   selectBuilding(event: WechatMiniprogram.TouchEvent) {
     const selected = this.data.allBuildings.find(
@@ -1044,7 +1073,9 @@ Page({
       ) {
         return false;
       }
-      if (isUnavailable(error)) {
+      if (isPendingDuplicate(error)) {
+        // The original query may still finish; keep the current snapshot.
+      } else if (isUnavailable(error)) {
         this.setData({
           serviceUnavailable: true,
           errorMessage: "",

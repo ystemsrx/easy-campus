@@ -84,9 +84,11 @@ new Function(
       return {
         canonicalRequestTarget: (value) => value,
         createDeviceProofHeaders: async () => ({}),
+        ensureDeviceProofClock: async () => {},
         getDevicePublicKey: async () => "public-key",
         hashRequestData: () => "body-hash",
         synchronizeDeviceProofClock: () => {},
+        synchronizeDeviceProofClockFromTimestamp: () => {},
       };
     }
     throw new Error(`Unexpected request dependency: ${specifier}`);

@@ -43,7 +43,18 @@ function runtime(options = {}) {
     showToast: (value) => feedback.push(value),
     request(request) {
       requests.push(request);
-      const index = requests.length - 1;
+      if (new URL(request.url).pathname === "/api/v1/system/time") {
+        if (options.failClockSync) request.fail({ errMsg: "request:fail" });
+        else
+          request.success({
+            statusCode: 200,
+            header: {},
+            data: { success: true, data: { serverTime: serverNow } },
+          });
+        return;
+      }
+      const index =
+        requests.filter((entry) => entry.header.Authorization).length - 1;
       advance(options.delays?.[index] || 0);
       let code = options.errors?.[index];
       if (request.header.Authorization) {
@@ -94,7 +105,14 @@ function runtime(options = {}) {
         statusCode: options.statusCodes?.[index] || (code ? 401 : 200),
         header: { dAtE: new Date(serverNow).toUTCString() },
         data: code
-          ? { success: false, error: { code, message: code } }
+          ? {
+              success: false,
+              error: {
+                code,
+                message: code,
+                details: { serverTimestamp: serverNow },
+              },
+            }
           : { success: true, data: { courses: [] }, meta: { cached: true } },
       });
     },
@@ -178,6 +196,12 @@ function runtime(options = {}) {
     request: load("services/request"),
     proof: load("services/device-proof"),
     requests,
+    signedRequests: () =>
+      requests.filter((entry) => entry.header.Authorization),
+    timeRequests: () =>
+      requests.filter(
+        (entry) => new URL(entry.url).pathname === "/api/v1/system/time",
+      ),
     feedback,
     session,
     clientNow: () => clientNow,
@@ -203,10 +227,11 @@ async function main() {
   for (const offsetMs of [-448_548, 448_548]) {
     const fixture = runtime({ offsetMs });
     await fixture.request.teachingRequest(target);
-    assert.equal(fixture.requests.length, 2, "clock skew retries once");
-    assert.notEqual(
-      fixture.requests[0].header["X-Device-Nonce"],
-      fixture.requests[1].header["X-Device-Nonce"],
+    assert.equal(fixture.timeRequests().length, 1, "clock sync runs once");
+    assert.equal(
+      fixture.signedRequests().length,
+      1,
+      "first proof uses server time",
     );
     assert.ok(
       Math.abs((await signedTimestamp(fixture)) - fixture.serverNow()) < 1000,
@@ -232,20 +257,21 @@ async function main() {
   const suspended = runtime({ delays: [448_548] });
   await suspended.request.teachingRequest(target);
   assert.equal(
-    suspended.requests.length,
+    suspended.signedRequests().length,
     2,
     "a paused old signature is regenerated",
   );
+  assert.equal(suspended.timeRequests().length, 2);
   assert.ok(
     Math.abs((await signedTimestamp(suspended)) - suspended.serverNow()) < 1000,
   );
 
   const lostResponse = runtime({ dropFirstResponse: true });
   await lostResponse.request.teachingRequest(target);
-  assert.equal(lostResponse.requests.length, 2);
+  assert.equal(lostResponse.signedRequests().length, 2);
   assert.notEqual(
-    lostResponse.requests[0].header["X-Device-Nonce"],
-    lostResponse.requests[1].header["X-Device-Nonce"],
+    lostResponse.signedRequests()[0].header["X-Device-Nonce"],
+    lostResponse.signedRequests()[1].header["X-Device-Nonce"],
   );
 
   const queryTargets = [
@@ -268,13 +294,16 @@ async function main() {
     ]) {
       const retrying = runtime(failure);
       await retrying.request.apiRequest(queryTarget);
-      assert.equal(retrying.requests.length, 2, queryTarget);
+      assert.equal(retrying.signedRequests().length, 2, queryTarget);
       assert.notEqual(
-        retrying.requests[0].header["X-Device-Nonce"],
-        retrying.requests[1].header["X-Device-Nonce"],
+        retrying.signedRequests()[0].header["X-Device-Nonce"],
+        retrying.signedRequests()[1].header["X-Device-Nonce"],
         queryTarget,
       );
-      assert.equal(retrying.requests[0].url, retrying.requests[1].url);
+      assert.equal(
+        retrying.signedRequests()[0].url,
+        retrying.signedRequests()[1].url,
+      );
       assert.deepEqual(retrying.feedback, []);
     }
   }
@@ -284,9 +313,14 @@ async function main() {
       Array.from({ length: 3 }, () => parallel.request.apiRequest(queryTarget)),
     ),
   );
-  const requestNonces = parallel.requests.map(
-    (request) => request.header["X-Device-Nonce"],
+  assert.equal(
+    parallel.timeRequests().length,
+    1,
+    "parallel requests share clock sync",
   );
+  const requestNonces = parallel
+    .signedRequests()
+    .map((request) => request.header["X-Device-Nonce"]);
   assert.equal(new Set(requestNonces).size, queryTargets.length * 3);
   assert.deepEqual(parallel.feedback, []);
 
@@ -319,15 +353,28 @@ async function main() {
   await assert.rejects(noRetry.request.apiRequest(target, { retry: false }), {
     code: "DEVICE_REQUEST_RETRY_REQUIRED",
   });
-  assert.equal(noRetry.requests.length, 1);
+  assert.equal(noRetry.signedRequests().length, 1);
+
+  const pendingWrite = runtime({
+    errors: ["DEVICE_REQUEST_PENDING"],
+    statusCodes: [409],
+  });
+  await assert.rejects(
+    pendingWrite.request.apiRequest("/auth/profile/refresh", {
+      method: "POST",
+      retry: false,
+    }),
+    (error) => {
+      assert.equal(error.message, "");
+      assert.equal(pendingWrite.request.getErrorMessage(error), "");
+      return error.code === "DEVICE_REQUEST_PENDING";
+    },
+  );
+  assert.equal(pendingWrite.signedRequests().length, 1);
+  assert.deepEqual(pendingWrite.feedback, []);
 
   for (const [options, requestOptions, expected, code] of [
-    [
-      { offsetMs: -448_548 },
-      { retry: false },
-      1,
-      "DEVICE_TIMESTAMP_OUT_OF_RANGE",
-    ],
+    [{ errors: ["DEVICE_TIMESTAMP_OUT_OF_RANGE"] }, { retry: false }, 2, null],
     [
       {
         errors: [
@@ -343,14 +390,14 @@ async function main() {
     [{ offsetMs: -448_548, switchSession: true }, {}, 1, "STALE_SESSION"],
   ]) {
     const fixture = runtime(options);
-    await assert.rejects(
-      fixture.request.teachingRequest(target, requestOptions),
-      (error) => error.code === code,
-    );
-    assert.equal(fixture.requests.length, expected);
+    if (code)
+      await assert.rejects(
+        fixture.request.teachingRequest(target, requestOptions),
+        (error) => error.code === code,
+      );
+    else await fixture.request.teachingRequest(target, requestOptions);
+    assert.equal(fixture.signedRequests().length, expected);
     assert.deepEqual(fixture.feedback, []);
-    if (code === "STALE_SESSION")
-      assert.equal(await signedTimestamp(fixture), fixture.clientNow());
   }
 
   const clock = runtime({ offsetMs: -448_548 });

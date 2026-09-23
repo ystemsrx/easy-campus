@@ -799,15 +799,21 @@ async function main() {
     network.push({ name: "request", input });
     input.success({
       statusCode: 200,
-      data: { success: true, data: { id: "real-feedback" } },
+      data: {
+        success: true,
+        data: input.url.endsWith("/system/time")
+          ? { serverTime: instant }
+          : { id: "real-feedback" },
+      },
     });
   };
   await load("services/feedback.ts").submitFeedback({
     type: "other",
     content: "normal request",
   });
-  assert.equal(network.length, 1);
-  assert.equal(network[0].input.header.Authorization, "Bearer real-token");
+  assert.equal(network.length, 2);
+  assert.ok(network[0].input.url.endsWith("/system/time"));
+  assert.equal(network[1].input.header.Authorization, "Bearer real-token");
   assert.equal(load("demo/bootstrap.ts").prepareDemoData(), false);
   assert.equal(app.globalData.user, null);
   console.log(
