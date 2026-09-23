@@ -205,7 +205,7 @@ return;if (patch.daySlide) wx.nextTick(() => {if (motion?.sequence.value === seq
 });
 });
 });
-},decorate(patch:Record<string,unknown>) {const date=String(patch.selectedDate || this.data.selectedDate);const plans=sch(acct).plans;const anchor=String(patch.monthAnchor || (date === this.data.selectedDate ? this.data.monthAnchor :date));Object.assign(patch,makeMonth(anchor,date,tb,plans,this.data.pg));if (patch.weekPages) {patch.weekPages=markWeekPages(
+},decorate(patch:Record<string,unknown>) {const date=String(patch.selectedDate || this.data.selectedDate);const plans=sch(acct).plans;const anchor=String(patch.monthAnchor || (date === this.data.selectedDate ? this.data.monthAnchor :date));Object.assign(patch,makeMonth(anchor,date,tb,plans,this.data.pg));if (this.data.monthOpen&&this.data.selectionVisible&&anchor.slice(0,7)!==date.slice(0,7))patch.selectionVisible=true;if (patch.weekPages) {patch.weekPages=markWeekPages(
 patch.weekPages as ReturnType<typeof makePager>["weekPages"],tb,plans,);
 }
 },rebuildWeek(forceRebase=false) {if (mv || this._motion?.active.value) {dy=true;return;
