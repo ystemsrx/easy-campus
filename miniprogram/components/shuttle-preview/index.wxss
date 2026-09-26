@@ -1,0 +1,24 @@
+:host { display: block; }
+.shuttle-preview { margin-top: 32rpx; margin-bottom: 16rpx; }
+.preview-heading { flex-wrap: nowrap; display: flex; align-items: center; justify-content: space-between; padding: 0 2rpx 21rpx; }
+.heading-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.preview-title { font-size: 31rpx; line-height: 42rpx; font-weight: 600; color: #283647; }
+.preview-subtitle { font-size: 21rpx; line-height: 30rpx; color: #929cab; margin-top: 5rpx; }
+.preview-enter { flex: none; white-space: nowrap; display: flex; align-items: center; gap: 5rpx; color: #5884bd; font-size: 23rpx; padding: 15rpx 0 15rpx 15rpx; }
+.preview-map-wrap { height: 316rpx; background: #ecf0f3; border-radius: 32rpx; overflow: hidden; position: relative; border: 1rpx solid #e7ebef; transition: opacity 180ms; }
+.preview-map-wrap--pressed { opacity: .85; }
+.preview-map { width: 100%; height: 260rpx; }
+.preview-bottom { position: absolute; height: 56rpx; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 22rpx; background: #fcfcfefa; }
+.preview-state { flex: 1; min-width: 0; flex-wrap: nowrap; display: flex; align-items: center; gap: 10rpx; font-size: 20rpx; color: #8a97a6; }
+.preview-dot { flex: none; width: 9rpx; height: 9rpx; border-radius: 10rpx; background: #b9c2cd; }
+.preview-dot--live { background: #65ab8d; }
+.preview-count { flex: none; margin-left: 12rpx; white-space: nowrap; font-size: 19rpx; color: #a0aab7; }
+.preview-placeholder { position: relative; height: 260rpx; overflow: hidden; background: #eef1f6; }
+.placeholder-route { position: absolute; border: 5rpx solid #bdcce1; border-radius: 46rpx; transform: rotate(-18deg); }
+.route-one { width: 410rpx; height: 138rpx; left: 90rpx; top: 38rpx; }
+.route-two { width: 205rpx; height: 175rpx; left: 155rpx; top: 2rpx; border-color: #d1ddeb; }
+.shuttle-preview--dark .preview-title { color: #e6ecf4; }
+.shuttle-preview--dark .preview-map-wrap { border-color: #333b45; }
+.shuttle-preview--dark .preview-bottom { background: #242b33; }
+
+.preview-state text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

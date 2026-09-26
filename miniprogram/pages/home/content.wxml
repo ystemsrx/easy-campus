@@ -232,6 +232,8 @@
     </view>
   </view>
 
+  <shuttle-preview active="{{!capsuleReplica}}" theme="{{theme}}"></shuttle-preview>
+
   <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="retryDashboard" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
 </view>
 </template>

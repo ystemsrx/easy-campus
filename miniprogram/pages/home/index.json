@@ -2,6 +2,7 @@
   "navigationStyle": "custom",
   "disableScroll": true,
   "usingComponents": {
-    "pet-picker-drawer": "/components/pet-picker-drawer/pet-picker-drawer"
+    "pet-picker-drawer": "/components/pet-picker-drawer/pet-picker-drawer",
+    "shuttle-preview": "/components/shuttle-preview/index"
   }
 }

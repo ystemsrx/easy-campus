@@ -1,0 +1,14 @@
+<view class="shuttle-preview {{theme === 'dark' ? 'shuttle-preview--dark' : ''}}">
+  <view class="preview-heading" bindtap="openShuttle" aria-role="button" aria-label="查看校车">
+    <view class="heading-copy"><text class="preview-title">校园校车</text></view>
+    <view class="preview-enter"><text>查看</text><lucide-icon name="arrow-up-right" tone="blue" size="25"></lucide-icon></view>
+  </view>
+  <view class="preview-map-wrap" bindtap="openShuttle" hover-class="preview-map-wrap--pressed">
+    <map wx:if="{{loaded && active}}" id="shuttle-preview-map" class="preview-map"
+      latitude="{{latitude}}" longitude="{{longitude}}" scale="{{scale}}" markers="{{markers}}" polyline="{{polylines}}"
+      show-location="{{false}}" enable-scroll="{{false}}" enable-zoom="{{false}}" enable-rotate="{{false}}" enable-overlooking="{{false}}"
+      enable-poi="{{false}}" enable-building="{{false}}" show-scale="{{false}}" bindtap="openShuttle"></map>
+    <view wx:else class="preview-placeholder"><view class="placeholder-route route-one"></view><view class="placeholder-route route-two"></view></view>
+    <view class="preview-bottom"><view class="preview-state"><view class="preview-dot {{live ? 'preview-dot--live' : ''}}"></view><text>{{status}}</text></view><text class="preview-count">{{countLabel}}</text></view>
+  </view>
+</view>

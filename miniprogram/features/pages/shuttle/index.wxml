@@ -1,0 +1,157 @@
+<view class="page shuttle-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}" style="height: {{windowHeight}}px;">
+  <rate-limit-toast id="rate-limit-toast" theme="{{theme}}" visual-theme="{{visualTheme}}" reduced-motion="{{motionClass === 'motion-reduced'}}"></rate-limit-toast>
+  <map id="campus-shuttle-map" class="campus-map" hidden="{{searchMounted || commonMounted}}" style="top: {{mapTop}}px; height: {{mapHeight}}px;"
+    latitude="{{latitude}}" longitude="{{longitude}}" scale="{{scale}}" min-scale="12" max-scale="19"
+    polyline="{{polylines}}" circles="{{circles}}" show-location="{{false}}" enable-scroll="{{true}}" enable-zoom="{{true}}"
+    enable-rotate="{{false}}" enable-overlooking="{{false}}" enable-poi="{{true}}" enable-building="{{false}}" show-scale="{{true}}"
+    bindtap="onMapTap" bindpoitap="onMapTap" bindregionchange="onRegionChange" bindmarkertap="onMarkerTap" bindupdated="onMapUpdated"></map>
+  <canvas type="2d" id="route-trace-canvas" class="route-trace-canvas" style="top: {{mapTop}}px; height: {{mapHeight}}px; opacity: {{routeAnimating && !searchMounted && !commonMounted ? 1 : 0}};" disable-scroll="{{false}}"></canvas>
+
+  <view class="map-header" id="map-header">
+    <view id="shuttle-navigation"><navigation-bar title="小易校车" back transparent theme="{{theme}}" bindback="onHide"></navigation-bar></view>
+    <view class="map-controls">
+    <view class="journey-fields">
+    <view class="search-entry origin-entry" bindtap="openBoardingSearch" aria-role="button" aria-label="选择起点"><lucide-icon name="locate-fixed" size="27" tone="muted"></lucide-icon><text class="search-copy">{{originName}}</text></view>
+    <view class="search-entry" bindtap="openDestinationSearch" hover-class="pressed" aria-role="button" aria-label="搜索目的地">
+      <lucide-icon name="search" size="30" tone="muted"></lucide-icon>
+      <text class="search-copy">{{destinationName || '想去哪'}}</text>
+      <view wx:if="{{destinationName}}" class="search-clear" catchtap="clearDestination" aria-label="清除目的地"><lucide-icon name="x" size="25" tone="muted"></lucide-icon></view>
+      <view wx:else class="search-arrow"><lucide-icon name="arrow-up-right" size="25" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
+    </view>
+    </view>
+    <view class="common-row">
+      <view class="common-add {{commonOpen ? 'common-add--open' : ''}}" bindtap="openCommonSearch" hover-class="pressed" aria-role="button" aria-label="{{commonMounted ? '取消添加' : '添加常用地点'}}"><lucide-icon name="plus" size="32" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
+      <view wx:if="{{commonMounted}}" class="common-editor {{commonOpen ? 'common-editor--open' : ''}}" style="width: {{commonOpen ? windowWidth - 80 : 0}}px;">
+        <input class="common-input" placeholder="添加地点" value="{{searchQuery}}" bindinput="onSearchInput" bindkeyboardheightchange="onSearchKeyboard" confirm-type="search" focus="{{commonFocus}}" adjust-position="{{false}}" maxlength="60" aria-label="搜索常用地点" />
+      </view>
+      <scroll-view wx:else type="list" class="common-scroll" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+        <view class="common-places">
+          <view wx:for="{{commonPlaces}}" wx:key="key" class="common-place {{commonPlaceKey === item.key ? 'common-place--active' : ''}}" data-key="{{item.key}}" bindtap="selectCommonPlace" bindlongpress="removeCommonPlace" hover-class="pressed"><text>{{item.shortName}}</text></view>
+        </view>
+      </scroll-view>
+    </view>
+    </view>
+    <view wx:if="{{commonMounted}}" class="common-options {{commonOpen ? 'common-options--open' : ''}}">
+      <scroll-view type="list" class="common-results" scroll-y enhanced show-scrollbar="{{false}}" style="height: {{commonListHeight}}px;">
+        <view class="common-options-content">
+          <view wx:for="{{searchResults}}" wx:key="id" class="common-option" data-id="{{item.id}}" bindtap="choosePlace" hover-class="pressed"><text class="common-option-title">{{item.shortName}}</text><text class="common-option-detail">{{item.name}}</text></view>
+          <view wx:if="{{!searchResults.length}}" class="search-empty">{{routes.length ? '没有找到，试试其他名称' : locating ? '地点加载中' : '地点暂不可用，请稍后重试'}}</view>
+        </view>
+        <view class="common-bottom-space"></view>
+      </scroll-view>
+    </view>
+  </view>
+  <view wx:if="{{commonMounted}}" class="common-dismiss" bindtap="closeCommonSearch"></view>
+
+  <view wx:if="{{hasOrigin}}" class="map-live-state" style="top: {{headerHeight + 8}}px;">
+    <view class="live-dot {{connection === 'live' && !stale ? 'live-dot--online' : ''}}"></view><text>{{statusLabel}}</text>
+  </view>
+  <view wx:if="{{farFromCampus}}" class="campus-distance-note" style="top: {{headerHeight + 31}}px;">距离校区较远，已为你展示校园</view>
+
+  <view class="edge-layer" style="top: {{mapTop}}px; height: {{mapHeight}}px;">
+    <view wx:for="{{edgeHints}}" wx:key="id" class="edge-hint" style="left: {{item.x}}px; top: {{item.y}}px;" data-id="{{item.id}}" bindtap="focusVehicle" aria-label="查看{{item.label}}号校车"><text class="edge-number">{{item.label}}</text><view class="edge-arrow" style="transform: rotate({{item.angle}}deg);"></view></view>
+    <view wx:for="{{clusters}}" wx:key="id" class="crossing-count" style="left: {{item.x}}px; top: {{item.y}}px;" data-ids="{{item.ids}}" bindtap="openCrossing"><text>{{item.count}}</text></view>
+  </view>
+
+  <view class="map-tools" style="bottom: {{sheetOpen && (hasOrigin || destinationName) ? sheetHeight + 22 : hasOrigin ? safeBottom + 24 : safeBottom + 200}}px;">
+    <view wx:if="{{!sheetOpen && (hasOrigin || destinationName)}}" class="map-tool" bindtap="openTripSheet" aria-label="打开路线"><lucide-icon name="navigation" size="30" tone="muted"></lucide-icon></view>
+    <view class="map-tool" bindtap="showOverview" hover-class="pressed" aria-role="button" aria-label="总览线路"><lucide-icon name="map" size="30" tone="muted"></lucide-icon></view>
+    <view class="map-tool {{following ? 'map-tool--active' : ''}}" bindtap="locateUser" hover-class="pressed" aria-role="button" aria-label="回到我的位置"><lucide-icon name="locate-fixed" size="31" tone="{{following ? 'white' : (theme === 'dark' ? 'white' : 'ink')}}"></lucide-icon></view>
+  </view>
+
+  <view wx:if="{{sheetOpen && (hasOrigin || destinationName)}}" class="trip-sheet {{sheetExpanded ? 'trip-sheet--expanded' : ''}}" id="trip-sheet" style="height: {{sheetHeight}}px; padding-bottom: {{safeBottom}}px;">
+    <view class="sheet-drag-zone" bindtouchstart="onSheetTouchStart" bindtouchend="onSheetTouchEnd" bindtap="toggleSheet" aria-role="button" aria-label="展开或收起校车信息"><view class="sheet-handle"></view></view>
+    <view class="sheet-heading">
+      <view><text class="sheet-eyebrow">{{journey === 'riding' ? '正在乘车' : journey === 'arrived' ? '到达附近' : destinationName ? '这次出行' : '在这里等车'}}</text><text class="sheet-title">{{journey === 'arrived' ? '已到达' : destinationName || '附近的校车'}}</text></view>
+      <view class="sheet-summary">{{destinationName ? plans.length + ' 条路线' : vehicles.length + ' 辆'}}<text wx:if="{{hasOrigin}}" class="summary-sub">{{stale ? '信号待更新' : '每 3 秒更新'}}</text></view>
+    </view>
+      <view class="trip-close round-close" bindtap="closeTripSheet" aria-role="button" aria-label="关闭路线"><lucide-icon name="x" size="27" tone="muted"></lucide-icon></view>
+    <view class="sheet-scroll-wrap"><scroll-view type="list" class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="sheet-body">
+        <view class="boarding-card" bindtap="openBoardingSearch" hover-class="pressed">
+          <view class="boarding-symbol"><lucide-icon name="map-pin" size="31" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
+          <view class="boarding-copy"><text class="boarding-name">{{boardName || '选择候车点'}}</text><text class="boarding-detail">{{boardDetail}}</text></view>
+          <view wx:if="{{boardName}}" class="favorite-button" catchtap="toggleFavorite" aria-label="收藏候车点"><lucide-icon name="star" size="30" tone="{{boardFavorite ? 'amber' : 'muted'}}"></lucide-icon></view>
+          <lucide-icon name="chevron-right" size="26" tone="muted"></lucide-icon>
+        </view>
+        <view wx:if="{{!hasOrigin}}" class="manual-location-action">
+          <button wx:if="{{gateAction === 'settings'}}" class="secondary-action" open-type="openSetting" bindopensetting="onLocationSettings">定位并查看实时校车</button>
+          <button wx:elif="{{gateAction === 'system'}}" class="secondary-action" bindtap="openSystemLocationSettings">开启手机定位</button>
+          <button wx:else class="secondary-action" loading="{{locating}}" disabled="{{locating}}" bindtap="retryActivation">定位并查看实时校车</button>
+        </view>
+        <view wx:if="{{destinationName && plans.length}}" class="plan-list">
+          <view wx:for="{{plans}}" wx:key="id" data-id="{{item.id}}" bindtap="choosePlan" class="plan-card {{selectedPlanId === item.id ? 'plan-card--selected' : ''}}" hover-class="pressed">
+            <view class="plan-card-top"><view class="line-tag" style="background: {{item.color}};">{{item.routeName}}</view><text class="plan-stop-count">{{item.stopCount}} 站</text><lucide-icon wx:if="{{selectedPlanId === item.id}}" name="check" size="24" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
+            <view class="plan-stations"><text>{{item.boardName}}</text><lucide-icon name="arrow-right" size="21" tone="muted"></lucide-icon><text>{{item.alightName}}</text></view>
+            <text class="plan-walk">{{item.walkLabel}}</text>
+          </view>
+        </view>
+        <view wx:if="{{destinationName && !plans.length}}" class="sheet-empty"><text>{{!hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
+        <view wx:if="{{crossingLabel}}" class="crossing-label">{{crossingLabel}}<text bindtap="clearCrossing">显示全部</text></view>
+        <view wx:if="{{vehicleRows.length}}" class="vehicle-list">
+          <view wx:for="{{vehicleRows}}" wx:key="id" data-id="{{item.id}}" bindtap="selectVehicle" class="vehicle-row {{selectedVehicleId === item.id ? 'vehicle-row--selected' : ''}}" hover-class="pressed">
+            <view class="vehicle-icon" style="background: {{item.color}};"><text>{{item.number}}</text></view>
+            <view class="vehicle-copy"><text class="vehicle-name">{{item.routeName}}</text><text class="vehicle-detail">{{item.detail}}</text></view>
+            <view class="vehicle-arrival"><text class="arrival-value {{item.imminent ? 'arrival-value--soon' : ''}}">{{item.eta}}</text><text class="arrival-distance">{{item.distanceLabel}}</text></view>
+          </view>
+        </view>
+        <view wx:elif="{{hasOrigin && (!destinationName || plans.length)}}" class="sheet-empty"><text>{{stale ? '校车信号暂未更新' : '当前没有匹配的校车'}}</text><text class="empty-detail">稍后再来看看</text></view>
+        <view wx:if="{{hasOrigin && selectedPlanId && journey === 'idle'}}" class="primary-action" bindtap="startJourney" hover-class="pressed"><lucide-icon name="navigation" size="29" tone="white"></lucide-icon><text>开始出发</text></view>
+        <view wx:if="{{journey === 'waiting'}}" class="journey-actions"><view class="secondary-action" bindtap="toggleReminder"><text>{{reminderEnabled ? '到站提醒已开启' : '开启到站提醒'}}</text></view><view class="primary-action compact" bindtap="boardVehicle"><text>我已上车</text></view></view>
+        <view wx:if="{{journey === 'riding'}}" class="primary-action" bindtap="finishJourney" hover-class="pressed"><text>已到达</text></view>
+        <view wx:if="{{journey === 'arrived'}}" class="secondary-action" bindtap="clearDestination"><text>开始新的出行</text></view>
+        <view wx:if="{{journey === 'waiting' || journey === 'riding'}}" class="cancel-trip" bindtap="cancelJourney" aria-role="button">结束行程</view>
+        <view wx:if="{{hasOrigin && stale}}" class="secondary-action" bindtap="refreshShuttles" aria-role="button">刷新</view>
+        <view class="sheet-footnote"><text>预计到站仅供参考 · 步行虚线为直线距离</text></view>
+      </view>
+      <view class="sheet-bottom-space"></view>
+    </scroll-view></view>
+  </view>
+
+  <view wx:if="{{searchMounted}}" class="search-layer motion-layer {{searchOpen ? 'motion-layer--active' : ''}}">
+    <view class="search-backdrop motion-scrim {{searchOpen ? 'motion-scrim--active' : ''}}" bindtap="closeSearch" catchtouchmove="noop"></view>
+    <view class="search-panel motion-sheet {{searchOpen ? 'motion-sheet--active' : ''}}" style="bottom: 0; height: {{searchPanelHeight}}px;">
+      <view class="search-handle"></view>
+      <view class="search-panel-heading"><text>{{searchMode === 'board' ? '从哪里出发' : '想去哪里'}}</text><view class="round-close" bindtap="closeSearch" aria-role="button" aria-label="关闭地点选择"><lucide-icon name="x" size="27" tone="muted"></lucide-icon></view></view>
+      <view class="search-fixed">
+        <view class="search-field"><lucide-icon name="search" size="30" tone="muted"></lucide-icon><input class="place-search-input" placeholder="搜索地点" value="{{searchQuery}}" bindinput="onSearchInput" bindkeyboardheightchange="onSearchKeyboard" confirm-type="search" adjust-position="{{false}}" maxlength="60" /></view>
+        <view wx:if="{{!keyboardHeight}}" class="choose-map" bindtap="chooseOnMap"><lucide-icon name="map-pin" size="28" tone="muted"></lucide-icon><text>在地图上选择</text><lucide-icon name="arrow-up-right" size="24" tone="muted"></lucide-icon></view>
+        <view wx:if="{{searchMode === 'board' && !keyboardHeight}}" class="automatic-board" bindtap="useNearestBoard"><text>使用我的位置</text></view>
+      </view>
+      <view class="search-results-wrap"><scroll-view type="list" class="search-results" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="search-results-content">
+        <block wx:if="{{searchStopRows.length}}">
+          <text class="place-section-title">候车点</text>
+          <view wx:for="{{searchStopRows}}" wx:for-item="row" wx:for-index="rowIndex" wx:key="id" class="place-pair">
+            <view wx:for="{{row.places}}" wx:for-item="place" wx:key="id" class="place-tile" data-id="{{place.id}}" bindtap="choosePlace" hover-class="pressed">
+              <view class="place-tile-top"><text class="place-tile-title">{{place.shortName}}</text><text class="place-distance">{{place.distanceLabel}}</text></view>
+              <text class="place-tile-detail">{{place.name}}</text>
+            </view>
+          </view>
+        </block>
+        <block wx:if="{{searchPlaceRows.length}}">
+          <text class="place-section-title">校园地点</text>
+          <view wx:for="{{searchPlaceRows}}" wx:for-item="row" wx:for-index="rowIndex" wx:key="id" class="place-pair">
+            <view wx:for="{{row.places}}" wx:for-item="place" wx:key="id" class="place-tile" data-id="{{place.id}}" bindtap="choosePlace" hover-class="pressed">
+              <view class="place-tile-top"><text class="place-tile-title">{{place.shortName}}</text><text class="place-distance">{{place.distanceLabel}}</text></view>
+              <text class="place-tile-detail">{{place.name}}</text>
+            </view>
+          </view>
+        </block>
+        <view wx:if="{{!searchResults.length}}" class="search-empty">{{routes.length ? '没有找到，试试其他名称' : locating ? '地点加载中' : '地点暂不可用，请稍后重试'}}</view>
+        </view>
+        <view class="search-bottom-space" style="height: {{keyboardHeight ? 24 : safeBottom + 52}}px;"></view>
+      </scroll-view></view>
+      <view class="keyboard-space" style="height: {{keyboardHeight}}px;"></view>
+    </view>
+  </view>
+
+  <view wx:if="{{!hasOrigin && !destinationName && !locating}}" class="permission-gate" style="padding-bottom: {{safeBottom + 20}}px;">
+    <text class="gate-title">选择出发位置</text><text class="gate-detail">使用定位或选择候车点</text>
+    <button wx:if="{{gateAction === 'settings'}}" class="gate-button" open-type="openSetting" bindopensetting="onLocationSettings">去设置</button>
+    <button wx:elif="{{gateAction === 'system'}}" class="gate-button" bindtap="openSystemLocationSettings">手机定位设置</button>
+    <button wx:else class="gate-button" loading="{{locating}}" disabled="{{locating}}" bindtap="retryActivation">{{locating ? '准备中' : '允许定位'}}</button>
+    <view class="secondary-action" bindtap="openBoardingSearch" aria-role="button">选择出发点</view>
+  </view>
+</view>
+<screen-watermark></screen-watermark>
