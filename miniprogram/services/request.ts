@@ -42,6 +42,7 @@ interface RequestOptions {
   timeout?: number;
   allowInvalidCredential?: boolean;
   credentialReauthFeedback?: boolean;
+  rateLimitFeedback?: boolean;
 }
 
 interface SuccessEnvelope<T> extends ApiSuccess<T> {
@@ -89,6 +90,7 @@ let deviceEnrollmentFlight: {
 } | null = null;
 
 export class ApiClientError extends Error {
+  retryAfterMs?: number;
   readonly code: string;
   readonly statusCode: number;
   readonly details?: unknown;
@@ -332,6 +334,15 @@ function requestProofBootstrap<T>(
           return;
         }
         const error = toApiError(response.data, response.statusCode);
+        const retryAfter = Object.entries(response.header || {}).find(
+          ([key]) => key.toLowerCase() === "retry-after",
+        )?.[1];
+        if (response.statusCode === 429 && retryAfter !== undefined) {
+          const seconds = Number(retryAfter);
+          error.retryAfterMs = Number.isFinite(seconds)
+            ? Math.max(0, seconds * 1000)
+            : Math.max(0, Date.parse(String(retryAfter)) - Date.now());
+        }
         if (!isCredentialInvalidationCode(error.code)) {
           handleAuthenticatedRequestError(error, lease, showCredentialFeedback);
         }
@@ -476,6 +487,15 @@ async function requestOnce<T>(
         }
 
         const error = toApiError(response.data, response.statusCode);
+        const retryAfter = Object.entries(response.header || {}).find(
+          ([key]) => key.toLowerCase() === "retry-after",
+        )?.[1];
+        if (response.statusCode === 429 && retryAfter !== undefined) {
+          const seconds = Number(retryAfter);
+          error.retryAfterMs = Number.isFinite(seconds)
+            ? Math.max(0, seconds * 1000)
+            : Math.max(0, Date.parse(String(retryAfter)) - Date.now());
+        }
         if (error.code === "DEVICE_TIMESTAMP_OUT_OF_RANGE") {
           synchronizeDeviceProofClockFromTimestamp(
             (error.details as { serverTimestamp?: unknown } | undefined)
@@ -545,7 +565,8 @@ async function requestEnvelope<T>(
           showCredentialFeedback,
         );
       }
-      if (isRateLimitError(apiError)) showRateLimitToast();
+      if (isRateLimitError(apiError) && options.rateLimitFeedback !== false)
+        showRateLimitToast();
       if (
         options.retry !== false &&
         (apiError.code === "NETWORK_ERROR" ||
@@ -574,13 +595,14 @@ async function requestEnvelope<T>(
       handleAuthenticatedRequestError(apiError, context.lease);
     }
     if (isRateLimitError(apiError)) {
-      showRateLimitToast(
-        isFeedbackDailyLimitError(apiError)
-          ? FEEDBACK_DAILY_LIMITED_MESSAGE
-          : apiError.code === "TIMETABLE_BACKGROUND_DAILY_LIMITED"
-            ? "更换背景过于频繁"
-            : "访问速度太快了",
-      );
+      if (options.rateLimitFeedback !== false)
+        showRateLimitToast(
+          isFeedbackDailyLimitError(apiError)
+            ? FEEDBACK_DAILY_LIMITED_MESSAGE
+            : apiError.code === "TIMETABLE_BACKGROUND_DAILY_LIMITED"
+              ? "更换背景过于频繁"
+              : "访问速度太快了",
+        );
       throw error;
     }
     const clockRetry =

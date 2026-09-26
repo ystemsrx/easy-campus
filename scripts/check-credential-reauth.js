@@ -101,6 +101,7 @@ new Function(
         nextError = null;
         options.success({
           statusCode: error.statusCode,
+          header: error.header,
           data: {
             success: false,
             error: {
@@ -268,6 +269,34 @@ void (async () => {
     false,
   );
 
+  session.credential.status = "valid";
+  const before = toastMessages.length;
+  nextError = {
+    statusCode: 429,
+    code: "RATE_LIMITED",
+    message: "limited",
+    header: { "Retry-After": "90" },
+  };
+  await assert.rejects(
+    apiRequest("/utilities/shuttle-buses/walking", {
+      retry: false,
+      rateLimitFeedback: false,
+    }),
+    (e) => e.statusCode === 429 && e.retryAfterMs === 90000,
+  );
+  assert.equal(toastMessages.length, before);
+  nextError = {
+    statusCode: 429,
+    code: "RATE_LIMITED",
+    message: "limited",
+    header: { "retry-after": "60" },
+  };
+  await assert.rejects(
+    apiRequest("/interactive-action", { retry: false }),
+    (e) => e.retryAfterMs === 60000,
+  );
+  assert.equal(toastMessages.length, before + 1);
+  assert.equal(toastMessages.at(-1), "访问速度太快了");
   console.log("Credential reauthentication feedback checks passed.");
 })().catch((error) => {
   console.error(error);

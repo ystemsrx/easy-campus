@@ -3,9 +3,7 @@
   "miniprogramRoot": "miniprogram/",
   "compileType": "miniprogram",
   "setting": {
-    "useCompilerPlugins": [
-      "typescript"
-    ],
+    "useCompilerPlugins": ["typescript"],
     "babelSetting": {
       "ignore": [],
       "disablePlugins": [],
@@ -61,6 +59,10 @@
       {
         "type": "folder",
         "value": "features/assets"
+      },
+      {
+        "type": "folder",
+        "value": "assets/shuttle"
       }
     ]
   },

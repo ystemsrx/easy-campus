@@ -34,28 +34,23 @@
         "pages/course-assistant/index",
         "pages/course-assistant-detail/index",
         "pages/course-grab/index",
-        "pages/navigation/index"
+        "pages/navigation/index",
+        "pages/shuttle/index"
       ]
     }
   ],
   "preloadRule": {
     "pages/home/index": {
       "network": "all",
-      "packages": [
-        "features"
-      ]
+      "packages": ["features"]
     },
     "pages/schedule/index": {
       "network": "all",
-      "packages": [
-        "features"
-      ]
+      "packages": ["features"]
     },
     "pages/profile/index": {
       "network": "all",
-      "packages": [
-        "features"
-      ]
+      "packages": ["features"]
     }
   },
   "usingComponents": {
@@ -114,5 +109,16 @@
   "networkTimeout": {
     "request": 70000,
     "downloadFile": 70000
-  }
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于查找附近校车和候车点，并在使用时更新位置"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseLocation",
+    "getLocation",
+    "onLocationChange",
+    "startLocationUpdate"
+  ]
 }

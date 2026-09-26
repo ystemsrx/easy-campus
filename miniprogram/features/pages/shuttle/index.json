@@ -1,0 +1,10 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "renderer": "webview",
+  "usingComponents": {
+    "lucide-icon": "/components/lucide-icon/lucide-icon",
+    "rate-limit-toast": "/components/rate-limit-toast/rate-limit-toast",
+    "navigation-bar": "/components/navigation-bar/navigation-bar"
+  }
+}

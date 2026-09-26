@@ -67,6 +67,7 @@ import {
 } from "../../utils/profile";
 
 type ProfileSettingKey =
+  | "shuttle"
   | "orders"
   | "course-assistant"
   | "course-grab"
@@ -383,6 +384,9 @@ Page({
   },
   openOrders() {
     this.openProfileRoute("orders", "/features/pages/orders/index");
+  },
+  openShuttleMap() {
+    this.openProfileRoute("shuttle", "/features/pages/shuttle/index");
   },
   openCourseAssistant() {
     this.openProfileRoute(
