@@ -102,7 +102,6 @@
         <view wx:if="{{journey === 'riding'}}" class="primary-action" bindtap="finishJourney" hover-class="pressed"><text>已到达</text></view>
         <view wx:if="{{journey === 'arrived'}}" class="secondary-action" bindtap="clearDestination"><text>开始新的出行</text></view>
         <view wx:if="{{journey === 'waiting' || journey === 'riding'}}" class="cancel-trip" bindtap="cancelJourney" aria-role="button">结束行程</view>
-        <view class="sheet-footnote"><text>预计时间包含步行与候车</text></view>
       </view>
       <view class="sheet-bottom-space"></view>
     </scroll-view></view>

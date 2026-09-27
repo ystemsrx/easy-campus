@@ -1338,6 +1338,71 @@ test("native picker failures are retryable and direct map taps retain the go-her
   page.onUnload();
 });
 
+test("empty nearby drawers are shorter without shrinking plans or expanded content", () => {
+  const h = harness(),
+    page = h.page();
+  for (const height of [568, 667, 800, 932]) {
+    for (const safeBottom of [0, 34]) {
+      page.setData({
+        windowHeight: height,
+        safeBottom,
+        vehicles: [],
+        destinationName: "",
+        journey: "idle",
+      });
+      page.layout(false);
+      const compact = page.data.sheetHeight;
+      const expanded = page.targetSheetHeight(true);
+      assert(compact >= 160 + safeBottom);
+      page.setData({ vehicles: [{ id: "bus" }] });
+      const normal = page.targetSheetHeight(false);
+      assert(compact < normal);
+      assert(normal - compact <= 48);
+      assert.equal(page.targetSheetHeight(true), expanded);
+      page.setData({ vehicles: [], destinationName: "大礼堂" });
+      assert.equal(page.targetSheetHeight(false), normal);
+      page.setData({ destinationName: "", journey: "waiting" });
+      assert.equal(page.targetSheetHeight(false), normal);
+      page.setData({ journey: "idle", motionClass: "motion-reduced" });
+      page.springSheet(false);
+      assert.equal(page.data.sheetHeight, compact);
+    }
+  }
+  const wxml = fs.readFileSync(
+    path.join(root, "features/pages/shuttle/index.wxml"),
+    "utf8",
+  );
+  assert(!wxml.includes("预计时间包含"));
+  assert(!wxml.includes("sheet-footnote"));
+  page.onUnload();
+});
+
+test("nearby drawer height follows fleet transitions but does not interrupt dragging", () => {
+  const h = harness(),
+    page = h.page();
+  page.refreshRows = () => {};
+  page.layout(false);
+  const compact = page.data.sheetHeight;
+  const packet = {
+    vehicles: [{ id: "bus" }],
+    fetchedAt: Date.now(),
+    stale: false,
+  };
+  page.receiveSnapshot(packet);
+  assert(page.data.sheetHeight > compact);
+  page.receiveSnapshot({ ...packet, vehicles: [] });
+  assert.equal(page.data.sheetHeight, compact);
+  page.setData({ sheetDragging: true, sheetHeight: 275 });
+  page.receiveSnapshot(packet);
+  assert.equal(page.data.sheetHeight, 275);
+  page.setData({ sheetDragging: false });
+  page.layout(true);
+  const expanded = page.data.sheetHeight;
+  page.receiveSnapshot({ ...packet, vehicles: [] });
+  assert.equal(page.data.sheetHeight, expanded);
+  page.onUnload();
+});
+
 test("short screens leave map controls visible and ending a trip disables reminders", async () => {
   const h = harness({ mockStream: true }),
     page = h.page();

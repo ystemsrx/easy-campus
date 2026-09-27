@@ -896,6 +896,11 @@ Page({
       packet.serverTime,
     );
     this.setData({ vehicles: packet.vehicles });
+    if (
+      !this.data.sheetDragging &&
+      this.data.sheetHeight !== this.targetSheetHeight(this.data.sheetExpanded)
+    )
+      this.layout(this.data.sheetExpanded);
     this.refreshRows();
     if (
       state.destination &&
@@ -2658,14 +2663,23 @@ Page({
       })
       .exec();
   },
+  targetSheetHeight(expanded: boolean) {
+    const height = this.data.windowHeight;
+    const base = Math.min(310, Math.max(240, height * 0.36));
+    const emptyNearby =
+      !this.data.vehicles.length &&
+      !this.data.destinationName &&
+      this.data.journey === "idle";
+    const collapsed = emptyNearby
+      ? Math.max(160 + this.data.safeBottom, base - 48)
+      : base;
+    const maxSheet = Math.max(160, height - this.data.headerHeight - 105);
+    return Math.round(Math.min(maxSheet, expanded ? height * 0.62 : collapsed));
+  },
   layout(expanded: boolean) {
     const state = rt(this),
       height = this.data.windowHeight;
-    const base = Math.min(310, Math.max(240, height * 0.36));
-    const maxSheet = Math.max(160, height - this.data.headerHeight - 105);
-    const sheetHeight = Math.round(
-      Math.min(maxSheet, expanded ? height * 0.62 : base),
-    );
+    const sheetHeight = this.targetSheetHeight(expanded);
     this.setData({
       sheetExpanded: expanded,
       sheetHeight,
@@ -2688,6 +2702,7 @@ Page({
     this.updateOverlays();
   },
   openTripSheet() {
+    this.layout(this.data.sheetExpanded);
     setPresence(this, true, {
       mounted: "sheetMounted",
       active: "sheetOpen",
@@ -2736,14 +2751,7 @@ Page({
   springSheet(expanded: boolean) {
     const state = rt(this);
     if (state.sheetSpring) clearTimeout(state.sheetSpring);
-    const height = this.data.windowHeight,
-      base = Math.min(310, Math.max(240, height * 0.36)),
-      target = Math.round(
-        Math.min(
-          Math.max(160, height - this.data.headerHeight - 105),
-          expanded ? height * 0.62 : base,
-        ),
-      );
+    const target = this.targetSheetHeight(expanded);
     if (this.data.motionClass === "motion-reduced") {
       this.setData({ sheetDragging: false });
       this.layout(expanded);
