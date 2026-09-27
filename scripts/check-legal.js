@@ -132,6 +132,33 @@ if (
   failures.push("协议页必须保持简洁，并让返回按钮与微信原生胶囊对齐");
 }
 
+const privacyDates = content.match(
+  /const privacy:[\s\S]*?version: "([^"]+)",[\s\S]*?updatedAt: "([^"]+)",[\s\S]*?effectiveAt: "([^"]+)"/,
+);
+if (
+  !privacyDates ||
+  privacyDates[1] !== privacyDates[2] ||
+  privacyDates[2] !== privacyDates[3]
+) {
+  failures.push("隐私政策版本必须与更新日期和生效日期一致");
+}
+
+if (
+  content.includes("校车位置查询补充说明") ||
+  !content.includes('title: "位置与校车出行信息"') ||
+  !content.includes('title: "位置权限"') ||
+  !content.includes('title: "校车位置与出行记录"')
+) {
+  failures.push("位置处理说明必须归入隐私政策的正式章节，不得作为补充更新单列");
+}
+
+if (
+  !styles.includes(".legal-meta-item .tnum") ||
+  !styles.includes("overflow: visible;")
+) {
+  failures.push("协议版本和日期必须保留完整数字行高，不能裁切数字下沿");
+}
+
 if (failures.length) {
   console.error(failures.join("\n"));
   process.exitCode = 1;

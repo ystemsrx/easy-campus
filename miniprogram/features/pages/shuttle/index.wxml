@@ -147,10 +147,12 @@
 
   <view wx:if="{{!hasOrigin && !destinationName && !locating}}" class="permission-gate" style="padding-bottom: {{safeBottom + 20}}px;">
     <text class="gate-title">选择出发位置</text><text class="gate-detail">使用定位或选择候车点</text>
-    <button wx:if="{{gateAction === 'settings'}}" class="gate-button" open-type="openSetting" bindopensetting="onLocationSettings">去设置</button>
-    <button wx:elif="{{gateAction === 'system'}}" class="gate-button" bindtap="openSystemLocationSettings">手机定位设置</button>
-    <button wx:else class="gate-button" loading="{{locating}}" disabled="{{locating}}" bindtap="retryActivation">{{locating ? '准备中' : '允许定位'}}</button>
-    <view class="secondary-action" bindtap="openBoardingSearch" aria-role="button">选择出发点</view>
+    <view class="gate-actions">
+      <button wx:if="{{gateAction === 'settings'}}" class="gate-button" open-type="openSetting" bindopensetting="onLocationSettings">去设置</button>
+      <button wx:elif="{{gateAction === 'system'}}" class="gate-button" bindtap="openSystemLocationSettings">打开定位</button>
+      <button wx:else class="gate-button" loading="{{locating}}" disabled="{{locating}}" bindtap="retryActivation">{{locating ? '准备中' : '允许定位'}}</button>
+      <view class="secondary-action gate-manual-button" bindtap="openBoardingSearch" aria-role="button">手动选择</view>
+    </view>
   </view>
 </view>
 <screen-watermark></screen-watermark>

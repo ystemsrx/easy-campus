@@ -700,11 +700,20 @@ test("settings recovery remains native and custom privacy dialogs are absent", (
     path.join(root, "features/pages/shuttle/index.wxml"),
     "utf8",
   );
+  const styles = fs.readFileSync(
+    path.join(root, "features/pages/shuttle/index.wxss"),
+    "utf8",
+  );
   assert(!wxml.includes("privacy-mask"));
   assert(!wxml.includes("agreePrivacyAuthorization"));
   assert(wxml.includes('open-type="openSetting"'));
   assert(wxml.includes('bindopensetting="onLocationSettings"'));
   assert(wxml.includes('bindkeyboardheightchange="onSearchKeyboard"'));
+  assert(wxml.includes('class="gate-actions"'));
+  assert(wxml.includes(">手动选择</view>"));
+  assert(!wxml.includes("选择出发点"));
+  assert(styles.includes(".gate-actions .gate-button"));
+  assert(styles.includes("border-radius: 999px"));
 });
 
 test("all 10 real routes produce valid ordered, connected tracks", () => {

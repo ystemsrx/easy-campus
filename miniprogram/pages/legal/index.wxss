@@ -43,6 +43,14 @@
   font-weight: 550;
 }
 
+.legal-meta-item .tnum {
+  display: block;
+  min-height: 31rpx;
+  padding-bottom: 3rpx;
+  overflow: visible;
+  line-height: 28rpx;
+}
+
 .legal-notice {
   display: flex;
   flex-direction: row;
