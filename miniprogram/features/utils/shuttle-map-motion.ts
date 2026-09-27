@@ -74,6 +74,66 @@ export class ShuttleMapMotion {
       id: m.id,
     }));
   }
+  /** Match the marker's playback instant, not a newer observation ahead of it. */
+  previewVehicle(id: string, now = Date.now()): ShuttleVehicle | undefined {
+    const m = this.vehicles.get(id);
+    if (!m) return undefined;
+    const tail = remaining(m.path, (now - m.start) / m.duration);
+    const point = tail[0];
+    const at = now + m.clockOffset - m.delay;
+    let history: GeoPoint[] = [];
+    for (const segment of m.timeline) {
+      if (segment.startsAt > at) break;
+      const fraction = Math.max(
+        0,
+        Math.min(1, (at - segment.startsAt) / segment.duration),
+      );
+      const prefix = remaining(
+        segment.points.slice().reverse(),
+        1 - fraction,
+      ).reverse();
+      if (
+        history.length &&
+        distanceMeters(history[history.length - 1], prefix[0]) > 30
+      )
+        history = [];
+      history.push(...prefix);
+    }
+    // A reset or a frozen marker must not inherit unrelated motion history.
+    if (
+      history.length &&
+      distanceMeters(history[history.length - 1], point) > 20
+    )
+      history = [];
+    history.push(point);
+    history = history.filter(
+      (p, i) => !i || distanceMeters(p, history[i - 1]) > 0.15,
+    );
+    const ahead = tail.slice(1).find((p) => distanceMeters(point, p) > 5);
+    const behind = history
+      .slice(0, -1)
+      .reverse()
+      .find((p) => distanceMeters(p, point) > 5);
+    const heading = ahead
+      ? headingDegrees(point, ahead)
+      : behind
+        ? headingDegrees(behind, point)
+        : (m.bus.motion?.heading ?? m.bus.direction);
+    return {
+      ...m.bus,
+      ...point,
+      direction: heading,
+      motion: {
+        startsAt: at,
+        duration: 1,
+        points: [point],
+        heading,
+        status: ahead || behind ? "moving" : m.bus.motion?.status || "unknown",
+        reset: false,
+        history: [{ startsAt: at, duration: 1, points: history }],
+      },
+    };
+  }
   update(
     buses: ShuttleVehicle[],
     fetchedAt: number,
@@ -83,7 +143,9 @@ export class ShuttleMapMotion {
     const now = Date.now();
     const present = new Set(buses.map((b) => b.id));
     for (const [id, m] of this.vehicles) {
-      if (!present.has(id) && now - m.seenAt > 15000) {
+      // A snapshot is the complete selected fleet, not an incremental update.
+      // Retaining departed entries accumulates more than the nearest ten markers.
+      if (!present.has(id)) {
         m.epoch++;
         if (m.timer) clearTimeout(m.timer);
         this.context.removeMarkers({ markerIds: [m.id] });

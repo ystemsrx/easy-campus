@@ -43,7 +43,7 @@ export interface WalkPath {
 const length = (points: GeoPoint[]): number =>
   points.slice(1).reduce((n, p, i) => n + distanceMeters(points[i], p), 0);
 // Compare travelled geometry in order, so opposite directions never collapse together.
-function sameRide(a: ShuttlePlan, b: ShuttlePlan): boolean {
+export function sameRide(a: ShuttlePlan, b: ShuttlePlan): boolean {
   if (
     distanceMeters(a.board, b.board) > 18 ||
     distanceMeters(a.alight, b.alight) > 18 ||
@@ -66,9 +66,75 @@ function sameRide(a: ShuttlePlan, b: ShuttlePlan): boolean {
     }
     return p[p.length - 1];
   };
-  return [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1].every(
-    (t) => distanceMeters(sample(a.points, t), sample(b.points, t)) < 22,
-  );
+  const follows = (from: GeoPoint[], to: GeoPoint[]): boolean => {
+    const total = length(from),
+      other = length(to),
+      offsets = [0];
+    for (let i = 1; i < to.length; i++)
+      offsets.push(offsets[i - 1] + distanceMeters(to[i - 1], to[i]));
+    let previous = 0;
+    const count = Math.max(2, Math.ceil(total / 12));
+    for (let k = 0; k <= count; k++) {
+      const at = (total * k) / count,
+        p = sample(from, k / count),
+        expected = (other * k) / count;
+      let best = Infinity,
+        position = previous;
+      for (let i = 1; i < to.length; i++) {
+        const x = to[i - 1],
+          y = to[i],
+          cos = Math.cos((p.latitude * Math.PI) / 180);
+        const dx = (y.longitude - x.longitude) * cos,
+          dy = y.latitude - x.latitude;
+        const f = Math.max(
+          0,
+          Math.min(
+            1,
+            ((p.longitude - x.longitude) * cos * dx +
+              (p.latitude - x.latitude) * dy) /
+              (dx * dx + dy * dy || 1),
+          ),
+        );
+        const projected = offsets[i - 1] + f * (offsets[i] - offsets[i - 1]);
+        if (
+          projected < previous - 2 ||
+          Math.abs(projected - expected) > Math.max(50, total * 0.08)
+        )
+          continue;
+        const gap = distanceMeters(p, {
+          longitude: x.longitude + (y.longitude - x.longitude) * f,
+          latitude: x.latitude + (y.latitude - x.latitude) * f,
+        });
+        if (gap < best) {
+          best = gap;
+          position = projected;
+        }
+      }
+      // Boarding/alighting markers can sit a few metres apart on the same road.
+      // In the interior, a parallel road or a different branch is not shared.
+      if (best > (at < 30 || total - at < 30 ? 20 : 4)) return false;
+      previous = Math.max(previous, position);
+    }
+    return true;
+  };
+  // A short platform access can be encoded as junction -> stop -> junction.
+  // Ignore only exact retracing for corridor comparison, never a separate road.
+  const corridor = (points: GeoPoint[]): GeoPoint[] => {
+    const result: GeoPoint[] = [];
+    for (const point of points) {
+      if (
+        result.length > 1 &&
+        distanceMeters(point, result[result.length - 2]) < 0.5 &&
+        distanceMeters(point, result[result.length - 1]) < 20
+      )
+        result.pop();
+      else result.push(point);
+    }
+    return result;
+  };
+  const left = corridor(a.points),
+    right = corridor(b.points);
+  return follows(left, right) && follows(right, left);
 }
 function merge(plans: ShuttlePlan[]): RideLeg[] {
   const groups: RideLeg[] = [];
@@ -162,9 +228,18 @@ export class ShuttleItineraryPlanner {
     const saved = this.cache.get(key);
     if (saved) return saved;
     const walking = distanceMeters(origin, destination);
-    const direct = merge(
-      this.planner.plans(origin, destination, boarding, "", destinationStops),
-    );
+    const direct = merge([
+      ...this.planner.plans(
+        origin,
+        destination,
+        boarding,
+        "",
+        destinationStops,
+      ),
+      ...(destinationStops.length
+        ? this.planner.plans(origin, destination, boarding)
+        : []),
+    ]);
     const journeys: ShuttleJourney[] = direct.map((leg) => this.journey([leg]));
     const stops = this.map.places.filter((p) => p.category === "stop");
     for (const stop of stops) {
@@ -272,6 +347,12 @@ export class ShuttleItineraryPlanner {
         p.walkTo + p.walkFrom < walking * 0.9 &&
         p.walkTo < Math.max(220, walking * 0.45),
     );
+    // Selecting a destination platform does not forbid a useful final walk.
+    // Keep exact-stop transfers above, and add the same alternatives as a map pin.
+    if (destinationStops.length)
+      for (const plan of this.plans(origin, destination, boarding, [], true))
+        if (plan.mode === "ride" && !rides.some((p) => p.id === plan.id))
+          rides.push(plan);
     // Fleet availability is evaluated on the server. A slower transfer may be
     // the usable option when the geometrically shorter direct service is absent.
     const sensible = rides;

@@ -225,7 +225,7 @@ export class ShuttleRoadGraph {
     });
     joins.forEach((join) => add(join.from, join.to, true, true));
   }
-  private nearest(point: GeoPoint): Projection | null {
+  nearest(point: GeoPoint): Projection | null {
     let best: Projection | null = null;
     this.segments.forEach((segment) => {
       const p = project(point, segment.from, segment.to);
@@ -332,6 +332,7 @@ export interface ShuttlePlan {
   stopCount: number;
 }
 export interface ArrivalEstimate {
+  passed?: boolean;
   preparing?: boolean;
   seconds: number | null;
   text: string;
@@ -408,9 +409,13 @@ export class ShuttlePlanner {
       this.tracks.set(route.id, null);
       return null;
     }
-    const points: GeoPoint[] = [stops[0].place],
-      positions = [{ place: stops[0].place, at: 0, order: stops[0].order }];
     const graph = this.graph(route.id);
+    const onRoad = (place: GeoPoint): GeoPoint => {
+      const hit = graph.nearest(place);
+      return hit && hit.distance <= 90 ? hit.point : place;
+    };
+    const points: GeoPoint[] = [onRoad(stops[0].place)],
+      positions = [{ place: stops[0].place, at: 0, order: stops[0].order }];
     const spurs = this.map.places.filter(
       (p) =>
         route.stopIds.includes(p.id) &&
@@ -419,20 +424,25 @@ export class ShuttlePlanner {
     );
     let total = 0;
     for (let i = 1; i < stops.length; i += 1) {
-      let result = graph.path(stops[i - 1].place, stops[i].place);
+      let result = graph.path(
+        onRoad(stops[i - 1].place),
+        onRoad(stops[i].place),
+      );
       if (!result) {
         this.tracks.set(route.id, null);
         return null;
       }
       for (const stop of spurs) {
+        if (stops.some((s, j) => s.stopId === stop.id && Math.abs(j - i) <= 2))
+          continue;
         if (
           distanceMeters(stop, stops[i - 1].place) < 35 ||
           distanceMeters(stop, stops[i].place) < 35
         )
           continue;
         if (result.points.some((p) => distanceMeters(p, stop) < 25)) continue;
-        const before = graph.path(stops[i - 1].place, stop),
-          after = graph.path(stop, stops[i].place);
+        const before = graph.path(onRoad(stops[i - 1].place), onRoad(stop)),
+          after = graph.path(onRoad(stop), onRoad(stops[i].place));
         if (
           !before ||
           !after ||
@@ -554,25 +564,232 @@ export class ShuttlePlanner {
     if (!forward) return [];
     if (route.servicePattern !== "out-and-back") return [forward];
     const total = forward.offsets[forward.offsets.length - 1];
+    const points = forward.points.slice().reverse();
+    const offsets = forward.offsets.map((v) => total - v).reverse();
     return [
       forward,
       {
-        points: forward.points.slice().reverse(),
-        offsets: forward.offsets.map((v) => total - v).reverse(),
+        points,
+        offsets,
         stops: forward.stops
           .slice()
           .reverse()
-          .map((s, order) => ({
-            at: total - s.at,
-            order,
-            place: {
-              ...s.place,
-              platformHeading: (s.place.platformHeading! + 180) % 360,
-            },
-          })),
+          .map((s, order) => {
+            const at = Math.max(0, total - s.at);
+            const found = offsets.findIndex((v) => v > at + 3);
+            const i = found < 0 ? points.length - 1 : Math.max(1, found);
+            // At corners and terminals the reverse departure follows its own
+            // next road segment, not the bearing of the forward stop connector.
+            return {
+              at,
+              order,
+              place: {
+                ...s.place,
+                platformHeading: headingDegrees(points[i - 1], points[i]),
+              },
+            };
+          }),
         loop: false,
       },
     ];
+  }
+  /** Vehicle preview uses actual direction on known roads, not passenger-service availability. */
+  vehiclePath(vehicle: ShuttleVehicle, departing = false): GeoPoint[] {
+    const route = this.map.routes.find((r) => r.id === vehicle.lineId);
+    if (!route) return [];
+    const history = uniquePoints(
+      (vehicle.motion?.history || []).flatMap((h) => h.points),
+    );
+    const previous = history
+      .slice(0, -1)
+      .reverse()
+      .find((p) => distanceMeters(p, vehicle) >= 5);
+    const heading =
+      vehicle.motion?.heading ??
+      (previous ? headingDegrees(previous, vehicle) : vehicle.direction);
+    const tracks = this.directions(route);
+    // This reversed geometry is exclusively for visualizing observed driving.
+    // It does not add stops, boarding alternatives or return services to the planner.
+    if (
+      tracks.length === 1 &&
+      this.map.paths
+        .filter((p) => p.routeIds.includes(route.id))
+        .every((p) => p.direction === "both")
+    ) {
+      const forward = tracks[0],
+        total = forward.offsets[forward.offsets.length - 1];
+      tracks.push({
+        points: forward.points.slice().reverse(),
+        offsets: forward.offsets.map((v) => total - v).reverse(),
+        stops: [],
+        loop: forward.loop,
+      });
+    }
+    const departure = (): GeoPoint[] => {
+      if (
+        departing ||
+        !(vehicle.motion?.status === "stationary" || vehicle.speed === 0)
+      )
+        return [];
+      const exits = tracks.filter(
+        (t) => distanceMeters(vehicle, t.points[0]) <= 12,
+      );
+      if (exits.length !== 1) return [];
+      const next = exits[0].points.find(
+        (p) => distanceMeters(p, exits[0].points[0]) > 5,
+      );
+      if (!next) return [];
+      return this.vehiclePath(
+        {
+          ...vehicle,
+          direction: headingDegrees(exits[0].points[0], next),
+          motion: undefined,
+        },
+        true,
+      );
+    };
+    if (heading == null || !Number.isFinite(heading)) return departure();
+    const angleBetween = (a: number, b: number): number =>
+      Math.abs(((a - b + 540) % 360) - 180);
+    // Stop-order tracks can contain a through-road excursion (A -> B -> A).
+    // A bus observed continuing past B must not inherit that artificial U-turn.
+    // Only use existing route roads and an existing terminal whose shortest
+    // path starts in the observed direction; never invent an edge or a loop lap.
+    const roadContinuation = (): GeoPoint[] => {
+      if (route.servicePattern !== "out-and-back" || tracks[0]?.loop) return [];
+      const graph = this.graph(route.id),
+        hit = graph.nearest(vehicle);
+      if (!hit || hit.distance > 30) return [];
+      const choices = tracks.flatMap((track) => {
+        const end = track.points[track.points.length - 1];
+        const path = graph.path(hit.point, end, 30);
+        const next = path?.points.find((p) => distanceMeters(hit.point, p) > 8);
+        if (!path || !next) return [];
+        const angle = angleBetween(headingDegrees(hit.point, next), heading);
+        return angle < 55
+          ? [{ points: uniquePoints([vehicle, ...path.points]), angle }]
+          : [];
+      });
+      choices.sort((a, b) => a.angle - b.angle);
+      return choices[0]?.points || [];
+    };
+    const past: { point: GeoPoint; behind: number }[] = [];
+    let behind = 0;
+    for (let i = history.length - 2; i >= 0 && behind < 180; i--) {
+      behind += distanceMeters(history[i], history[i + 1]);
+      if (behind > 8) past.push({ point: history[i], behind });
+    }
+    const hits: {
+      track: RouteTrack;
+      direction: number;
+      at: number;
+      score: number;
+    }[] = [];
+    tracks.forEach((track, direction) => {
+      for (let i = 1; i < track.points.length; i++) {
+        const meters = track.offsets[i] - track.offsets[i - 1];
+        if (meters < 0.15) continue;
+        const hit = project(vehicle, track.points[i - 1], track.points[i]);
+        const angle = Math.abs(
+          ((headingDegrees(track.points[i - 1], track.points[i]) -
+            heading +
+            540) %
+            360) -
+            180,
+        );
+        if (hit.distance > 30 || angle >= 55) continue;
+        const at = track.offsets[i - 1] + hit.t * meters;
+        const total = track.offsets[track.offsets.length - 1];
+        const error =
+          past.reduce((sum, h) => {
+            let position = at - h.behind;
+            if (track.loop && position < 0) position += total;
+            const expected = sliceTrack(
+              track,
+              Math.max(0, position - 1),
+              Math.max(0, position),
+            ).slice(-1)[0];
+            return sum + distanceMeters(h.point, expected);
+          }, 0) / Math.max(1, past.length);
+        hits.push({
+          track,
+          direction,
+          at,
+          // History distinguishes repeated visits; it must not veto an otherwise
+          // exact current-road match after a turn or an upstream correction.
+          score: hit.distance + angle * 0.4 + Math.min(25, error),
+        });
+      }
+    });
+    hits.sort((a, b) => a.score - b.score);
+    const best = hits[0];
+    if (!best || best.score > 60) {
+      const continuation = roadContinuation();
+      return continuation.length > 1 ? continuation : departure();
+    }
+    const remaining = ({ track, at }: (typeof hits)[number]): GeoPoint[] => {
+      const total = track.offsets[track.offsets.length - 1];
+      return sliceTrack(track, at, total);
+    };
+    // Repeated visits must select one continuation, never intersect the candidate
+    // paths into a tiny stub. Prefer the latest equivalent visit on a direction.
+    const candidates = hits.filter((h) => h.score <= best.score + 3);
+    const selected = candidates.reduce(
+      (a, b) => (a.direction === b.direction && b.at > a.at + 80 ? b : a),
+      best,
+    );
+    const selectedPoints = remaining(selected);
+    const firstAhead = selectedPoints.find(
+      (p) => distanceMeters(vehicle, p) > 8,
+    );
+    if (
+      firstAhead &&
+      angleBetween(headingDegrees(vehicle, firstAhead), heading) > 70
+    ) {
+      const continuation = roadContinuation();
+      if (continuation.length > 1) return continuation;
+    }
+    let aheadMeters = 0;
+    for (let i = 1; i < selectedPoints.length - 1; i++) {
+      const previous = selectedPoints[i - 1],
+        point = selectedPoints[i],
+        next = selectedPoints[i + 1];
+      aheadMeters += distanceMeters(previous, point);
+      if (aheadMeters > 300) break;
+      if (
+        distanceMeters(previous, point) < 1 ||
+        distanceMeters(point, next) < 1
+      )
+        continue;
+      if (
+        angleBetween(
+          headingDegrees(previous, point),
+          headingDegrees(point, next),
+        ) > 140
+      ) {
+        const continuation = roadContinuation();
+        if (continuation.length > 1) return continuation;
+      }
+    }
+    const points: GeoPoint[] = [];
+    for (const p of selectedPoints) {
+      // Cancel only an exact retraced spur, without introducing any new edge.
+      if (
+        points.length > 1 &&
+        distanceMeters(p, points[points.length - 2]) < 0.5
+      )
+        points.pop();
+      else if (
+        !points.length ||
+        distanceMeters(p, points[points.length - 1]) > 0.15
+      )
+        points.push(p);
+    }
+    if (pathLength(points) < 2) return departure();
+    return uniquePoints([
+      { longitude: vehicle.longitude, latitude: vehicle.latitude },
+      ...points,
+    ]);
   }
   onboardPlans(vehicle: ShuttleVehicle, destination: GeoPoint): ShuttlePlan[] {
     const route = this.map.routes.find((r) => r.id === vehicle.lineId);
@@ -718,6 +935,8 @@ export class ShuttlePlanner {
             )
               continue;
             const rideMeters = alight.at - board.at;
+            // Coincident platform markers are not a ride, even on a closed circuit.
+            if (rideMeters < 1) continue;
             const candidateScore = walkTo + walkFrom * 1.8 + rideMeters * 0.16;
             if (!alternativeBoard && candidateScore >= score) continue;
             score = candidateScore;
@@ -771,6 +990,8 @@ export class ShuttlePlanner {
     vehicle: ShuttleVehicle,
     board: ShuttlePlace,
     stale: boolean,
+    nextLap = true,
+    observationTime = Date.now(),
   ): ArrivalEstimate {
     const unknown = (detail: string): ArrivalEstimate => ({
       seconds: null,
@@ -797,14 +1018,25 @@ export class ShuttlePlanner {
     const stationary =
       vehicle.motion?.status === "stationary" ||
       (!vehicle.motion && vehicle.speed === 0);
-    if (stationary && distanceMeters(vehicle, board) > 45)
+    if (stationary && distanceMeters(vehicle, board) > 45 && nextLap)
       return {
         seconds: null,
         text: "等待发车",
         detail: "等待发车",
         distance: null,
       };
-    if (vehicle.motion?.status === "uncertain") return unknown("位置暂不稳定");
+    const history = uniquePoints(
+      (vehicle.motion?.history || []).flatMap((h) => h.points),
+    );
+    const recent =
+      vehicle.motion &&
+      !vehicle.motion.reset &&
+      history.length > 1 &&
+      observationTime - (vehicle.motion.startsAt + vehicle.motion.duration) <=
+        12000 &&
+      distanceMeters(history[history.length - 1], vehicle) <= 12;
+    if (vehicle.motion?.status === "uncertain" && !recent)
+      return unknown("位置暂不稳定");
     const tracks = this.directions(route);
     const track =
       tracks[board.serviceDirection ?? -1] ||
@@ -822,7 +1054,19 @@ export class ShuttlePlanner {
       ) ||
       tracks[0];
     if (!track) return unknown("线路站序不完整，暂不估时");
-    const heading = vehicle.motion ? vehicle.motion.heading : vehicle.direction;
+    const previous = recent
+      ? history
+          .slice(0, -1)
+          .reverse()
+          .find((p) => distanceMeters(p, vehicle) >= 5)
+      : undefined;
+    const heading =
+      vehicle.motion?.heading ??
+      (previous
+        ? headingDegrees(previous, vehicle)
+        : stationary && vehicle.motion
+          ? null
+          : vehicle.direction);
     if (heading === null || !Number.isFinite(heading))
       return unknown("行驶方向待确认");
     const positionKey = JSON.stringify([
@@ -849,7 +1093,7 @@ export class ShuttlePlanner {
       }
       hits = [];
       for (let i = 1; i < track.points.length; i++) {
-        if (track.offsets[i] - track.offsets[i - 1] < 3) continue;
+        if (track.offsets[i] - track.offsets[i - 1] < 0.15) continue;
         const p = project(vehicle, track.points[i - 1], track.points[i]);
         const angle = Math.abs(
           ((headingDegrees(track.points[i - 1], track.points[i]) -
@@ -887,17 +1131,7 @@ export class ShuttlePlanner {
     }
     const best = hits[0];
     if (!best || best.score > 60) return unknown("位置或方向暂不稳定");
-    // Repeated geometry cannot identify a visit from a single coordinate alone.
-    // Do not turn that ambiguity into a confident long detour or a fictitious next bus.
-    if (
-      hits.some(
-        (h) => h.score <= best.score + 3 && Math.abs(h.at - best.at) > 80,
-      )
-    )
-      return unknown("到站时间待确认");
-    let target = Infinity;
-    let targetPlatform: (typeof track.stops)[number] | undefined;
-    for (const stop of track.stops.filter(
+    const platforms = track.stops.filter(
       (s) =>
         served.some((p) => p.id === s.place.id) &&
         (board.serviceOrder === undefined || s.order === board.serviceOrder) &&
@@ -906,16 +1140,43 @@ export class ShuttlePlanner {
             ((s.place.platformHeading! - board.platformHeading + 540) % 360) -
               180,
           ) < 75),
-    )) {
-      let at = stop.at;
-      if (at < best.at - 35 && track.loop)
-        at += track.offsets[track.offsets.length - 1];
-      if (at >= best.at - 35 && Math.max(best.at, at) < target) {
-        target = Math.max(best.at, at);
-        targetPlatform = stop;
+    );
+    const targetFor = (
+      position: number,
+    ): { target: number; platform?: RouteTrack["stops"][number] } => {
+      let target = Infinity;
+      let platform: RouteTrack["stops"][number] | undefined;
+      const tolerance = nextLap ? 35 : stationary ? 25 : 12;
+      for (const stop of platforms) {
+        let at = stop.at;
+        if (at < position - 35 && track.loop && nextLap)
+          at += track.offsets[track.offsets.length - 1];
+        if (at >= position - tolerance && Math.max(position, at) < target) {
+          target = Math.max(position, at);
+          platform = stop;
+        }
       }
+      return { target, platform };
+    };
+    const { target, platform: targetPlatform } = targetFor(best.at);
+    // Repeated visits with the same remaining distance are equivalent for arrivals.
+    // Conflicting passed/approaching visits still need another observation.
+    if (
+      hits.some((h) => {
+        if (h.score > best.score + 3 || Math.abs(h.at - best.at) <= 80)
+          return false;
+        const other = targetFor(h.at).target;
+        return (
+          Number.isFinite(other) !== Number.isFinite(target) ||
+          (Number.isFinite(target) &&
+            Math.abs(other - h.at - (target - best.at)) > 40)
+        );
+      })
+    )
+      return unknown("到站时间待确认");
+    if (!Number.isFinite(target)) {
+      return { ...unknown("已驶过，请等待下一班"), passed: true };
     }
-    if (!Number.isFinite(target)) return unknown("已驶过，请等待下一班");
     const distance = target - best.at;
     const stops = countStopVisits(track, best.at, target);
     const path = {
@@ -927,6 +1188,7 @@ export class ShuttlePlanner {
       const platform = targetPlatform;
       if (
         distance < 55 &&
+        distanceMeters(vehicle, board) <= 45 &&
         platform?.place.platformHeading !== undefined &&
         Math.abs(
           ((platform.place.platformHeading - heading + 540) % 360) - 180,

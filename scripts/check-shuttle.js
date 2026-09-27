@@ -955,6 +955,1013 @@ function onboardFixture() {
   return { point, bus, campus };
 }
 
+test("stop-pin destinations preserve nearby ride-and-walk candidates in the offline planner", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    planner = new ShuttleItineraryPlanner(map, new ShuttlePlanner(map));
+  const origin = map.places.find((p) => p.name === "桃园 · 东行");
+  for (const dest of map.places.filter((p) =>
+    /^(经管院|资环院) ·/.test(p.name),
+  )) {
+    const trips = planner.plans(origin, dest, [origin.id], [dest.id], true);
+    assert(
+      trips.some(
+        (p) =>
+          p.mode === "ride" && /共青/.test(p.alight.name) && p.walkFrom < 800,
+      ),
+    );
+  }
+});
+
+test("numeric route names collapse without losing special services", () => {
+  const { routeNames } = harness().load("features/utils/shuttle-route-names");
+  assert.equal(
+    routeNames(["8号线", "6号线", "7号线", "6号线"].map((name) => ({ name }))),
+    "6/7/8 号线",
+  );
+  assert.equal(
+    routeNames(["3路B", "3号线", "经管专线"].map((name) => ({ name }))),
+    "3号线 / 3路B / 经管专线",
+  );
+});
+
+test("line 3 westbound previews cross History College and Taoyuan towards Orange instead of returning to Gate 5", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo");
+  const planner = new ShuttlePlanner(map),
+    route = map.routes.find((r) => r.id === "242"),
+    road = map.paths.find((p) => p.id === "shuttle-road-008-routes-2"),
+    terminals = planner.directions(route).map((t) => t.points.at(-1));
+  for (const west of [true, false]) {
+    const roadPoints = west ? road.points.slice().reverse() : road.points;
+    for (let i = 1; i < roadPoints.length; i++)
+      for (const f of [0.1, 0.5, 0.9]) {
+        const a = roadPoints[i - 1],
+          b = roadPoints[i],
+          vehicle = {
+            id: "history-direction",
+            lineId: route.id,
+            longitude: a.longitude + (b.longitude - a.longitude) * f,
+            latitude: a.latitude + (b.latitude - a.latitude) * f,
+            direction: headingDegrees(a, b),
+          };
+        for (const withHistory of [false, true]) {
+          const preview = planner.vehiclePath({
+            ...vehicle,
+            ...(withHistory
+              ? {
+                  motion: {
+                    heading: vehicle.direction,
+                    status: "moving",
+                    history: [{ points: [a, vehicle] }],
+                  },
+                }
+              : {}),
+          });
+          assert(preview.length > 1, `missing segment ${i}, west=${west}`);
+          assert(
+            distanceMeters(preview.at(-1), terminals[west ? 1 : 0]) < 3,
+            `wrong terminal at segment ${i}, west=${west}, history=${withHistory}`,
+          );
+          if (west) {
+            assert(
+              preview.some((p) => distanceMeters(p, road.points[0]) < 3),
+              "continue through the western junction",
+            );
+            assert(
+              !preview.some((p) => distanceMeters(p, terminals[0]) < 10),
+              "never return to Gate 5",
+            );
+          }
+        }
+      }
+  }
+});
+
+test("History College continuation tolerates lateral GPS error without treating the road connector as the heading", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    planner = new ShuttlePlanner(map);
+  const road = map.paths.find((p) => p.id === "shuttle-road-008-routes-2"),
+    end = planner
+      .directions(map.routes.find((r) => r.id === "242"))[1]
+      .points.at(-1);
+  for (let i = 1; i < road.points.length; i++)
+    for (const metres of [-10, 10]) {
+      const a = road.points[i],
+        b = road.points[i - 1],
+        vehicle = {
+          id: "history-jitter",
+          lineId: "242",
+          direction: headingDegrees(a, b),
+          longitude: (a.longitude + b.longitude) / 2,
+          latitude: (a.latitude + b.latitude) / 2 + metres / 111200,
+        };
+      const points = planner.vehiclePath(vehicle);
+      assert(points.length > 1);
+      assert(
+        distanceMeters(points.at(-1), end) < 3,
+        `segment ${i}, lateral ${metres}`,
+      );
+      assert(distanceMeters(points[0], vehicle) < 0.1);
+    }
+});
+
+test("clicking a line 3 marker before and after Taoyuan paints the westbound continuation", async () => {
+  const road = map.paths.find((p) => p.id === "shuttle-road-008-routes-2");
+  for (const i of [3, 2, 1]) {
+    const h = harness({ mockStream: true }),
+      page = h.page(),
+      { headingDegrees } = h.load("features/utils/shuttle-screen"),
+      { distanceMeters } = h.load("utils/shuttle-geo"),
+      { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+    const a = road.points[i],
+      b = road.points[i - 1],
+      vehicle = {
+        id: "history-click",
+        lineId: "242",
+        lineName: "3号线",
+        speed: 10,
+        direction: headingDegrees(a, b),
+        longitude: (a.longitude + b.longitude) / 2,
+        latitude: (a.latitude + b.latitude) / 2,
+      };
+    const end = new ShuttlePlanner(map)
+      .directions(map.routes.find((r) => r.id === "242"))[1]
+      .points.at(-1);
+    page.onLoad();
+    page.onShow();
+    page.onReady();
+    await settle();
+    page.receiveSnapshot({
+      vehicles: [vehicle],
+      fetchedAt: Date.now(),
+      serverTime: Date.now(),
+      stale: false,
+      mapRevision: map.revision,
+    });
+    const marker = h.calls
+      .filter((c) => c[0] === "addMarkers")
+      .flatMap((c) => c[1].markers)
+      .find((m) => m.id >= 10000);
+    assert(marker);
+    page.onMarkerTap({ detail: { markerId: marker.id } });
+    const preview = page.data.polylines.find(
+      (p) =>
+        distanceMeters(p.points[0], vehicle) < 1 &&
+        distanceMeters(p.points.at(-1), end) < 3,
+    );
+    assert(preview, `marker segment ${i} did not paint the continuing route`);
+    assert(preview.points.some((p) => distanceMeters(p, road.points[0]) < 3));
+    page.onMarkerTap({ detail: { markerId: marker.id } });
+    assert.equal(page.data.selectedVehicleId, "");
+    page.onUnload();
+  }
+});
+
+test("line 3 previews continue beyond History College without intersecting into a short stub", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo");
+  const planner = new ShuttlePlanner(map),
+    route = map.routes.find((r) => r.id === "242"),
+    college = map.places.find((p) => p.shortName === "历史学院");
+  let checked = 0;
+  for (const track of planner.directions(route))
+    for (let i = 1; i < track.points.length; i++) {
+      const a = track.points[i - 1],
+        b = track.points[i];
+      if (distanceMeters(a, college) > 130 || distanceMeters(a, b) < 5)
+        continue;
+      const vehicle = {
+        id: "history",
+        lineId: route.id,
+        longitude: (a.longitude + b.longitude) / 2,
+        latitude: (a.latitude + b.latitude) / 2,
+        direction: headingDegrees(a, b),
+      };
+      const points = planner.vehiclePath(vehicle);
+      const length = points
+        .slice(1)
+        .reduce((n, p, i) => n + distanceMeters(points[i], p), 0);
+      assert(
+        length > 200,
+        `History College segment ${i} ends after ${length} metres`,
+      );
+      assert(distanceMeters(points[0], vehicle) < 0.1);
+      for (let j = 2; j < points.length; j++)
+        assert(
+          distanceMeters(points[j], points[j - 2]) > 0.5,
+          "no exact out-and-back stub",
+        );
+      checked++;
+    }
+  assert(checked > 3);
+});
+
+test("vehicle previews start at the vehicle and follow only the remaining direction", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { bus, point, campus } = onboardFixture(),
+    planner = new ShuttlePlanner(campus);
+  const forward = planner.vehiclePath(bus(250));
+  assert(Math.abs(forward[0].longitude - point(250).longitude) < 1e-9);
+  assert(Math.abs(forward.at(-1).longitude - point(900).longitude) < 1e-9);
+  assert(forward.every((p) => p.longitude >= point(250).longitude - 1e-9));
+  const reverse = planner.vehiclePath({ ...bus(250), direction: 270 });
+  assert(Math.abs(reverse.at(-1).longitude - point(0).longitude) < 1e-9);
+  assert(reverse.every((p) => p.longitude <= point(250).longitude + 1e-9));
+  assert.equal(planner.vehiclePath({ ...bus(250), direction: null }).length, 0);
+  assert.equal(planner.vehiclePath(bus(250, "far", "r2", 100)).length, 0);
+});
+
+test("a loop vehicle preview ends at this lap's terminal instead of adding completed roads", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { bus, point, campus } = onboardFixture();
+  const points = [
+    point(0),
+    point(300),
+    point(300, 300),
+    point(0, 300),
+    point(0),
+  ];
+  campus.places = points.slice(0, -1).map((p, i) => ({
+    ...p,
+    id: `loop${i}`,
+    name: `loop${i}`,
+    category: "stop",
+    routeIds: ["r2"],
+  }));
+  campus.routes = [
+    {
+      ...campus.routes[1],
+      stopIds: campus.places.map((p) => p.id),
+      orderedStops: [0, 1, 2, 3, 0].map((i, order) => ({
+        stopId: `loop${i}`,
+        order,
+      })),
+    },
+  ];
+  campus.paths = [{ ...campus.paths[0], points, routeIds: ["r2"] }];
+  const preview = new ShuttlePlanner(campus).vehiclePath(bus(150));
+  assert(preview.length > 2);
+  assert(Math.abs(preview.at(-1).longitude - point(0).longitude) < 1e-9);
+  assert(Math.abs(preview.at(-1).latitude - point(0).latitude) < 1e-9);
+  assert(
+    !preview
+      .slice(1, -1)
+      .some(
+        (p) =>
+          p.latitude === point(0).latitude &&
+          p.longitude < point(150).longitude,
+      ),
+  );
+});
+
+test("vehicle list and marker toggle one interruptible preview, restore routes and clear on hide or loss", async () => {
+  const { bus, campus } = onboardFixture();
+  const h = harness({ mockStream: true, canvas: true, map: campus }),
+    page = h.page();
+  page.onLoad();
+  page.onShow();
+  page.onReady();
+  await settle();
+  const packet = {
+    vehicles: [bus(250), bus(500, "other", "r1")],
+    fetchedAt: Date.now(),
+    serverTime: Date.now(),
+    stale: false,
+    mapRevision: campus.revision,
+  };
+  page.receiveSnapshot(packet);
+  const original = JSON.stringify(page.data.polylines);
+  page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  assert.equal(page.data.selectedVehicleId, "bus-2");
+  [...h.jobs.values()]
+    .filter((j) => j.delay === 0)
+    .at(-1)
+    .f();
+  assert(page.data.routeAnimating);
+  const count = h.calls.filter((c) => c[0] === "polylines").length;
+  for (const t of [0, 16, 100, 500]) {
+    const [id, frame] = [...h.frames].at(-1);
+    h.frames.delete(id);
+    frame(t);
+  }
+  assert.equal(h.calls.filter((c) => c[0] === "polylines").length, count);
+  const stale = [...h.frames.values()].at(-1);
+  const marker = h.calls
+    .filter((c) => c[0] === "addMarkers")
+    .flatMap((c) => c[1].markers)
+    .find((m) => m.id >= 10000);
+  page.onMarkerTap({ detail: { markerId: marker.id } });
+  assert.equal(page.data.selectedVehicleId, "");
+  assert.equal(JSON.stringify(page.data.polylines), original);
+  stale(5000);
+  assert.equal(JSON.stringify(page.data.polylines), original);
+  page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  page.selectVehicle({ currentTarget: { dataset: { id: "other" } } });
+  assert.equal(page.data.selectedVehicleId, "other");
+  page.receiveSnapshot({ ...packet, vehicles: [bus(250)] });
+  assert.equal(page.data.selectedVehicleId, "");
+  page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  page.applySelection();
+  assert.equal(page.data.selectedVehicleId, "");
+  page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  page.onHide();
+  assert.equal(page.data.selectedVehicleId, "");
+  assert.equal(h.frames.size, 0);
+  page.onUnload();
+});
+
+test("vehicle preview matches delayed marker heading and excludes future history at a corner", () => {
+  const clock = { now: 5000 },
+    h = harness({ clock });
+  const { ShuttleMapMotion } = h.load("features/utils/shuttle-map-motion");
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const { bus, point, campus } = onboardFixture();
+  const planner = new ShuttlePlanner(campus);
+  const motion = new ShuttleMapMotion(h.native, planner, false);
+  const first = {
+    startsAt: 1000,
+    duration: 3000,
+    points: [point(250), point(300)],
+  };
+  const second = {
+    startsAt: 4000,
+    duration: 3000,
+    points: [point(300), point(300, 50)],
+  };
+  const vehicle = {
+    ...bus(300, "bus-2", "r2", 50),
+    direction: 0,
+    motion: {
+      ...second,
+      history: [first, second],
+      playbackDelay: 3000,
+      status: "uncertain",
+      heading: 0,
+      reset: false,
+    },
+  };
+  motion.update([vehicle], 7000, false, 5000);
+  assert.equal(planner.vehiclePath(vehicle).length, 0);
+  const playback = motion.previewVehicle("bus-2");
+  assert(Math.abs(playback.direction - 90) < 0.1);
+  assert.equal(playback.longitude, motion.positions()[0].point.longitude);
+  assert(
+    playback.motion.history[0].points.every(
+      (p) =>
+        p.longitude <= playback.longitude && p.latitude === point(0).latitude,
+    ),
+  );
+  const path = planner.vehiclePath(playback);
+  assert(path.length > 1);
+  assert.equal(path[0].longitude, playback.longitude);
+  assert.equal(path.at(-1).longitude, point(900).longitude);
+  motion.clear();
+});
+
+test("sub-five-metre GPS jitter does not override a usable bus preview heading", () => {
+  const h = harness({ clock: { now: 5000 } }),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleMapMotion } = h.load("features/utils/shuttle-map-motion"),
+    { bus, point, campus } = onboardFixture();
+  const planner = new ShuttlePlanner(campus),
+    motion = new ShuttleMapMotion(h.native, planner, false);
+  const segment = {
+    startsAt: 1000,
+    duration: 3000,
+    points: [point(250), point(250, 1)],
+  };
+  motion.update(
+    [
+      {
+        ...bus(250),
+        motion: {
+          ...segment,
+          history: [segment],
+          playbackDelay: 3000,
+          status: "stationary",
+          heading: 90,
+          reset: false,
+        },
+      },
+    ],
+    5000,
+    false,
+    5000,
+  );
+  const vehicle = motion.previewVehicle("bus-2");
+  assert.equal(vehicle.direction, 90);
+  assert(planner.vehiclePath(vehicle).length > 1);
+  motion.clear();
+});
+
+test("vehicle preview supports dense roads and shows shared forward geometry of repeated visits", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const { bus, point, campus } = onboardFixture();
+  campus.paths[0].points = Array.from({ length: 451 }, (_, i) => point(i * 2));
+  let planner = new ShuttlePlanner(campus);
+  let path = planner.vehiclePath(bus(250));
+  assert(path.length > 2);
+  assert.equal(path.at(-1).longitude, point(900).longitude);
+  campus.paths[0].points = [point(0), point(900)];
+  campus.routes[1].orderedStops = [
+    0, 300, 600, 900, 600, 300, 0, 300, 600, 900,
+  ].map((x, order) => ({ stopId: `s${x}`, order }));
+  planner = new ShuttlePlanner(campus);
+  path = planner.vehiclePath(bus(250));
+  assert(path.length > 1);
+  assert.equal(path.at(-1).longitude, point(900).longitude);
+  assert(path.every((p) => p.longitude >= point(250).longitude));
+  // Preview matching must never authorize unconfirmed passenger return trips.
+  campus.routes[1].orderedStops = [0, 300, 600, 900].map((x, order) => ({
+    stopId: `s${x}`,
+    order,
+  }));
+  delete campus.routes[1].servicePattern;
+  planner = new ShuttlePlanner(campus);
+  assert(planner.vehiclePath({ ...bus(250), direction: 270 }).length > 1);
+  assert.equal(
+    planner.onboardPlans({ ...bus(250), direction: 270 }, point(0)).length,
+    0,
+  );
+});
+
+test("edge hints use the same preview toggle and a selected unresolved vehicle retries on a fresh packet", async () => {
+  const { bus, campus } = onboardFixture();
+  const h = harness({ mockStream: true, map: campus }),
+    page = h.page();
+  page.onLoad();
+  page.onShow();
+  page.onReady();
+  await settle();
+  const packet = {
+    vehicles: [{ ...bus(250), direction: null }],
+    fetchedAt: Date.now(),
+    serverTime: Date.now(),
+    stale: false,
+    mapRevision: campus.revision,
+  };
+  page.receiveSnapshot(packet);
+  const base = JSON.stringify(page.data.polylines);
+  page.focusVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  assert.equal(page.data.selectedVehicleId, "bus-2");
+  assert.equal(JSON.stringify(page.data.polylines), base);
+  page.receiveSnapshot({
+    ...packet,
+    vehicles: [bus(250)],
+    fetchedAt: packet.fetchedAt + 3000,
+    serverTime: packet.serverTime + 3000,
+  });
+  assert.equal(page.data.selectedVehicleId, "bus-2");
+  assert.notEqual(JSON.stringify(page.data.polylines), base);
+  assert(
+    page.data.polylines.some(
+      (p) => Math.abs(p.points[0].longitude - bus(250).longitude) < 1e-9,
+    ),
+  );
+  page.focusVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  assert.equal(page.data.selectedVehicleId, "");
+  assert.equal(JSON.stringify(page.data.polylines), base);
+  // Loss also clears a selected vehicle that has not resolved a path yet.
+  page.receiveSnapshot({
+    ...packet,
+    vehicles: [{ ...bus(250, "unknown"), direction: null }],
+    fetchedAt: packet.fetchedAt + 4000,
+  });
+  page.selectVehicle({ currentTarget: { dataset: { id: "unknown" } } });
+  page.receiveSnapshot({ ...packet, vehicles: [] });
+  assert.equal(page.data.selectedVehicleId, "");
+  page.onUnload();
+});
+
+test("confirmed return services group lines 3/4/6/7 and match Economics express reverse departures", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    planner = new ShuttlePlanner(map);
+  const origins = map.places.filter((p) => /^橘园 ·/.test(p.name));
+  const destinations = map.places.filter((p) => /^大礼堂 ·/.test(p.name));
+  const trips = new ShuttleItineraryPlanner(map, planner).plans(
+    origins[0],
+    destinations[0],
+    origins.map((p) => p.id),
+    destinations.map((p) => p.id),
+    true,
+  );
+  assert(
+    trips.some(
+      (p) =>
+        p.legs.length === 1 &&
+        ["242", "243", "77", "78"].every((id) =>
+          p.legs[0].routes.some((r) => r.id === id),
+        ),
+    ),
+  );
+  const route = map.routes.find((r) => r.id === "293");
+  const track = planner.directions(route)[1];
+  const board = track.stops[0].place,
+    destination = track.stops.at(-1).place;
+  const plan = planner.plans(board, destination, [board.id], route.id, [
+    destination.id,
+  ])[0];
+  assert(plan && plan.board.serviceDirection === 1);
+  const i = track.offsets.findIndex((v) => v > 3);
+  const heading = headingDegrees(track.points[i - 1], track.points[i]);
+  const vehicle = {
+    ...board,
+    id: "express",
+    lineId: route.id,
+    speed: 0,
+    direction: heading,
+    motion: { status: "stationary", heading },
+  };
+  assert.equal(planner.arrival(vehicle, plan.board, false).preparing, true);
+  vehicle.direction = vehicle.motion.heading = (heading + 180) % 360;
+  assert.notEqual(planner.arrival(vehicle, plan.board, false).preparing, true);
+});
+
+test("line 5 supports both terminals and all user-confirmed campus services are bidirectional", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    planner = new ShuttlePlanner(map);
+  const route = map.routes.find((r) => r.id === "244");
+  const stops = route.orderedStops.map((s) =>
+    map.places.find((p) => p.id === s.stopId),
+  );
+  for (const [board, alight, direction] of [
+    [stops[0], stops.at(-1), 0],
+    [stops.at(-1), stops[0], 1],
+  ]) {
+    const plan = planner.plans(board, alight, [board.id], route.id, [
+      alight.id,
+    ])[0];
+    assert(plan && plan.board.serviceDirection === direction);
+    assert(plan.rideMeters > 2000);
+  }
+  for (const route of map.routes) {
+    const tracks = planner.directions(route);
+    assert.equal(tracks.length, 2, route.name);
+    const board = tracks[1].stops[0].place;
+    const destination = tracks[1].stops.find(
+      (s) => s.at > 700 && s.place.id !== board.id,
+    ).place;
+    assert(
+      planner
+        .plans(board, destination, [board.id], route.id, [destination.id])
+        .some((p) => p.board.serviceDirection === 1 && p.points.length > 1),
+      route.name,
+    );
+  }
+});
+
+test("line 8 previews continue past Geosciences to Music College on existing roads", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    planner = new ShuttlePlanner(map);
+  const route = map.routes.find((r) => r.id === "79");
+  const track = planner.directions(route)[0];
+  const music = map.places.find((p) => p.id === "shuttle-stop-829446d6ac10");
+  const geo = map.places.find((p) => p.id === "shuttle-stop-89407d0d31e9");
+  const psychology = map.places.find(
+    (p) => p.id === "shuttle-stop-5e32474b6263",
+  );
+  const start = track.stops.find((s) => s.place.id === psychology.id).at;
+  const geoAt = track.stops.find((s) => s.place.id === geo.id).at;
+  for (const at of [start + 70, geoAt + 80]) {
+    const i = track.offsets.findIndex((v) => v > at);
+    assert(i > 0);
+    const a = track.points[i - 1],
+      b = track.points[i];
+    const vehicle = {
+      id: "line8-preview",
+      lineId: route.id,
+      speed: 10,
+      longitude: (a.longitude + b.longitude) / 2,
+      latitude: (a.latitude + b.latitude) / 2,
+      direction: headingDegrees(a, b),
+    };
+    const points = planner.vehiclePath(vehicle);
+    assert(
+      points.some((p) => distanceMeters(p, music) < 3),
+      "preview must reach Music College",
+    );
+    for (const p of points)
+      assert(
+        planner.graph(route.id).nearest(p).distance < 13,
+        "preview remains on line 8 roads",
+      );
+  }
+});
+
+test("campus vehicle previews remain visible across directed track samples with matching history", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    planner = new ShuttlePlanner(map);
+  for (const route of map.routes) {
+    const tracks = planner.directions(route);
+    for (const track of tracks) {
+      const step = Math.max(1, Math.floor(track.points.length / 35));
+      for (let i = 1; i < track.points.length - 1; i += step) {
+        if (track.offsets[i] - track.offsets[i - 1] < 0.15) continue;
+        const a = track.points[i - 1],
+          b = track.points[i];
+        const vehicle = {
+          id: "sample",
+          lineId: route.id,
+          longitude: (a.longitude + b.longitude) / 2,
+          latitude: (a.latitude + b.latitude) / 2,
+          direction: headingDegrees(a, b),
+        };
+        vehicle.motion = {
+          heading: vehicle.direction,
+          status: "moving",
+          history: [{ points: [...track.points.slice(0, i), vehicle] }],
+        };
+        const points = planner.vehiclePath(vehicle);
+        // At an overlapping terminal, do not invent another lap without evidence.
+        if (tracks.some((t) => distanceMeters(vehicle, t.points.at(-1)) < 5))
+          continue;
+        assert(
+          points.length > 1,
+          `${route.name} segment ${i} lost its preview`,
+        );
+        assert.equal(points[0].longitude, vehicle.longitude);
+        assert.equal(points[0].latitude, vehicle.latitude);
+      }
+    }
+  }
+});
+
+test("boarding vehicle rows prioritize waiting then historical ETA, hide passed buses and keep distance labels", async () => {
+  const { campus, point, bus } = onboardFixture();
+  campus.routes = [campus.routes[1]];
+  const h = harness({ map: campus, mockStream: true });
+  Object.assign(h.raw, point(300, 50));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900, 80), name: "终点" });
+  page.confirmMapPick();
+  await settle();
+  const ride = page.data.plans.find((p) => p.mode === "ride");
+  assert(ride);
+  page.choosePlan({ currentTarget: { dataset: { id: ride.id } } });
+  const board = page.liveSelection().boardingVisits[0];
+  assert(board);
+  const vehicle = (id, x, status, seconds) => ({
+    ...bus(x, id),
+    speed: status === "waiting" ? 0 : 10,
+    arrivals: [
+      {
+        board,
+        status,
+        seconds,
+        distance: 300 - x,
+        source: seconds > 0 ? "history" : "position",
+        text:
+          status === "waiting"
+            ? "等候中"
+            : status === "unconfirmed"
+              ? "待确认"
+              : `约 ${seconds / 60} 分钟`,
+        detail: "",
+      },
+    ],
+  });
+  const vehicles = [
+    vehicle("passed", 500, "passed", null),
+    vehicle("near", 200, "approaching", 240),
+    vehicle("unknown", 300, "unconfirmed", null),
+    vehicle("far", 100, "approaching", 60),
+    vehicle("waiting", 300, "waiting", null),
+  ];
+  const packet = {
+    vehicles,
+    fetchedAt: Date.now(),
+    serverTime: Date.now(),
+    stale: false,
+    mapRevision: campus.revision,
+  };
+  page.setData({ connection: "live" });
+  page.receiveSnapshot(packet);
+  assert.deepEqual(
+    Array.from(page.data.vehicleRows, (r) => r.id),
+    ["waiting", "far", "near"],
+  );
+  assert.equal(page.data.vehicleRows[0].eta, "等候中");
+  assert.equal(
+    page.data.plans.find((p) => p.id === ride.id).walkLabel,
+    "下一辆：等待中",
+  );
+  assert.equal(page.data.vehicleRows[1].eta, "约 1 分钟");
+  assert(page.data.vehicleRows.every((r) => /^距你 /.test(r.distanceLabel)));
+  // A delayed old-selection estimate must not be reused for a different platform.
+  page.receiveSnapshot({
+    ...packet,
+    vehicles: [
+      {
+        ...bus(100, "wrong"),
+        arrivals: [
+          { ...vehicles[3].arrivals[0], board: { ...board, stopId: "s900" } },
+        ],
+      },
+    ],
+  });
+  assert.equal(page.data.vehicleRows[0].eta, "正在驶来");
+  page.receiveSnapshot({ ...packet, stale: true });
+  assert.equal(page.data.vehicleRows.length, 0);
+  page.onUnload();
+});
+
+test("late walking results preserve the itinerary trace and vehicle taps only focus while comparing routes", async () => {
+  for (const preview of [false]) {
+    const { campus, point, bus } = onboardFixture();
+    campus.routes = [campus.routes[1]];
+    const pending = [],
+      h = harness({
+        map: campus,
+        mockStream: true,
+        canvas: true,
+        plans: (o) => new Promise((resolve) => pending.push({ o, resolve })),
+      });
+    Object.assign(h.raw, point(300, 50));
+    const page = h.page();
+    page.onLoad();
+    page.onReady();
+    page.onShow();
+    await settle();
+    page.showMapPick({ ...point(900, 80), name: "终点" });
+    page.confirmMapPick();
+    await settle();
+    [...h.jobs.values()]
+      .filter((j) => j.delay === 8000)
+      .at(-1)
+      .f();
+    const choice = page.data.plans.find((p) => p.mode === "ride");
+    assert(choice);
+    page.choosePlan({ currentTarget: { dataset: { id: choice.id } } });
+    page.receiveSnapshot({
+      vehicles: [bus(200)],
+      fetchedAt: Date.now(),
+      serverTime: Date.now(),
+      stale: false,
+      mapRevision: campus.revision,
+    });
+    const beforeTap = JSON.stringify(page.data.polylines);
+    page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+    assert.equal(page.data.selectedVehicleId, "");
+    assert.equal(JSON.stringify(page.data.polylines), beforeTap);
+    assert.equal(page.data.longitude, bus(200).longitude);
+    const marker = h.calls
+      .filter((c) => c[0] === "addMarkers")
+      .flatMap((c) => c[1].markers)
+      .find((m) => m.id >= 10000);
+    page.onMarkerTap({ detail: { markerId: marker.id } });
+    assert.equal(page.data.selectedVehicleId, "");
+    assert.equal(JSON.stringify(page.data.polylines), beforeTap);
+    [...h.jobs.values()]
+      .filter((j) => j.delay === (preview ? 0 : 420))
+      .at(-1)
+      .f();
+    const tick = (t) => {
+      const [id, fn] = [...h.frames].at(-1);
+      h.frames.delete(id);
+      fn(t);
+    };
+    tick(0);
+    tick(550);
+    const writes = h.calls.filter((c) => c[0] === "polylines").length;
+    const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+      { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
+    const request = pending.at(-1).o.data;
+    const plan = new ShuttleItineraryPlanner(campus, new ShuttlePlanner(campus))
+      .plans(request.origin, request.destination)
+      .find((p) => p.id === choice.id);
+    assert(plan);
+    pending.at(-1).resolve({
+      revision: campus.revision,
+      planningId: "late-walk",
+      plans: [
+        {
+          ...plan,
+          walkLegs: [
+            {
+              points: [request.origin, plan.board],
+              source: "tencent",
+              meters: 50,
+              seconds: 40,
+            },
+            {
+              points: [plan.alight, request.destination],
+              source: "tencent",
+              meters: 80,
+              seconds: 70,
+            },
+          ],
+        },
+      ],
+    });
+    await settle();
+    assert.equal(page.data.selectedVehicleId, preview ? "bus-2" : "");
+    assert.equal(h.calls.filter((c) => c[0] === "polylines").length, writes);
+    const before = h.calls
+      .filter((c) => c[0] === "trace" && !c[1].dash.length)
+      .at(-1)[1]
+      .path.at(-1)[0];
+    tick(700);
+    tick(1100);
+    const after = h.calls
+      .filter((c) => c[0] === "trace" && !c[1].dash.length)
+      .at(-1)[1]
+      .path.at(-1)[0];
+    assert(
+      after > before,
+      "the vehicle trace must continue instead of restarting",
+    );
+    assert(h.calls.some((c) => c[0] === "trace" && c[1].dash.length));
+    tick(2200);
+    assert(
+      page.data.polylines.some(
+        (p) =>
+          !p.dottedLine &&
+          Math.abs(
+            p.points[0].longitude -
+              (preview ? bus(200).longitude : plan.points[0].longitude),
+          ) < 1e-9,
+      ),
+    );
+    assert(page.data.polylines.some((p) => p.dottedLine));
+    if (preview)
+      page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+    assert.equal(page.data.selectedVehicleId, "");
+    page.onUnload();
+  }
+});
+
+test("destination planning waits for the server and prioritizes returned favorites without a score cutoff", async () => {
+  const { campus, point, bus } = onboardFixture();
+  campus.routes = [campus.routes[1]];
+  const pending = [],
+    h = harness({
+      map: campus,
+      mockStream: true,
+      plans: (o) => new Promise((resolve) => pending.push({ o, resolve })),
+    });
+  Object.assign(h.raw, point(300, 50));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  const before = JSON.stringify(page.data.polylines);
+  page.receiveSnapshot({
+    vehicles: [bus(200)],
+    fetchedAt: Date.now(),
+    serverTime: Date.now(),
+    stale: false,
+    mapRevision: campus.revision,
+  });
+  page.selectVehicle({ currentTarget: { dataset: { id: "bus-2" } } });
+  assert.equal(page.data.selectedVehicleId, "bus-2");
+  page.showMapPick({ ...point(900, 80), name: "终点" });
+  page.confirmMapPick();
+  await settle();
+  assert.equal(page.data.planning, true);
+  assert.equal(page.data.selectedVehicleId, "");
+  assert.equal(page.data.plans.length, 0);
+  assert.equal(JSON.stringify(page.data.polylines), before);
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { togglePreferredPlan } = h.load("features/utils/shuttle-preferences");
+  const request = pending.at(-1).o.data;
+  const plans = new ShuttleItineraryPlanner(
+    campus,
+    new ShuttlePlanner(campus),
+  ).plans(request.origin, request.destination);
+  const ride = plans.find((p) => p.mode === "ride"),
+    walk = plans.find((p) => p.mode === "walk");
+  assert(ride && walk);
+  togglePreferredPlan("42", ride, request.origin, request.destination);
+  pending.at(-1).resolve({
+    revision: campus.revision,
+    planningId: "server-first",
+    plans: [
+      { ...walk, score: 1 },
+      { ...ride, score: 10000, availability: "unavailable" },
+    ],
+  });
+  await settle();
+  assert.equal(page.data.planning, false);
+  assert.equal(page.data.plans[0].id, ride.id);
+  assert.equal(page.data.selectedPlanId, ride.id);
+  assert(page.data.plans[0].favorite);
+  assert(![...h.jobs.values()].some((j) => j.delay === 8000));
+  page.onUnload();
+});
+
+test("planning timeout uses a fallback without letting a late alternative replace it", async () => {
+  const { campus, point } = onboardFixture();
+  const pending = [],
+    h = harness({
+      map: campus,
+      mockStream: true,
+      plans: (o) => new Promise((resolve) => pending.push({ o, resolve })),
+    });
+  Object.assign(h.raw, point(300, 50));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900, 80), name: "终点" });
+  page.confirmMapPick();
+  await settle();
+  assert.equal(page.data.plans.length, 0);
+  const [timer, job] = [...h.jobs].find(([, j]) => j.delay === 8000);
+  h.jobs.delete(timer);
+  job.f();
+  assert.equal(page.data.planning, false);
+  const selected = page.data.selectedPlanId;
+  assert(selected);
+  const before = JSON.stringify(page.data.polylines);
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
+  const request = pending.at(-1).o.data;
+  const plans = new ShuttleItineraryPlanner(
+    campus,
+    new ShuttlePlanner(campus),
+  ).plans(request.origin, request.destination);
+  pending.at(-1).resolve({
+    revision: campus.revision,
+    planningId: "late-alternative",
+    plans: plans.filter((p) => p.id !== selected),
+  });
+  await settle();
+  assert.equal(page.data.selectedPlanId, selected);
+  assert.equal(JSON.stringify(page.data.polylines), before);
+  page.onUnload();
+});
+
+test("default map keeps exactly the latest nearest ten markers without retaining older snapshot vehicles", async () => {
+  const { campus, point, bus } = onboardFixture();
+  const h = harness({ map: campus, mockStream: true });
+  Object.assign(h.raw, point(0));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  const active = new Set();
+  let cursor = h.calls.length;
+  const collect = () => {
+    for (const [name, payload] of h.calls.slice(cursor)) {
+      if (name === "addMarkers")
+        for (const m of payload.markers) if (m.id >= 10000) active.add(m.id);
+      if (name === "removeMarkers")
+        for (const id of payload.markerIds) active.delete(id);
+    }
+    cursor = h.calls.length;
+  };
+  for (let tick = 0; tick < 4; tick++) {
+    const vehicles = Array.from({ length: 15 }, (_, i) =>
+      bus((15 - i) * 10, `${tick}-${15 - i}`),
+    );
+    page.receiveSnapshot({
+      vehicles,
+      fetchedAt: Date.now() + tick * 3000,
+      serverTime: Date.now() + tick * 3000,
+      stale: false,
+      mapRevision: campus.revision,
+    });
+    collect();
+    assert.equal(active.size, 10);
+    assert.equal(page.data.vehicles.length, 10);
+    assert.deepEqual(
+      Array.from(page.data.vehicles, (v) => v.id),
+      Array.from({ length: 10 }, (_, i) => `${tick}-${i + 1}`),
+    );
+  }
+  page.onUnload();
+});
+
 test("boarding only changes the nearby-bus radius to 20m and keeps the original speed-only fallback", () => {
   const h = harness();
   for (const offset of [19, 21]) {
@@ -2585,8 +3592,16 @@ test("short-name chips persist per account and manual boarding plans work after 
   assert.equal(page.data.destinationName, end.shortName);
   page.openBoardingSearch();
   page.choosePlace({ currentTarget: { dataset: { id: start.id } } });
+  await settle();
   assert(page.data.plans.length > 0);
-  assert(page.data.plans.some((p) => p.routeName.includes(r.name)));
+  const routeNumber = /^(\d+)号线$/.exec(r.name)?.[1];
+  assert(
+    page.data.plans.some((p) =>
+      routeNumber
+        ? new RegExp(`(?:^|/| → )${routeNumber}(?=/| ?号线)`).test(p.routeName)
+        : p.routeName.includes(r.name),
+    ),
+  );
   assert.equal(page.data.authorized, false);
   assert.equal(page.data.hasOrigin, true);
   assert.equal(page.data.manualOrigin, true);
@@ -3169,6 +4184,7 @@ test("only one itinerary is painted; closing and choosing a draft destination pr
   );
   page.openDestinationSearch();
   page.choosePlace({ currentTarget: { dataset: { id: destinations[0].id } } });
+  await settle();
   assert(page.data.plans.length >= 1);
   const initial = JSON.stringify(page.data.polylines),
     selected = page.data.selectedPlanId;
@@ -3196,6 +4212,7 @@ test("only one itinerary is painted; closing and choosing a draft destination pr
   assert.equal(page.data.selectedPlanId, selected);
   assert.equal(JSON.stringify(page.data.polylines), initial);
   page.confirmMapPick();
+  await settle();
   assert(page.data.sheetOpen);
   assert(page.data.selectedPlanId);
   assert.notEqual(JSON.stringify(page.data.polylines), initial);
@@ -3269,6 +4286,7 @@ test("ordered trace distances keep every later leg invisible until earlier legs 
 });
 test("same directional ride geometry merges route labels and transfer plans remain ordered", () => {
   const h = harness(),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
     { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
     { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
   const planner = new ShuttlePlanner(map),
@@ -3303,7 +4321,8 @@ test("same directional ride geometry merges route labels and transfer plans rema
   assert(
     plans.every(
       (p) =>
-        p.legs[0].board.id === from.id && p.legs.at(-1).alight.id === to.id,
+        p.legs[0].board.id === from.id &&
+        Math.abs(p.walkFrom - distanceMeters(p.legs.at(-1).alight, to)) < 1,
     ),
   );
 });
@@ -3410,6 +4429,7 @@ test("programmatic camera movement keeps revealing canvas paths without native o
     },
   });
   p.confirmMapPick();
+  await settle();
   p.onRegionChange({ type: "begin", detail: { causedBy: "update" } });
   [...h.jobs.values()]
     .filter((j) => j.delay === 420)
@@ -4022,6 +5042,7 @@ test("camera gestures and programmatic camera updates preserve native route over
     },
   });
   p.confirmMapPick();
+  await settle();
   [...h.jobs.values()]
     .filter((j) => j.delay === 420)
     .at(-1)
@@ -4129,6 +5150,10 @@ test("late walking geometry cannot complete or replace a reveal midway", async (
   });
   page.confirmMapPick();
   await settle();
+  [...h.jobs.values()]
+    .filter((j) => j.delay === 8000)
+    .at(-1)
+    .f();
   [...h.jobs.values()]
     .filter((j) => j.delay === 420)
     .at(-1)
@@ -4403,7 +5428,7 @@ test("switching cached itineraries replays walk-ride-walk in order without anoth
     id,
     walkLegs: walks,
   }));
-  storage.set("easy-swu:shuttle:plans:v1:42", [
+  storage.set("easy-swu:shuttle:plans:v2:42", [
     {
       request: {
         origin: h.raw,
@@ -4664,7 +5689,7 @@ test("map title and first campus-help entry agree, and preparing buses use the c
     page = h.page();
   assert.equal(
     page.walkLabel({ nextDepartureState: "preparing" }),
-    "下一辆：准备发车",
+    "下一辆：等待中",
   );
   const wxml = fs.readFileSync(
     path.join(root, "pages/profile/content.wxml"),
@@ -4685,6 +5710,11 @@ test("map title and first campus-help entry agree, and preparing buses use the c
 
 (async () => {
   for (const [name, run] of tests) {
+    if (
+      process.env.SHUTTLE_TEST_FILTER &&
+      !new RegExp(process.env.SHUTTLE_TEST_FILTER).test(name)
+    )
+      continue;
     try {
       await run();
       console.log("PASS", name);

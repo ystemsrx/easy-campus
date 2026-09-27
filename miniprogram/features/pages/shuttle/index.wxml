@@ -66,7 +66,7 @@
     <view class="sheet-drag-zone" bindtouchstart="onSheetTouchStart" catchtouchmove="onSheetTouchMove" bindtouchend="onSheetTouchEnd" bindtouchcancel="onSheetTouchEnd" bindtap="toggleSheet" aria-role="button" aria-label="展开或收起校车信息"><view class="sheet-handle"></view></view>
     <view class="sheet-heading">
       <text class="sheet-title">{{journey === 'arrived' ? '已到达' : destinationName || '附近的校车'}}</text>
-      <text class="sheet-summary">{{journey !== 'idle' ? (journey === 'riding' ? '乘车中' : journey === 'waiting' ? '候车中' : journey === 'walking' ? '步行中' : '') : destinationName ? plans.length + ' 条路线' : vehicles.length + ' 辆'}}</text>
+        <text class="sheet-summary">{{journey !== 'idle' ? (journey === 'riding' ? '乘车中' : journey === 'waiting' ? '候车中' : journey === 'walking' ? '步行中' : '') : planning ? '规划中' : destinationName ? plans.length + ' 条路线' : vehicles.length + ' 辆'}}</text>
       <view class="round-close" bindtap="closeTripSheet" aria-role="button" aria-label="关闭路线"><lucide-icon name="x" size="27" tone="muted"></lucide-icon></view>
     </view>
     <view class="sheet-scroll-wrap"><scroll-view type="list" class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
@@ -88,7 +88,7 @@
             <view class="plan-detail-row"><view class="plan-stations"><text>{{item.boardName}}</text><lucide-icon name="arrow-right" size="21" tone="muted"></lucide-icon><text>{{item.alightName}}</text></view><text class="plan-walk">{{item.walkLabel}}</text></view>
           </view>
         </view>
-        <view wx:if="{{destinationName && !plans.length && journey === 'idle'}}" class="sheet-empty"><text>{{!hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
+        <view wx:if="{{destinationName && !plans.length && journey === 'idle'}}" class="sheet-empty"><text>{{planning ? '规划中' : !hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text wx:if="{{!planning}}" class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
         <view wx:if="{{crossingLabel}}" class="crossing-label">{{crossingLabel}}<text bindtap="clearCrossing">显示全部</text></view>
         <view wx:if="{{vehicleRows.length && journey === 'idle'}}" class="vehicle-list">
           <view wx:for="{{vehicleRows}}" wx:key="id" data-id="{{item.id}}" bindtap="selectVehicle" class="vehicle-row {{selectedVehicleId === item.id ? 'vehicle-row--selected' : ''}}" hover-class="pressed">
