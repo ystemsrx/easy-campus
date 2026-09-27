@@ -226,7 +226,7 @@ function harness(options = {}) {
   const api = async (url, o = {}) => {
     calls.push(["request", url, structuredClone(o)]);
     if (options.api) return options.api(url, o);
-    if (url.endsWith("/map")) return structuredClone(map);
+    if (url.endsWith("/map")) return structuredClone(options.map || map);
     if (url.endsWith("/plans") && options.plans) return options.plans(o);
     if (url.endsWith("/walking") && options.walking) return options.walking(o);
     if (url.endsWith("/walking"))
@@ -442,6 +442,7 @@ function harness(options = {}) {
       owner = v;
     },
     getListener: () => listener,
+    getLocationError: () => locationError,
     page(file = "features/pages/shuttle/index") {
       load(file);
       return host(pageOptions);
@@ -456,6 +457,257 @@ const settle = async () => {
   for (let i = 0; i < 50; i++) await Promise.resolve();
 };
 const clone = (v) => JSON.parse(JSON.stringify(v));
+function progressFixture(h, options = {}) {
+  const point = (meters) => ({
+    longitude: 106.42 + meters / 96500,
+    latitude: 29.82,
+    accuracy: 5,
+  });
+  const stop = (id, meters) => ({
+    ...point(meters),
+    id,
+    name: id,
+    category: "stop",
+    routeIds: ["r"],
+  });
+  const route = { id: "r", name: "1号线", color: "#333", stopIds: [] };
+  const leg = {
+    route,
+    routes: [route],
+    board: stop("候车站", 100),
+    alight: stop("终点站", 600),
+    points: [point(100), point(300), point(600)],
+    rideMeters: 500,
+  };
+  const transfer = {
+    ...leg,
+    route: { ...route, id: "r2" },
+    routes: [{ ...route, id: "r2" }],
+    board: options.sameStop ? leg.alight : stop("换乘站", 700),
+    alight: stop("第二终点站", 1200),
+    points: [point(options.sameStop ? 600 : 700), point(1200)],
+  };
+  const plan = {
+    legs: options.walk ? [] : options.transfer ? [leg, transfer] : [leg],
+    walkLegs: [],
+  };
+  const planner = {
+    journeyStops: () =>
+      options.stopMeters
+        ? options.stopMeters.map((meters, i) => ({
+            place: stop(`途经站${i + 1}`, 100 + meters),
+            meters,
+          }))
+        : [{ place: stop("中间站", 300), meters: 200 }],
+  };
+  const { ShuttleJourneyProgress } = h.load(
+    "features/utils/shuttle-journey-progress",
+  );
+  return {
+    point,
+    progress: new ShuttleJourneyProgress(
+      plan,
+      point(options.atBoard ? 100 : 0),
+      {
+        ...point(options.transfer ? 1300 : 700),
+        name: options.destinationName || "目的地",
+      },
+      planner,
+    ),
+  };
+}
+test("ride station nodes are evenly spaced while progress interpolates within the actual stop interval", () => {
+  const h = harness(),
+    { point, progress } = progressFixture(h, {
+      atBoard: true,
+      stopMeters: [50, 400],
+    });
+  for (const width of [200, 252, 295, 350]) {
+    const view = progress.view(width),
+      ride = view.segments[0];
+    assert(Math.abs(view.nodes[1].x - ride.width / 3) < 1e-6);
+    assert(Math.abs(view.nodes[2].x - (ride.width * 2) / 3) < 1e-6);
+    assert(Math.abs(view.nodes[3].x - ride.width) < 1e-6);
+  }
+  let time = 1000;
+  progress.update(point(100), time);
+  for (const x of [130, 160, 190, 220, 250, 280, 310, 340, 350])
+    progress.update(point(x), (time += 5000));
+  const view = progress.view(295),
+    [from, to] = view.nodes.slice(1, 3);
+  assert(
+    Math.abs((view.position - from.x) / (to.x - from.x) - 200 / 350) < 0.001,
+  );
+  assert.equal(from.reached, true);
+  assert.equal(to.reached, false);
+  assert(
+    Math.abs(view.segments[0].fill - view.position / view.segments[0].width) <
+      1e-8,
+  );
+  assert.equal(view.next, "下一站：途经站2");
+});
+
+test("walking sections are shorter without changing walking-only progress or transfer ordering", () => {
+  const h = harness();
+  for (const width of [200, 252, 295, 350]) {
+    const view = progressFixture(h).progress.view(width);
+    assert(
+      Math.abs(view.segments[0].width / view.segments[1].width - 60 / 150) <
+        1e-8,
+    );
+    assert(view.segments[0].width < (width * 76) / (150 + 76 * 2));
+    assert.equal(view.segments[0].width, view.segments[2].width);
+    const onlyWalk = progressFixture(h, { walk: true }).progress.view(width);
+    assert.equal(onlyWalk.segments[0].width, width);
+  }
+  const transfer = progressFixture(h, { transfer: true }).progress.view(252);
+  assert.deepEqual(
+    Array.from(transfer.segments, (s) => s.walk),
+    [true, false, true, false, true],
+  );
+  assert(transfer.segments.filter((s) => s.walk).every((s) => s.width === 60));
+});
+
+test("journey timeline follows walk ride walk and automatically completes each stage", () => {
+  const h = harness(),
+    { point, progress } = progressFixture(h);
+  let time = 1000;
+  const move = (x, dt = 5000) => {
+    time += dt;
+    progress.update(point(x), time);
+    return progress.view(295);
+  };
+  assert.deepEqual(
+    Array.from(progress.view(295).segments, (s) => s.walk),
+    [true, false, true],
+  );
+  for (const x of [0, 20, 40, 60, 80, 100, 100]) move(x, 10000);
+  assert.equal(progress.view(295).phase, "waiting");
+  for (const x of [130, 160, 190]) move(x);
+  assert.equal(progress.view(295).phase, "riding");
+  assert.equal(progress.view(295).next, "下一站：中间站");
+  for (let x = 220; x <= 580; x += 30) move(x);
+  assert.equal(progress.view(295).next, "下一站：终点站");
+  move(600);
+  move(600);
+  move(600);
+  assert.equal(progress.view(295).phase, "walking");
+  for (const x of [620, 640, 660, 680, 700, 700]) move(x, 10000);
+  assert.equal(progress.view(295).phase, "arrived");
+  assert(progress.view(295).nodes.every((n) => n.reached));
+  assert(progress.view(295).segments.every((s) => s.fill === 1));
+});
+test("journey ignores GPS jumps, poor accuracy, backward fixes and pedestrian boarding", () => {
+  const h = harness(),
+    { point, progress } = progressFixture(h, { atBoard: true });
+  assert.equal(progress.view(295).segments[0].walk, false);
+  progress.update(point(100), 1000);
+  progress.update(point(600), 2000);
+  progress.update({ ...point(400), accuracy: 100 }, 3000);
+  progress.update(point(400), 500);
+  for (let i = 1; i < 8; i++)
+    progress.update(point(100 + i * 5), 4000 + i * 5000);
+  assert.equal(progress.view(295).phase, "waiting");
+  assert.equal(progress.view(295).position, 0);
+  progress.pause();
+  progress.update(point(550), 200000);
+  assert.equal(progress.view(295).position, 0);
+});
+test("walk-only progress has no artificial boarding and fixed starts omit the first walk", () => {
+  const h = harness();
+  const walking = progressFixture(h, { walk: true }).progress.view(240);
+  assert.equal(walking.segments.length, 1);
+  assert(walking.segments[0].walk);
+  assert.equal(walking.phase, "walking");
+  const fixed = progressFixture(h, { atBoard: true }).progress.view(240);
+  assert.deepEqual(
+    Array.from(fixed.segments, (s) => s.walk),
+    [false, true],
+  );
+  assert.equal(fixed.nodes[0].name, "候车站");
+});
+test("transfers keep both rides and their walking connection in sequence", () => {
+  const h = harness(),
+    { progress, point } = progressFixture(h, { transfer: true, atBoard: true });
+  assert.deepEqual(
+    Array.from(progress.view(252).segments, (s) => s.walk),
+    [false, true, false, true],
+  );
+  let time = 1000;
+  const move = (x) => {
+    time += 5000;
+    progress.update(point(x), time);
+  };
+  move(100);
+  for (let x = 130; x <= 580; x += 30) move(x);
+  move(600);
+  move(600);
+  move(600);
+  assert.equal(progress.view(252).phase, "walking");
+  for (const x of [620, 640, 660, 680, 700, 700]) move(x);
+  assert.equal(progress.view(252).phase, "waiting");
+  assert.equal(progress.view(252).boardingId, "换乘站");
+  for (const x of [730, 760, 790]) move(x);
+  assert.equal(progress.view(252).phase, "riding");
+  assert.deepEqual(Array.from(progress.view(252).routes), ["r2"]);
+  progress.pause();
+  time += 60000;
+  progress.update(point(1100), time);
+  assert(progress.view(252).segments[2].fill > 0.7);
+  assert.equal(progress.view(252).segments[3].fill, 0);
+});
+test("journey controls require real location and end as a content-width capsule", () => {
+  const h = harness(),
+    page = h.page();
+  page.setData({ hasOrigin: true, manualOrigin: true });
+  page.startJourney();
+  assert.equal(page.data.journey, "idle");
+  const wxml = fs.readFileSync(
+    path.join(root, "features/pages/shuttle/index.wxml"),
+    "utf8",
+  );
+  const css = fs.readFileSync(
+    path.join(root, "features/pages/shuttle/index.wxss"),
+    "utf8",
+  );
+  assert(
+    wxml.includes("authorized && hasOrigin && !manualOrigin && selectedPlanId"),
+  );
+  assert(!wxml.includes("我已上车"));
+  assert(!wxml.includes("到站提醒已开启"));
+  assert(!wxml.includes("journey-user"));
+  assert(wxml.includes('name="refresh-cw"'));
+  assert(wxml.includes("journey-next"));
+  assert(wxml.indexOf("cancel-trip-wrap") > wxml.indexOf("journey-timeline"));
+  assert.match(
+    css,
+    /\.cancel-trip \{[^}]*display: inline-flex;[^}]*border-radius: 999px;[^}]*background: #eeeeef;/,
+  );
+  assert.match(css, /\.cancel-trip-wrap \{[^}]*margin-top: 20px;/);
+  page.onUnload();
+});
+test("same-stop transfers use one hollow interchange node without a walking segment", () => {
+  const h = harness();
+  const same = progressFixture(h, {
+    transfer: true,
+    sameStop: true,
+    atBoard: true,
+  }).progress.view(252);
+  assert.deepEqual(
+    Array.from(same.segments, (s) => s.walk),
+    [false, false, true],
+  );
+  const interchanges = same.nodes.filter((n) => n.transfer);
+  assert.equal(interchanges.length, 1);
+  assert.equal(interchanges[0].name, "终点站");
+  assert.equal(interchanges[0].major, true);
+  assert.equal(
+    progressFixture(h, { transfer: true })
+      .progress.view(252)
+      .nodes.filter((n) => n.transfer).length,
+    0,
+  );
+});
 test("native location success registers consent without custom modals", async () => {
   const h = harness({ consent: false, permission: undefined });
   const raw = await h
@@ -471,6 +723,779 @@ test("native location success registers consent without custom modals", async ()
       c[0] === "request" && c[1].endsWith("/consent") && c[2].method === "POST",
   );
   assert(get >= 0 && post > get);
+});
+
+test("active journeys freeze their selected route and stop on location loss", async () => {
+  const clock = { now: Date.now() },
+    h = harness({ mockStream: true, clock }),
+    page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({
+    ...h.raw,
+    longitude: h.raw.longitude + 0.001,
+    name: "目的地",
+  });
+  page.confirmMapPick();
+  await settle();
+  assert(page.data.selectedPlanId);
+  page.startJourney();
+  assert.notEqual(page.data.journey, "idle");
+  assert(page.data.journeyProgress);
+  const selected = page.data.selectedPlanId,
+    progress = page.data.journeyProgress.position;
+  page.rebuildPlans(true);
+  assert.equal(page.data.selectedPlanId, selected);
+  const listener = h.getListener();
+  page.onHide();
+  clock.now += 30000;
+  listener({ ...h.raw, longitude: h.raw.longitude + 0.0005 });
+  assert.equal(page.data.journeyProgress.position, progress);
+  page.onShow();
+  await settle();
+  assert(h.getLocationError());
+  h.getLocationError()({ errMsg: "location unavailable" });
+  assert.equal(page.data.authorized, false);
+  assert.equal(page.data.journey, "idle");
+  assert.equal(page.data.journeyProgress, null);
+  page.startJourney();
+  assert.equal(page.data.journey, "idle");
+  page.onUnload();
+});
+
+test("real directional journey stops stay between boarding and alighting visits", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const planner = new ShuttlePlanner(map);
+  let stops = 0;
+  for (const route of map.routes) {
+    const places = route.stopIds
+      .map((id) => map.places.find((p) => p.id === id))
+      .filter(Boolean);
+    for (const from of places.slice(0, 3))
+      for (const to of places.slice(-3)) {
+        for (const plan of planner.plans(from, to, [from.id], route.id, [
+          to.id,
+        ])) {
+          const visits = planner.journeyStops(plan);
+          assert(visits.length <= Math.max(0, plan.stopCount - 1));
+          for (let i = 0; i < visits.length; i++) {
+            assert(visits[i].meters > 0 && visits[i].meters < plan.rideMeters);
+            if (i) assert(visits[i].meters >= visits[i - 1].meters);
+          }
+          stops += visits.length;
+        }
+      }
+  }
+  assert(stops > 10);
+});
+
+test("timeline stop visits collapse repeated platform markers, not later return visits, and exclude alighting duplicates", () => {
+  const h = harness(),
+    { ShuttlePlanner, countStopVisits } = h.load(
+      "features/utils/shuttle-routing",
+    ),
+    { point, bus, campus } = onboardFixture(),
+    planner = new ShuttlePlanner(campus);
+  const stop = (id, name, at, location = at) => ({
+    place: { ...point(location), id, name, category: "stop", routeIds: ["r2"] },
+    at,
+  });
+  const stops = [
+    stop("board", "起站", 0),
+    stop("mid1", "中间站 · 东行", 100),
+    stop("mid2", "中间站 · 东行", 110),
+    stop("return", "中间站 · 西行", 500, 100),
+    stop("end-copy", "终站 · 东行", 980),
+    stop("end", "终站 · 东行", 1000),
+  ].map((s, order) => ({ ...s, order }));
+  const track = {
+    points: [point(0), point(1000)],
+    offsets: [0, 1000],
+    stops,
+    loop: false,
+  };
+  planner.directions = () => [track];
+  const plan = {
+    route: campus.routes[1],
+    board: { ...stops[0].place, serviceOrder: 0 },
+    alight: { ...stops[5].place, serviceOrder: 5 },
+    rideMeters: 1000,
+    points: track.points,
+    stopCount: countStopVisits(track, 0, 1000),
+  };
+  assert.equal(plan.stopCount, 3);
+  const visits = planner.journeyStops(plan);
+  assert.deepEqual(clone(visits.map((v) => v.place.id)), ["mid2", "return"]);
+  assert.equal(visits.length + 1, plan.stopCount);
+  const onboard = { ...plan, onboard: { direction: 0, from: 300, to: 1000 } };
+  assert.deepEqual(
+    clone(planner.journeyStops(onboard).map((v) => v.place.id)),
+    ["return"],
+  );
+  assert(
+    !planner.journeyStops(onboard).some((v) => v.place.id.startsWith("end")),
+  );
+});
+
+test("real-route timeline nodes match counted stop visits instead of raw recovered markers", () => {
+  const h = harness(),
+    { ShuttlePlanner, countStopVisits } = h.load(
+      "features/utils/shuttle-routing",
+    ),
+    planner = new ShuttlePlanner(map);
+  const { countStopVisits: serverCount } = require(
+    path.join(backend, "src/shuttle/shuttle-routing"),
+  );
+  let trimmed = 0,
+    checked = 0;
+  for (const route of map.routes)
+    for (const [direction, track] of planner.directions(route).entries()) {
+      for (let a = 0; a < track.stops.length - 1; a++) {
+        const b = Math.min(a + 12, track.stops.length - 1),
+          board = track.stops[a],
+          alight = track.stops[b];
+        if (alight.at - board.at < 20) continue;
+        const plan = {
+          route,
+          board: {
+            ...board.place,
+            serviceDirection: direction,
+            serviceOrder: a,
+          },
+          alight: {
+            ...alight.place,
+            serviceDirection: direction,
+            serviceOrder: b,
+          },
+        };
+        const count = countStopVisits(track, board.at, alight.at),
+          visits = planner.journeyStops(plan);
+        assert.equal(
+          count,
+          serverCount(track, board.at, alight.at),
+          "do not change the existing API stop-count rules",
+        );
+        assert(visits.length <= Math.max(0, count - 1));
+        assert(
+          visits.every(
+            (s) => s.meters > 0 && s.meters < alight.at - board.at - 5,
+          ),
+        );
+        const raw = track.stops.filter(
+          (s) => s.at > board.at + 5 && s.at < alight.at - 5,
+        );
+        if (visits.length < raw.length) trimmed++;
+        checked++;
+      }
+    }
+  assert(checked > 100 && trimmed > 50);
+});
+
+test("the destination endpoint uses only the place name, without a generic destination label", () => {
+  const h = harness();
+  for (const options of [{}, { walk: true }, { transfer: true }]) {
+    const view = progressFixture(h, {
+      ...options,
+      destinationName: "中心图书馆",
+    }).progress.view(295);
+    assert.equal(view.nodes.at(-1).name, "中心图书馆");
+    assert(!view.nodes.some((node) => node.name.includes("目的地")));
+  }
+});
+
+function onboardFixture() {
+  const point = (x, y = 0) => ({
+    longitude: 106.42 + x / 96500,
+    latitude: 29.82 + y / 111200,
+    accuracy: 5,
+  });
+  const bus = (x, id = "bus-2", lineId = "r2", y = 0) => ({
+    ...point(x, y),
+    id,
+    lineId,
+    vehicleNo: id,
+    speed: 20,
+    direction: 90,
+    state: "",
+    distance: 0,
+  });
+  const places = [0, 300, 600, 900].map((x) => ({
+    ...point(x),
+    id: `s${x}`,
+    name: `站${x}`,
+    category: "stop",
+    routeIds: ["r1", "r2"],
+  }));
+  const routes = ["r1", "r2"].map((id, i) => ({
+    id,
+    name: `${i + 1}号线`,
+    color: "#5189B5",
+    stopIds: places.map((s) => s.id),
+    orderedStops: places.map((s, order) => ({ stopId: s.id, order })),
+    servicePattern: "out-and-back",
+  }));
+  const campus = {
+    ...map,
+    revision: "onboard-test",
+    places,
+    routes,
+    paths: [
+      {
+        id: "road",
+        routeIds: ["r1", "r2"],
+        points: [point(0), point(900)],
+        direction: "both",
+        color: "#5189B5",
+      },
+    ],
+  };
+  return { point, bus, campus };
+}
+
+test("boarding only changes the nearby-bus radius to 20m and keeps the original speed-only fallback", () => {
+  const h = harness();
+  for (const offset of [19, 21]) {
+    const { point, progress } = progressFixture(h, { atBoard: true });
+    let time = 1000;
+    for (const x of [100, 130, 140, 150, 160]) {
+      progress.update(point(x), time, [
+        { ...point(x + offset), id: "bus", lineId: "r", speed: 10 },
+      ]);
+      time += 5000;
+    }
+    assert.equal(progress.view(295).phase, offset < 20 ? "riding" : "waiting");
+  }
+  const { point, progress } = progressFixture(h, { atBoard: true });
+  for (let i = 0; i < 5; i++)
+    progress.update(point(100 + i * 30), 1000 + i * 5000);
+  assert.equal(progress.view(295).phase, "riding");
+});
+
+test("automatic line switching uses a 20m radius and preserves directional co-motion", () => {
+  const h = harness(),
+    { ShuttleOnboardDetector } = h.load("features/utils/shuttle-onboard"),
+    { point, bus } = onboardFixture();
+  for (const offset of [19, 21]) {
+    const detector = new ShuttleOnboardDetector();
+    let match;
+    for (let i = 0; i <= 5; i++)
+      match = detector.update(point(i * 18), 1000 + i * 3000, 1000 + i * 3000, [
+        bus(i * 18 + offset),
+      ]);
+    assert.equal(!!match, offset < 20);
+  }
+  const detector = new ShuttleOnboardDetector();
+  for (let i = 0; i < 8; i++)
+    assert.equal(
+      detector.update(point(i * 10), 1000 + i * 3000, 1000 + i * 3000, [
+        bus(20 - i * 10),
+      ]),
+      undefined,
+    );
+});
+
+test("onboard detection requires sustained fresh unambiguous co-motion and has a switch cooldown", () => {
+  const h = harness(),
+    { ShuttleOnboardDetector } = h.load("features/utils/shuttle-onboard"),
+    { point, bus } = onboardFixture(),
+    detector = new ShuttleOnboardDetector();
+  let match;
+  for (let i = 0; i <= 5; i++) {
+    match = detector.update(point(i * 18), 1000 + i * 3000, 1000 + i * 3000, [
+      bus(i * 18),
+    ]);
+    if (i < 5) assert.equal(match, undefined);
+  }
+  assert.equal(match.lineId, "r2");
+  assert.equal(match.direction, 90);
+  detector.switched(16000);
+  for (let i = 0; i < 6; i++)
+    assert.equal(
+      detector.update(point(100 + i * 18), 19000 + i * 3000, 19000 + i * 3000, [
+        bus(100 + i * 18, "other", "r1"),
+      ]),
+      undefined,
+    );
+  detector.pause();
+  assert.equal(
+    detector.update(point(400), 60000, 60000, [bus(400)]),
+    undefined,
+  );
+});
+
+test("passing buses, walking, parallel buses, jumps and repeated observations cannot switch a journey", () => {
+  const h = harness(),
+    { ShuttleOnboardDetector } = h.load("features/utils/shuttle-onboard"),
+    { point, bus } = onboardFixture();
+  const scenarios = [
+    (i) => [point(0), [bus(i * 18)]],
+    (i) => [point(i * 3), [bus(i * 3)]],
+    (i) => [point(i * 18), [bus(i * 18), bus(i * 18 + 5, "parallel", "r1")]],
+    (i) => [point(i * 180), [bus(i * 180)]],
+    (i) => [{ ...point(i * 18), accuracy: 60 }, [bus(i * 18)]],
+    (i) => [point(i * 18), [bus(180 - i * 18)]],
+    (i) => [point(i * 18), [bus(0)]],
+  ];
+  for (const scenario of scenarios) {
+    const detector = new ShuttleOnboardDetector();
+    for (let i = 0; i < 10; i++) {
+      const [fix, fleet] = scenario(i);
+      assert.equal(
+        detector.update(fix, 1000 + i * 3000, 1000 + i * 3000, fleet),
+        undefined,
+      );
+    }
+  }
+  const detector = new ShuttleOnboardDetector();
+  for (let i = 0; i < 10; i++)
+    assert.equal(
+      detector.update(point(i * 18), 1000 + i * 3000, 1000, [bus(i * 18)]),
+      undefined,
+    );
+});
+
+test("onboard planning follows the actual direction without walking back and retains intermediate stops", () => {
+  const h = harness(),
+    { point, bus, campus } = onboardFixture(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { ShuttleJourneyProgress } = h.load(
+      "features/utils/shuttle-journey-progress",
+    ),
+    planner = new ShuttlePlanner(campus),
+    itinerary = new ShuttleItineraryPlanner(campus, planner);
+  const plan = itinerary.onboard(bus(90), point(900));
+  assert.equal(plan.route.id, "r2");
+  assert.equal(plan.walkTo, 0);
+  assert.equal(plan.alight.id, "s900");
+  assert(plan.points[0].longitude >= point(89).longitude);
+  assert(plan.points.every((p) => p.longitude >= point(89).longitude));
+  assert.deepEqual(
+    clone(planner.journeyStops(plan.legs[0]).map((s) => s.place.id)),
+    ["s300", "s600"],
+  );
+  const tracker = new ShuttleJourneyProgress(
+    plan,
+    point(90),
+    { ...point(900), name: "目的地" },
+    planner,
+  );
+  assert.equal(tracker.view(280).phase, "riding");
+  assert.equal(tracker.view(280).segments[0].walk, false);
+  tracker.update(point(90), 1000);
+  tracker.update(point(110), 5000);
+  assert(tracker.view(280).position > 0);
+  const reverse = itinerary.onboard({ ...bus(810), direction: 270 }, point(0));
+  assert.equal(reverse.alight.id, "s0");
+  assert.equal(reverse.legs[0].onboard.direction, 1);
+  assert(reverse.points.every((p) => p.longitude <= point(811).longitude));
+  assert.equal(
+    itinerary.onboard({ ...bus(90), direction: null }, point(900)),
+    undefined,
+  );
+  assert.equal(
+    itinerary.onboard(bus(90, "bad", "unknown"), point(900)),
+    undefined,
+  );
+  assert.equal(
+    itinerary.onboard(bus(90, "far", "r2", 100), point(900)),
+    undefined,
+  );
+});
+
+test("rerouted progress starts proportionally between the preceding and next directional stations", () => {
+  const h = harness(),
+    { point, bus, campus } = onboardFixture(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { ShuttleJourneyProgress } = h.load(
+      "features/utils/shuttle-journey-progress",
+    ),
+    planner = new ShuttlePlanner(campus),
+    itinerary = new ShuttleItineraryPlanner(campus, planner);
+  for (const [x, direction, previous, next, ratio, end] of [
+    [75, 90, "站0", "站300", 0.25, 900],
+    [450, 90, "站300", "站600", 0.5, 900],
+    [299, 90, "站0", "站300", 299 / 300, 900],
+    [450, 270, "站600", "站300", 0.5, 0],
+    [225, 270, "站300", "站0", 0.25, 0],
+  ]) {
+    const plan = itinerary.onboard({ ...bus(x), direction }, point(end));
+    const geometry = clone(plan.points);
+    const progress = new ShuttleJourneyProgress(
+      plan,
+      point(x),
+      { ...point(end), name: "目的地" },
+      planner,
+    );
+    const view = progress.view(280),
+      previousNode = view.nodes[0],
+      nextNode = view.nodes.find((n) => n.name === next);
+    assert.equal(previousNode.name, previous);
+    assert(nextNode);
+    assert(
+      Math.abs(
+        (view.position - previousNode.x) / (nextNode.x - previousNode.x) -
+          ratio,
+      ) < 0.002,
+    );
+    assert(view.position > 0);
+    assert(previousNode.reached && !nextNode.reached);
+    assert.equal(view.phase, "riding");
+    assert.equal(view.segments[0].walk, false);
+    assert.deepEqual(
+      clone(plan.points),
+      geometry,
+      "timeline must not prepend travelled roads to the map itinerary",
+    );
+    progress.update(point(x), 1000);
+    assert(Math.abs(progress.view(280).position - view.position) < 0.01);
+    progress.pause();
+    progress.update(point(x), 61000);
+    assert(Math.abs(progress.view(280).position - view.position) < 0.01);
+    progress.update(point(x + (direction === 90 ? 10 : -10)), 65000);
+    assert(progress.view(280).position > view.position);
+  }
+});
+
+test("rerouted progress measures the road around a bend, then reaches the next stage normally", () => {
+  const h = harness(),
+    { point, bus, campus } = onboardFixture(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { ShuttleJourneyProgress } = h.load(
+      "features/utils/shuttle-journey-progress",
+    );
+  campus.places = [point(0), point(100, 100), point(100, 300)].map((p, i) => ({
+    ...p,
+    id: `s${i}`,
+    name: `站${i}`,
+    category: "stop",
+    routeIds: ["r2"],
+  }));
+  campus.routes = [
+    {
+      ...campus.routes[1],
+      stopIds: ["s0", "s1", "s2"],
+      orderedStops: [0, 1, 2].map((i) => ({ stopId: `s${i}`, order: i })),
+    },
+  ];
+  campus.paths = [
+    {
+      ...campus.paths[0],
+      routeIds: ["r2"],
+      points: [point(0), point(100), point(100, 100), point(100, 300)],
+    },
+  ];
+  const planner = new ShuttlePlanner(campus),
+    itinerary = new ShuttleItineraryPlanner(campus, planner);
+  const plan = itinerary.onboard(
+    { ...bus(100, "b", "r2", 50), direction: 0 },
+    point(100, 300),
+    ["s2"],
+  );
+  const tracker = new ShuttleJourneyProgress(
+    plan,
+    point(100, 50),
+    { ...point(100, 300), name: "目的地" },
+    planner,
+  );
+  const view = tracker.view(280),
+    next = view.nodes.find((n) => n.name === "站1");
+  assert(
+    Math.abs(view.position / next.x - 0.75) < 0.003,
+    "use travelled road distance, not the diagonal to the prior station",
+  );
+  let time = 1000;
+  tracker.update(point(100, 50), time);
+  for (let y = 70; y <= 290; y += 20)
+    tracker.update(point(100, y), (time += 5000));
+  tracker.update(point(100, 300), (time += 5000));
+  tracker.update(point(100, 300), (time += 5000));
+  assert.equal(tracker.view(280).phase, "arrived");
+  assert(tracker.view(280).segments.every((s) => s.fill === 1));
+});
+
+test("onboard routing can retain a required destination stop through a forward transfer", () => {
+  const h = harness(),
+    { point, bus, campus } = onboardFixture(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
+  campus.places.push({
+    ...point(600, 900),
+    id: "end",
+    name: "目的站",
+    category: "stop",
+    routeIds: ["r3"],
+  });
+  campus.places.find((p) => p.id === "s600").routeIds.push("r3");
+  campus.routes.push({
+    id: "r3",
+    name: "3号线",
+    color: "#333",
+    stopIds: ["s600", "end"],
+    orderedStops: [
+      { stopId: "s600", order: 0 },
+      { stopId: "end", order: 1 },
+    ],
+  });
+  campus.paths.push({
+    id: "transfer-road",
+    routeIds: ["r3"],
+    points: [point(600), point(600, 900)],
+    direction: "both",
+    color: "#333",
+  });
+  const planner = new ShuttlePlanner(campus),
+    itinerary = new ShuttleItineraryPlanner(campus, planner);
+  const plan = itinerary.onboard(bus(90), point(600, 900), ["end"]);
+  assert(plan);
+  assert.equal(plan.legs[0].route.id, "r2");
+  assert.equal(plan.legs[1].route.id, "r3");
+  assert.equal(plan.alight.id, "end");
+  assert.equal(plan.legs[0].alight.id, plan.legs[1].board.id);
+  assert.equal(
+    itinerary.onboard(bus(90), point(600, 900), ["missing"]),
+    undefined,
+  );
+});
+
+test("onboard loop continuation follows the road around its seam instead of drawing a chord", () => {
+  const h = harness(),
+    { point, bus, campus } = onboardFixture(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const coords = [point(0), point(300), point(300, 300), point(0, 300)];
+  campus.places = coords.map((p, i) => ({
+    ...p,
+    id: `s${i}`,
+    name: `站${i}`,
+    category: "stop",
+    routeIds: ["loop"],
+  }));
+  campus.routes = [
+    {
+      id: "loop",
+      name: "环线",
+      color: "#333",
+      stopIds: campus.places.map((p) => p.id),
+      orderedStops: [0, 1, 2, 3, 0].map((i, order) => ({
+        stopId: `s${i}`,
+        order,
+      })),
+    },
+  ];
+  campus.paths = [
+    {
+      id: "loop-road",
+      routeIds: ["loop"],
+      points: [...coords, coords[0]],
+      direction: "forward",
+      color: "#333",
+    },
+  ];
+  const planner = new ShuttlePlanner(campus);
+  const plans = planner.onboardPlans(
+    { ...bus(0, "loop-bus", "loop", 150), direction: 180 },
+    point(300),
+  );
+  const plan = plans.find((p) => p.alight.id === "s1");
+  assert(plan);
+  assert(
+    plan.points.some(
+      (p) =>
+        Math.abs(p.longitude - point(0).longitude) < 1e-7 &&
+        Math.abs(p.latitude - point(0).latitude) < 1e-7,
+    ),
+  );
+  assert.equal(plan.points.at(-1).longitude, point(300).longitude);
+  assert(planner.journeyStops(plan).some((s) => s.place.id === "s0"));
+});
+
+test("real campus onboard plans keep route direction and usable forward stop geometry", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    planner = new ShuttlePlanner(map),
+    itinerary = new ShuttleItineraryPlanner(map, planner);
+  let checked = 0;
+  for (const route of map.routes) {
+    const track = planner.track(route);
+    if (!track) continue;
+    for (let i = 1; i < track.points.length; i++) {
+      const a = track.points[i - 1],
+        b = track.points[i];
+      if (distanceMeters(a, b) < 20) continue;
+      const vehicle = {
+        ...a,
+        longitude: (a.longitude + b.longitude) / 2,
+        latitude: (a.latitude + b.latitude) / 2,
+        id: route.id,
+        lineId: route.id,
+        direction: headingDegrees(a, b),
+      };
+      const exits = planner.onboardPlans(vehicle, track.stops.at(-1).place);
+      if (!exits.length) continue;
+      const plan = itinerary.onboard(vehicle, exits[0].alight, [
+        exits[0].alight.id,
+      ]);
+      assert(plan);
+      assert.equal(plan.legs[0].route.id, route.id);
+      assert.equal(plan.walkTo, 0);
+      assert(distanceMeters(plan.legs[0].points[0], vehicle) <= 30);
+      assert(plan.legs.every((l) => l.points.length >= 2 && l.rideMeters > 0));
+      assert(
+        planner
+          .journeyStops(plan.legs[0])
+          .every((s) => s.meters > 0 && s.meters < plan.legs[0].rideMeters),
+      );
+      checked++;
+      break;
+    }
+  }
+  assert.equal(checked, map.routes.length);
+});
+
+test("active page silently switches the actual line, keeps its destination, and restores filtering on end", async () => {
+  const { point, bus, campus } = onboardFixture(),
+    clock = { now: 100000 },
+    h = harness({ mockStream: true, clock, map: campus }),
+    page = h.page();
+  Object.assign(h.raw, point(0));
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900), name: "原目的地" });
+  page.confirmMapPick();
+  await settle();
+  assert(page.data.selectedPlanId);
+  page.startJourney();
+  assert.deepEqual(clone(page.liveSelection()), {});
+  const before = page.data.selectedPlanId,
+    destination = page.data.destinationName;
+  const stream = h.calls.find((c) => c[0] === "streamConstruct")[1];
+  stream.handlers.state("live");
+  const update = (i, overrides = {}) => {
+    clock.now = 103000 + i * 3000;
+    stream.handlers.snapshot({
+      type: "snapshot",
+      protocol: 2,
+      serverTime: clock.now,
+      fetchedAt: clock.now,
+      stale: false,
+      available: true,
+      mapRevision: campus.revision,
+      selectionValid: true,
+      selection: { routeIds: [], filtered: false },
+      vehicles: [bus(i * 18)],
+      ...overrides,
+    });
+    h.getListener()({ ...h.raw, ...point(i * 18) });
+  };
+  const silentStart = h.calls.length;
+  for (let i = 0; i <= 5; i++) {
+    const callsBefore = h.calls.length;
+    update(i);
+    if (i < 5) assert.equal(page.data.selectedPlanId, before);
+    else
+      assert(
+        !h.calls
+          .slice(callsBefore)
+          .some((c) =>
+            ["toast", "modal", "includePoints", "moveToLocation"].includes(
+              c[0],
+            ),
+          ),
+      );
+  }
+  assert.notEqual(page.data.selectedPlanId, before);
+  assert.equal(page.data.routeId, "r2");
+  assert.equal(page.data.destinationName, destination);
+  assert.equal(page.data.journey, "riding");
+  assert.equal(page.data.journeyProgress.segments[0].walk, false);
+  const nextStation = page.data.journeyProgress.nodes.find(
+    (n) => n.name === "站300",
+  );
+  assert(
+    nextStation &&
+      Math.abs(page.data.journeyProgress.position / nextStation.x - 0.3) <
+        0.002,
+  );
+  assert.equal(page.data.routeAnimating, false);
+  assert.equal(page.data.plans[0].routeName, "2号线");
+  // Reminder events before confirmation may be valid; the switch itself must add none.
+  const after = h.calls.length;
+  update(6);
+  assert(
+    !h.calls
+      .slice(after)
+      .some((c) =>
+        ["toast", "modal", "includePoints", "moveToLocation"].includes(c[0]),
+      ),
+  );
+  assert(!h.calls.slice(silentStart).some((c) => c[0] === "modal"));
+  assert(
+    page.data.polylines.some(
+      (p) => !p.dottedLine && p.points[0].longitude >= point(89).longitude,
+    ),
+  );
+  const frozen = page.data.selectedPlanId;
+  page.rebuildPlans(true);
+  assert.equal(page.data.selectedPlanId, frozen);
+  page.cancelJourney();
+  assert.equal(page.data.journey, "idle");
+  assert(!page.data.selectedPlanId.startsWith("onboard:"));
+  assert(page.liveSelection().routeIds?.length);
+  page.onUnload();
+});
+
+test("stale or hidden-page fleet observations do not auto-reroute", async () => {
+  const { point, bus, campus } = onboardFixture(),
+    clock = { now: 100000 },
+    h = harness({ mockStream: true, clock, map: campus }),
+    page = h.page();
+  Object.assign(h.raw, point(0));
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900), name: "目的地" });
+  page.confirmMapPick();
+  await settle();
+  page.startJourney();
+  const before = page.data.selectedPlanId;
+  const stream = h.calls.find((c) => c[0] === "streamConstruct")[1];
+  stream.handlers.state("live");
+  for (let i = 0; i < 8; i++) {
+    clock.now += 3000;
+    stream.handlers.snapshot({
+      type: "snapshot",
+      protocol: 2,
+      serverTime: clock.now,
+      fetchedAt: clock.now,
+      stale: true,
+      available: true,
+      mapRevision: campus.revision,
+      selectionValid: true,
+      selection: { routeIds: [], filtered: false },
+      vehicles: [bus(i * 18)],
+    });
+    h.getListener()({ ...h.raw, ...point(i * 18) });
+  }
+  assert.equal(page.data.selectedPlanId, before);
+  const listener = h.getListener();
+  page.onHide();
+  for (let i = 0; i < 8; i++) {
+    clock.now += 3000;
+    listener({ ...h.raw, ...point(150 + i * 18) });
+  }
+  assert.equal(page.data.selectedPlanId, before);
+  page.onUnload();
 });
 
 test("native privacy failure logs the real error without registering consent or sending coordinates", async () => {
@@ -1362,7 +2387,15 @@ test("empty nearby drawers are shorter without shrinking plans or expanded conte
       page.setData({ vehicles: [], destinationName: "大礼堂" });
       assert.equal(page.targetSheetHeight(false), normal);
       page.setData({ destinationName: "", journey: "waiting" });
-      assert.equal(page.targetSheetHeight(false), normal);
+      assert.equal(
+        page.targetSheetHeight(false),
+        Math.round(
+          Math.min(
+            256 + safeBottom,
+            Math.max(160, height - page.data.headerHeight - 105),
+          ),
+        ),
+      );
       page.setData({ journey: "idle", motionClass: "motion-reduced" });
       page.springSheet(false);
       assert.equal(page.data.sheetHeight, compact);

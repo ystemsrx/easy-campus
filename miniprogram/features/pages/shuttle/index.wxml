@@ -66,12 +66,12 @@
     <view class="sheet-drag-zone" bindtouchstart="onSheetTouchStart" catchtouchmove="onSheetTouchMove" bindtouchend="onSheetTouchEnd" bindtouchcancel="onSheetTouchEnd" bindtap="toggleSheet" aria-role="button" aria-label="展开或收起校车信息"><view class="sheet-handle"></view></view>
     <view class="sheet-heading">
       <text class="sheet-title">{{journey === 'arrived' ? '已到达' : destinationName || '附近的校车'}}</text>
-      <text class="sheet-summary">{{destinationName ? plans.length + ' 条路线' : vehicles.length + ' 辆'}}</text>
+      <text class="sheet-summary">{{journey !== 'idle' ? (journey === 'riding' ? '乘车中' : journey === 'waiting' ? '候车中' : journey === 'walking' ? '步行中' : '') : destinationName ? plans.length + ' 条路线' : vehicles.length + ' 辆'}}</text>
       <view class="round-close" bindtap="closeTripSheet" aria-role="button" aria-label="关闭路线"><lucide-icon name="x" size="27" tone="muted"></lucide-icon></view>
     </view>
     <view class="sheet-scroll-wrap"><scroll-view type="list" class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
       <view class="sheet-body">
-        <view wx:if="{{!walking}}" class="boarding-card" bindtap="openBoardingSearch" hover-class="pressed">
+        <view wx:if="{{!walking && journey === 'idle'}}" class="boarding-card" bindtap="openBoardingSearch" hover-class="pressed">
           <view class="boarding-symbol"><lucide-icon name="map-pin" size="31" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
           <view class="boarding-copy"><text class="boarding-name">{{boardName || '选择候车点'}}</text><text class="boarding-detail">{{boardDetail}}</text></view>
           <view wx:if="{{boardName}}" class="favorite-button" catchtap="toggleFavorite" aria-label="收藏候车点"><lucide-icon name="star" size="30" tone="{{boardFavorite ? 'amber' : 'muted'}}"></lucide-icon></view>
@@ -82,28 +82,41 @@
           <button wx:elif="{{gateAction === 'system'}}" class="secondary-action" bindtap="openSystemLocationSettings">开启手机定位</button>
           <button wx:else class="secondary-action" loading="{{locating}}" disabled="{{locating}}" bindtap="retryActivation">定位并查看实时校车</button>
         </view>
-        <view wx:if="{{destinationName && plans.length}}" class="plan-list">
+        <view wx:if="{{destinationName && plans.length && journey === 'idle'}}" class="plan-list">
           <view wx:for="{{plans}}" wx:key="id" data-id="{{item.id}}" bindtap="choosePlan" class="plan-card {{selectedPlanId === item.id ? 'plan-card--selected' : ''}}" hover-class="pressed">
             <view class="plan-card-top"><view class="line-tag" style="background: {{item.color}};">{{item.routeName}}</view><text class="plan-stop-count">{{item.timeLabel}}</text><view class="favorite-button" data-id="{{item.id}}" catchtap="togglePlanFavorite" aria-label="收藏出行方案"><lucide-icon name="star" size="28" tone="{{item.favorite ? 'amber' : 'muted'}}"></lucide-icon></view><lucide-icon wx:if="{{selectedPlanId === item.id}}" name="check" size="24" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
             <view class="plan-detail-row"><view class="plan-stations"><text>{{item.boardName}}</text><lucide-icon name="arrow-right" size="21" tone="muted"></lucide-icon><text>{{item.alightName}}</text></view><text class="plan-walk">{{item.walkLabel}}</text></view>
           </view>
         </view>
-        <view wx:if="{{destinationName && !plans.length}}" class="sheet-empty"><text>{{!hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
+        <view wx:if="{{destinationName && !plans.length && journey === 'idle'}}" class="sheet-empty"><text>{{!hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
         <view wx:if="{{crossingLabel}}" class="crossing-label">{{crossingLabel}}<text bindtap="clearCrossing">显示全部</text></view>
-        <view wx:if="{{vehicleRows.length}}" class="vehicle-list">
+        <view wx:if="{{vehicleRows.length && journey === 'idle'}}" class="vehicle-list">
           <view wx:for="{{vehicleRows}}" wx:key="id" data-id="{{item.id}}" bindtap="selectVehicle" class="vehicle-row {{selectedVehicleId === item.id ? 'vehicle-row--selected' : ''}}" hover-class="pressed">
             <view class="vehicle-icon" style="background: {{item.color}};"><text>{{item.number}}</text></view>
             <view class="vehicle-copy"><text class="vehicle-name">{{item.routeName}}</text><text class="vehicle-detail">{{item.detail}}</text></view>
             <view class="vehicle-arrival"><text class="arrival-value {{item.imminent ? 'arrival-value--soon' : ''}}">{{item.eta}}</text><text class="arrival-distance">{{item.distanceLabel}}</text></view>
           </view>
         </view>
-        <view wx:if="{{hasOrigin && selectedPlanId && !walking && journey === 'idle'}}" class="primary-action" bindtap="startJourney" hover-class="pressed"><lucide-icon name="navigation" size="29" tone="white"></lucide-icon><text>开始出发</text></view>
-        <view wx:if="{{journey === 'waiting'}}" class="journey-actions"><view class="secondary-action" bindtap="toggleReminder"><text>{{reminderEnabled ? '到站提醒已开启' : '开启到站提醒'}}</text></view><view class="primary-action compact" bindtap="boardVehicle"><text>我已上车</text></view></view>
-        <view wx:if="{{journey === 'riding'}}" class="primary-action" bindtap="finishJourney" hover-class="pressed"><text>已到达</text></view>
+        <view wx:if="{{authorized && hasOrigin && !manualOrigin && selectedPlanId && journey === 'idle'}}" class="primary-action" bindtap="startJourney" hover-class="pressed"><lucide-icon name="navigation" size="29" tone="white"></lucide-icon><text>开始出发</text></view>
+        <view wx:if="{{authorized && !manualOrigin && journey !== 'idle' && journeyProgress}}" class="journey-timeline" aria-label="{{journeyProgress.next}}">
+          <scroll-view type="custom" class="journey-timeline-scroll" scroll-x enable-flex scroll-left="{{journeyScroll}}" scroll-with-animation="{{motionClass !== 'motion-reduced'}}" show-scrollbar="{{false}}">
+            <view class="journey-timeline-track" style="width: {{journeyProgress.width}}px;">
+              <view wx:for="{{journeyProgress.segments}}" wx:key="id" class="journey-segment" style="left: {{item.x}}px; width: {{item.width}}px;">
+                <view class="journey-rail {{item.walk ? 'journey-rail--walk' : ''}}"></view>
+                <view class="journey-fill" style="transform: scaleX({{item.fill}});"><view class="journey-rail journey-rail--done {{item.walk ? 'journey-rail--walk' : ''}}"></view></view>
+              </view>
+              <view wx:for="{{journeyProgress.nodes}}" wx:key="id" class="journey-node {{item.major ? 'journey-node--major' : ''}} {{item.reached ? 'journey-node--done' : ''}} {{item.transfer ? 'journey-node--transfer' : ''}}" style="left: {{item.x}}px;" aria-label="{{item.name}}{{item.transfer ? '，同站换乘' : ''}}">
+                <view class="journey-node-dot"><lucide-icon wx:if="{{item.transfer}}" name="refresh-cw" size="20" tone="{{item.reached ? 'amber' : 'muted'}}"></lucide-icon></view>
+                <text wx:if="{{item.major}}" class="journey-node-name journey-node-name--{{item.edge}}">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+          <text class="journey-next">{{journeyProgress.next}}</text>
+        </view>
         <view wx:if="{{journey === 'arrived'}}" class="secondary-action" bindtap="clearDestination"><text>开始新的出行</text></view>
-        <view wx:if="{{journey === 'waiting' || journey === 'riding'}}" class="cancel-trip" bindtap="cancelJourney" aria-role="button">结束行程</view>
+        <view wx:if="{{journey === 'waiting' || journey === 'riding' || journey === 'walking'}}" class="cancel-trip-wrap"><view class="cancel-trip" bindtap="cancelJourney" hover-class="pressed" aria-role="button">结束行程</view></view>
       </view>
-      <view class="sheet-bottom-space"></view>
+      <view class="sheet-bottom-space {{journey !== 'idle' ? 'sheet-bottom-space--journey' : ''}}"></view>
     </scroll-view></view>
   </view>
 

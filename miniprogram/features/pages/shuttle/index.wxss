@@ -49,6 +49,29 @@ page { overflow: hidden; }
 .sheet-summary { font-size: 11px; color: var(--color-text-secondary); text-align: right; flex-shrink: 0; }
 .summary-sub { display: block; font-size: 8px; color: var(--color-text-secondary); margin-top: 5px; }
 .sheet-body { padding: 2px 20px 0; }
+.journey-timeline { padding: 4px 0 10px; }
+.journey-timeline-scroll { width: 100%; height: 94px; white-space: nowrap; }
+.journey-timeline-track { position: relative; height: 90px; margin: 0 20px; }
+.journey-segment { position: absolute; top: 24px; height: 3px; }
+.journey-rail { width: 100%; height: 0; border-top: 3px solid #d7d7d9; box-sizing: border-box; }
+.theme-dark .journey-rail { border-top-color: #626268; }
+.journey-rail--walk { border-top-style: dashed; }
+.journey-rail--done { border-top-color: #df8645; }
+.theme-dark .journey-rail--done { border-top-color: #df8645; }
+.journey-fill { position: absolute; inset: 0; transform-origin: 0 50%; transition: transform 800ms linear; }
+.journey-node { position: absolute; top: 20px; width: 0; height: 0; color: var(--color-text-secondary); }
+.journey-node-dot { position: absolute; left: -4px; top: 1px; width: 8px; height: 8px; border-radius: 50%; background: #d7d7d9; border: 2px solid var(--color-bg-elevated); box-sizing: border-box; transition: background-color 240ms ease; }
+.theme-dark .journey-node-dot { background: #626268; }
+.journey-node--major .journey-node-dot { width: 12px; height: 12px; left: -6px; top: -1px; }
+.journey-node--done .journey-node-dot { background: #df8645; }
+.theme-dark .journey-node--done .journey-node-dot { background: #df8645; }
+.journey-node--transfer .journey-node-dot, .theme-dark .journey-node--transfer .journey-node-dot { display: flex; align-items: center; justify-content: center; left: -9px; top: -4px; width: 18px; height: 18px; background: var(--color-bg-elevated); border: 2px solid #8b8b94; }
+.journey-node--transfer.journey-node--done .journey-node-dot, .theme-dark .journey-node--transfer.journey-node--done .journey-node-dot { border-color: #df8645; }
+.journey-node-name { position: absolute; top: 23px; left: -37px; width: 74px; white-space: normal; word-break: break-all; text-align: center; line-height: 17px; font-size: 11px; max-height: 51px; overflow: hidden; }
+.journey-node-name--start { left: -8px; text-align: left; }
+.journey-node-name--end { left: -66px; text-align: right; }
+.journey-next { display: block; text-align: center; font-size: 11px; line-height: 18px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.motion-reduced .journey-fill, .motion-reduced .journey-node-dot { transition: none; }
 .boarding-card { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--color-separator); border-radius: 19px; background: var(--color-bg-subtle); }
 .boarding-symbol { display: flex; align-items: center; justify-content: center; width: 34px; height: 36px; border-radius: 12px; background: var(--color-bg-subtle); flex-shrink: 0; }
 .boarding-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
@@ -79,9 +102,6 @@ page { overflow: hidden; }
 .empty-detail { font-size: 10px; color: var(--color-text-secondary); line-height: 18px; }
 .primary-action { min-height: 47px; padding: 0 16px; border-radius: 17px; background: var(--color-primary); color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin-top: 13px; }
 .secondary-action { min-height: 43px; padding: 0 14px; border-radius: 15px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-size: 11px; display: flex; align-items: center; justify-content: center; margin-top: 12px; box-sizing: border-box; }
-.journey-actions { display: flex; gap: 9px; }
-.journey-actions .secondary-action { flex: 1; }
-.compact { min-height: 43px; font-size: 12px; }
 .crossing-label { font-size: 10px; color: var(--color-text-secondary); display: flex; justify-content: space-between; margin-top: 13px; }
 .crossing-label text { color: var(--color-primary); }
 .route-trace-canvas { position: absolute; left: 0; width: 100%; z-index: 2; pointer-events: none; }
@@ -130,8 +150,11 @@ page { overflow: hidden; }
 .sheet-scroll-wrap { flex: 1; min-height: 0; }
 .sheet-scroll { width: 100%; height: 100%; }
 .sheet-bottom-space { height: 28px; }
-.cancel-trip { padding: 18px 0 4px; text-align: center; font-size: 12px; color: var(--color-text-secondary); }
-.sheet-heading, .boarding-card, .vehicle-row, .journey-actions, .place-row { flex-wrap: nowrap; }
+.sheet-bottom-space--journey { height: 4px; }
+.cancel-trip-wrap { display: flex; justify-content: center; margin-top: 20px; padding-bottom: 4px; }
+.cancel-trip { display: inline-flex; flex: none; align-items: center; justify-content: center; min-height: 38px; padding: 0 20px; box-sizing: border-box; border-radius: 999px; background: #eeeeef; color: #696a6e; font-size: 12px; line-height: 18px; white-space: nowrap; }
+.theme-dark .cancel-trip { background: #343438; color: #c5c5ca; }
+.sheet-heading, .boarding-card, .vehicle-row, .place-row { flex-wrap: nowrap; }
 .map-tool, .favorite-button, .place-symbol, .vehicle-arrival, lucide-icon { flex: none; }
 .sheet-summary, .vehicle-icon, .vehicle-arrival, .place-distance, .primary-action, .secondary-action, .line-tag { white-space: nowrap; }
 .vehicle-name, .vehicle-detail, .place-copy > text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

@@ -319,6 +319,8 @@ interface RouteTrack {
   loop: boolean;
 }
 export interface ShuttlePlan {
+  /** Current directional track interval for a journey already on board. */
+  onboard?: { direction: number; from: number; to: number };
   id: string;
   route: ShuttleRoute;
   board: ShuttlePlace;
@@ -339,12 +341,12 @@ export interface ArrivalEstimate {
   path?: { direction: number; from: number; to: number };
 }
 /** Count visits, collapsing only adjacent duplicate markers for the same platform. */
-export function countStopVisits(
+function stopVisits(
   track: RouteTrack,
   from: number,
   to: number,
-): number {
-  let count = 0;
+): RouteTrack["stops"] {
+  const visits: RouteTrack["stops"] = [];
   let previous: RouteTrack["stops"][number] | undefined;
   const total = track.offsets?.[track.offsets.length - 1] || 0;
   const stops =
@@ -366,10 +368,18 @@ export function countStopVisits(
       stop.at - previous.at > 45 ||
       distanceMeters(stop.place, previous.place) > 25
     )
-      count++;
+      visits.push(stop);
+    else visits[visits.length - 1] = stop;
     previous = stop;
   }
-  return count;
+  return visits;
+}
+export function countStopVisits(
+  track: RouteTrack,
+  from: number,
+  to: number,
+): number {
+  return stopVisits(track, from, to).length;
 }
 export class ShuttlePlanner {
   private graphs = new Map<string, ShuttleRoadGraph>();
@@ -485,6 +495,60 @@ export class ShuttlePlanner {
     this.tracks.set(route.id, track);
     return track;
   }
+  /** Timeline starts at the preceding station, while map routing still starts here. */
+  onboardProgress(plan: ShuttlePlan):
+    | {
+        points: GeoPoint[];
+        completedMeters: number;
+        totalMeters: number;
+        stops: { place: ShuttlePlace; meters: number }[];
+      }
+    | undefined {
+    if (!plan.onboard) return;
+    const track = this.directions(plan.route)[plan.onboard.direction];
+    const board = track?.stops[plan.board.serviceOrder ?? -1];
+    if (
+      !track ||
+      !board ||
+      board.place.id !== plan.board.id ||
+      board.at > plan.onboard.from
+    )
+      return;
+    const prefix = sliceTrack(track, board.at, plan.onboard.from);
+    return {
+      points: uniquePoints([...prefix.slice(0, -1), ...plan.points]),
+      completedMeters: pathLength(prefix),
+      totalMeters: plan.onboard.to - board.at,
+      stops: this.journeyStops({
+        ...plan,
+        onboard: { ...plan.onboard, from: board.at },
+      }),
+    };
+  }
+  journeyStops(plan: ShuttlePlan): { place: ShuttlePlace; meters: number }[] {
+    if (plan.onboard) {
+      const { direction, from, to } = plan.onboard;
+      const track = this.directions(plan.route)[direction];
+      if (!track) return [];
+      return stopVisits(track, from, to)
+        .filter((s) => s.at < to - 5) // Alighting already has its own major node.
+        .map((s) => ({ place: s.place, meters: s.at - from }));
+    }
+    const track = this.directions(plan.route)[plan.board.serviceDirection || 0];
+    if (!track) return [];
+    const board = track.stops[plan.board.serviceOrder ?? -1];
+    const alight = track.stops[plan.alight.serviceOrder ?? -1];
+    if (
+      !board ||
+      !alight ||
+      board.place.id !== plan.board.id ||
+      alight.place.id !== plan.alight.id
+    )
+      return [];
+    return stopVisits(track, board.at, alight.at)
+      .filter((s) => s.at < alight.at - 5)
+      .map((s) => ({ place: s.place, meters: s.at - board.at }));
+  }
   private directions(route: ShuttleRoute): RouteTrack[] {
     const forward = this.track(route);
     if (!forward) return [];
@@ -509,6 +573,94 @@ export class ShuttlePlanner {
         loop: false,
       },
     ];
+  }
+  onboardPlans(vehicle: ShuttleVehicle, destination: GeoPoint): ShuttlePlan[] {
+    const route = this.map.routes.find((r) => r.id === vehicle.lineId);
+    const heading = vehicle.direction;
+    if (!route || heading === null || !Number.isFinite(heading)) return [];
+    const hits: {
+      track: RouteTrack;
+      direction: number;
+      at: number;
+      score: number;
+    }[] = [];
+    this.directions(route).forEach((track, direction) => {
+      for (let i = 1; i < track.points.length; i++) {
+        const meters = track.offsets[i] - track.offsets[i - 1];
+        if (meters < 3) continue;
+        const hit = project(vehicle, track.points[i - 1], track.points[i]);
+        const angle = Math.abs(
+          ((headingDegrees(track.points[i - 1], track.points[i]) -
+            heading +
+            540) %
+            360) -
+            180,
+        );
+        if (hit.distance <= 30 && angle < 55)
+          hits.push({
+            track,
+            direction,
+            at: track.offsets[i - 1] + hit.t * meters,
+            score: hit.distance + angle * 0.4,
+          });
+      }
+    });
+    hits.sort((a, b) => a.score - b.score);
+    const best = hits[0];
+    if (
+      !best ||
+      hits.some(
+        (h) =>
+          h.score <= best.score + 4 &&
+          (h.direction !== best.direction || Math.abs(h.at - best.at) > 80),
+      )
+    )
+      return [];
+    const { track, direction, at } = best;
+    const total = track.offsets[track.offsets.length - 1];
+    const board =
+      track.stops.filter((s) => s.at <= at).slice(-1)[0] || track.stops[0];
+    if (!board) return [];
+    const stops =
+      track.loop &&
+      distanceMeters(track.points[0], track.points[track.points.length - 1]) <=
+        6
+        ? [
+            ...track.stops,
+            ...track.stops.map((s) => ({ ...s, at: s.at + total })),
+          ]
+        : track.stops;
+    return stops
+      .filter((s) => s.at > at + 15 && s.at <= at + total)
+      .map((s) => {
+        const points =
+          s.at <= total
+            ? sliceTrack(track, at, s.at)
+            : uniquePoints([
+                ...sliceTrack(track, at, total),
+                ...sliceTrack(track, 0, s.at - total),
+              ]);
+        return {
+          id: `onboard:${vehicle.id}:${route.id}:${direction}:${at.toFixed(1)}:${s.order}:${s.at.toFixed(1)}`,
+          route,
+          onboard: { direction, from: at, to: s.at },
+          board: {
+            ...board.place,
+            serviceDirection: direction,
+            serviceOrder: board.order,
+          },
+          alight: {
+            ...s.place,
+            serviceDirection: direction,
+            serviceOrder: s.order,
+          },
+          walkTo: 0,
+          walkFrom: distanceMeters(s.place, destination),
+          rideMeters: s.at - at,
+          points,
+          stopCount: countStopVisits(track, at, s.at),
+        };
+      });
   }
   plans(
     user: GeoPoint,

@@ -3,6 +3,7 @@ import type {
   GeoPoint,
   ShuttlePlace,
   ShuttleRoute,
+  ShuttleVehicle,
 } from "../../types/shuttle";
 import { distanceMeters } from "../../utils/shuttle-geo";
 import { ShuttlePlanner, type ShuttlePlan } from "./shuttle-routing";
@@ -96,6 +97,51 @@ export class ShuttleItineraryPlanner {
       startGap: 0,
       endGap: 0,
     };
+  }
+  /** Replan forward from the actual bus; never walk back to its previous stop. */
+  onboard(
+    vehicle: ShuttleVehicle,
+    destination: GeoPoint,
+    destinationStops: string[] = [],
+  ): ShuttleJourney | undefined {
+    const candidates: ShuttleJourney[] = [];
+    const exits = this.planner.onboardPlans(vehicle, destination);
+    const stops = this.map.places.filter((p) => p.category === "stop");
+    for (const exit of exits) {
+      const first: RideLeg = {
+        ...exit,
+        routes: [exit.route],
+        variants: [exit],
+      };
+      if (!destinationStops.length || destinationStops.includes(exit.alight.id))
+        candidates.push(this.journey([first]));
+      const boarding = stops
+        .filter((s) => distanceMeters(s, exit.alight) <= 320)
+        .map((s) => s.id);
+      for (const tail of this.planner.plans(
+        exit.alight,
+        destination,
+        boarding,
+        "",
+        destinationStops,
+      )) {
+        if (tail.route.id === exit.route.id || tail.rideMeters < 100) continue;
+        candidates.push(
+          this.journey([
+            first,
+            { ...tail, routes: [tail.route], variants: [tail] },
+          ]),
+        );
+      }
+    }
+    candidates.sort((a, b) => a.score - b.score);
+    const plan = candidates[0];
+    if (plan) {
+      // Already aboard: no initial walk or first-vehicle waiting estimate.
+      plan.score = Math.max(0, plan.score - 180);
+      plan.wait = 0;
+    }
+    return plan;
   }
   plans(
     origin: GeoPoint,

@@ -50,6 +50,11 @@ import {
   type ShuttleJourney,
 } from "../../utils/shuttle-itinerary";
 import { ShuttleMapMotion } from "../../utils/shuttle-map-motion";
+import { ShuttleOnboardDetector } from "../../utils/shuttle-onboard";
+import {
+  ShuttleJourneyProgress,
+  type JourneyProgressView,
+} from "../../utils/shuttle-journey-progress";
 import {
   orderedTraces,
   tracePolylines,
@@ -85,7 +90,7 @@ import type {
 } from "../../../types/shuttle";
 
 type Tap = WechatMiniprogram.TouchEvent;
-type Journey = "idle" | "waiting" | "riding" | "arrived";
+type Journey = "idle" | "waiting" | "riding" | "walking" | "arrived";
 interface EdgeHint {
   id: string;
   label: string;
@@ -132,6 +137,9 @@ interface SearchRow {
   stop: boolean;
 }
 interface Runtime {
+  onboardDetector?: ShuttleOnboardDetector;
+  journeyProgress?: ShuttleJourneyProgress;
+  journeyView?: JourneyProgressView;
   planningKey?: string;
   planningOrigin?: GeoPoint;
   planningId?: string;
@@ -398,6 +406,8 @@ Page({
     crossingLabel: "",
     recordingLabel: "位置仅在使用期间采集",
     journey: "idle" as Journey,
+    journeyProgress: null as JourneyProgressView | null,
+    journeyScroll: 0,
     reminderEnabled: false,
     edgeHints: [] as EdgeHint[],
     clusters: [] as Cluster[],
@@ -593,6 +603,7 @@ Page({
           if (current()) {
             this.feedback(message);
             this.deactivate();
+            this.cancelJourney();
             this.setData({
               authorized: false,
               hasOrigin: false,
@@ -638,6 +649,7 @@ Page({
       this.rebuildPlans(false);
       this.staticMarkers();
       this.paintUser();
+      this.updateJourneyProgress();
       // One owned foreground listener; no background-location API or hidden tracking.
       state.listener = (value) => {
         // A callback already delivered by the native bridge still belongs to this account
@@ -646,6 +658,7 @@ Page({
         recorder.record({ ...value }, "change");
         if (!current()) return;
         state.location = { ...value };
+        this.updateJourneyProgress();
         this.paintUser();
         this.refreshRows();
         if (!state.destination && !state.explicitBoard)
@@ -661,6 +674,7 @@ Page({
         if (current()) {
           this.feedback("定位已中断，请检查定位服务后重试");
           this.deactivate();
+          this.cancelJourney();
           this.setData({
             authorized: false,
             hasOrigin: false,
@@ -694,6 +708,7 @@ Page({
         this.deactivate();
         state.visible = true;
         state.location = undefined;
+        this.cancelJourney();
         state.motion?.clear();
         state.context?.removeMarkers({ markerIds: [1] });
         this.setData({
@@ -834,6 +849,8 @@ Page({
   },
   deactivate() {
     const state = rt(this);
+    state.journeyProgress?.pause();
+    state.onboardDetector?.pause();
     state.visible = false;
     state.active = false;
     this.cancelRouteAnimation();
@@ -890,12 +907,12 @@ Page({
     state.packet = packet;
     state.packetReceivedAt = Date.now();
     state.motion?.update(
-      packet.vehicles,
+      this.displayVehicles(packet.vehicles),
       packet.fetchedAt,
       packet.stale,
       packet.serverTime,
     );
-    this.setData({ vehicles: packet.vehicles });
+    this.setData({ vehicles: this.displayVehicles(packet.vehicles) });
     if (
       !this.data.sheetDragging &&
       this.data.sheetHeight !== this.targetSheetHeight(this.data.sheetExpanded)
@@ -965,6 +982,7 @@ Page({
           : "",
         destinationName: state.destination?.name || "",
       });
+      if (changed && state.journeyProgress) this.cancelJourney();
       this.rebuildPlans(true);
       this.staticMarkers();
       if (changed) this.feedback("线路已更新，请重新确认出行方案");
@@ -975,6 +993,8 @@ Page({
   rebuildPlans(notify = true) {
     const state = rt(this);
     if (!state.map || !state.itinerary) return;
+    // Live estimates must never replace the geometry of an active journey.
+    if (this.data.journey !== "idle" && state.journeyProgress) return;
     const origin = originPoint(state);
     if (!origin) {
       state.plan = undefined;
@@ -1050,6 +1070,7 @@ Page({
           if (
             runtimes.get(this) !== state ||
             !state.visible ||
+            (this.data.journey !== "idle" && !!state.journeyProgress) ||
             !isSessionLeaseCurrent(state.lease) ||
             state.planningKey !== planKey ||
             result.revision !== state.map?.revision
@@ -1210,6 +1231,9 @@ Page({
   liveSelection(): ShuttleSelection {
     const state = rt(this),
       plan = state.drawnPlan;
+    // Keep one existing stream, but observe other lines while navigating.
+    if (state.journeyProgress && this.data.journey !== "idle" && !state.manual)
+      return {};
     return plan?.mode === "walk"
       ? {}
       : plan
@@ -1221,6 +1245,16 @@ Page({
             ],
           }
         : { ...state.selection };
+  },
+  displayVehicles(vehicles: ShuttleVehicle[]): ShuttleVehicle[] {
+    const state = rt(this);
+    if (!state.journeyProgress || this.data.journey === "idle") return vehicles;
+    const ids = state.drawnPlan?.legs.flatMap((leg) =>
+      leg.routes.map((r) => r.id),
+    );
+    return ids?.length
+      ? vehicles.filter((v) => ids.includes(v.lineId))
+      : vehicles;
   },
   applySelection() {
     const state = rt(this);
@@ -1330,7 +1364,7 @@ Page({
       this.cancelRouteAnimation();
     }, 160);
   },
-  paintRoutes() {
+  paintRoutes(immediate = false) {
     const state = rt(this);
     if (!state.map || state.pendingChoice) return;
     const plan = state.drawnPlan,
@@ -1343,7 +1377,7 @@ Page({
       state.manual ? state.manualPoint : undefined,
     ]);
     const animate = state.routeJourneyKey !== journeyKey;
-    if (animate) state.routeWalkDeadline = Date.now() + 10000;
+    if (animate) state.routeWalkDeadline = immediate ? 0 : Date.now() + 10000;
     const expired = Date.now() >= (state.routeWalkDeadline || 0);
     const colors = routePalette(state.map.routes);
     const rides: {
@@ -1359,7 +1393,7 @@ Page({
     const walk = (from: GeoPoint, to: GeoPoint, color: string): void => {
       const geometry = plan?.walkLegs?.[walkIndex++];
       if (distanceMeters(from, to) <= 2) return;
-      if (geometry?.source !== "tencent" && !expired) {
+      if (geometry?.source !== "tencent" && !expired && !immediate) {
         ready = false;
         return;
       }
@@ -1380,7 +1414,8 @@ Page({
           : originPoint(state) || plan.board;
       for (const leg of plan.legs) {
         const color = colors.get(leg.route.id) || leg.route.color;
-        walk(from, leg.board, color);
+        if (leg === plan.legs[0] && leg.onboard) walkIndex++;
+        else walk(from, leg.board, color);
         rides.push({ points: leg.points, color, width: 4, dotted: false });
         journey.push(rides[rides.length - 1]);
         from = leg.alight;
@@ -1436,6 +1471,7 @@ Page({
         Math.max(0, (state.routeWalkDeadline || 0) - Date.now()),
       );
     if (
+      immediate ||
       !destination ||
       this.data.motionClass === "motion-reduced" ||
       !state.routeCanvas ||
@@ -1581,6 +1617,7 @@ Page({
     const old = state.drawnOrigin;
     if (
       !this.data.routeAnimating &&
+      this.data.journey === "idle" &&
       !state.moving &&
       old &&
       state.drawnPlan &&
@@ -1649,7 +1686,9 @@ Page({
       !packet || packet.stale || age > 12000 || this.data.connection !== "live";
     if (stale) state.motion?.freeze();
     const expired = age > 60000;
-    const vehicles = expired ? [] : packet?.vehicles || [];
+    const vehicles = expired
+      ? []
+      : this.displayVehicles(packet?.vehicles || []);
     if (expired && state.motion?.positions().length) state.motion.clear();
     const rows: VehicleRow[] = vehicles
       .filter((v) => !state.crossing.length || state.crossing.includes(v.id))
@@ -1659,6 +1698,11 @@ Page({
           leg.routes.some((route) => route.id === bus.lineId),
         );
         const board =
+          (this.data.journey !== "idle" && state.journeyView?.boardingId
+            ? state.map!.places.find(
+                (p) => p.id === state.journeyView!.boardingId,
+              )
+            : undefined) ||
           leg?.variants?.find((v) => v.route.id === bus.lineId)?.board ||
           leg?.board ||
           (state.drawnPlan?.mode === "ride"
@@ -1675,6 +1719,7 @@ Page({
         if (
           this.data.reminderEnabled &&
           this.data.journey === "waiting" &&
+          state.journeyView?.routes.includes(bus.lineId) &&
           !stale &&
           estimate.seconds !== null &&
           estimate.seconds <= 75 &&
@@ -1709,12 +1754,10 @@ Page({
     this.setData({ vehicleRows: rows, vehicles, stale, statusLabel });
     if (
       this.data.journey === "riding" &&
-      state.plan &&
-      state.location &&
-      distanceMeters(state.location, state.plan.alight) < 65 &&
-      !state.alerted.has("arrival")
+      state.journeyView?.approaching &&
+      !state.alerted.has(`arrival:${state.journeyView.boardingId}`)
     ) {
-      state.alerted.add("arrival");
+      state.alerted.add(`arrival:${state.journeyView!.boardingId}`);
       haptic("medium");
       this.feedback("已接近下车点，请留意停车后安全下车");
     }
@@ -2332,28 +2375,191 @@ Page({
     this.layout(false);
   },
   startJourney() {
-    if (!this.data.hasOrigin || !rt(this).plan) return;
-    rt(this).alerted.clear();
+    const state = rt(this);
+    if (
+      !this.data.authorized ||
+      !this.data.hasOrigin ||
+      state.manual ||
+      !state.active ||
+      !state.location ||
+      state.pendingChoice ||
+      !state.plan ||
+      !state.drawnDestination ||
+      !state.planner
+    )
+      return;
+    state.alerted.clear();
+    state.onboardDetector = new ShuttleOnboardDetector();
+    state.journeyProgress = new ShuttleJourneyProgress(
+      state.plan,
+      state.location,
+      state.drawnDestination,
+      state.planner,
+    );
     this.setData({ journey: "waiting", reminderEnabled: true });
-    haptic();
-    this.feedback("请前往候车点，保持本页打开可收到提醒");
-  },
-  toggleReminder() {
-    this.setData({ reminderEnabled: !this.data.reminderEnabled });
+    state.stream?.select(this.liveSelection());
+    this.updateJourneyProgress();
+    this.layout(false);
     haptic();
   },
-  boardVehicle() {
-    this.setData({ journey: "riding", reminderEnabled: false });
-    haptic();
-    this.feedback("请留意下车点；安全停车后再下车");
+  updateJourneyProgress() {
+    const state = rt(this);
+    if (
+      !state.visible ||
+      !state.active ||
+      !this.data.authorized ||
+      state.manual ||
+      !state.location ||
+      !state.journeyProgress ||
+      this.data.journey === "idle"
+    )
+      return;
+    const packet = state.packet;
+    const fresh =
+      packet &&
+      !packet.stale &&
+      this.data.connection === "live" &&
+      Date.now() -
+        state.packetReceivedAt +
+        Math.max(0, packet.serverTime - packet.fetchedAt) <
+        12000;
+    if (
+      fresh &&
+      packet.available &&
+      packet.selectionValid &&
+      packet.mapRevision === state.map?.revision &&
+      this.data.journey !== "arrived"
+    ) {
+      const bus = state.onboardDetector?.update(
+        state.location,
+        Date.now(),
+        packet.fetchedAt,
+        packet.vehicles,
+      );
+      const routes = state.journeyView?.routes || [];
+      if (bus && bus.lineId !== routes[0]) this.rerouteOnboard(bus);
+    } else state.onboardDetector?.pause();
+    state.journeyProgress.update(
+      state.location,
+      Date.now(),
+      fresh ? packet.vehicles : [],
+    );
+    this.renderJourneyProgress();
   },
-  finishJourney() {
-    this.setData({ journey: "arrived", reminderEnabled: false });
-    haptic("medium");
+  rerouteOnboard(bus: ShuttleVehicle) {
+    const state = rt(this);
+    if (
+      !state.journeyProgress ||
+      !state.itinerary ||
+      !state.planner ||
+      !state.location ||
+      !state.drawnDestination ||
+      !state.visible ||
+      !state.active ||
+      !this.data.authorized ||
+      state.manual ||
+      !isSessionLeaseCurrent(state.lease) ||
+      this.data.journey === "idle"
+    )
+      return;
+    const destination = state.drawnDestination;
+    const plan = state.itinerary.onboard(
+      bus,
+      destination,
+      state.destinationStops,
+    );
+    if (!plan) return; // Keep the last usable trip if direction/topology is uncertain.
+    state.onboardDetector?.switched(Date.now());
+    state.plan = plan;
+    state.plans = [plan];
+    state.drawnPlan = plan;
+    state.board = plan.board;
+    state.selection.routeId = plan.route.id;
+    state.selection.boardingId = plan.board.id;
+    state.alerted.clear();
+    state.journeyProgress = new ShuttleJourneyProgress(
+      plan,
+      state.location,
+      destination,
+      state.planner,
+    );
+    this.setData({
+      journey: "riding",
+      walking: false,
+      reminderEnabled: true,
+      routeId: plan.route.id,
+      selectedPlanId: plan.id,
+      boardName: stopName(plan.board),
+      boardFavorite: this.isSavedPlace(plan.board),
+      boardDetail: "",
+      selectedVehicleId: "",
+      crossingLabel: "",
+      edgeHints: [],
+      clusters: [],
+      plans: [
+        {
+          id: plan.id,
+          mode: plan.mode,
+          favorite: false,
+          color:
+            routePalette(state.map!.routes).get(plan.route.id) ||
+            plan.route.color,
+          routeName: plan.legs.map((l) => l.route.name).join(" → "),
+          stopCount: plan.stopCount,
+          boardName: stopName(plan.board),
+          alightName: stopName(plan.alight),
+          walkLabel: this.walkLabel(plan),
+          timeLabel: this.planTimeLabel(plan),
+        },
+      ],
+    });
+    state.crossing = [];
+    this.renderJourneyProgress();
+    // Silent replacement: no toast, vibration, camera jump, or reveal/loading UI.
+    this.paintRoutes(true);
+    const packet = state.packet;
+    if (packet)
+      state.motion?.update(
+        this.displayVehicles(packet.vehicles),
+        packet.fetchedAt,
+        packet.stale,
+        packet.serverTime,
+      );
+  },
+  renderJourneyProgress() {
+    const state = rt(this);
+    if (!state.journeyProgress || this.data.journey === "idle") return;
+    const viewport = Math.max(
+      200,
+      this.data.windowWidth - (this.data.windowWidth <= 340 ? 68 : 80),
+    );
+    const view = state.journeyProgress.view(viewport);
+    if (view.phase === "arrived" && this.data.journey !== "arrived")
+      haptic("medium");
+    state.journeyView = view;
+    this.setData({
+      journeyProgress: view,
+      journey: view.phase,
+      reminderEnabled: view.phase !== "arrived",
+      journeyScroll: Math.max(
+        0,
+        Math.min(view.width - viewport, view.position - viewport / 2),
+      ),
+    });
   },
   cancelJourney() {
-    rt(this).alerted.clear();
-    this.setData({ journey: "idle", reminderEnabled: false });
+    const state = rt(this);
+    state.alerted.clear();
+    state.journeyProgress = undefined;
+    state.journeyView = undefined;
+    state.onboardDetector = undefined;
+    this.setData({
+      journey: "idle",
+      reminderEnabled: false,
+      journeyProgress: null,
+    });
+    if (state.plan?.onboard) this.rebuildPlans(true);
+    else state.stream?.select(this.liveSelection());
     haptic();
   },
   refreshShuttles() {
@@ -2672,7 +2878,9 @@ Page({
       this.data.journey === "idle";
     const collapsed = emptyNearby
       ? Math.max(160 + this.data.safeBottom, base - 48)
-      : base;
+      : this.data.journey !== "idle"
+        ? 256 + this.data.safeBottom
+        : base;
     const maxSheet = Math.max(160, height - this.data.headerHeight - 105);
     return Math.round(Math.min(maxSheet, expanded ? height * 0.62 : collapsed));
   },
@@ -2680,6 +2888,7 @@ Page({
     const state = rt(this),
       height = this.data.windowHeight;
     const sheetHeight = this.targetSheetHeight(expanded);
+    this.renderJourneyProgress();
     this.setData({
       sheetExpanded: expanded,
       sheetHeight,
