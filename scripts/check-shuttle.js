@@ -3265,6 +3265,178 @@ test("late walking traces have independent clocks and leave bus progress and com
   assert.equal(complete, 1);
 });
 
+test("switching cached itineraries replays walk-ride-walk in order without another planning request", async () => {
+  const storage = new Map();
+  const h = harness({ mockStream: true, canvas: true, storage });
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const { ShuttleItineraryPlanner } = h.load(
+    "features/utils/shuttle-itinerary",
+  );
+  const planner = new ShuttleItineraryPlanner(map, new ShuttlePlanner(map));
+  const usable = (p) =>
+    p.mode === "ride" &&
+    p.legs.length === 1 &&
+    p.walkTo > 10 &&
+    p.walkFrom > 10;
+  const destination = map.places.find((p) =>
+    planner.plans(h.raw, p).some(usable),
+  );
+  const ride = planner.plans(h.raw, destination).find(usable);
+  let from = h.raw;
+  const walks = [];
+  for (const leg of ride.legs) {
+    walks.push({
+      points: [from, leg.board],
+      meters: 100,
+      seconds: 90,
+      source: "tencent",
+    });
+    from = leg.alight;
+  }
+  walks.push({
+    points: [from, destination],
+    meters: 100,
+    seconds: 90,
+    source: "tencent",
+  });
+  // Distinct choices can share their bus geometry and even all walking geometry.
+  const plans = ["cached-a", "cached-b"].map((id) => ({
+    ...ride,
+    id,
+    walkLegs: walks,
+  }));
+  storage.set("easy-swu:shuttle:plans:v1:42", [
+    {
+      request: {
+        origin: h.raw,
+        destination,
+        originMode: "gps",
+        boardingIds: [],
+        destinationStopIds: [],
+      },
+      result: { revision: map.revision, planningId: "cached", plans },
+      expires: Date.now() + 900000,
+    },
+  ]);
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({
+    longitude: destination.longitude,
+    latitude: destination.latitude,
+    name: "目标",
+  });
+  page.confirmMapPick();
+  await settle();
+  assert(page.data.plans.some((p) => p.id === "cached-a"));
+  const tick = (time) => {
+    const [id, fn] = [...h.frames].at(-1);
+    h.frames.delete(id);
+    fn(time);
+  };
+  const runJob = (delay) => {
+    const [id, job] = [...h.jobs].filter(([, j]) => j.delay === delay).at(-1);
+    h.jobs.delete(id);
+    job.f();
+  };
+  for (const id of ["cached-a", "cached-b", "cached-a"]) {
+    page.choosePlan({ currentTarget: { dataset: { id } } });
+    runJob(420);
+    const frames = (time) => {
+      const offset = h.calls.length;
+      tick(time);
+      return h.calls
+        .slice(offset)
+        .filter((c) => c[0] === "trace" && c[1].color !== "#FFFFFF");
+    };
+    assert.equal(page.data.polylines.length, 0);
+    frames(0);
+    const first = frames(200);
+    assert.equal(first.length, 1);
+    assert(first[0][1].dash.length);
+    const middle = frames(1300);
+    assert.equal(middle.length, 2);
+    assert.equal(middle[1][1].dash.length, 0);
+    assert.notDeepEqual(first[0][1].path.at(-1), middle[0][1].path.at(-1));
+    assert.equal(frames(2200).length, 2);
+    const partial = frames(2400);
+    assert.equal(partial.length, 3);
+    assert(partial[2][1].dash.length);
+    const full = frames(2600);
+    assert.equal(full.length, 3);
+    assert.deepEqual(full[0][1].path, middle[0][1].path);
+    assert.notDeepEqual(full[2][1].path.at(-1), partial[2][1].path.at(-1));
+    runJob(160);
+    assert.equal(page.data.routeAnimating, false);
+    assert(page.data.polylines.some((p) => p.dottedLine));
+  }
+  assert(!h.calls.some((c) => c[0] === "request" && c[1].endsWith("/plans")));
+  page.onUnload();
+});
+
+test("cached transfers keep itinerary order and walking-only trips do not wait for a bus clock", () => {
+  const h = harness({ canvas: true });
+  const { ShuttleRouteReveal, orderedTraces } = h.load(
+    "features/utils/shuttle-route-reveal",
+  );
+  const parts = orderedTraces(
+    Array.from({ length: 5 }, (_, index) => ({
+      points: [index, index + 1].map((x) => ({
+        longitude: 106 + x / 10000,
+        latitude: 29,
+      })),
+      color: String(index),
+      width: 3,
+      dotted: index % 2 === 0,
+    })),
+  );
+  const reveal = new ShuttleRouteReveal(h.canvas, h.canvasContext);
+  let complete = 0;
+  const start = () =>
+    reveal.start(
+      [],
+      (p) => ({ x: p.longitude, y: p.latitude }),
+      320,
+      400,
+      () => complete++,
+    );
+  const tick = (time) => {
+    const offset = h.calls.length;
+    const [id, fn] = [...h.frames].at(-1);
+    h.frames.delete(id);
+    fn(time);
+    return h.calls
+      .slice(offset)
+      .filter((c) => c[0] === "trace" && c[1].color !== "#FFFFFF");
+  };
+  start();
+  reveal.updateJourney(parts);
+  tick(0);
+  [133, 716, 1300, 1883, 2466].forEach((time, index) => {
+    assert.deepEqual(
+      tick(time).map((c) => c[1].color),
+      Array.from({ length: index + 1 }, (_, n) => String(n)),
+    );
+    reveal.updateWalking(
+      parts.filter((p) => p.dotted),
+      true,
+    );
+  });
+  assert.equal(complete, 0);
+  tick(2610);
+  assert.equal(complete, 1);
+  start();
+  reveal.updateJourney([parts[0]]);
+  assert.equal(tick(0).length, 0);
+  const partial = tick(400);
+  assert.equal(partial.length, 1);
+  assert(partial[0][1].path.at(-1)[0] < parts[0].points.at(-1).longitude);
+  tick(800);
+  assert.equal(complete, 2);
+});
+
 test("background map requests coalesce, pace GPS churn and honor server retry windows per account", async () => {
   const clock = { now: Date.now() };
   let release;

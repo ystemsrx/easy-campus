@@ -217,9 +217,46 @@ export class ShuttleRouteReveal {
   private frame?: number;
   private generation = 0;
   private walking = new Map<string, { part: TracePart; started?: number }>();
+  private journey?: {
+    part: TracePart;
+    started?: number;
+    duration: number;
+    lengths: number[];
+  }[];
+  /** Ready geometry follows the itinerary; each selection gets fresh clocks. */
+  updateJourney(parts: TracePart[]): void {
+    const walks = parts.filter((part) => part.dotted).length;
+    const rides = parts.length - walks;
+    this.journey = parts.map((part, index) => {
+      const previous = this.journey?.[index];
+      return {
+        part,
+        started: previous?.started,
+        duration: part.dotted ? 800 / walks : 1800 / rides,
+        lengths: part.points
+          .slice(1)
+          .map((q, i) => distanceMeters(part.points[i], q)),
+      };
+    });
+  }
   private walkingReady = true;
   /** Walking responses have their own clocks; they never restart the bus trace. */
   updateWalking(parts: TracePart[], ready: boolean): void {
+    if (this.journey) {
+      let index = 0;
+      this.journey = this.journey.map((entry) => {
+        if (!entry.part.dotted) return entry;
+        const part = parts[index++] || entry.part;
+        return {
+          ...entry,
+          part,
+          lengths: part.points
+            .slice(1)
+            .map((q, i) => distanceMeters(part.points[i], q)),
+        };
+      });
+      return;
+    }
     const next = new Map<string, { part: TracePart; started?: number }>();
     for (const part of parts) {
       const key = JSON.stringify([part.points, part.color]);
@@ -244,6 +281,7 @@ export class ShuttleRouteReveal {
     markerMasks?: () => { point: GeoPoint; radius: number }[],
   ): void {
     this.stop();
+    this.journey = undefined;
     this.walking.clear();
     this.walkingReady = !waitingForWalk;
     const generation = this.generation,
@@ -280,28 +318,55 @@ export class ShuttleRouteReveal {
             .map((q, i) => distanceMeters(p.points[i], q)),
         };
       });
-      const paths = [...traces.map((p) => ({ ...p, progress })), ...walks].map(
-        (p) => {
-          const screen = p.points.map(project);
-          let remaining = Math.max(
-            0,
-            Math.min(p.length, p.progress * p.total - p.start),
-          );
-          const points = remaining > 0 ? [screen[0]] : [];
-          for (let i = 0; remaining > 0 && i < p.lengths.length; i++) {
-            const a = screen[i],
-              b = screen[i + 1],
-              fraction =
-                p.lengths[i] > 0 ? Math.min(1, remaining / p.lengths[i]) : 1;
-            points.push({
-              x: a.x + (b.x - a.x) * fraction,
-              y: a.y + (b.y - a.y) * fraction,
-            });
-            remaining -= p.lengths[i];
-          }
-          return { ...p, points };
-        },
-      );
+      let journeyDone = true;
+      let nextStart: number | undefined;
+      const journeyParts = this.journey?.map((entry, index) => {
+        const part = entry.part;
+        const segmentDuration = entry.duration;
+        if (
+          entry.started === undefined &&
+          (index === 0 || nextStart !== undefined)
+        )
+          entry.started = nextStart ?? time;
+        const ratio =
+          entry.started === undefined
+            ? 0
+            : Math.max(
+                0,
+                Math.min(1, (time - entry.started) / segmentDuration),
+              );
+        nextStart = ratio >= 1 ? entry.started! + segmentDuration : undefined;
+        if (ratio < 1) journeyDone = false;
+        return {
+          ...part,
+          start: 0,
+          total: part.length,
+          progress: ratio,
+          lengths: entry.lengths,
+        };
+      });
+      const paths = (
+        journeyParts || [...traces.map((p) => ({ ...p, progress })), ...walks]
+      ).map((p) => {
+        const screen = p.points.map(project);
+        let remaining = Math.max(
+          0,
+          Math.min(p.length, p.progress * p.total - p.start),
+        );
+        const points = remaining > 0 ? [screen[0]] : [];
+        for (let i = 0; remaining > 0 && i < p.lengths.length; i++) {
+          const a = screen[i],
+            b = screen[i + 1],
+            fraction =
+              p.lengths[i] > 0 ? Math.min(1, remaining / p.lengths[i]) : 1;
+          points.push({
+            x: a.x + (b.x - a.x) * fraction,
+            y: a.y + (b.y - a.y) * fraction,
+          });
+          remaining -= p.lengths[i];
+        }
+        return { ...p, points };
+      });
       for (const casing of [true, false])
         for (const path of paths) {
           if (path.points.length < 2) continue;
@@ -328,7 +393,7 @@ export class ShuttleRouteReveal {
         }
         ctx.restore();
       }
-      if (t < 1 || !walkingDone || !cameraReady)
+      if ((this.journey ? !journeyDone : t < 1 || !walkingDone) || !cameraReady)
         this.frame = this.canvas.requestAnimationFrame(tick);
       else {
         this.frame = undefined;

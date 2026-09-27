@@ -1333,6 +1333,7 @@ Page({
     const journeyKey = JSON.stringify([
       state.map.revision,
       destination,
+      plan?.id,
       plan?.legs.map((l) => [l.route.id, l.points]),
       state.manual ? state.manualPoint : undefined,
     ]);
@@ -1347,6 +1348,7 @@ Page({
       dotted: boolean;
     }[] = [];
     const walks: typeof rides = [];
+    const journey: typeof rides = [];
     let walkIndex = 0,
       ready = true;
     const walk = (from: GeoPoint, to: GeoPoint, color: string): void => {
@@ -1364,6 +1366,7 @@ Page({
         width: 3,
         dotted: true,
       });
+      journey.push(walks[walks.length - 1]);
     };
     if (plan) {
       let from =
@@ -1374,6 +1377,7 @@ Page({
         const color = colors.get(leg.route.id) || leg.route.color;
         walk(from, leg.board, color);
         rides.push({ points: leg.points, color, width: 4, dotted: false });
+        journey.push(rides[rides.length - 1]);
         from = leg.alight;
       }
       if (destination)
@@ -1495,7 +1499,9 @@ Page({
                 : []),
             ],
           );
-          state.routeReveal.updateWalking(walkParts, ready);
+          if (firstPaint && ready)
+            state.routeReveal.updateJourney(orderedTraces(journey));
+          else state.routeReveal.updateWalking(walkParts, ready);
         },
         fail: () => {
           if (current()) this.setData({ polylines: state.routeFinal || final });
