@@ -23,6 +23,7 @@ export interface JourneyProgressView {
     width: number;
     walk: boolean;
     fill: number;
+    fillWidth: number;
   }[];
   nodes: {
     id: string;
@@ -329,14 +330,28 @@ export class ShuttleJourneyProgress {
     const nextStop = current?.stops.find((s) => s.meters > this.meters + 8);
     return {
       width,
-      segments: this.stages.map((s, i) => ({
-        id: i,
-        x: s.offset * scale,
-        width: s.width * scale,
-        walk: s.kind === "walk",
-        fill:
-          this.finished || i < this.index ? 1 : i === this.index ? fraction : 0,
-      })),
+      segments: this.stages.map((s, i) => {
+        const fill = Math.max(
+          0,
+          Math.min(
+            1,
+            this.finished || i < this.index
+              ? 1
+              : i === this.index
+                ? fraction
+                : 0,
+          ),
+        );
+        const width = s.width * scale;
+        return {
+          id: i,
+          x: s.offset * scale,
+          width,
+          walk: s.kind === "walk",
+          fill,
+          fillWidth: width * fill,
+        };
+      }),
       nodes,
       position: done * scale,
       phase: this.finished

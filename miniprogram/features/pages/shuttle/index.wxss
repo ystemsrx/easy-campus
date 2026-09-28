@@ -58,7 +58,7 @@ page { overflow: hidden; }
 .journey-rail--walk { border-top-style: dashed; }
 .journey-rail--done { border-top-color: #df8645; }
 .theme-dark .journey-rail--done { border-top-color: #df8645; }
-.journey-fill { position: absolute; inset: 0; transform-origin: 0 50%; transition: transform 800ms linear; }
+.journey-fill { position: absolute; left: 0; top: 0; height: 3px; overflow: hidden; transition: width 800ms linear; }
 .journey-node { position: absolute; top: 20px; width: 0; height: 0; color: var(--color-text-secondary); }
 .journey-node-dot { position: absolute; left: -4px; top: 1px; width: 8px; height: 8px; border-radius: 50%; background: #d7d7d9; border: 2px solid var(--color-bg-elevated); box-sizing: border-box; transition: background-color 240ms ease; }
 .theme-dark .journey-node-dot { background: #626268; }

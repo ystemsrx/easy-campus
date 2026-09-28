@@ -547,6 +547,119 @@ test("ride station nodes are evenly spaced while progress interpolates within th
   assert.equal(view.next, "下一站：途经站2");
 });
 
+test("timeline fills clip a full-length rail instead of scaling the walking dash pattern", () => {
+  const wxml = fs.readFileSync(
+      path.join(root, "features/pages/shuttle/index.wxml"),
+      "utf8",
+    ),
+    css = fs.readFileSync(
+      path.join(root, "features/pages/shuttle/index.wxss"),
+      "utf8",
+    );
+  assert.match(
+    wxml,
+    /class="journey-fill" style="width: \{\{item.fillWidth\}\}px;/,
+  );
+  assert.match(
+    wxml,
+    /journey-rail--done[^>]*style="width: \{\{item.width\}\}px;/,
+  );
+  assert(!wxml.includes("scaleX({{item.fill}})"));
+  assert.match(
+    css,
+    /\.journey-fill \{[^}]*left: 0;[^}]*top: 0;[^}]*height: 3px;[^}]*overflow: hidden;[^}]*transition: width 800ms linear;/,
+  );
+  assert.match(css, /\.motion-reduced \.journey-fill[^}]*transition: none/);
+});
+
+test("walking and unequal stop intervals color the travelled bent road proportionally", () => {
+  const h = harness(),
+    { ShuttleJourneyProgress } = h.load(
+      "features/utils/shuttle-journey-progress",
+    ),
+    { distanceMeters } = h.load("utils/shuttle-geo");
+  const p = (x, y = 0) => ({
+    longitude: 106.42 + x / 96500,
+    latitude: 29.82 + y / 111200,
+    accuracy: 5,
+  });
+  const points = [p(0), p(100), p(100, 100), p(300, 100)],
+    total = points
+      .slice(1)
+      .reduce((n, v, i) => n + distanceMeters(points[i], v), 0);
+  const route = { id: "r", name: "1号线" },
+    board = { ...p(0), id: "start", name: "上车站" },
+    alight = { ...p(300, 100), id: "end", name: "下车站" };
+  for (const ride of [false, true]) {
+    const leg = {
+      route,
+      routes: [route],
+      board,
+      alight,
+      points,
+      rideMeters: total,
+      onboard: { direction: 0, from: 0, to: total },
+    };
+    const plan = {
+      legs: ride ? [leg] : [],
+      walkLegs: ride ? [] : [{ points }],
+    };
+    const tracker = new ShuttleJourneyProgress(
+      plan,
+      p(0),
+      { ...p(300, 100), name: "终点" },
+      {
+        onboardProgress: () => undefined,
+        journeyStops: () => [
+          { place: { name: "第一站" }, meters: 50 },
+          { place: { name: "第二站" }, meters: 250 },
+        ],
+      },
+    );
+    let time = 1000;
+    tracker.update(p(0), time);
+    for (let metres = 10; metres <= 300; metres += 10) {
+      const point =
+        metres <= 100
+          ? p(metres)
+          : metres <= 200
+            ? p(100, metres - 100)
+            : p(metres - 100, 100);
+      tracker.update(point, (time += 5000));
+      const actual =
+        metres <= 100
+          ? distanceMeters(p(0), point)
+          : metres <= 200
+            ? distanceMeters(p(0), p(100)) + distanceMeters(p(100), point)
+            : distanceMeters(p(0), p(100)) +
+              distanceMeters(p(100), p(100, 100)) +
+              distanceMeters(p(100, 100), point);
+      const expected = ride
+        ? (actual < 50
+            ? actual / 50
+            : actual < 250
+              ? 1 + (actual - 50) / 200
+              : 2 + (actual - 250) / (total - 250)) / 3
+        : actual / total;
+      for (const width of [200, 295, 350]) {
+        const segment = tracker.view(width).segments[0];
+        assert(
+          Math.abs(segment.fill - expected) < 0.003,
+          `ride=${ride}, metres=${metres}`,
+        );
+        assert(Math.abs(segment.fillWidth - width * expected) < 1);
+      }
+      const before = tracker.view(295).segments[0].fillWidth;
+      tracker.update(point, (time += 1000));
+      assert.equal(
+        tracker.view(295).segments[0].fillWidth,
+        before,
+        "no progress without movement",
+      );
+    }
+  }
+});
+
 test("walking sections are shorter without changing walking-only progress or transfer ordering", () => {
   const h = harness();
   for (const width of [200, 252, 295, 350]) {
@@ -763,6 +876,66 @@ test("active journeys freeze their selected route and stop on location loss", as
   page.startJourney();
   assert.equal(page.data.journey, "idle");
   page.onUnload();
+});
+
+test("active walking and riding journeys restore their frozen overlays and progress after backgrounding", async () => {
+  const geometry = (lines) =>
+    clone(lines).map((line) => ({
+      ...line,
+      points: line.points.map(({ latitude, longitude }) => ({
+        latitude,
+        longitude,
+      })),
+    }));
+  for (const walkOnly of [false, true])
+    for (const duringReveal of [false, true]) {
+      const clock = { now: 100000 },
+        { point, campus } = onboardFixture(),
+        h = harness({ mockStream: true, clock, map: campus, canvas: true });
+      Object.assign(h.raw, point(-100, 30));
+      const page = h.page();
+      page.onLoad();
+      page.onReady();
+      page.onShow();
+      await settle();
+      page.showMapPick({ ...point(walkOnly ? -20 : 900, 30), name: "目的地" });
+      page.confirmMapPick();
+      await settle();
+      const choice = page.data.plans.find(
+        (p) => p.mode === (walkOnly ? "walk" : "ride"),
+      );
+      assert(choice);
+      page.choosePlan({ currentTarget: { dataset: { id: choice.id } } });
+      page.startJourney();
+      clock.now += 5000;
+      Object.assign(h.raw, point(-90, 30));
+      h.getListener()({ ...h.raw });
+      page.paintRoutes(true);
+      const overlays = geometry(page.data.polylines),
+        progress = page.data.journeyProgress.position,
+        selected = page.data.selectedPlanId;
+      assert(overlays.length > 0);
+      assert(progress > 0);
+      if (duringReveal) page.setData({ polylines: [], routeAnimating: true });
+      const late = [...h.frames.values()];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        page.onHide();
+        clock.now += 30000;
+        page.onShow();
+        await settle();
+        assert.deepEqual(
+          geometry(page.data.polylines),
+          overlays,
+          `restore walk=${walkOnly}, reveal=${duringReveal}`,
+        );
+        assert.equal(page.data.selectedPlanId, selected);
+        assert.equal(page.data.journeyProgress.position, progress);
+        assert.equal(page.data.routeAnimating, false);
+        late.forEach((fn) => fn(100000));
+        assert.deepEqual(geometry(page.data.polylines), overlays);
+      }
+      page.onUnload();
+    }
 });
 
 test("real directional journey stops stay between boarding and alighting visits", () => {

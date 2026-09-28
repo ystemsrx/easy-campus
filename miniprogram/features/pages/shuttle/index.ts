@@ -486,6 +486,10 @@ Page({
     syncWindowBackground(appearance);
     this.setData(appearance);
     this.finishLocationChoice();
+    // A hidden canvas is cleared, but the active journey and its geometry survive.
+    // Restore them immediately without replaying the reveal or choosing a new plan.
+    if (this.data.journey !== "idle" && rt(this).journeyProgress)
+      this.paintRoutes(true);
     if (!rt(this).attempted || this.data.authorized || rt(this).manual)
       void this.activate();
   },
@@ -578,13 +582,19 @@ Page({
       state.planner = new ShuttlePlanner(map);
       state.itinerary = new ShuttleItineraryPlanner(map, state.planner);
       this.refreshCommonPlaces();
-      this.setData({
-        routes: map.routes,
-        polylines: roadPolylines(
-          map,
-          this.data.routeId ? [this.data.routeId] : undefined,
-        ),
-      });
+      this.setData({ routes: map.routes });
+      if (this.data.journey !== "idle" && state.journeyProgress) {
+        // Journey planning is deliberately frozen until arrival/cancellation.
+        // Do not replace the restored trip with the overview during activation.
+        this.paintRoutes(true);
+      } else {
+        this.setData({
+          polylines: roadPolylines(
+            map,
+            this.data.routeId ? [this.data.routeId] : undefined,
+          ),
+        });
+      }
       if (!state.location) {
         this.setData({
           latitude: map.center.latitude,
@@ -1485,6 +1495,8 @@ Page({
     const preview = state.vehiclePreview;
     const plan = state.drawnPlan,
       destination = state.drawnDestination;
+    const activeJourney =
+      this.data.journey !== "idle" && !!state.journeyProgress;
     const journeyKey = JSON.stringify([
       state.map.revision,
       destination,
@@ -1535,7 +1547,7 @@ Page({
     };
     if (plan) {
       let from =
-        state.drawnOrigin && !animate
+        state.drawnOrigin && (!animate || activeJourney)
           ? state.drawnOrigin
           : originPoint(state) || plan.board;
       for (const leg of plan.legs) {
@@ -1581,7 +1593,8 @@ Page({
     const epoch = ++state.routeEpoch;
     this.cancelRouteAnimation();
     state.routeJourneyKey = journeyKey;
-    state.drawnOrigin = originPoint(state);
+    if (!activeJourney || !state.drawnOrigin)
+      state.drawnOrigin = originPoint(state);
     state.routeFinal = final;
     const current = (): boolean =>
       runtimes.get(this) === state &&

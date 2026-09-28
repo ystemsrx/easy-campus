@@ -103,7 +103,7 @@
             <view class="journey-timeline-track" style="width: {{journeyProgress.width}}px;">
               <view wx:for="{{journeyProgress.segments}}" wx:key="id" class="journey-segment" style="left: {{item.x}}px; width: {{item.width}}px;">
                 <view class="journey-rail {{item.walk ? 'journey-rail--walk' : ''}}"></view>
-                <view class="journey-fill" style="transform: scaleX({{item.fill}});"><view class="journey-rail journey-rail--done {{item.walk ? 'journey-rail--walk' : ''}}"></view></view>
+                <view class="journey-fill" style="width: {{item.fillWidth}}px;"><view class="journey-rail journey-rail--done {{item.walk ? 'journey-rail--walk' : ''}}" style="width: {{item.width}}px;"></view></view>
               </view>
               <view wx:for="{{journeyProgress.nodes}}" wx:key="id" class="journey-node {{item.major ? 'journey-node--major' : ''}} {{item.reached ? 'journey-node--done' : ''}} {{item.transfer ? 'journey-node--transfer' : ''}}" style="left: {{item.x}}px;" aria-label="{{item.name}}{{item.transfer ? '，同站换乘' : ''}}">
                 <view class="journey-node-dot"><lucide-icon wx:if="{{item.transfer}}" name="refresh-cw" size="20" tone="{{item.reached ? 'amber' : 'muted'}}"></lucide-icon></view>
