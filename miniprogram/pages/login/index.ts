@@ -4,6 +4,7 @@ import {
   enableTimelineShare,
 } from "../../utils/app-share";
 import { APP_NAME } from "../../config/app";
+import { beginLoginReveal, switchToAuthenticatedHome } from "../../utils/login-reveal";
 import { cancelPendingLogin, login } from "../../services/auth";
 import { refreshExamsOnForeground } from "../../services/cache-refresh";
 import {
@@ -53,7 +54,7 @@ const MASCOT_SOURCES: Record<MascotName, string> = {
 const ERROR_TOAST_HOLD_MS = 3000;
 const ERROR_TOAST_EXIT_MS = 320;
 const HOME_RENDER_COMMIT_TIMEOUT_MS = 1000;
-const LOGIN_EXIT_ROUTE_LEAD_MS = 360;
+const LOGIN_EXIT_ROUTE_LEAD_MS = 220;
 const LOGIN_REDUCED_EXIT_ROUTE_LEAD_MS = 16;
 const LOGIN_EXIT_COMMIT_TIMEOUT_MS = 800;
 
@@ -61,6 +62,7 @@ let mascotScheme: MascotScheme = "laptop";
 let currentMascot: MascotName | "" = "";
 let mascotSequenceTimer: ReturnType<typeof setTimeout> | undefined;
 let loginExitRouteTimer: ReturnType<typeof setTimeout> | undefined;
+let passwordRefocusTimer: ReturnType<typeof setTimeout> | undefined;
 let errorToastTimer: ReturnType<typeof setTimeout> | undefined;
 let errorToastCleanupTimer: ReturnType<typeof setTimeout> | undefined;
 let laptopCycleStartedAt = 0;
@@ -131,6 +133,7 @@ interface PreparedHomePage {
   route?: string;
   prepareForAuthenticatedReveal?: (onReady?: () => void) => void;
   playAuthenticatedExit?: (onReady: () => void) => void;
+  revealAuthenticatedHome?: () => void;
 }
 
 function homePageBelowLogin(): PreparedHomePage | null {
@@ -144,13 +147,11 @@ function homePageBelowLogin(): PreparedHomePage | null {
 }
 
 function switchToHome(onFailure?: () => void): void {
-  wx.switchTab({
-    url: "/pages/home/index",
-    fail: () => onFailure?.(),
-  });
+  switchToAuthenticatedHome(onFailure);
 }
 
 function routeAfterAuthentication(onFailure?: () => void): void {
+  beginLoginReveal();
   const preparedHome = homePageBelowLogin();
   const pages = getCurrentPages() as PreparedHomePage[];
   const loginPage = pages[pages.length - 1];
@@ -208,6 +209,7 @@ Page({
     agreementAccepted: false,
     accountFocused: false,
     passwordFocused: false,
+    passwordInputFocused: false,
     loading: false,
     errorMessage: "",
     errorToastPhase: "",
@@ -271,6 +273,7 @@ Page({
     clearMascotSequenceTimer();
     clearErrorToastTimers();
     clearLoginExitRouteTimer();
+    if (passwordRefocusTimer !== undefined) clearTimeout(passwordRefocusTimer);
   },
   applyAppearance() {
     const appearance = resolveAppearance();
@@ -546,14 +549,25 @@ Page({
     this.setData({ accountFocused: false });
   },
   onPasswordFocus() {
-    this.setData({ passwordFocused: true });
+    this.setData({ passwordFocused: true, passwordInputFocused: true });
   },
   onPasswordBlur() {
-    this.setData({ passwordFocused: false });
+    this.setData({ passwordFocused: false, passwordInputFocused: false });
+  },
+  focusPasswordInput() {
+    if (!this.data.loading) this.setData({ passwordInputFocused: true });
   },
   togglePassword() {
     haptic("light");
-    this.setData({ passwordVisible: !this.data.passwordVisible });
+    if (passwordRefocusTimer !== undefined) clearTimeout(passwordRefocusTimer);
+    this.setData({
+      passwordVisible: !this.data.passwordVisible,
+      passwordInputFocused: false,
+    });
+    passwordRefocusTimer = setTimeout(() => {
+      passwordRefocusTimer = undefined;
+      if (pageActive && !this.data.loading) this.focusPasswordInput();
+    }, 60);
   },
   toggleAgreement() {
     haptic("light");
@@ -570,6 +584,10 @@ Page({
   async onSubmit() {
     if (this.data.loading) {
       return;
+    }
+    if (passwordRefocusTimer !== undefined) {
+      clearTimeout(passwordRefocusTimer);
+      passwordRefocusTimer = undefined;
     }
 
     this.startSubmitMascot();
@@ -600,6 +618,7 @@ Page({
       loading: true,
       accountFocused: false,
       passwordFocused: false,
+      passwordInputFocused: false,
       loginScrollAnchor: "login-stage",
     });
     try {

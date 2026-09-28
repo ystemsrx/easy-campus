@@ -1,5 +1,6 @@
 import { navigationIndex, homeNavigationActions } from "../../store/navigation";
 import { openLaunchNavigation } from "../../utils/tab-navigation";
+import { completeLoginReveal, isLoginRevealPending } from "../../utils/login-reveal";
 import {
   attachCapsuleBackdrop,
   detachCapsuleBackdrop,
@@ -296,6 +297,9 @@ let homeHasActivated = false;
 let hydratedHomeSources: HomeSourceRevisions | null = null;
 let lastHomeClockKey = "";
 let authenticationRevealPrepared = false;
+let authenticationRevealCommitted = false;
+let authenticationRouteReady = false;
+let authenticationRevealTimer: ReturnType<typeof setTimeout> | undefined;
 let nextPrimaryTabFrameworkPreloadStarted = false;
 let queuedAnnouncements: Publication[] = [];
 let automaticPopupsThisEntry = new Set<string>();
@@ -820,6 +824,12 @@ function clearHomeRefreshTimer(): void {
   homeRefreshTimer = undefined;
 }
 
+function clearAuthenticationRevealTimer(): void {
+  if (authenticationRevealTimer === undefined) return;
+  clearTimeout(authenticationRevealTimer);
+  authenticationRevealTimer = undefined;
+}
+
 Page({
   onShareAppMessage: buildAppShare,
   onShareTimeline: buildTimelineShare,
@@ -828,6 +838,7 @@ Page({
     ...INITIAL_HOME_APPEARANCE,
     appName: APP_NAME,
     authenticated: INITIAL_HOME_AUTHENTICATED,
+    authenticationRevealClass: isLoginRevealPending() ? "home-framework--awaiting-reveal" : "",
     loading: false,
     loaded: false,
     errorMessage: "",
@@ -903,6 +914,9 @@ Page({
     homeVisible = false;
     homeReady = false;
     authenticationRevealPrepared = false;
+    authenticationRevealCommitted = false;
+    authenticationRouteReady = false;
+    clearAuthenticationRevealTimer();
     homeHasActivated = false;
     hydratedHomeSources = null;
     lastHomeClockKey = "";
@@ -923,7 +937,9 @@ Page({
     dashboardTeachingRefreshQueued = false;
     dashboardStableRefreshQueued = false;
     clearDashboardTeachingFollowupTimer();
-    if (getSession()?.token) {
+    if (getSession()?.token && isLoginRevealPending()) {
+      this.prepareForAuthenticatedReveal();
+    } else if (getSession()?.token) {
       const account = getSession()?.user.account || "";
       if (account) {
         this.hydrateCachedHomeIfNeeded(account, true);
@@ -946,8 +962,9 @@ Page({
     invalidateCapsuleBackdrop(this);
   },
   onReady() {
-    attachCapsuleBackdrop(this, "home");
+    if (!this.data.authenticationRevealClass) attachCapsuleBackdrop(this, "home");
     homeReady = true;
+    this.beginAuthenticatedReveal();
     const delay = authenticationRevealPrepared
       ? HOME_LOGIN_REVEAL_SETTLE_MS
       : HOME_FIRST_FRAME_SETTLE_MS;
@@ -961,7 +978,8 @@ Page({
       clearHomeActivationTimer();
       return;
     }
-    if (openLaunchNavigation(() => this.onShow())) {
+    const loginRevealPending = isLoginRevealPending();
+    if (!loginRevealPending && openLaunchNavigation(() => this.onShow())) {
       homeVisible = false;
       clearHomeActivationTimer();
       return;
@@ -969,10 +987,11 @@ Page({
     homeVisible = true;
     void this.acceptSharedCompanion();
     resumeServiceOrder();
-    attachCapsuleBackdrop(this, "home");
+    if (!this.data.authenticationRevealClass && !loginRevealPending) attachCapsuleBackdrop(this, "home");
     if (this.data.authenticated) {
       const account = getSession()?.user.account || "";
       if (account) this.hydrateCachedHomeIfNeeded(account);
+      if (authenticationRouteReady) this.beginAuthenticatedReveal();
     } else {
       this.prepareForAuthenticatedReveal();
     }
@@ -982,6 +1001,7 @@ Page({
       visualThemeClass: this.data.visualThemeClass,
       motionClass: this.data.motionClass,
       hidden: this.data.petSetupDrawerMounted,
+      dismissed: loginRevealPending || Boolean(this.data.authenticationRevealClass),
     });
     if (homeReady) {
       const delay = authenticationRevealPrepared
@@ -1014,10 +1034,14 @@ Page({
     } finally { companionBindInFlight = false; }
   },
   prepareForAuthenticationRequired(onReady?: () => void) {
+    completeLoginReveal();
     detachCapsuleBackdrop(this);
     cancelPublicationPanelMeasure();
     homeVisible = false;
     authenticationRevealPrepared = false;
+    authenticationRouteReady = false;
+    authenticationRevealCommitted = false;
+    clearAuthenticationRevealTimer();
     homeHasActivated = false;
     hydratedHomeSources = null;
     lastHomeClockKey = "";
@@ -1055,6 +1079,7 @@ Page({
     this.setData(
       {
         authenticated: false,
+        authenticationRevealClass: "",
         loading: false,
         loaded: false,
         errorMessage: "",
@@ -1111,6 +1136,7 @@ Page({
       return;
     }
     const account = lease.account;
+    detachCapsuleBackdrop(this);
     const state = cachedHomeRenderState(account);
     hydratedAccount = account;
     activeTimetable = state.dashboard.timetable;
@@ -1118,13 +1144,17 @@ Page({
     lastHomeClockKey = state.clockKey;
     syncWindowBackground(state.appearance);
     authenticationRevealPrepared = true;
+    authenticationRevealCommitted = false;
     this.setData(
       {
         authenticated: true,
+        authenticationRevealClass: "home-framework--awaiting-reveal",
         ...state.patch,
       },
       () => {
         if (!isSessionLeaseCurrent(lease)) return;
+        authenticationRevealCommitted = true;
+        if (authenticationRouteReady) this.beginAuthenticatedReveal();
         const tabBar = this.getTabBar();
         const finish = () =>
           wx.nextTick(() => {
@@ -1141,6 +1171,7 @@ Page({
             visualThemeClass: state.appearance.visualThemeClass,
             motionClass: state.appearance.motionClass,
             hidden: false,
+            dismissed: true,
           },
           () => {
             if (isSessionLeaseCurrent(lease)) finish();
@@ -1148,6 +1179,40 @@ Page({
         );
       },
     );
+  },
+  revealAuthenticatedHome() {
+    authenticationRouteReady = true;
+    this.beginAuthenticatedReveal();
+  },
+  beginAuthenticatedReveal() {
+    if (
+      !homeReady || !homeVisible || !authenticationRouteReady ||
+      !authenticationRevealCommitted ||
+      this.data.authenticationRevealClass !==
+        "home-framework--awaiting-reveal" ||
+      authenticationRevealTimer !== undefined
+    ) return;
+    // 原生转场结束后，让首页区块从已经提交的隐藏状态依次进入。
+    authenticationRevealTimer = setTimeout(() => {
+      authenticationRevealTimer = undefined;
+      if (authenticationRouteReady && homeVisible && getSession()?.token) {
+        this.setData({ authenticationRevealClass: "home-framework--revealing" }, () => {
+          if (!homeVisible || this.data.authenticationRevealClass !== "home-framework--revealing") return;
+          authenticationRevealTimer = setTimeout(() => {
+            authenticationRevealTimer = undefined;
+            this.finishAuthenticatedReveal();
+          }, this.data.motionClass === "motion-reduced" ? 152 : 920);
+        });
+      }
+    }, HOME_FIRST_FRAME_SETTLE_MS);
+  },
+  finishAuthenticatedReveal() {
+    completeLoginReveal();
+    this.setData({ authenticationRevealClass: "" });
+    if (!homeVisible) return;
+    this.getTabBar()?.setData({ dismissed: false });
+    attachCapsuleBackdrop(this, "home");
+    if (!openLaunchNavigation(() => this.onShow())) this.scheduleHomeActivation(0);
   },
   scheduleHomeActivation(delay: number) {
     clearHomeActivationTimer();
@@ -1218,6 +1283,8 @@ Page({
     homeRefreshTimer = setTimeout(refresh, delay);
   },
   activateHomeAfterFirstFrame() {
+    // 首屏的弹层、玻璃副本及后台刷新在渐显结束后启动。
+    if (this.data.authenticationRevealClass) return;
     const sessionAccount = getSession()?.user.account || "";
     if (!sessionAccount || !homeVisible) return;
     this.hydrateCachedHomeIfNeeded(sessionAccount);
@@ -1244,6 +1311,10 @@ Page({
   onHide() {
     detachCapsuleBackdrop(this);
     homeVisible = false;
+    clearAuthenticationRevealTimer();
+    if (this.data.authenticationRevealClass === "home-framework--revealing") {
+      this.finishAuthenticatedReveal();
+    }
     this.settlePlanTransition();
     clearHomeActivationTimer();
     clearHomeRefreshTimer();
@@ -1258,6 +1329,7 @@ Page({
     unregisterHomeAuthenticationHost(this);
     homeVisible = false;
     homeReady = false;
+    clearAuthenticationRevealTimer();
     clearHomeActivationTimer();
     clearHomeRefreshTimer();
     clearDashboardTeachingFollowupTimer();

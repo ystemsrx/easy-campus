@@ -2,6 +2,7 @@ const { readSource } = require("./read-source");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+require("./check-login-reveal");
 
 const projectRoot = path.resolve(__dirname, "..");
 const loginRoot = path.join(projectRoot, "miniprogram", "pages", "login");
@@ -66,6 +67,82 @@ const appConfigScript = readSource(
   "utf8",
 );
 const failures = [];
+
+function loadLoginRuntime() {
+  const output = ts.transpileModule(script, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const timers = new Map();
+  const pages = [
+    { route: "pages/home/index", revealAuthenticatedHome() { revealed++; } },
+    { route: "pages/login/index" },
+  ];
+  let revealed = 0;
+  let routeSuccess;
+  let pageDefinition;
+  let timerId = 0;
+  const moduleRecord = { exports: {} };
+  const appearance = {
+    theme: "light",
+    themeClass: "theme-light",
+    visualTheme: "default",
+    visualThemeClass: "theme-style-default",
+    motionClass: "motion-normal",
+    liquidGlass: false,
+    liquidGlassClass: "",
+  };
+  new Function(
+    "module", "exports", "require", "Page", "wx", "getCurrentPages",
+    "setTimeout", "clearTimeout", output +
+      "\npageActive = true; module.exports.switchToHomeForTest = switchToHome;",
+  )(
+    moduleRecord,
+    moduleRecord.exports,
+    (specifier) => {
+      if (specifier.endsWith("/appearance")) {
+        return { resolveAppearance: () => appearance, syncWindowBackground() {} };
+      }
+      if (specifier.endsWith("/preferences")) return { loadPreferences: () => ({}) };
+      if (specifier.endsWith("/app")) return { APP_NAME: "西小易" };
+      if (specifier.endsWith("/haptics")) return { haptic() {} };
+      return new Proxy({}, { get: () => () => undefined });
+    },
+    (definition) => { pageDefinition = definition; },
+    { switchTab(options) { routeSuccess = options.success; } },
+    () => pages,
+    (callback) => { timerId++; timers.set(timerId, callback); return timerId; },
+    (id) => timers.delete(id),
+  );
+  const page = {
+    ...pageDefinition,
+    data: { loading: false, passwordVisible: false, passwordFocused: false, passwordInputFocused: false },
+    setData(patch, callback) { Object.assign(this.data, patch); callback?.(); },
+  };
+  return {
+    page,
+    timers,
+    route() { moduleRecord.exports.switchToHomeForTest(); },
+    finishRoute() { routeSuccess?.(); },
+    revealed() { return revealed; },
+  };
+}
+
+{
+  const runtime = loadLoginRuntime();
+  runtime.page.focusPasswordInput();
+  if (!runtime.page.data.passwordInputFocused) failures.push("点击密码输入行必须请求键盘焦点");
+  runtime.page.onPasswordBlur();
+  if (runtime.page.data.passwordInputFocused) failures.push("密码失焦后必须释放受控焦点");
+  runtime.page.togglePassword();
+  if (!runtime.page.data.passwordVisible || runtime.page.data.passwordInputFocused) {
+    failures.push("切换密码可见性时必须先重建输入焦点");
+  }
+  for (const callback of runtime.timers.values()) callback();
+  if (!runtime.page.data.passwordInputFocused) failures.push("切换密码可见性后必须恢复键盘焦点");
+}
 
 const loginRoute = "pages/login/index";
 const loginInFeaturePackage = (
@@ -336,9 +413,9 @@ const clawdMarkStyles =
   styles.match(/\.login-clawd-mark\s*\{([\s\S]*?)\}/)?.[1] || "";
 const fieldFocusStyles =
   styles.match(/\.field--focus\s*\{([\s\S]*?)\}/)?.[1] || "";
-const loginBackgroundExitStyles =
+const loginHeadingExitStyles =
   styles.match(
-    /\.login-page--leaving \.login-background,[\s\S]*?\.login-page--leaving \.login-hero\s*\{([\s\S]*?)\}/,
+    /\.login-page--leaving \.login-navigation,[\s\S]*?\.login-page--leaving \.login-hero\s*\{([\s\S]*?)\}/,
   )?.[1] || "";
 const loginPanelExitStyles =
   styles.match(/\.login-page--leaving \.login-panel\s*\{([\s\S]*?)\}/)?.[1] ||
@@ -543,7 +620,7 @@ if (
   !template.includes('scroll-into-view="{{loginScrollAnchor}}"') ||
   !styles.includes("background-color: var(--color-bg);") ||
   !script.includes("playAuthenticatedExit(onReady: () => void)") ||
-  !script.includes("const LOGIN_EXIT_ROUTE_LEAD_MS = 360;") ||
+  !script.includes("const LOGIN_EXIT_ROUTE_LEAD_MS = 220;") ||
   !script.includes("const LOGIN_REDUCED_EXIT_ROUTE_LEAD_MS = 16;") ||
   !script.includes("const LOGIN_EXIT_COMMIT_TIMEOUT_MS = 800;") ||
   !script.includes("const routeLead =") ||
@@ -556,9 +633,9 @@ if (
   !styles.includes(".login-page--leaving .login-panel {") ||
   !styles.includes("animation-name: login-background-leave;") ||
   !styles.includes("animation-name: login-panel-leave;") ||
-  !loginPageStyles.includes("background-color: transparent;") ||
-  !loginBackgroundExitStyles.includes("animation-duration: 300ms;") ||
-  !loginBackgroundExitStyles.includes(
+  !loginPageStyles.includes("background-color: var(--color-bg);") ||
+  !loginHeadingExitStyles.includes("animation-duration: 160ms;") ||
+  !loginHeadingExitStyles.includes(
     "animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);",
   ) ||
   !loginPanelExitStyles.includes("animation-duration: 320ms;") ||
@@ -571,8 +648,24 @@ if (
   styles.includes("animation-name: login-page-leave;") ||
   !styles.includes("transform: translateY(150rpx);") ||
   !styles.includes("page {") ||
-  !styles.includes("background-color: transparent;") ||
-  !loginConfig.includes('"backgroundColorContent": "#ffffff00"') ||
+  !styles.includes("page {\n  background-color: #f7f5ef;") ||
+  styles.includes(".login-page--leaving.login-page--over-home") ||
+  !loginConfig.includes('"backgroundColorContent": "#f7f5ef"') ||
+  !homeTemplate.includes("{{authenticated ? '' : 'home-framework--guarded'}} {{authenticationRevealClass}}") ||
+  !homeScript.includes('authenticationRevealClass: "home-framework--awaiting-reveal"') ||
+  !homeScript.includes('authenticationRevealClass: "home-framework--revealing"') ||
+  !homeScript.includes("revealAuthenticatedHome() {") ||
+  !homeScript.includes("if (authenticationRouteReady) this.beginAuthenticatedReveal();") ||
+  !script.includes("switchToAuthenticatedHome(onFailure);") ||
+  !template.includes('type="custom" scroll-y enhanced') ||
+  !template.includes('bindtap="focusPasswordInput"') ||
+  !template.includes('focus="{{passwordInputFocused}}"') ||
+  !template.includes('catchtap="togglePassword"') ||
+  !script.includes("focusPasswordInput() {") ||
+  !homeStyles.includes(".home-framework--awaiting-reveal {") ||
+  !homeStyles.includes(".home-framework--revealing {") ||
+  !homeStyles.includes("animation-name: home-entry-in;") ||
+  !homeStyles.includes(".home-entry--seventh { animation-delay: 420ms; }") ||
   !companionSyncBody.includes(
     "await queueLocalCompanionPreferences(account, true)",
   ) ||

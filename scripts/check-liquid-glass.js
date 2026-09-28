@@ -354,6 +354,7 @@ function selectorController(file, width) {
       },
     },
     "utils/appearance": { resolveAppearance, syncWindowBackground() {} },
+    "utils/login-reveal": { isLoginRevealPending: () => false },
     "utils/haptics": { haptic() {} },
     "utils/capsule-backdrop": {
       detachCapsuleBackdrop() {},

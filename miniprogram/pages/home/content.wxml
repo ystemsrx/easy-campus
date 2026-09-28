@@ -1,6 +1,6 @@
 <template name="home-content">
 <view class="home-content page-content page-content--tab">
-  <view class="welcome-row">
+  <view class="welcome-row home-entry home-entry--first">
     <view class="welcome-copy">
       <text class="welcome-date">{{dateLabel}}</text>
       <view class="welcome-title-row">
@@ -34,6 +34,7 @@
     </view>
   </view>
 
+  <view class="timetable-entry home-entry home-entry--second">
   <open-container
     id="{{capsuleReplica ? 'rim-' : ''}}timetable-open-container"
     class="timetable-open-container"
@@ -84,8 +85,9 @@
       </view>
     </view>
   </open-container>
+  </view>
 
-  <view class="feature-grid">
+  <view class="feature-grid home-entry home-entry--third">
     <open-container
       class="feature-open-container"
       closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#a77935' : '#f4d995') : '#c98a2d')}}"
@@ -134,7 +136,7 @@
     </open-container>
   </view>
 
-  <view class="exam-layout">
+  <view class="exam-layout home-entry home-entry--fourth">
     <open-container
       class="exam-open-container"
       closed-color="{{visualTheme === 'minimal' ? (theme === 'dark' ? '#000000' : '#ffffff') : (visualTheme === 'soft' ? (theme === 'dark' ? '#1f2c25' : '#ffffff') : (theme === 'dark' ? '#2d2a24' : '#ffffff'))}}"
@@ -172,11 +174,11 @@
     </view>
   </view>
 
-  <view class="section-header">
+  <view class="section-header home-entry home-entry--fifth">
     <view><text class="section-title">接下来</text></view>
     <view class="section-action pressable" bindtap="openSchedule" hover-class="pressing"><text>全部日程</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
   </view>
-  <view class="plan-card card" style="height: {{planCardHeight}}rpx;">
+  <view class="plan-card card home-entry home-entry--fifth" style="height: {{planCardHeight}}rpx;">
     <view wx:if="{{plans.length}}" class="plan-list">
       <view wx:for="{{plans}}" wx:key="id" class="plan-row {{index < plans.length - 1 ? 'plan-row--divided' : ''}} {{planCompletion[item.id] ? 'plan-row--completing' : ''}} {{planCompletion[item.id] === 'leaving' ? 'plan-row--leaving' : ''}}">
         <view class="plan-row-content">
@@ -195,11 +197,11 @@
     </view>
   </view>
 
-  <view class="section-header">
+  <view class="section-header home-entry home-entry--sixth">
     <view><text class="section-title">校园消息</text></view>
     <view class="section-action pressable" bindtap="openMessages" hover-class="pressing"><text>查看全部</text><lucide-icon name="chevron-right" tone="muted" size="{{23}}"></lucide-icon></view>
   </view>
-  <view class="campus-stack">
+  <view class="campus-stack home-entry home-entry--sixth">
     <view class="campus-group">
       <view class="campus-card-head pressable" bindtap="openMessages" hover-class="pressing">
         <view class="campus-icon campus-icon--message"><lucide-icon name="calendar-clock" tone="{{visualTheme === 'minimal' ? (theme === 'dark' ? 'white' : 'ink') : 'amber'}}" size="{{29}}"></lucide-icon></view>
@@ -232,8 +234,8 @@
     </view>
   </view>
 
-  <shuttle-preview active="{{!capsuleReplica}}" theme="{{theme}}"></shuttle-preview>
+  <shuttle-preview class="home-entry home-entry--seventh" active="{{!capsuleReplica}}" theme="{{theme}}"></shuttle-preview>
 
-  <view wx:if="{{errorMessage}}" class="dashboard-error pressable" bindtap="retryDashboard" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
+  <view wx:if="{{errorMessage}}" class="dashboard-error pressable home-entry home-entry--seventh" bindtap="retryDashboard" hover-class="pressing"><text>{{errorMessage}}</text><text>重新加载</text></view>
 </view>
 </template>

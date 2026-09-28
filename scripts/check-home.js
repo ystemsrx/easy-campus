@@ -197,7 +197,7 @@ assert(
       "const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());",
     ) &&
     tabBarScript.includes(
-      "const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token);",
+      "const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token) || isLoginRevealPending();",
     ) &&
     tabBarScript.includes("hidden: INITIAL_TAB_HIDDEN") &&
     tabBarScript.includes("themeClass: INITIAL_TAB_APPEARANCE.themeClass") &&

@@ -52,7 +52,18 @@ const shapes = Object.fromEntries(
   ]),
 );
 
-const output = `// Generated from the user-supplied Grok Bot 0.16.0 animation engine.\n// Run scripts/generate-pet-engine-data.mjs with the extracted engine to refresh.\n\nexport const PET_SHAPE_IDS = ${JSON.stringify(got)} as const;\n\nexport type PetShapeId = (typeof PET_SHAPE_IDS)[number];\n\nexport const PET_STATE_IDS = ${JSON.stringify(states)} as const;\n\nexport type PetStateId = (typeof PET_STATE_IDS)[number];\n\nexport interface PetFaceDefinition {\n  x: number;\n  y: number;\n  sx: number;\n  sy: number;\n  eye: number;\n  leftDX?: number;\n}\n\nexport interface PetShapeDefinition {\n  id: PetShapeId;\n  path: string;\n  face: PetFaceDefinition;\n  ring: readonly (readonly [number, number])[];\n  radius: number;\n  beltRadius: number;\n  tiltScale: number;\n  top: number;\n  bottom: number;\n  sides: number;\n  spanLeft: readonly number[];\n  spanRight: readonly number[];\n}\n\nexport const PET_SHAPE_DEFINITIONS: Record<PetShapeId, PetShapeDefinition> = ${JSON.stringify(shapes, null, 2)};\n\nexport const PET_EYE_TOPOLOGIES = ${JSON.stringify(Y3)} as const;\n\nexport const PET_STATE_EYES: Record<PetStateId, readonly number[]> = ${JSON.stringify(rpe, null, 2)};\n\nexport const PET_STATE_EYE_DELAYS: Record<PetStateId, readonly [number, number]> = ${JSON.stringify(Aqe, null, 2)};\n\nexport const PET_STATE_EFFECTS: Partial<Record<PetStateId, string>> = ${JSON.stringify(dzt, null, 2)};\n`;
+function compactFirstShapes(shapes, ids) {
+  const pretty = JSON.stringify(shapes, null, 2);
+  const first = JSON.stringify(ids[0]);
+  const third = JSON.stringify(ids[2]);
+  const start = pretty.indexOf(`  ${first}: {`);
+  const end = pretty.indexOf(`,\n  ${third}: {`, start);
+  if (start < 0 || end < 0) throw new Error("Cannot compact the first two pet shapes");
+  const compact = ids.slice(0, 2).map((id) => `  ${JSON.stringify(id)}: ${JSON.stringify(shapes[id])}`).join(",\n");
+  return pretty.slice(0, start) + compact + pretty.slice(end);
+}
+
+const output = `// Generated from the user-supplied Grok Bot 0.16.0 animation engine.\n// Run scripts/generate-pet-engine-data.mjs with the extracted engine to refresh.\n\nexport const PET_SHAPE_IDS = ${JSON.stringify(got)} as const;\n\nexport type PetShapeId = (typeof PET_SHAPE_IDS)[number];\n\nexport const PET_STATE_IDS = ${JSON.stringify(states)} as const;\n\nexport type PetStateId = (typeof PET_STATE_IDS)[number];\n\nexport interface PetFaceDefinition {\n  x: number;\n  y: number;\n  sx: number;\n  sy: number;\n  eye: number;\n  leftDX?: number;\n}\n\nexport interface PetShapeDefinition {\n  id: PetShapeId;\n  path: string;\n  face: PetFaceDefinition;\n  ring: readonly (readonly [number, number])[];\n  radius: number;\n  beltRadius: number;\n  tiltScale: number;\n  top: number;\n  bottom: number;\n  sides: number;\n  spanLeft: readonly number[];\n  spanRight: readonly number[];\n}\n\nexport const PET_SHAPE_DEFINITIONS: Record<PetShapeId, PetShapeDefinition> = ${compactFirstShapes(shapes, got)};\n\nexport const PET_EYE_TOPOLOGIES = ${JSON.stringify(Y3)} as const;\n\nexport const PET_STATE_EYES: Record<PetStateId, readonly number[]> = ${JSON.stringify(rpe)};\n\nexport const PET_STATE_EYE_DELAYS: Record<PetStateId, readonly [number, number]> = ${JSON.stringify(Aqe)};\n\nexport const PET_STATE_EFFECTS: Partial<Record<PetStateId, string>> = ${JSON.stringify(dzt)};\n`;
 
 const outputPath = path.resolve(
   "miniprogram/components/geometric-pet/engine-data.ts",

@@ -3,7 +3,7 @@
 <view class="page home-page {{themeClass}} {{visualThemeClass}} {{motionClass}} {{liquidGlassClass}}">
   <scroll-view
     id="capsule-scroll-source"
-    class="page-scroll home-framework {{authenticated ? '' : 'home-framework--guarded'}}"
+    class="page-scroll home-framework {{authenticated ? '' : 'home-framework--guarded'}} {{authenticationRevealClass}}"
     type="list"
     scroll-y="{{!petSetupDrawerOpen}}"
     enhanced

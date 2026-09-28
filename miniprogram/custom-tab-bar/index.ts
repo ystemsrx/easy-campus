@@ -9,6 +9,7 @@ import {
   subscribeNavigation,
 } from "../store/navigation";
 import { openNavigation } from "../utils/tab-navigation";
+import { isLoginRevealPending } from "../utils/login-reveal";
 import {
   GLASS_DRAG_DATA,
   startGlassDrag,
@@ -19,7 +20,7 @@ import {
 } from "../utils/glass-drag";
 
 const INITIAL_TAB_APPEARANCE = resolveAppearance(loadPreferences());
-const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token);
+const INITIAL_TAB_HIDDEN = !Boolean(getSession()?.token) || isLoginRevealPending();
 const subscriptions = new WeakMap<object, () => void>();
 const navigationSubscriptions = new WeakMap<object, () => void>();
 const dismissTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
@@ -38,7 +39,7 @@ Component({
     ...GLASS_DRAG_DATA,
     selected: 0,
     hidden: INITIAL_TAB_HIDDEN,
-    dismissed: false,
+    dismissed: isLoginRevealPending(),
     themeClass: INITIAL_TAB_APPEARANCE.themeClass,
     visualThemeClass: INITIAL_TAB_APPEARANCE.visualThemeClass,
     motionClass: INITIAL_TAB_APPEARANCE.motionClass,
@@ -60,6 +61,7 @@ Component({
     attached() {
       this.setData({
         hidden: !Boolean(getSession()?.token),
+        dismissed: isLoginRevealPending() || this.data.dismissed,
       });
       this.syncAppearance();
       this.syncNavigation();

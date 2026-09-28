@@ -19,6 +19,7 @@ function bootHome(values, account = "student", extraOverrides = []) {
     nextTick: (callback) => callback(),
   };
   let page;
+  const tabBarUpdates = [];
   const overrides = new Map([
     [
       "store/timetable.ts",
@@ -108,15 +109,42 @@ function bootHome(values, account = "student", extraOverrides = []) {
     Object.assign(page.data, structuredClone(patch));
     callback?.();
   };
-  page.getTabBar = () => ({ setData: () => {} });
+  page.getTabBar = () => ({ setData: (patch) => tabBarUpdates.push(patch) });
   return {
     page,
     initialData,
+    tabBarUpdates,
     grades,
     preferences,
     signIn,
     lease: session.captureSessionLease(),
   };
+}
+
+{
+  let pending = false;
+  const home = bootHome(new Map(), "student", [[
+    "utils/login-reveal.ts",
+    { isLoginRevealPending: () => pending, completeLoginReveal() {} },
+  ]]);
+  home.page.onLoad();
+  pending = true;
+  home.page.onShow();
+  assert.equal(home.tabBarUpdates.at(-1).dismissed, true,
+    "an existing home must not show the tab bar before its login state has rendered");
+}
+
+{
+  const coldLoginHome = bootHome(new Map(), "student", [[
+    "utils/login-reveal.ts",
+    { isLoginRevealPending: () => true, completeLoginReveal() {} },
+  ]]);
+  assert.equal(coldLoginHome.initialData.authenticationRevealClass, "home-framework--awaiting-reveal",
+    "a home module first loaded after login must be transparent in Page.data");
+  coldLoginHome.page.onLoad();
+  coldLoginHome.page.onShow();
+  assert.equal(coldLoginHome.page.data.authenticationRevealClass, "home-framework--awaiting-reveal",
+    "cold onLoad/onShow must hydrate content without revealing it before route completion");
 }
 
 const storedAt = "2026-08-01T00:00:00.000Z";
@@ -181,6 +209,8 @@ bootHome(values).grades.saveGradesSnapshot("student", gradeData, storedAt);
 
 // A new module/page instance reads the persisted cache before lifecycle callbacks.
 const cached = bootHome(values);
+assert.equal(cached.initialData.authenticationRevealClass, "",
+  "reopening an authenticated app must show home without the login entrance");
 assert.equal(
   cached.initialData.gradeAverageLabel,
   "73.3",

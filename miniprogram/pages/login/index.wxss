@@ -1,13 +1,13 @@
 page {
-  background-color: transparent;
+  background-color: #f7f5ef;
 }
 
 .page.login-page {
-  background-color: transparent;
+  background-color: var(--color-bg);
 }
 
 .login-page .page-scroll {
-  background-color: transparent;
+  background-color: var(--color-bg);
 }
 
 .login-page--leaving .page-scroll {
@@ -18,7 +18,7 @@ page {
 .login-page--leaving .login-navigation,
 .login-page--leaving .login-hero {
   animation-name: login-background-leave;
-  animation-duration: 300ms;
+  animation-duration: 160ms;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   animation-fill-mode: both;
 }
@@ -37,7 +37,7 @@ page {
   flex-direction: column;
   min-height: calc(100vh + 80rpx);
   overflow: hidden;
-  background-color: transparent;
+  background-color: var(--color-bg);
 }
 
 .login-background {

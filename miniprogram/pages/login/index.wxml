@@ -3,7 +3,7 @@
   <view wx:if="{{errorMessage}}" class="login-toast login-toast--{{errorToastPhase}}" aria-role="alert">
     <text class="login-toast-copy">{{errorMessage}}</text>
   </view>
-  <scroll-view class="page-scroll" type="list" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{loginScrollAnchor}}" scroll-with-animation="{{false}}">
+  <scroll-view class="page-scroll" type="custom" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{loginScrollAnchor}}" scroll-with-animation="{{false}}">
     <view id="login-stage" class="login-stage">
       <view class="login-background" aria-hidden="true">
         <view class="ambient-blob login-blob login-blob--one"></view>
@@ -45,12 +45,13 @@
             />
           </view>
 
-          <view class="field {{passwordFocused ? 'field--focus' : ''}}">
+          <view class="field {{passwordFocused ? 'field--focus' : ''}}" bindtap="focusPasswordInput">
             <view class="field-icon"><lucide-icon name="lock-keyhole" tone="muted" size="{{36}}"></lucide-icon></view>
             <input
               class="field-input field-input--password"
               value="{{password}}"
               password="{{!passwordVisible}}"
+              focus="{{passwordInputFocused}}"
               maxlength="255"
               placeholder="办事大厅密码"
               placeholder-class="field-placeholder"
@@ -61,7 +62,7 @@
               confirm-type="done"
               aria-label="办事大厅密码"
             />
-            <view class="password-toggle pressable" bindtap="togglePassword" hover-class="pressing" aria-role="button" aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}">
+            <view class="password-toggle pressable" catchtap="togglePassword" hover-class="pressing" aria-role="button" aria-label="{{passwordVisible ? '隐藏密码' : '显示密码'}}">
               <lucide-icon name="{{passwordVisible ? 'eye-off' : 'eye'}}" tone="muted" size="{{32}}"></lucide-icon>
             </view>
           </view>
