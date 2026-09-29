@@ -71,7 +71,7 @@
     </view>
     <view class="sheet-scroll-wrap"><scroll-view type="list" class="sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
       <view class="sheet-body">
-        <view wx:if="{{!walking && journey === 'idle'}}" class="boarding-card" bindtap="openBoardingSearch" hover-class="pressed">
+        <view wx:if="{{!planning && !walking && journey === 'idle'}}" class="boarding-card" bindtap="openBoardingSearch" hover-class="pressed">
           <view class="boarding-symbol"><lucide-icon name="map-pin" size="31" tone="{{theme === 'dark' ? 'white' : 'ink'}}"></lucide-icon></view>
           <view class="boarding-copy"><text class="boarding-name">{{boardName || '选择候车点'}}</text><text class="boarding-detail">{{boardDetail}}</text></view>
           <view wx:if="{{boardName}}" class="favorite-button" catchtap="toggleFavorite" aria-label="收藏候车点"><lucide-icon name="star" size="30" tone="{{boardFavorite ? 'amber' : 'muted'}}"></lucide-icon></view>
@@ -88,9 +88,9 @@
             <view class="plan-detail-row"><view class="plan-stations"><text>{{item.boardName}}</text><lucide-icon name="arrow-right" size="21" tone="muted"></lucide-icon><text>{{item.alightName}}</text></view><text class="plan-walk">{{item.walkLabel}}</text></view>
           </view>
         </view>
-        <view wx:if="{{destinationName && !plans.length && journey === 'idle'}}" class="sheet-empty"><text>{{planning ? '规划中' : !hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text wx:if="{{!planning}}" class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
+        <view wx:if="{{destinationName && !plans.length && journey === 'idle'}}" class="sheet-empty"><view wx:if="{{planning}}" class="planning-spinner" aria-hidden="true"></view><text>{{planning ? '规划中' : !hasOrigin && !boardName ? '选择从哪里出发' : '暂未找到合适的乘车方案'}}</text><text wx:if="{{!planning}}" class="empty-detail">{{!hasOrigin && !boardName ? '选择候车点后查看路线' : '试试更换候车点或目的地'}}</text></view>
         <view wx:if="{{crossingLabel}}" class="crossing-label">{{crossingLabel}}<text bindtap="clearCrossing">显示全部</text></view>
-        <view wx:if="{{vehicleRows.length && journey === 'idle'}}" class="vehicle-list">
+        <view wx:if="{{!planning && vehicleRows.length && journey === 'idle'}}" class="vehicle-list">
           <view wx:for="{{vehicleRows}}" wx:key="id" data-id="{{item.id}}" bindtap="selectVehicle" class="vehicle-row {{selectedVehicleId === item.id ? 'vehicle-row--selected' : ''}}" hover-class="pressed">
             <view class="vehicle-icon" style="background: {{item.color}};"><text>{{item.number}}</text></view>
             <view class="vehicle-copy"><text class="vehicle-name">{{item.routeName}}</text><text class="vehicle-detail">{{item.detail}}</text></view>

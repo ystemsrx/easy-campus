@@ -2112,7 +2112,6 @@ test("destination planning waits for the server and prioritizes returned favorit
   page.onReady();
   page.onShow();
   await settle();
-  const before = JSON.stringify(page.data.polylines);
   page.receiveSnapshot({
     vehicles: [bus(200)],
     fetchedAt: Date.now(),
@@ -2128,7 +2127,7 @@ test("destination planning waits for the server and prioritizes returned favorit
   assert.equal(page.data.planning, true);
   assert.equal(page.data.selectedVehicleId, "");
   assert.equal(page.data.plans.length, 0);
-  assert.equal(JSON.stringify(page.data.polylines), before);
+  assert.equal(page.data.polylines.length, 0);
   const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
     { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
     { togglePreferredPlan } = h.load("features/utils/shuttle-preferences");
@@ -2156,6 +2155,184 @@ test("destination planning waits for the server and prioritizes returned favorit
   assert(page.data.plans[0].favorite);
   assert(![...h.jobs.values()].some((j) => j.delay === 8000));
   page.onUnload();
+});
+
+test("confirmed destination switches clear the old route and automatically draw server or cached plans", async () => {
+  const { campus, point } = onboardFixture();
+  const destinations = ["甲馆", "乙馆", "丙馆", "丁馆", "戊馆"].map(
+    (name, i) => ({
+      ...point(700 + i * 70, 80 + i * 20),
+      id: `destination-${i}`,
+      name,
+      shortName: name,
+      category: "building",
+      routeIds: [],
+    }),
+  );
+  campus.places.push(...destinations);
+  const clock = { now: 100000 },
+    pending = [],
+    storage = new Map();
+  const h = harness({
+    map: campus,
+    clock,
+    mockStream: true,
+    storage,
+    plans: (o) =>
+      new Promise((resolve) => pending.push({ request: o.data, resolve })),
+  });
+  Object.assign(h.raw, point(0));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    { commonPlace } = h.load("features/utils/shuttle-common-places"),
+    planner = new ShuttleItineraryPlanner(campus, new ShuttlePlanner(campus));
+  const finish = async (entry) => {
+    const { request, resolve } = entry;
+    const walk = planner
+      .plans(request.origin, request.destination)
+      .find((p) => p.mode === "walk");
+    assert(walk);
+    resolve({
+      revision: campus.revision,
+      planningId: `server-${request.destination.longitude}`,
+      plans: [
+        {
+          ...walk,
+          id: `walk-${request.destination.longitude}`,
+          walkLegs: [
+            {
+              points: [request.origin, request.destination],
+              source: "tencent",
+              meters: 900,
+              seconds: 700,
+            },
+          ],
+        },
+      ],
+    });
+    await settle();
+  };
+  const waiting = () => {
+    assert.equal(page.data.planning, true);
+    assert.equal(page.data.polylines.length, 0);
+    assert.equal(page.data.plans.length, 0);
+    assert.equal(page.data.selectedPlanId, "");
+  };
+  const drawn = (destination) => {
+    assert.equal(page.data.planning, false);
+    assert.equal(page.data.selectedPlanId, `walk-${destination.longitude}`);
+    assert(
+      page.data.polylines.some((line) => {
+        const last = line.points.at(-1);
+        return (
+          Math.abs(last.longitude - destination.longitude) < 1e-8 &&
+          Math.abs(last.latitude - destination.latitude) < 1e-8
+        );
+      }),
+      "the new destination must be drawn without tapping the plan list",
+    );
+  };
+  const search = (place) => {
+    page.openDestinationSearch();
+    page.choosePlace({ currentTarget: { dataset: { id: place.id } } });
+  };
+  for (let i = 0; i < destinations.length; i++) {
+    clock.now += 21000;
+    const dest = destinations[i];
+    if (i < 2) search(dest);
+    else if (i < 4) {
+      const saved = commonPlace(dest, i === 2 ? dest.id : undefined);
+      page.setData({ commonPlaces: [saved] });
+      page.selectCommonPlace({
+        currentTarget: { dataset: { key: saved.key } },
+      });
+    } else {
+      const before = JSON.stringify(page.data.polylines);
+      page.showMapPick({ ...dest, name: dest.name });
+      assert.equal(
+        JSON.stringify(page.data.polylines),
+        before,
+        "an unconfirmed draft keeps the current route",
+      );
+      page.confirmMapPick();
+    }
+    await settle();
+    waiting();
+    await finish(pending.at(-1));
+    drawn(dest);
+  }
+  clock.now += 21000;
+  const count = pending.length;
+  search(destinations[0]);
+  await settle();
+  assert.equal(
+    pending.length,
+    count,
+    "returning to a cached destination needs no new planning request",
+  );
+  drawn(destinations[0]);
+  // Rapid changes must reject the previous destination's late response.
+  storage.delete("easy-swu:shuttle:plans:v2:42");
+  clock.now += 21000;
+  search(destinations[1]);
+  await settle();
+  const stale = pending.at(-1);
+  clock.now += 21000;
+  search(destinations[2]);
+  await settle();
+  waiting();
+  await finish(stale);
+  waiting();
+  clock.now += 1001;
+  for (const [id, job] of [...h.jobs])
+    if (job.delay === 1000) {
+      h.jobs.delete(id);
+      job.f();
+    }
+  await settle();
+  await finish(pending.at(-1));
+  drawn(destinations[2]);
+  // Timeout fallback also selects and paints automatically.
+  clock.now += 21000;
+  search(destinations[3]);
+  await settle();
+  waiting();
+  const timeout = [...h.jobs.values()].find((j) => j.delay === 8000);
+  assert(timeout);
+  clock.now += 8000;
+  timeout.f();
+  await settle();
+  assert.equal(page.data.planning, false);
+  assert(page.data.selectedPlanId);
+  assert(page.data.polylines.some((line) => line.arrowLine));
+  page.onUnload();
+});
+
+test("planning indicator is a circular rotating ring with reduced-motion support", () => {
+  const wxml = fs.readFileSync(
+      path.join(root, "features/pages/shuttle/index.wxml"),
+      "utf8",
+    ),
+    css = fs.readFileSync(
+      path.join(root, "features/pages/shuttle/index.wxss"),
+      "utf8",
+    );
+  assert(wxml.includes('wx:if="{{planning}}" class="planning-spinner"'));
+  assert.match(css, /\.planning-spinner\s*\{[^}]*border-radius:\s*50%/);
+  assert.match(
+    css,
+    /\.planning-spinner\s*\{[^}]*animation:[^;]*linear[^;]*infinite/,
+  );
+  assert.match(css, /@keyframes planning-spin/);
+  assert.match(
+    css,
+    /\.motion-reduced \.planning-spinner\s*\{[^}]*animation:\s*none/,
+  );
 });
 
 test("moving GPS keeps plans anchored while explicit replanning clears the previous route", async () => {

@@ -99,6 +99,9 @@ page { overflow: hidden; }
 .arrival-value--soon { color: var(--color-success); }
 .arrival-distance { font-size: 9px; color: var(--color-text-secondary); }
 .sheet-empty { padding: 23px 8px 17px; text-align: center; display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--color-text-secondary); }
+.planning-spinner { align-self: center; flex: none; width: 20px; height: 20px; box-sizing: border-box; border: 2px solid var(--visual-component-primary-soft, #f1d4c5); border-top-color: var(--visual-component-primary, #d97757); border-radius: 50%; animation: planning-spin 760ms linear infinite; }
+@keyframes planning-spin { to { transform: rotate(360deg); } }
+.motion-reduced .planning-spinner { animation: none; }
 .empty-detail { font-size: 10px; color: var(--color-text-secondary); line-height: 18px; }
 .primary-action { min-height: 47px; padding: 0 16px; border-radius: 17px; background: var(--color-primary); color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; margin-top: 13px; }
 .secondary-action { min-height: 43px; padding: 0 14px; border-radius: 15px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-size: 11px; display: flex; align-items: center; justify-content: center; margin-top: 12px; box-sizing: border-box; }

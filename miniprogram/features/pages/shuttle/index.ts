@@ -2238,12 +2238,12 @@ Page({
       this.setData({ originName: group.shortName });
       this.openTripSheet();
     } else {
-      state.pendingChoice = Boolean(state.drawnPlan);
       this.openTripSheet();
       state.destinationStops = group.stop ? members.map((p) => p.id) : [];
       state.destination = groupPoint(group);
       state.selection.destinationId = place.id;
       delete state.selection.destinationPoint;
+      this.resetPlanning();
       this.setData({
         destinationName: group.shortName,
         commonPlaceKey: commonPlace(group.members[0], group.id).key,
@@ -2470,13 +2470,13 @@ Page({
       );
     if (!place || !state.map || !isSessionLeaseCurrent(state.lease)) return;
     const current = state.map.places.find((p) => p.id === place.placeId);
-    state.pendingChoice = Boolean(state.drawnPlan);
     this.openTripSheet();
     state.destinationStops = [];
     state.destination = current || place;
     state.selection.destinationId = current?.id;
     state.selection.destinationPoint = current ? undefined : place;
     if (current) this.selectPlaceGroup(current.id, false);
+    else this.resetPlanning();
     state.plan = undefined;
     state.alerted.clear();
     this.setData({
@@ -2812,7 +2812,7 @@ Page({
   resetPlanning() {
     const state = rt(this);
     // Invalidate both queued network results and animation frames before using
-    // a different origin. Keep the requested destination, not the old itinerary.
+    // a confirmed origin/destination. Keep the requested endpoints, not the old itinerary.
     state.planningVersion = (state.planningVersion || 0) + 1;
     if (state.planningTimer) clearTimeout(state.planningTimer);
     if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
@@ -3075,6 +3075,7 @@ Page({
       state.destinationStops = [];
       state.selection.destinationPoint = point;
       delete state.selection.destinationId;
+      this.resetPlanning();
       this.setData({
         destinationName: point.shortName || point.name,
         commonPlaceKey: "",
