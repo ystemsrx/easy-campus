@@ -32,6 +32,12 @@ export interface ShuttleRoute {
   sharedStopIds?: string[];
   orderedStops: { stopId: string; order: number }[];
   servicePattern?: "out-and-back";
+  /** Destination-specific through routes; never an out-and-back stop excursion. */
+  requestVariants?: {
+    id: string;
+    stopIds: string[];
+    destinationStopIds: string[];
+  }[];
 }
 export interface CampusShuttleMap {
   revision: string;

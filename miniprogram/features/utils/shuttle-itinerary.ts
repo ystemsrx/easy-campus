@@ -248,7 +248,12 @@ export class ShuttleItineraryPlanner {
         ids.some((id) => boarding.includes(id) || destinationStops.includes(id))
       )
         continue;
-      const first = merge(this.planner.plans(origin, stop, boarding, "", ids));
+      const first = merge(
+        this.planner.plans(origin, stop, boarding, "", ids, undefined, {
+          point: destination,
+          stopIds: destinationStops,
+        }),
+      );
       if (!first.length) continue;
       const second = merge(
         this.planner.plans(

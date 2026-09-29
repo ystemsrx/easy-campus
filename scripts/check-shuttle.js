@@ -1159,6 +1159,110 @@ test("numeric route names collapse without losing special services", () => {
   );
 });
 
+test("line 3 destination-specific through patterns agree with server plans and never retrace Huiwen", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    ServerPlanner = require(
+      path.join(backend, "src/shuttle/shuttle-routing"),
+    ).ShuttlePlanner,
+    planner = new ShuttlePlanner(map),
+    server = new ServerPlanner(map),
+    get = (id) => map.places.find((p) => p.id === id),
+    office = get("shuttle-stop-252548441c34"),
+    orange = get("shuttle-stop-714d7ccc123d"),
+    literature = get("shuttle-stop-184f7080a560"),
+    taoyuan = get("shuttle-stop-8589ac725048"),
+    huiwen = get("shuttle-stop-0b4106ecb45f");
+  for (const [from, to, branch] of [
+    [office, orange, false],
+    [orange, office, false],
+    [office, taoyuan, true],
+    [orange, huiwen, true],
+    [orange, taoyuan, true],
+    [office, huiwen, true],
+  ]) {
+    const args = [from, to, [from.id], "242", [to.id]],
+      plans = planner.plans(...args);
+    assert(plans.length);
+    assert.equal(JSON.stringify(plans), JSON.stringify(server.plans(...args)));
+    for (const plan of plans) {
+      assert.equal(plan.board.serviceDirection >= 2, branch);
+      assert.equal(
+        plan.points.some((p) => distanceMeters(p, literature) < 25),
+        !branch,
+      );
+    }
+  }
+  for (const track of planner.directions(
+    map.routes.find((r) => r.id === "242"),
+  )) {
+    const visits = track.stops.filter((s) =>
+      [taoyuan.id, huiwen.id].includes(s.place.id),
+    );
+    assert(visits.length === 0 || visits.length === 2);
+    if (visits.length) assert(Math.abs(visits[1].at - visits[0].at) < 100);
+  }
+  const transfers = planner.plans(
+    office,
+    huiwen,
+    [office.id],
+    "242",
+    [huiwen.id],
+    undefined,
+    { point: orange, stopIds: [orange.id] },
+  );
+  assert.equal(transfers.length, 0);
+});
+
+test("line 3 previews approaching the fork prefer the ordinary Literature College corridor", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { headingDegrees } = h.load("features/utils/shuttle-screen"),
+    { distanceMeters } = h.load("utils/shuttle-geo"),
+    planner = new ShuttlePlanner(map),
+    route = map.routes.find((r) => r.id === "242"),
+    literature = map.places.find((p) => p.id === "shuttle-stop-184f7080a560"),
+    taoyuan = map.places.find((p) => p.id === "shuttle-stop-8589ac725048");
+  let checked = 0;
+  for (const track of planner.directions(route).slice(0, 2)) {
+    const departure = planner.vehiclePath({
+      id: "terminal",
+      lineId: route.id,
+      ...track.points[0],
+      direction: null,
+      speed: 0,
+    });
+    assert(departure.some((p) => distanceMeters(p, literature) < 25));
+    assert(!departure.some((p) => distanceMeters(p, taoyuan) < 25));
+    const start = track.stops.find(
+      (s) =>
+        s.place.id ===
+        (track.stops[0].place.id === route.orderedStops[0].stopId
+          ? "shuttle-stop-714d7ccc123d"
+          : "shuttle-stop-252548441c34"),
+    ).at;
+    for (let i = 1; i < track.points.length; i++) {
+      if (track.offsets[i] > start || track.offsets[i - 1] < start - 100)
+        continue;
+      const a = track.points[i - 1],
+        b = track.points[i];
+      if (distanceMeters(a, b) < 5) continue;
+      const preview = planner.vehiclePath({
+        id: "regular-preview",
+        lineId: route.id,
+        longitude: (a.longitude + b.longitude) / 2,
+        latitude: (a.latitude + b.latitude) / 2,
+        direction: headingDegrees(a, b),
+      });
+      assert(preview.some((p) => distanceMeters(p, literature) < 25));
+      assert(!preview.some((p) => distanceMeters(p, taoyuan) < 25));
+      checked++;
+    }
+  }
+  assert(checked >= 2);
+});
+
 test("line 3 westbound previews cross History College and Taoyuan towards Orange instead of returning to Gate 5", () => {
   const h = harness(),
     { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
@@ -1685,7 +1789,11 @@ test("line 5 supports both terminals and all user-confirmed campus services are 
   }
   for (const route of map.routes) {
     const tracks = planner.directions(route);
-    assert.equal(tracks.length, 2, route.name);
+    assert.equal(
+      tracks.length,
+      2 * (1 + (route.requestVariants?.length || 0)),
+      route.name,
+    );
     const board = tracks[1].stops[0].place;
     const destination = tracks[1].stops.find(
       (s) => s.at > 700 && s.place.id !== board.id,

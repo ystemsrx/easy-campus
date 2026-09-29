@@ -392,9 +392,17 @@ export class ShuttlePlanner {
       this.graphs.set(id, new ShuttleRoadGraph(this.map, id));
     return this.graphs.get(id)!;
   }
-  private track(route: ShuttleRoute): RouteTrack | null {
-    if (this.tracks.has(route.id)) return this.tracks.get(route.id)!;
-    const stops = route.orderedStops
+  private track(
+    route: ShuttleRoute,
+    variant?: NonNullable<ShuttleRoute["requestVariants"]>[number],
+  ): RouteTrack | null {
+    const cacheKey = variant ? `${route.id}:${variant.id}` : route.id;
+    if (this.tracks.has(cacheKey)) return this.tracks.get(cacheKey)!;
+    const stops = (
+      variant
+        ? variant.stopIds.map((stopId, order) => ({ stopId, order }))
+        : route.orderedStops
+    )
       .map((entry) => ({
         ...entry,
         place: this.map.places.find((p) => p.id === entry.stopId),
@@ -406,7 +414,7 @@ export class ShuttlePlanner {
           Boolean(entry.place),
       );
     if (stops.length < 2) {
-      this.tracks.set(route.id, null);
+      this.tracks.set(cacheKey, null);
       return null;
     }
     const graph = this.graph(route.id);
@@ -429,7 +437,7 @@ export class ShuttlePlanner {
         onRoad(stops[i].place),
       );
       if (!result) {
-        this.tracks.set(route.id, null);
+        this.tracks.set(cacheKey, null);
         return null;
       }
       for (const stop of spurs) {
@@ -502,7 +510,7 @@ export class ShuttlePlanner {
       };
       s.order = order;
     });
-    this.tracks.set(route.id, track);
+    this.tracks.set(cacheKey, track);
     return track;
   }
   /** Timeline starts at the preceding station, while map routing still starts here. */
@@ -560,38 +568,64 @@ export class ShuttlePlanner {
       .map((s) => ({ place: s.place, meters: s.at - board.at }));
   }
   private directions(route: ShuttleRoute): RouteTrack[] {
-    const forward = this.track(route);
-    if (!forward) return [];
-    if (route.servicePattern !== "out-and-back") return [forward];
-    const total = forward.offsets[forward.offsets.length - 1];
-    const points = forward.points.slice().reverse();
-    const offsets = forward.offsets.map((v) => total - v).reverse();
-    return [
-      forward,
-      {
-        points,
-        offsets,
-        stops: forward.stops
-          .slice()
-          .reverse()
-          .map((s, order) => {
-            const at = Math.max(0, total - s.at);
-            const found = offsets.findIndex((v) => v > at + 3);
-            const i = found < 0 ? points.length - 1 : Math.max(1, found);
-            // At corners and terminals the reverse departure follows its own
-            // next road segment, not the bearing of the forward stop connector.
-            return {
-              at,
-              order,
-              place: {
-                ...s.place,
-                platformHeading: headingDegrees(points[i - 1], points[i]),
-              },
-            };
-          }),
-        loop: false,
-      },
-    ];
+    return [undefined, ...(route.requestVariants || [])].flatMap((variant) => {
+      const forward = this.track(route, variant);
+      if (!forward) return [];
+      if (route.servicePattern !== "out-and-back") return [forward];
+      const total = forward.offsets[forward.offsets.length - 1];
+      const points = forward.points.slice().reverse();
+      const offsets = forward.offsets.map((v) => total - v).reverse();
+      return [
+        forward,
+        {
+          points,
+          offsets,
+          stops: forward.stops
+            .slice()
+            .reverse()
+            .map((s, order) => {
+              const at = Math.max(0, total - s.at);
+              const found = offsets.findIndex((v) => v > at + 3);
+              const i = found < 0 ? points.length - 1 : Math.max(1, found);
+              // At corners and terminals the reverse departure follows its own
+              // next road segment, not the bearing of the forward stop connector.
+              return {
+                at,
+                order,
+                place: {
+                  ...s.place,
+                  platformHeading: headingDegrees(points[i - 1], points[i]),
+                },
+              };
+            }),
+          loop: false,
+        },
+      ];
+    });
+  }
+  private requestedDirections(
+    route: ShuttleRoute,
+    destination: GeoPoint,
+    stopIds: string[] = [],
+  ): number[] {
+    const count = route.servicePattern === "out-and-back" ? 2 : 1;
+    const variants = (route.requestVariants || []).flatMap((variant, i) =>
+      variant.destinationStopIds.some(
+        (id) =>
+          stopIds.includes(id) ||
+          this.map.places.some(
+            (p) => p.id === id && distanceMeters(p, destination) <= 60,
+          ),
+      )
+        ? Array.from(
+            { length: count },
+            (_, direction) => (i + 1) * count + direction,
+          )
+        : [],
+    );
+    return variants.length
+      ? variants
+      : Array.from({ length: count }, (_, i) => i);
   }
   /** Vehicle preview uses actual direction on known roads, not passenger-service availability. */
   vehiclePath(vehicle: ShuttleVehicle, departing = false): GeoPoint[] {
@@ -631,7 +665,12 @@ export class ShuttlePlanner {
         !(vehicle.motion?.status === "stationary" || vehicle.speed === 0)
       )
         return [];
-      const exits = tracks.filter(
+      // Without a heading, use the regular service rather than counting its
+      // destination-specific variants as conflicting terminal departures.
+      const regular = route.requestVariants?.length
+        ? tracks.slice(0, route.servicePattern === "out-and-back" ? 2 : 1)
+        : tracks;
+      const exits = regular.filter(
         (t) => distanceMeters(vehicle, t.points[0]) <= 12,
       );
       if (exits.length !== 1) return [];
@@ -795,6 +834,7 @@ export class ShuttlePlanner {
     const route = this.map.routes.find((r) => r.id === vehicle.lineId);
     const heading = vehicle.direction;
     if (!route || heading === null || !Number.isFinite(heading)) return [];
+    const preferred = this.requestedDirections(route, destination);
     const hits: {
       track: RouteTrack;
       direction: number;
@@ -818,7 +858,10 @@ export class ShuttlePlanner {
             track,
             direction,
             at: track.offsets[i - 1] + hit.t * meters,
-            score: hit.distance + angle * 0.4,
+            score:
+              hit.distance +
+              angle * 0.4 +
+              (preferred.includes(direction) ? 0 : 6),
           });
       }
     });
@@ -886,6 +929,7 @@ export class ShuttlePlanner {
     routeId = "",
     destinationStops: string[] = [],
     alternativeBoard?: ShuttlePlace,
+    destinationIntent?: { point: GeoPoint; stopIds: string[] },
   ): ShuttlePlan[] {
     const plans: ShuttlePlan[] = [];
     const boardingIds = Array.isArray(boardingId)
@@ -895,7 +939,13 @@ export class ShuttlePlanner {
         : [];
     for (const route of this.map.routes) {
       if (routeId && route.id !== routeId) continue;
+      const allowed = this.requestedDirections(
+        route,
+        destinationIntent?.point || destination,
+        destinationIntent?.stopIds || destinationStops,
+      );
       for (const [direction, track] of this.directions(route).entries()) {
+        if (!allowed.includes(direction)) continue;
         if (alternativeBoard && direction !== alternativeBoard.serviceDirection)
           continue;
         const destinationDistances = track.stops.map((s) =>
