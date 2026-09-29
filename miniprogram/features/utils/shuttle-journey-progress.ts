@@ -3,6 +3,7 @@ import { distanceMeters } from "../../utils/shuttle-geo";
 import type { ShuttleJourney, RideLeg } from "./shuttle-itinerary";
 import type { ShuttlePlanner } from "./shuttle-routing";
 import { stopName } from "./shuttle-place-groups";
+import { headingDegrees } from "./shuttle-screen";
 
 type Fix = GeoPoint & { accuracy?: number; speed?: number };
 interface Stage {
@@ -109,6 +110,8 @@ export class ShuttleJourneyProgress {
   private finished = false;
   private previous?: { point: Fix; time: number };
   private evidence?: { since: number; samples: number; bus: string };
+  private gpsEvidence?: { since: number; samples: number };
+  private boardingFix?: { point: Fix; time: number; meters: number };
   private endpointSamples = 0;
   private candidateMeters = 0;
   private lastFixAt?: number;
@@ -191,8 +194,53 @@ export class ShuttleJourneyProgress {
   pause() {
     this.previous = undefined;
     this.evidence = undefined;
+    this.gpsEvidence = undefined;
+    this.boardingFix = undefined;
     this.candidateMeters = this.meters;
     this.endpointSamples = 0;
+  }
+  /** Called only after sustained, time-aligned vehicle co-motion is confirmed. */
+  confirmOnboard(bus: ShuttleVehicle): boolean {
+    const index =
+      this.stages[this.index]?.kind === "walk" ? this.index + 1 : this.index;
+    const stage = this.stages[index];
+    if (
+      this.finished ||
+      !stage ||
+      stage.kind !== "ride" ||
+      !stage.routes.includes(bus.lineId)
+    )
+      return false;
+    const projection = project(bus, stage.points);
+    if (
+      projection.distance > 35 ||
+      (index === this.index && projection.meters < this.meters - 20)
+    )
+      return false;
+    let distance = 0;
+    const segment = stage.points.findIndex((point, i) => {
+      if (!i) return false;
+      distance += distanceMeters(stage.points[i - 1], point);
+      return distance >= projection.meters;
+    });
+    if (
+      segment < 1 ||
+      bus.direction == null ||
+      Math.abs(
+        ((headingDegrees(stage.points[segment - 1], stage.points[segment]) -
+          bus.direction +
+          540) %
+          360) -
+          180,
+      ) >= 30
+    )
+      return false;
+    const completed = index === this.index ? this.meters : 0;
+    this.index = index;
+    this.meters = Math.max(completed, projection.meters);
+    this.boarded = true;
+    this.pause();
+    return true;
   }
   update(point: Fix, time: number, vehicles: ShuttleVehicle[] = []) {
     if (
@@ -228,11 +276,32 @@ export class ShuttleJourneyProgress {
     );
     if (projection.distance > 35) {
       this.evidence = undefined;
+      this.gpsEvidence = undefined;
+      this.boardingFix = undefined;
       this.candidateMeters = this.meters;
       return;
     }
     const speed = prev && dt > 0 && dt <= 15 ? displacement / dt : 0;
     if (stage.kind === "ride" && !this.boarded) {
+      const anchor = this.boardingFix;
+      if (!anchor) {
+        this.boardingFix = {
+          point: { ...point },
+          time,
+          meters: projection.meters,
+        };
+        return;
+      }
+      const elapsed = (time - anchor.time) / 1000;
+      // Frequent GPS callbacks must accumulate movement rather than reset the
+      // evidence whenever one individual step is shorter than three metres.
+      if (elapsed < 3) return;
+      this.boardingFix = {
+        point: { ...point },
+        time,
+        meters: projection.meters,
+      };
+      const boardingSpeed = distanceMeters(anchor.point, point) / elapsed;
       const bus = vehicles.find(
         (v) =>
           stage.routes.includes(v.lineId) &&
@@ -240,26 +309,33 @@ export class ShuttleJourneyProgress {
           distanceMeters(v, point) < 20,
       );
       const moving =
-        prev &&
-        dt <= 15 &&
+        elapsed <= 15 &&
         projection.meters > 25 &&
-        projection.meters > this.candidateMeters + 3 &&
-        speed >= (bus ? 1.8 : 3.2);
-      if (moving) {
+        projection.meters > anchor.meters + 3;
+      if (moving && boardingSpeed >= 3.2) {
+        if (!this.gpsEvidence) this.gpsEvidence = { since: time, samples: 0 };
+        this.gpsEvidence.samples++;
+      } else this.gpsEvidence = undefined;
+      if (moving && bus && boardingSpeed >= 1.8) {
         this.candidateMeters = projection.meters;
-        const key = bus?.id || "gps";
+        const key = bus.id;
         if (!this.evidence || this.evidence.bus !== key)
           this.evidence = { since: time, samples: 1, bus: key };
         else this.evidence.samples++;
-        if (
-          this.evidence.samples >= 3 &&
-          time - this.evidence.since >= (bus ? 6000 : 10000)
-        )
+        if (this.evidence.samples >= 3 && time - this.evidence.since >= 6000)
           this.boarded = true;
       } else {
         this.evidence = undefined;
-        this.candidateMeters = this.meters;
       }
+      if (moving && boardingSpeed >= 3.2)
+        this.candidateMeters = projection.meters;
+      else if (!bus) this.candidateMeters = this.meters;
+      if (
+        this.gpsEvidence &&
+        this.gpsEvidence.samples >= 3 &&
+        time - this.gpsEvidence.since >= 10000
+      )
+        this.boarded = true;
       if (!this.boarded) return;
     }
     this.meters = Math.max(this.meters, projection.meters);
@@ -277,6 +353,8 @@ export class ShuttleJourneyProgress {
       this.candidateMeters = 0;
       this.boarded = false;
       this.evidence = undefined;
+      this.gpsEvidence = undefined;
+      this.boardingFix = undefined;
       this.endpointSamples = 0;
       if (this.index >= this.stages.length) this.finished = true;
     }

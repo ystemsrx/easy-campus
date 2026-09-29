@@ -144,6 +144,8 @@ interface Runtime {
   journeyProgress?: ShuttleJourneyProgress;
   journeyView?: JourneyProgressView;
   planningKey?: string;
+  planningContext?: string;
+  planningVersion?: number;
   planningOrigin?: GeoPoint;
   planningId?: string;
   boardWalkKey?: string;
@@ -158,6 +160,7 @@ interface Runtime {
   planningFlight?: string;
   planningWait?: string;
   planningTimer?: ReturnType<typeof setTimeout>;
+  planningRetryTimer?: ReturnType<typeof setTimeout>;
   remotePlans?: ShuttleJourney[];
   chosenPlanKey?: string;
   saveTimer?: ReturnType<typeof setTimeout>;
@@ -678,8 +681,6 @@ Page({
         this.updateJourneyProgress();
         this.paintUser();
         this.refreshRows();
-        if (!state.destination && !state.explicitBoard)
-          this.rebuildPlans(false);
         if (this.data.following)
           this.setData({
             latitude: value.latitude,
@@ -866,6 +867,8 @@ Page({
   },
   deactivate() {
     const state = rt(this);
+    if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
+    state.planningRetryTimer = undefined;
     if (state.planningTimer) clearTimeout(state.planningTimer);
     state.planningTimer = undefined;
     if (state.planningWait) {
@@ -1037,8 +1040,8 @@ Page({
       (state.vehiclePreview || this.data.selectedVehicleId)
     )
       this.clearVehiclePreview();
-    const origin = originPoint(state);
-    if (!origin) {
+    const currentOrigin = originPoint(state);
+    if (!currentOrigin) {
       state.plan = undefined;
       state.plans = [];
       state.board = undefined;
@@ -1056,11 +1059,23 @@ Page({
     let oldId = state.plan?.id;
     const colors = routePalette(state.map.routes);
     const oldBoardId = state.board?.id;
-    if (
-      !state.planningOrigin ||
-      distanceMeters(state.planningOrigin, origin) > 10
-    )
-      state.planningOrigin = { ...origin };
+    // A GPS update changes the user marker, never the accepted planning anchor.
+    // Destination/stop/manual-origin/map changes still create a new request.
+    const context = JSON.stringify([
+      state.map.revision,
+      state.destination,
+      state.boardCandidates,
+      state.destinationStops,
+      state.explicitBoard,
+      state.planningVersion,
+      state.manual,
+      state.manual ? currentOrigin : undefined,
+    ]);
+    if (!state.planningOrigin || state.planningContext !== context) {
+      state.planningOrigin = { ...currentOrigin };
+      state.planningContext = context;
+    }
+    const origin = state.planningOrigin;
     const planKey = state.destination
       ? JSON.stringify([
           state.map.revision,
@@ -1070,11 +1085,13 @@ Page({
           state.boardCandidates,
           state.destinationStops,
           state.manual,
+          state.planningVersion,
         ])
       : "";
     if (planKey !== state.planningKey) {
       oldId = undefined;
-      state.plan = undefined;
+      if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
+      state.planningRetryTimer = undefined;
       if (state.planningTimer) clearTimeout(state.planningTimer);
       state.planningTimer = undefined;
       state.planningWait = planKey || undefined;
@@ -1095,7 +1112,11 @@ Page({
         latitude: p.latitude,
       });
       const timingOnly = Boolean(state.planningId && state.remotePlans);
-      if (!timingOnly && state.planningWait === planKey) {
+      if (
+        !timingOnly &&
+        state.planningWait === planKey &&
+        !state.planningTimer
+      ) {
         state.planningTimer = setTimeout(() => {
           if (
             runtimes.get(this) !== state ||
@@ -1160,6 +1181,27 @@ Page({
           const retryAfter = Number(error?.retryAfterMs);
           if (retryAfter > 0)
             state.planningAt = Date.now() + retryAfter - 20001;
+          // A superseded request may still own the endpoint's pacing gate.
+          // Retry the new intent when allowed; do not revive its old geometry
+          // or turn this local deferral into an immediate straight-line fallback.
+          if (error?.code === "SHUTTLE_REFRESH_DEFERRED" && state.visible) {
+            if (state.planningRetryTimer)
+              clearTimeout(state.planningRetryTimer);
+            state.planningRetryTimer = setTimeout(
+              () => {
+                state.planningRetryTimer = undefined;
+                if (
+                  runtimes.get(this) === state &&
+                  state.visible &&
+                  isSessionLeaseCurrent(state.lease) &&
+                  state.planningKey === planKey
+                )
+                  this.rebuildPlans(false, true);
+              },
+              Math.max(1000, retryAfter || 0),
+            );
+            return;
+          }
           if ((error as { statusCode?: number }).statusCode === 404) {
             if (state.planningId) forgetShuttlePlan(state.planningId);
             state.planningId = undefined;
@@ -1182,7 +1224,8 @@ Page({
         });
     }
     if (state.planningWait === planKey && !state.remotePlans) {
-      this.setData({ plans: [], selectedPlanId: "", planning: true });
+      // Keep the last rendered choice and geometry until its replacement is ready.
+      this.setData({ planning: !state.drawnPlan });
       return;
     }
     state.plans =
@@ -1300,6 +1343,7 @@ Page({
     if (!state.pendingChoice) {
       state.drawnPlan = state.plan;
       state.drawnDestination = state.destination;
+      state.drawnOrigin = origin;
     }
     if (notify || state.destination || !this.data.polylines.length)
       this.paintRoutes();
@@ -1492,6 +1536,7 @@ Page({
   paintRoutes(immediate = false) {
     const state = rt(this);
     if (!state.map || (state.pendingChoice && !immediate)) return;
+    if (state.planningWait && !state.drawnPlan) return;
     const preview = state.vehiclePreview;
     const plan = state.drawnPlan,
       destination = state.drawnDestination;
@@ -1502,6 +1547,7 @@ Page({
       destination,
       preview ? undefined : plan?.id,
       preview ? undefined : plan?.legs.map((l) => [l.route.id, l.points]),
+      preview ? undefined : state.drawnOrigin,
       state.manual ? state.manualPoint : undefined,
       preview,
     ]);
@@ -1549,7 +1595,7 @@ Page({
       let from =
         state.drawnOrigin && (!animate || activeJourney)
           ? state.drawnOrigin
-          : originPoint(state) || plan.board;
+          : state.planningOrigin || originPoint(state) || plan.board;
       for (const leg of plan.legs) {
         const color = colors.get(leg.route.id) || leg.route.color;
         if (leg === plan.legs[0] && leg.onboard) walkIndex++;
@@ -1593,8 +1639,8 @@ Page({
     const epoch = ++state.routeEpoch;
     this.cancelRouteAnimation();
     state.routeJourneyKey = journeyKey;
-    if (!activeJourney || !state.drawnOrigin)
-      state.drawnOrigin = originPoint(state);
+    if (!state.drawnOrigin)
+      state.drawnOrigin = state.planningOrigin || originPoint(state);
     state.routeFinal = final;
     const current = (): boolean =>
       runtimes.get(this) === state &&
@@ -1751,40 +1797,8 @@ Page({
   },
   paintUser() {
     const state = rt(this);
-    const origin = this.data.routeAnimating
-      ? state.drawnOrigin || originPoint(state)
-      : originPoint(state);
+    const origin = originPoint(state);
     if (!origin || !state.context || !state.visible) return;
-    const old = state.drawnOrigin;
-    if (
-      !this.data.routeAnimating &&
-      this.data.journey === "idle" &&
-      !state.moving &&
-      old &&
-      state.drawnPlan &&
-      distanceMeters(old, origin) > 3
-    ) {
-      const update = (lines: ShuttlePolyline[]): ShuttlePolyline[] =>
-        lines.map((line) =>
-          line.dottedLine &&
-          line.points.length &&
-          distanceMeters(line.points[0], old) < 1
-            ? { ...line, points: [origin, ...line.points.slice(1)] }
-            : line,
-        );
-      if (state.routeFinal) state.routeFinal = update(state.routeFinal);
-      const patch: Record<string, unknown> = {};
-      this.data.polylines.forEach((line, i) => {
-        if (
-          line.dottedLine &&
-          line.points.length &&
-          distanceMeters(line.points[0], old) < 1
-        )
-          patch[`polylines[${i}].points[0]`] = origin;
-      });
-      if (Object.keys(patch).length) this.setData(patch);
-      state.drawnOrigin = { ...origin };
-    }
     state.context.addMarkers({
       markers: [
         pointMarker(
@@ -2003,13 +2017,14 @@ Page({
     this.dismissMapPick();
     const state = rt(this),
       plan = state.plans.find((p) => p.id === event.currentTarget.dataset.id);
-    if (!plan) return;
+    if (!plan || state.planningWait) return;
     state.plan = plan;
     state.chosenPlanKey = state.planningKey;
     state.board = plan.mode === "walk" ? undefined : plan.board;
     state.pendingChoice = false;
     state.drawnPlan = plan;
     state.drawnDestination = state.destination;
+    state.drawnOrigin = state.planningOrigin || originPoint(state);
     state.selection.routeId = plan.route.id;
     state.selection.boardingId = plan.board.id;
 
@@ -2219,7 +2234,7 @@ Page({
       state.explicitBoard = group.stop ? place.id : "";
       state.manualPoint = groupPoint(group);
       state.manual = true;
-      state.pendingChoice = false;
+      this.resetPlanning();
       this.setData({ originName: group.shortName });
       this.openTripSheet();
     } else {
@@ -2392,6 +2407,7 @@ Page({
     state.boardCandidates = [];
     state.manual = false;
     state.manualPoint = undefined;
+    this.resetPlanning();
     this.setData({ originName: "我的位置" });
     state.plan = undefined;
     this.closeSearch();
@@ -2605,6 +2621,7 @@ Page({
       !state.active ||
       !state.location ||
       state.pendingChoice ||
+      state.planningWait ||
       !state.plan ||
       !state.drawnDestination ||
       !state.planner
@@ -2658,9 +2675,15 @@ Page({
         Date.now(),
         packet.fetchedAt,
         packet.vehicles,
+        state.packetReceivedAt -
+          Math.max(0, packet.serverTime - packet.fetchedAt),
       );
-      const routes = state.journeyView?.routes || [];
-      if (bus && bus.lineId !== routes[0]) this.rerouteOnboard(bus);
+      if (
+        bus &&
+        (bus.lineId !== state.journeyView?.routes[0] ||
+          !state.journeyProgress.confirmOnboard(bus))
+      )
+        this.rerouteOnboard(bus);
     } else state.onboardDetector?.pause();
     state.journeyProgress.update(
       state.location,
@@ -2786,11 +2809,71 @@ Page({
     else state.stream?.select(this.liveSelection());
     haptic();
   },
+  resetPlanning() {
+    const state = rt(this);
+    // Invalidate both queued network results and animation frames before using
+    // a different origin. Keep the requested destination, not the old itinerary.
+    state.planningVersion = (state.planningVersion || 0) + 1;
+    if (state.planningTimer) clearTimeout(state.planningTimer);
+    if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
+    state.planningRetryTimer = undefined;
+    state.planningTimer = undefined;
+    state.planningKey =
+      state.planningContext =
+      state.planningFlight =
+        undefined;
+    state.planningWait = state.planningId = undefined;
+    state.planningOrigin = undefined;
+    state.planningAt = 0;
+    state.remotePlans = undefined;
+    state.chosenPlanKey = undefined;
+    state.routeEpoch++;
+    this.cancelRouteAnimation();
+    state.plan = undefined;
+    state.plans = [];
+    state.board = undefined;
+    state.boardWalk = undefined;
+    state.boardWalkKey = undefined;
+    state.boardWalkRetryAt = undefined;
+    state.drawnPlan = undefined;
+    state.drawnDestination = undefined;
+    state.drawnOrigin = undefined;
+    state.routeFinal = undefined;
+    state.routeJourneyKey = undefined;
+    state.routePaintKey = undefined;
+    state.vehiclePreview = undefined;
+    state.pendingChoice = false;
+    state.journeyProgress = undefined;
+    state.journeyView = undefined;
+    state.onboardDetector = undefined;
+    state.alerted.clear();
+    delete state.selection.boardingId;
+    this.setData({
+      polylines: [],
+      plans: [],
+      selectedPlanId: "",
+      selectedVehicleId: "",
+      boardName: "",
+      boardDetail: "",
+      boardFavorite: false,
+      walking: false,
+      planning: false,
+      journey: "idle",
+      journeyProgress: null,
+      reminderEnabled: false,
+    });
+    this.staticMarkers();
+  },
   refreshShuttles() {
     const state = rt(this);
     if (!state.active) {
       this.retryActivation();
       return;
+    }
+    if (this.data.journey === "idle") {
+      if (state.planningId) forgetShuttlePlan(state.planningId);
+      this.resetPlanning();
+      this.rebuildPlans(true);
     }
     void this.reloadMap(false);
     state.stream?.stop();
@@ -2985,6 +3068,7 @@ Page({
       state.manualPoint = point;
       state.explicitBoard = "";
       state.boardCandidates = [];
+      this.resetPlanning();
       this.setData({ originName: point.shortName || point.name });
     } else {
       state.destination = point;

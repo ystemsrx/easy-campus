@@ -2050,6 +2050,170 @@ test("destination planning waits for the server and prioritizes returned favorit
   page.onUnload();
 });
 
+test("moving GPS keeps plans anchored while explicit replanning clears the previous route", async () => {
+  const { campus, point } = onboardFixture(),
+    clock = { now: 100000 },
+    pending = [];
+  const h = harness({
+    map: campus,
+    clock,
+    mockStream: true,
+    plans: (o) =>
+      new Promise((resolve) => pending.push({ request: o.data, resolve })),
+  });
+  Object.assign(h.raw, point(0));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900), name: "终点" });
+  page.confirmMapPick();
+  await settle();
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+    planner = new ShuttleItineraryPlanner(campus, new ShuttlePlanner(campus));
+  const finish = async (index) => {
+    const { request, resolve } = pending[index];
+    resolve({
+      revision: campus.revision,
+      planningId: `anchor-${index}`,
+      plans: planner.plans(request.origin, request.destination),
+    });
+    await settle();
+    page.paintRoutes(true);
+  };
+  for (let i = 1; i <= 6; i++) {
+    clock.now += 1000;
+    h.getListener()({ ...h.raw, ...point(i * 20) });
+    page.rebuildPlans(false);
+    await settle();
+  }
+  assert.equal(pending.length, 1);
+  await finish(0);
+  const selected = page.data.selectedPlanId,
+    geometry = JSON.stringify(page.data.polylines);
+  assert(selected);
+  for (let i = 7; i <= 12; i++) {
+    clock.now += 1000;
+    h.getListener()({ ...h.raw, ...point(i * 20) });
+    page.rebuildPlans(false);
+    await settle();
+    assert.equal(page.data.planning, false);
+    assert.equal(page.data.selectedPlanId, selected);
+    assert.equal(JSON.stringify(page.data.polylines), geometry);
+  }
+  assert.equal(pending.length, 1);
+  campus.revision = "auto-map-update";
+  await page.reloadMap(false);
+  await settle();
+  assert.equal(pending.length, 2);
+  assert.equal(page.data.planning, false);
+  assert.equal(page.data.selectedPlanId, selected);
+  assert.equal(JSON.stringify(page.data.polylines), geometry);
+  await finish(1);
+  clock.now += 6000;
+  h.getListener()({ ...h.raw, ...point(280) });
+  page.refreshShuttles();
+  await settle();
+  assert.equal(pending.length, 3);
+  assert.equal(page.data.planning, true);
+  assert.equal(page.data.selectedPlanId, "");
+  assert.equal(page.data.polylines.length, 0);
+  assert.equal(page.data.plans.length, 0);
+  assert.equal(pending[2].request.origin.longitude, point(280).longitude);
+  await finish(2);
+  assert.equal(page.data.planning, false);
+  assert.notEqual(JSON.stringify(page.data.polylines), geometry);
+  page.onUnload();
+});
+
+test("changing to a custom origin clears old geometry and ignores the previous planning response", async () => {
+  for (const resolved of [false, true]) {
+    const { campus, point } = onboardFixture(),
+      clock = { now: 100000 },
+      pending = [];
+    const h = harness({
+      map: campus,
+      clock,
+      mockStream: true,
+      plans: (o) =>
+        new Promise((resolve) => pending.push({ request: o.data, resolve })),
+    });
+    Object.assign(h.raw, point(0));
+    const page = h.page();
+    page.onLoad();
+    page.onReady();
+    page.onShow();
+    await settle();
+    page.showMapPick({ ...point(900), name: "目的地" });
+    page.confirmMapPick();
+    await settle();
+    const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+      { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary"),
+      planner = new ShuttleItineraryPlanner(campus, new ShuttlePlanner(campus));
+    const finish = async (index) => {
+      const { request, resolve } = pending[index];
+      resolve({
+        revision: campus.revision,
+        planningId: `origin-${index}`,
+        plans: planner.plans(request.origin, request.destination),
+      });
+      await settle();
+    };
+    if (resolved) {
+      await finish(0);
+      page.paintRoutes(true);
+    }
+    clock.now += 6000;
+    let native;
+    h.wx.chooseLocation = (o) => {
+      native = o;
+    };
+    page.openSearch("board");
+    page.chooseOnMap();
+    native.success({ ...point(400, 50), name: "自定义起点" });
+    await settle();
+    assert.equal(page.data.polylines.length, 0);
+    assert.equal(page.data.plans.length, 0);
+    assert.equal(page.data.selectedPlanId, "");
+    assert.equal(page.data.originName, "自定义起点");
+    if (!resolved) {
+      await finish(0);
+      assert.equal(page.data.polylines.length, 0);
+      clock.now += 1001;
+      for (const [id, job] of [...h.jobs])
+        if (job.delay === 1000) {
+          h.jobs.delete(id);
+          job.f();
+        }
+      await settle();
+    }
+    assert.equal(pending.length, 2);
+    assert.equal(pending[1].request.originMode, "manual");
+    assert.equal(pending[1].request.origin.longitude, point(400, 50).longitude);
+    page.paintRoutes(true);
+    assert.equal(
+      page.data.polylines.length,
+      0,
+      "no previous route or temporary GPS-to-manual bridge",
+    );
+    await finish(1);
+    page.paintRoutes(true);
+    assert(page.data.selectedPlanId);
+    const firstWalk = page.data.polylines.find((p) => p.dottedLine);
+    assert(firstWalk);
+    assert.equal(firstWalk.points[0].longitude, point(400, 50).longitude);
+    assert.equal(firstWalk.points[0].latitude, point(400, 50).latitude);
+    assert(
+      !page.data.polylines.some((p) =>
+        p.points.some((q) => q.longitude === point(0).longitude),
+      ),
+    );
+    page.onUnload();
+  }
+});
+
 test("planning timeout uses a fallback without letting a late alternative replace it", async () => {
   const { campus, point } = onboardFixture();
   const pending = [],
@@ -2152,6 +2316,91 @@ test("boarding only changes the nearby-bus radius to 20m and keeps the original 
   for (let i = 0; i < 5; i++)
     progress.update(point(100 + i * 30), 1000 + i * 5000);
   assert.equal(progress.view(295).phase, "riding");
+});
+
+test("frequent fixes accumulate boarding movement and GPS evidence survives intermittent vehicle proximity", () => {
+  for (const speed of [2, 4]) {
+    const h = harness(),
+      { point, progress } = progressFixture(h, { atBoard: true });
+    for (let i = 0; i <= 40; i++) {
+      const x = 100 + i * speed;
+      const vehicles =
+        speed === 2 || i % 6 < 3
+          ? [{ ...point(x), id: "bus", lineId: "r", speed: 10, direction: 90 }]
+          : [];
+      progress.update(point(x), 1000 + i * 1000, vehicles);
+    }
+    const view = progress.view(295);
+    assert.equal(view.phase, "riding");
+    assert(Math.abs(view.segments[0].fill - (40 * speed) / 200 / 2) < 0.002);
+  }
+});
+
+test("confirmed boarding advances a missed walking endpoint but rejects opposite or unrelated rides", () => {
+  const h = harness(),
+    { point, progress } = progressFixture(h);
+  const vehicle = { ...point(250), id: "bus", lineId: "r", direction: 90 };
+  assert.equal(progress.confirmOnboard({ ...vehicle, direction: 270 }), false);
+  assert.equal(progress.confirmOnboard({ ...vehicle, lineId: "other" }), false);
+  assert.equal(progress.view(295).phase, "walking");
+  assert.equal(progress.confirmOnboard(vehicle), true);
+  const view = progress.view(295);
+  assert.equal(view.phase, "riding");
+  assert.equal(view.segments[0].fill, 1);
+  assert(Math.abs(view.segments[1].fill - 0.375) < 0.002);
+  progress.update(point(250), 100000);
+  progress.update(point(260), 101000);
+  assert(progress.view(295).segments[1].fill > view.segments[1].fill);
+});
+
+test("boarding co-motion aligns delayed observations without enlarging the 20m radius", () => {
+  const h = harness(),
+    { ShuttleOnboardDetector } = h.load("features/utils/shuttle-onboard"),
+    { point, bus } = onboardFixture();
+  for (const offset of [0, 21]) {
+    const detector = new ShuttleOnboardDetector();
+    let match;
+    for (let i = 0; i <= 30; i++) {
+      const time = 100000 + i * 1000;
+      const observedAt = 100000 + Math.floor(i / 3) * 3000 - 3000;
+      const vehicle = {
+        ...bus(((observedAt - 100000) / 1000) * 9 + offset),
+        motion: { status: "moving", reset: false, playbackDelay: 3000 },
+      };
+      match =
+        detector.update(
+          point(i * 9),
+          time,
+          observedAt,
+          [vehicle],
+          observedAt,
+        ) || match;
+    }
+    assert.equal(!!match, offset < 20);
+    if (match)
+      assert(Math.abs(match.longitude - point(270).longitude) < 0.000001);
+  }
+});
+
+test("delayed boarding evidence never returns a bad current GPS fix", () => {
+  const h = harness(),
+    { ShuttleOnboardDetector } = h.load("features/utils/shuttle-onboard"),
+    { point, bus } = onboardFixture();
+  for (const invalid of [{ ...point(180), accuracy: 80 }, point(900)]) {
+    const detector = new ShuttleOnboardDetector();
+    for (let i = 0; i < 6; i++)
+      detector.update(
+        point(i * 27),
+        100000 + i * 3000,
+        97000 + i * 3000,
+        [bus((i - 1) * 27)],
+        97000 + i * 3000,
+      );
+    assert.equal(
+      detector.update(invalid, 118000, 115000, [bus(135)], 115000),
+      undefined,
+    );
+  }
 });
 
 test("automatic line switching uses a 20m radius and preserves directional co-motion", () => {
@@ -2631,6 +2880,63 @@ test("active page silently switches the actual line, keeps its destination, and 
   assert.equal(page.data.journey, "idle");
   assert(!page.data.selectedPlanId.startsWith("onboard:"));
   assert(page.liveSelection().routeIds?.length);
+  page.onUnload();
+});
+
+test("the selected line boards from time-aligned live data even when its marker trails by three seconds", async () => {
+  const { point, bus, campus } = onboardFixture(),
+    clock = { now: 100000 },
+    h = harness({ mockStream: true, clock, map: campus }),
+    page = h.page();
+  Object.assign(h.raw, point(0));
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900), name: "目的地" });
+  page.confirmMapPick();
+  await settle();
+  const selected = page.data.selectedPlanId;
+  page.startJourney();
+  const stream = h.calls.find((c) => c[0] === "streamConstruct")[1];
+  stream.handlers.state("live");
+  for (let i = 0; i <= 30; i++) {
+    clock.now = 100000 + i * 1000;
+    if (i % 3 === 0)
+      stream.handlers.snapshot({
+        type: "snapshot",
+        protocol: 2,
+        serverTime: clock.now,
+        fetchedAt: clock.now - 3000,
+        stale: false,
+        available: true,
+        selectionValid: true,
+        mapRevision: campus.revision,
+        selection: { routeIds: [], filtered: false },
+        vehicles: [
+          {
+            ...bus(Math.max(0, (i - 3) * 9), "bus-1", "r1"),
+            motion: {
+              startsAt: clock.now - 6000,
+              duration: 3000,
+              points: [
+                point(Math.max(0, (i - 6) * 9)),
+                point(Math.max(0, (i - 3) * 9)),
+              ],
+              heading: 90,
+              status: "moving",
+              reset: false,
+              playbackDelay: 3000,
+            },
+          },
+        ],
+      });
+    h.getListener()({ ...h.raw, ...point(i * 9) });
+  }
+  assert.equal(page.data.selectedPlanId, selected);
+  assert.equal(page.data.journey, "riding");
+  const next = page.data.journeyProgress.nodes.find((n) => n.name === "站300");
+  assert(Math.abs(page.data.journeyProgress.position / next.x - 0.9) < 0.002);
   page.onUnload();
 });
 
@@ -4987,7 +5293,7 @@ test("boarding favorites add an animated chip and sort first within the stop cat
   assert.equal(page.data.commonPlaces.length, 0);
   page.onUnload();
 });
-test("walking origin updates stay anchored to the displayed user marker and live success is silent", async () => {
+test("walking routes keep their planned origin while the user marker moves and live success is silent", async () => {
   const h = harness({ mockStream: true }),
     page = h.page();
   page.onLoad();
@@ -5012,7 +5318,8 @@ test("walking origin updates stay anchored to the displayed user marker and live
     .at(-1);
   const walks = page.data.polylines.filter((p) => p.dottedLine);
   assert(walks.length);
-  assert.equal(walks[0].points[0].longitude, user.longitude);
+  assert.equal(walks[0].points[0].longitude, h.raw.longitude);
+  assert.notEqual(walks[0].points[0].longitude, user.longitude);
   assert.equal(user.longitude, location.longitude);
   const wxml = fs.readFileSync(
     path.join(root, "features/pages/shuttle/index.wxml"),
@@ -5811,7 +6118,7 @@ test("one minute of idle GPS updates cannot restart a failed walking lookup ever
     h.getListener()({ ...h.raw });
     await settle();
   }
-  assert(walks > 1 && walks <= 5, `unexpected walking request count ${walks}`);
+  assert.equal(walks, 1, "GPS updates must not restart even a failed lookup");
   assert(!h.calls.some((c) => c[0] === "toast"));
   page.onUnload();
 });
