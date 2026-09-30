@@ -12,7 +12,7 @@ const { CampusMapStore } = require(path.join(backend, "src/shuttle/map-store"));
 const map = new CampusMapStore({
   file:
     process.env.SHUTTLE_MAP_FILE ||
-    path.join(backend, "data/campus-shuttle.campusmap.json"),
+    path.join(backend, "test/fixtures/legacy-shuttle.campusmap.json"),
 }).current;
 let passed = 0;
 const tests = [];
@@ -1950,7 +1950,7 @@ test("boarding vehicle rows prioritize waiting then historical ETA, hide passed 
   assert.equal(page.data.vehicleRows[0].eta, "等候中");
   assert.equal(
     page.data.plans.find((p) => p.id === ride.id).walkLabel,
-    "下一辆：等待中",
+    "下一辆：等候中",
   );
   assert.equal(page.data.vehicleRows[1].eta, "约 1 分钟");
   assert(page.data.vehicleRows.every((r) => /^距你 /.test(r.distanceLabel)));
@@ -2277,7 +2277,7 @@ test("confirmed destination switches clear the old route and automatically draw 
   );
   drawn(destinations[0]);
   // Rapid changes must reject the previous destination's late response.
-  storage.delete("easy-swu:shuttle:plans:v2:42");
+  storage.delete("easy-swu:shuttle:plans:v3:42");
   clock.now += 21000;
   search(destinations[1]);
   await settle();
@@ -2309,7 +2309,7 @@ test("confirmed destination switches clear the old route and automatically draw 
   await settle();
   assert.equal(page.data.planning, false);
   assert(page.data.selectedPlanId);
-  assert(page.data.polylines.some((line) => line.arrowLine));
+  assert(!page.data.polylines.some((line) => line.arrowLine));
   page.onUnload();
 });
 
@@ -4910,7 +4910,9 @@ test("straight walking links join the bus path, native handoff happens once and 
     .at(-1);
   assert(walk);
   assert.equal(walk.points.length, 2);
-  const ride = page.data.polylines.filter((p) => p.arrowLine).at(-1);
+  const ride = page.data.polylines
+    .filter((p) => !p.dottedLine && p.color !== "#FFFFFF")
+    .at(-1);
   assert.deepEqual(
     [ride.points.at(-1).longitude, ride.points.at(-1).latitude],
     [walk.points[0].longitude, walk.points[0].latitude],
@@ -4957,9 +4959,11 @@ test("only one itinerary is painted; closing and choosing a draft destination pr
     .at(-1)
     ?.f();
   assert.equal(
-    page.data.polylines.filter((p) => p.arrowLine).length,
+    page.data.polylines.filter((p) => !p.dottedLine && p.color !== "#FFFFFF")
+      .length,
     selected.split("|").length,
   );
+  assert(!page.data.polylines.some((p) => p.arrowLine));
   assert(
     page.data.polylines
       .filter((p) => p.dottedLine)
@@ -6193,7 +6197,7 @@ test("switching cached itineraries replays walk-ride-walk in order without anoth
     id,
     walkLegs: walks,
   }));
-  storage.set("easy-swu:shuttle:plans:v2:42", [
+  storage.set("easy-swu:shuttle:plans:v3:42", [
     {
       request: {
         origin: h.raw,
@@ -6454,7 +6458,7 @@ test("map title and first campus-help entry agree, and preparing buses use the c
     page = h.page();
   assert.equal(
     page.walkLabel({ nextDepartureState: "preparing" }),
-    "下一辆：等待中",
+    "下一辆：等候中",
   );
   const wxml = fs.readFileSync(
     path.join(root, "pages/profile/content.wxml"),
@@ -6471,6 +6475,66 @@ test("map title and first campus-help entry agree, and preparing buses use the c
       'this.openProfileRoute("shuttle", "/features/pages/shuttle/index")',
     ),
   );
+});
+
+test("adaptive tracks retain exact station visits and remap worker-local direction indices", () => {
+  const current = new CampusMapStore().current;
+  const { BehaviorModel } = require(
+    path.join(backend, "src/shuttle/behavior-model"),
+  );
+  const { AdaptivePlanner } = require(
+    path.join(backend, "src/shuttle/adaptive-planner"),
+  );
+  const model = new BehaviorModel(current),
+    server = new AdaptivePlanner(current, model);
+  const adaptive = server.publicMap(current),
+    h = harness({ map: adaptive });
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    client = new ShuttlePlanner(adaptive);
+  const track = Object.values(adaptive.serviceTracks)
+    .flat()
+    .find((t) => t.stops.length >= 4);
+  assert(track);
+  const route = current.routes.find((r) =>
+    adaptive.serviceTracks[r.id]?.includes(track),
+  );
+  const first = track.stops[0],
+    last = track.stops[3];
+  const leg = {
+    route,
+    board: { ...first.place, serviceOrder: first.order, serviceDirection: 900 },
+    alight: { ...last.place, serviceOrder: last.order, serviceDirection: 900 },
+    serviceTrack: { ...track, id: "request-track" },
+    points: track.points,
+    rideMeters: last.at - first.at,
+  };
+  client.installPlans([{ legs: [leg] }]);
+  assert(leg.board.serviceDirection !== 900);
+  assert.equal(
+    adaptive.serviceTracks[route.id][leg.board.serviceDirection].id,
+    "request-track",
+  );
+  const visits = client.journeyStops(leg);
+  assert(visits.length >= 1);
+  assert(visits.every((s) => s.meters < leg.rideMeters));
+  const count = adaptive.serviceTracks[route.id].length;
+  client.installPlans([{ legs: [leg] }]);
+  assert.equal(adaptive.serviceTracks[route.id].length, count);
+  assert(
+    adaptive.paths.every(
+      (p) => p.color === current.paths.find((q) => q.id === p.id).color,
+    ),
+  );
+});
+
+test("departure labels consume only confident server durations and expire quietly", () => {
+  const h = harness(),
+    { departureLabel } = h.load("features/utils/shuttle-departure.ts");
+  assert.equal(departureLabel(210), "预计 4 分钟后出发");
+  assert.equal(departureLabel(210, 60), "预计 3 分钟后出发");
+  for (const value of [undefined, null, NaN, Infinity, 10, 3700])
+    assert.equal(departureLabel(value), "等候中");
+  assert.equal(departureLabel(210, 91), "等候中");
 });
 
 (async () => {

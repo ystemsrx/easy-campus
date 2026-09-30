@@ -4,6 +4,7 @@ import type {
   ShuttlePlace,
   ShuttleRoute,
   ShuttleVehicle,
+  ShuttleServiceTrack,
 } from "../../types/shuttle";
 import { distanceMeters } from "../../utils/shuttle-geo";
 import { headingDegrees } from "./shuttle-screen";
@@ -157,8 +158,13 @@ export class ShuttleRoadGraph {
             b = key(to),
             length = distanceMeters(from, to);
           if (a === b || !length) continue;
-          const forward = path.direction !== "backward",
-            backward = path.direction !== "forward";
+          const declared = path.directionByRoute?.[routeId];
+          const forward =
+              path.direction !== "backward" &&
+              (!declared || Boolean(declared.forward)),
+            backward =
+              path.direction !== "forward" &&
+              (!declared || Boolean(declared.backward));
           if (forward) this.adjacency.get(a)!.push({ to: b, length });
           if (backward) this.adjacency.get(b)!.push({ to: a, length });
           this.segments.push({ a, b, from, to, length, forward, backward });
@@ -312,13 +318,14 @@ export class ShuttleRoadGraph {
     return { points, meters: pathLength(points) };
   }
 }
-interface RouteTrack {
+interface RouteTrack extends ShuttleServiceTrack {
   points: GeoPoint[];
   offsets: number[];
   stops: { place: ShuttlePlace; at: number; order: number }[];
   loop: boolean;
 }
 export interface ShuttlePlan {
+  serviceTrack?: RouteTrack;
   /** Current directional track interval for a journey already on board. */
   onboard?: { direction: number; from: number; to: number };
   id: string;
@@ -387,6 +394,40 @@ export class ShuttlePlanner {
   private tracks = new Map<string, RouteTrack | null>();
   private arrivalPositions = new Map<string, { score: number; at: number }[]>();
   constructor(readonly map: CampusShuttleMap) {}
+  installPlans(plans: { legs: ShuttlePlan[] }[]): void {
+    if (this.map.planningMode !== "adaptive") return;
+    this.map.serviceTracks ||= {};
+    for (const plan of plans)
+      for (const leg of plan.legs || []) {
+        for (const variant of (
+          leg as ShuttlePlan & { variants?: ShuttlePlan[] }
+        ).variants || [leg]) {
+          if (variant.serviceTrack) {
+            const tracks = (this.map.serviceTracks[variant.route.id] ||= []);
+            let direction = tracks.findIndex(
+              (t) => t.id === variant.serviceTrack?.id,
+            );
+            if (direction < 0) {
+              direction = tracks.length;
+              tracks.push(variant.serviceTrack);
+            }
+            variant.board.serviceDirection = direction;
+            variant.alight.serviceDirection = direction;
+          }
+        }
+      }
+    for (const plan of plans)
+      for (const leg of plan.legs || []) {
+        if (leg.serviceTrack) {
+          const direction = this.map.serviceTracks[leg.route.id].findIndex(
+            (t) => t.id === leg.serviceTrack?.id,
+          );
+          leg.board.serviceDirection = direction;
+          leg.alight.serviceDirection = direction;
+        }
+      }
+    this.arrivalPositions.clear();
+  }
   graph(id: string): ShuttleRoadGraph {
     if (!this.graphs.has(id))
       this.graphs.set(id, new ShuttleRoadGraph(this.map, id));
@@ -523,7 +564,8 @@ export class ShuttlePlanner {
       }
     | undefined {
     if (!plan.onboard) return;
-    const track = this.directions(plan.route)[plan.onboard.direction];
+    const track =
+      plan.serviceTrack || this.directions(plan.route)[plan.onboard.direction];
     const board = track?.stops[plan.board.serviceOrder ?? -1];
     if (
       !track ||
@@ -546,13 +588,15 @@ export class ShuttlePlanner {
   journeyStops(plan: ShuttlePlan): { place: ShuttlePlace; meters: number }[] {
     if (plan.onboard) {
       const { direction, from, to } = plan.onboard;
-      const track = this.directions(plan.route)[direction];
+      const track = plan.serviceTrack || this.directions(plan.route)[direction];
       if (!track) return [];
       return stopVisits(track, from, to)
         .filter((s) => s.at < to - 5) // Alighting already has its own major node.
         .map((s) => ({ place: s.place, meters: s.at - from }));
     }
-    const track = this.directions(plan.route)[plan.board.serviceDirection || 0];
+    const track =
+      plan.serviceTrack ||
+      this.directions(plan.route)[plan.board.serviceDirection || 0];
     if (!track) return [];
     const board = track.stops[plan.board.serviceOrder ?? -1];
     const alight = track.stops[plan.alight.serviceOrder ?? -1];
@@ -568,6 +612,8 @@ export class ShuttlePlanner {
       .map((s) => ({ place: s.place, meters: s.at - board.at }));
   }
   private directions(route: ShuttleRoute): RouteTrack[] {
+    if (this.map.planningMode === "adaptive")
+      return this.map.serviceTracks?.[route.id] || [];
     return [undefined, ...(route.requestVariants || [])].flatMap((variant) => {
       const forward = this.track(route, variant);
       if (!forward) return [];
@@ -608,6 +654,8 @@ export class ShuttlePlanner {
     destination: GeoPoint,
     stopIds: string[] = [],
   ): number[] {
+    if (this.map.planningMode === "adaptive")
+      return this.directions(route).map((_, i) => i);
     const count = route.servicePattern === "out-and-back" ? 2 : 1;
     const variants = (route.requestVariants || []).flatMap((variant, i) =>
       variant.destinationStopIds.some(

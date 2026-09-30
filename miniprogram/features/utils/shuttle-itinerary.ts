@@ -27,6 +27,7 @@ export interface ShuttleJourney extends ShuttlePlan {
   nextArrivalSeconds?: number | null;
   nextStops?: number | null;
   nextDepartureState?: "preparing" | null;
+  nextDepartureSeconds?: number | null;
   estimateSource?: "history" | "distance";
   estimatedAt?: number;
   availability?: "live" | "waiting" | "unknown" | "unavailable";

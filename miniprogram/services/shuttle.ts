@@ -10,6 +10,14 @@ import type {
 } from "../types/shuttle";
 
 const ROOT = "/utilities/shuttle-buses";
+export function getShuttleVehiclePreview(
+  id: string,
+): Promise<{ revision: string; lineId?: string; points: GeoPoint[] }> {
+  return apiRequest(`${ROOT}/vehicle-preview/${encodeURIComponent(id)}`, {
+    retry: false,
+    timeout: 10000,
+  });
+}
 export function planShuttleTrip<T>(data: {
   origin: GeoPoint;
   destination: GeoPoint;

@@ -22,6 +22,14 @@ export interface ShuttleRoad {
   points: GeoPoint[];
   color: string;
   direction: "both" | "forward" | "backward";
+  directionByRoute?: Record<string, { forward?: unknown; backward?: unknown }>;
+}
+export interface ShuttleServiceTrack {
+  id?: string;
+  points: GeoPoint[];
+  offsets: number[];
+  stops: { place: ShuttlePlace; at: number; order: number }[];
+  loop: boolean;
 }
 export interface ShuttleRoute {
   id: string;
@@ -49,6 +57,9 @@ export interface CampusShuttleMap {
   paths: ShuttleRoad[];
   places: ShuttlePlace[];
   routes: ShuttleRoute[];
+  planningMode?: "adaptive";
+  operationRevision?: string;
+  serviceTracks?: Record<string, ShuttleServiceTrack[]>;
 }
 export interface ShuttleSelection {
   routeIds?: string[];

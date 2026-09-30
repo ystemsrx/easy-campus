@@ -3,7 +3,10 @@ import {
   togglePreferredPlan,
 } from "../../utils/shuttle-preferences";
 import { setPresence, cancelPresence } from "../../../utils/motion";
-import { getShuttleMap } from "../../../services/shuttle";
+import {
+  getShuttleMap,
+  getShuttleVehiclePreview,
+} from "../../../services/shuttle";
 import {
   cachedShuttlePlan,
   cachedBoardingWalk,
@@ -45,6 +48,7 @@ import {
 } from "../../../utils/shuttle-geo";
 import { projectToScreen } from "../../utils/shuttle-screen";
 import { ShuttlePlanner } from "../../utils/shuttle-routing";
+import { departureLabel } from "../../utils/shuttle-departure";
 import { routeNames } from "../../utils/shuttle-route-names";
 import type {
   ShuttleSelection,
@@ -175,6 +179,8 @@ interface Runtime {
   manualPoint?: NamedPoint;
   drawnPlan?: ShuttleJourney;
   vehiclePreview?: { id: string; lineId: string; points: GeoPoint[] };
+  vehiclePreviewAt?: number;
+  vehiclePreviewFlight?: string;
   drawnDestination?: NamedPoint;
   pendingChoice: boolean;
   itinerary?: ShuttleItineraryPlanner;
@@ -1167,6 +1173,7 @@ Page({
             pinned && !result.plans.some((p) => p.id === pinned.id)
               ? [pinned, ...result.plans]
               : result.plans;
+          state.planner?.installPlans(state.remotePlans);
           if (state.planningTimer) clearTimeout(state.planningTimer);
           state.planningTimer = undefined;
           state.planningWait = undefined;
@@ -1361,6 +1368,7 @@ Page({
           stopId: v.board.id,
           serviceDirection: v.board.serviceDirection,
           serviceOrder: v.board.serviceOrder,
+          platformHeading: v.board.platformHeading,
         })),
       ) || [];
     // Keep one existing stream, but observe other lines while navigating.
@@ -1440,8 +1448,38 @@ Page({
     if (
       plan.mode !== "walk" &&
       (waiting || plan.nextDepartureState === "preparing")
-    )
-      return "下一辆：等待中";
+    ) {
+      const remoteWaiting = fresh
+        ? (packet.vehicles as ShuttleVehicle[]).flatMap((bus) =>
+            (bus.arrivals || []).filter(
+              (a) =>
+                a.status === "waiting" &&
+                variants.some(
+                  (v) =>
+                    v.route.id === bus.lineId &&
+                    a.board.stopId === v.board.id &&
+                    a.board.serviceDirection === v.board.serviceDirection &&
+                    a.board.serviceOrder === v.board.serviceOrder,
+                ),
+            ),
+          )
+        : [];
+      const seconds = remoteWaiting.length
+        ? remoteWaiting[0].departureSeconds
+        : plan.nextDepartureSeconds;
+      const age = remoteWaiting.length
+        ? Math.max(0, (Date.now() - state.packetReceivedAt) / 1000)
+        : plan.estimatedAt
+          ? Math.max(
+              0,
+              ((packet?.serverTime || Date.now()) +
+                (packet ? Date.now() - state.packetReceivedAt : 0) -
+                plan.estimatedAt) /
+                1000,
+            )
+          : 0;
+      return `下一辆：${departureLabel(seconds, age)}`;
+    }
     if (plan.mode !== "walk" && plan.nextArrivalSeconds != null)
       return `下一辆：${plan.nextStops != null ? plan.nextStops + " 站" : ""}（约 ${Math.max(1, Math.ceil(plan.nextArrivalSeconds / 60))} 分钟）`;
     if (
@@ -2842,6 +2880,7 @@ Page({
     state.routeJourneyKey = undefined;
     state.routePaintKey = undefined;
     state.vehiclePreview = undefined;
+    state.vehiclePreviewAt = 0;
     state.pendingChoice = false;
     state.journeyProgress = undefined;
     state.journeyView = undefined;
@@ -2910,6 +2949,8 @@ Page({
     const value = state.motion?.previewVehicle(id);
     if (!value || state.packet?.stale) return;
     state.vehiclePreview = undefined;
+    state.vehiclePreviewAt = 0;
+    state.vehiclePreviewFlight = undefined;
     this.setData({ selectedVehicleId: id });
     this.focusBus(id);
     this.refreshVehiclePreview();
@@ -2919,6 +2960,38 @@ Page({
       id = this.data.selectedVehicleId;
     if (!id || !state.visible || state.pendingChoice || state.packet?.stale)
       return;
+    if (state.map?.planningMode === "adaptive") {
+      if (
+        state.vehiclePreviewFlight ||
+        Date.now() - (state.vehiclePreviewAt || 0) < 6000
+      )
+        return;
+      state.vehiclePreviewFlight = id;
+      state.vehiclePreviewAt = Date.now();
+      void getShuttleVehiclePreview(id)
+        .then((result) => {
+          if (
+            runtimes.get(this) !== state ||
+            !state.visible ||
+            this.data.selectedVehicleId !== id ||
+            state.destination ||
+            this.data.journey !== "idle" ||
+            result.revision !== state.map?.revision
+          )
+            return;
+          state.vehiclePreview =
+            result.points.length > 1 && result.lineId
+              ? { id, lineId: result.lineId, points: result.points }
+              : undefined;
+          this.paintRoutes();
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (state.vehiclePreviewFlight === id)
+            state.vehiclePreviewFlight = undefined;
+        });
+      return;
+    }
     const vehicle = state.motion?.previewVehicle(id);
     const points = vehicle ? state.planner?.vehiclePath(vehicle) || [] : [];
     if (vehicle && points.length > 1)

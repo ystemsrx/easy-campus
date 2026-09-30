@@ -72,7 +72,7 @@ export function planPolylines(
       width: plan.id === selectedId ? 5 : 3,
       dottedLine: false,
       borderWidth: 0,
-      arrowLine: true,
+      arrowLine: false,
     }))
     .filter((line) => line.points.length > 1);
   return [
@@ -177,7 +177,7 @@ export function tracePolylines(
       color: p.color,
       borderWidth: 0,
       dottedLine: p.dotted,
-      arrowLine: !p.dotted,
+      arrowLine: false,
     }));
   return [
     ...lines.map((p) => ({
