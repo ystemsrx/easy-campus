@@ -21,7 +21,7 @@ interface Entry {
 }
 type Walk = NonNullable<ShuttleJourney["walkLegs"]>[number];
 export function forgetShuttlePlan(planningId: string): void {
-  const key = `easy-swu:shuttle:plans:v3:${captureSessionLease()?.userId || "none"}`;
+  const key = `easy-swu:shuttle:plans:v6:${captureSessionLease()?.userId || "none"}`;
   try {
     const entries = wx.getStorageSync(key);
     if (Array.isArray(entries))
@@ -108,9 +108,18 @@ export async function cachedShuttlePlan(
   revision: string,
 ): Promise<Result> {
   const lease = captureSessionLease(),
-    key = `easy-swu:shuttle:plans:v3:${lease?.userId || "none"}`;
+    key = `easy-swu:shuttle:plans:v6:${lease?.userId || "none"}`;
   let entries: Entry[] = [];
   try {
+    wx.removeStorageSync(
+      `easy-swu:shuttle:plans:v3:${lease?.userId || "none"}`,
+    );
+    wx.removeStorageSync(
+      `easy-swu:shuttle:plans:v4:${lease?.userId || "none"}`,
+    );
+    wx.removeStorageSync(
+      `easy-swu:shuttle:plans:v5:${lease?.userId || "none"}`,
+    );
     const saved = wx.getStorageSync(key);
     if (Array.isArray(saved))
       entries = saved.filter(
@@ -135,7 +144,7 @@ export async function cachedShuttlePlan(
     const ttl = result.plans.some((p) => p.legs?.some((l) => l.serviceTrack))
       ? 60000
       : result.plans.some((p) =>
-            p.walkLegs?.some((w) => w.source === "straight"),
+            p.walkLegs?.some((w) => w.source !== "tencent"),
           )
         ? 60000
         : 15 * 60000;

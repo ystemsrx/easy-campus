@@ -29,6 +29,7 @@ import {
 } from "./community";
 import { loadDemoState, saveDemoState } from "./state";
 import { demoDormPayment } from "./dorm";
+import { demoShuttleRequest } from "./shuttle";
 
 function parsePath(path: string): {
   route: string;
@@ -80,6 +81,8 @@ export function demoRequest<T>(
     saveDemoState(state);
     return result(data);
   };
+  if (route.startsWith("/utilities/shuttle-buses/"))
+    return result(demoShuttleRequest(route, method, body));
   if (route === "/auth/me")
     return result({ ...demoUser(), companion: state.companion });
   if (route === "/auth/status") return result(demoUser().credential);

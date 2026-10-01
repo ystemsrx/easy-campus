@@ -6,7 +6,11 @@ import type {
   ShuttleVehicle,
 } from "../../types/shuttle";
 import { distanceMeters } from "../../utils/shuttle-geo";
-import { ShuttlePlanner, type ShuttlePlan } from "./shuttle-routing";
+import {
+  ShuttlePlanner,
+  ShuttleRoadGraph,
+  type ShuttlePlan,
+} from "./shuttle-routing";
 
 export interface RideLeg extends ShuttlePlan {
   routes: ShuttleRoute[];
@@ -14,11 +18,13 @@ export interface RideLeg extends ShuttlePlan {
   variants?: ShuttlePlan[];
 }
 export interface ShuttleJourney extends ShuttlePlan {
+  /** Exact platform endpoint selected by the directed server plan. */
+  destinationPoint?: GeoPoint;
   walkLegs?: {
     points: GeoPoint[];
     meters: number;
     seconds: number;
-    source: "tencent" | "straight";
+    source: "tencent" | "campus" | "straight";
   }[];
   totalSeconds?: number;
   rideSeconds?: number;
@@ -40,6 +46,7 @@ export interface WalkPath {
   meters: number;
   startGap: number;
   endGap: number;
+  source: "campus" | "straight";
 }
 const length = (points: GeoPoint[]): number =>
   points.slice(1).reduce((n, p, i) => n + distanceMeters(points[i], p), 0);
@@ -151,18 +158,21 @@ function merge(plans: ShuttlePlan[]): RideLeg[] {
 }
 export class ShuttleItineraryPlanner {
   private cache = new Map<string, ShuttleJourney[]>();
+  private walkingGraph?: ShuttleRoadGraph;
   constructor(
     private map: CampusShuttleMap,
     private planner: ShuttlePlanner,
   ) {}
   walk(from: GeoPoint, to: GeoPoint): WalkPath | null {
+    this.walkingGraph ||= new ShuttleRoadGraph(this.map, "");
+    const road = this.walkingGraph.path(from, to, 90);
     const meters = distanceMeters(from, to);
-    // User-selected interim behavior: dotted lines indicate straight walking links.
     return {
-      points: meters < 1 ? [] : [from, to],
-      meters,
+      points: meters < 1 ? [] : road?.points || [from, to],
+      meters: road?.meters ?? meters,
       startGap: 0,
       endGap: 0,
+      source: road ? "campus" : "straight",
     };
   }
   /** Replan forward from the actual bus; never walk back to its previous stop. */
@@ -229,20 +239,27 @@ export class ShuttleItineraryPlanner {
     const saved = this.cache.get(key);
     if (saved) return saved;
     const walking = distanceMeters(origin, destination);
-    const direct = merge([
-      ...this.planner.plans(
-        origin,
-        destination,
-        boarding,
-        "",
-        destinationStops,
-      ),
-      ...(destinationStops.length
-        ? this.planner.plans(origin, destination, boarding)
-        : []),
-    ]);
+    // Dynamic service inference belongs to the server. On a timeout, a bounded
+    // walking fallback must not run an exhaustive transfer search on the UI thread.
+    const local = this.map.planningMode !== "adaptive";
+    const direct = local
+      ? merge([
+          ...this.planner.plans(
+            origin,
+            destination,
+            boarding,
+            "",
+            destinationStops,
+          ),
+          ...(destinationStops.length
+            ? this.planner.plans(origin, destination, boarding)
+            : []),
+        ])
+      : [];
     const journeys: ShuttleJourney[] = direct.map((leg) => this.journey([leg]));
-    const stops = this.map.places.filter((p) => p.category === "stop");
+    const stops = local
+      ? this.map.places.filter((p) => p.category === "stop")
+      : [];
     for (const stop of stops) {
       const ids = [stop.id];
       if (
@@ -355,14 +372,15 @@ export class ShuttleItineraryPlanner {
     );
     // Selecting a destination platform does not forbid a useful final walk.
     // Keep exact-stop transfers above, and add the same alternatives as a map pin.
-    if (destinationStops.length)
+    if (destinationStops.length && local)
       for (const plan of this.plans(origin, destination, boarding, [], true))
         if (plan.mode === "ride" && !rides.some((p) => p.id === plan.id))
           rides.push(plan);
     // Fleet availability is evaluated on the server. A slower transfer may be
     // the usable option when the geometrically shorter direct service is absent.
     const sensible = rides;
-    if (walking <= (all ? 8000 : 1800)) {
+    if (walking <= (all || !local ? 8000 : 1800)) {
+      const path = this.walk(origin, destination)!;
       const place = (point: GeoPoint, id: string): ShuttlePlace => ({
         ...point,
         id,
@@ -383,12 +401,22 @@ export class ShuttleItineraryPlanner {
         },
         board: place(origin, "walk-start"),
         alight: place(destination, "walk-end"),
-        points: [origin, destination],
+        points: path.points,
         rideMeters: 0,
-        walkTo: walking,
+        walkTo: path.meters,
         walkFrom: 0,
         stopCount: 0,
-        score: walking / 1.2,
+        score: path.meters / 1.2,
+        walkingSeconds: path.meters / 1.2,
+        totalSeconds: path.meters / 1.2,
+        walkLegs: [
+          {
+            points: path.points,
+            meters: path.meters,
+            seconds: path.meters / 1.2,
+            source: path.source,
+          },
+        ],
       });
     }
     sensible.sort((a, b) =>

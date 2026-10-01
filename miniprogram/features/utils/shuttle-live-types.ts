@@ -14,6 +14,7 @@ export interface ShuttleArrival {
   board: ShuttleBoardingVisit;
   status: "waiting" | "approaching" | "passed" | "unconfirmed";
   seconds: number | null;
+  stops?: number | null;
   departureSeconds?: number | null;
   text: string;
   detail: string;
