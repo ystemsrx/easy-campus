@@ -2,7 +2,9 @@ import {
   captureSessionLease,
   isSessionLeaseCurrent,
   type SessionLease,
+  getSession,
 } from "../store/session";
+import { isDemoSession } from "../demo/identity";
 import { getShuttleConsent, uploadShuttleLocations } from "../services/shuttle";
 import type { GeoPoint, LocationSample, SampleReceipt } from "../types/shuttle";
 
@@ -83,6 +85,7 @@ function loadOutbox(key: string): SharedOutbox {
 /** Account-isolated durable outbox. Identical coordinates are separate observations. */
 export class ShuttleLocationRecorder {
   private lease: SessionLease | null = captureSessionLease();
+  private demo = isDemoSession(getSession());
   private key = `${OUTBOX_PREFIX}${this.lease?.userId || "none"}`;
   private captureSession = `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}_${Math.random().toString(36).slice(2, 10)}`;
   private seq = 0;
@@ -93,6 +96,7 @@ export class ShuttleLocationRecorder {
   private outboxEpoch = 0;
   private last: LocationSample | null = null;
   constructor(private callbacks: RecorderCallbacks) {
+    if (this.demo) return;
     try {
       this.box = loadOutbox(this.key);
       this.outboxEpoch = this.box.epoch;
@@ -104,6 +108,7 @@ export class ShuttleLocationRecorder {
   start(): void {
     if (this.active || this.blocked) return;
     this.active = true;
+    if (this.demo) return;
     this.timer = setInterval(() => {
       void this.flush();
     }, 1500);
@@ -141,6 +146,7 @@ export class ShuttleLocationRecorder {
       raw: JSON.parse(JSON.stringify(raw)) as LocationResult,
     };
     this.last = point;
+    if (this.demo) return point;
     this.box.queue.push(point);
     if (!this.persist()) {
       this.blocked = true;
@@ -157,6 +163,7 @@ export class ShuttleLocationRecorder {
     return point;
   }
   acknowledge(accepted: SampleReceipt[]): void {
+    if (this.demo) return;
     if (!isSessionLeaseCurrent(this.lease)) return;
     const keys = new Set(accepted.map(sampleKey));
     this.box.queue = this.box.queue.filter((p) => !keys.has(sampleKey(p)));
@@ -172,6 +179,7 @@ export class ShuttleLocationRecorder {
     }
   }
   async flush(): Promise<void> {
+    if (this.demo) return;
     const fresh = this.box.queue.filter(
       (p) => p.clientTime >= Date.now() - 15 * 86400000,
     );
@@ -218,6 +226,6 @@ export class ShuttleLocationRecorder {
     this.box.epoch += 1;
     this.box.queue = [];
     this.last = null;
-    wx.removeStorageSync(this.key);
+    if (!this.demo) wx.removeStorageSync(this.key);
   }
 }

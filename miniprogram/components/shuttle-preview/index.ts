@@ -12,6 +12,7 @@ import {
 import { ensureAuthenticated, navigateTo } from "../../utils/navigation";
 import { getErrorMessage } from "../../services/request";
 import { isDemoSession } from "../../demo/identity";
+import { demoShuttlePosition } from "../../demo/shuttle";
 import { getSession } from "../../store/session";
 import type {
   CampusShuttleMap,
@@ -90,13 +91,6 @@ Component({
         generation === state.generation &&
         isSessionLeaseCurrent(lease);
       try {
-        if (isDemoSession(getSession())) {
-          this.setData({
-            status: "体验账号不读取真实位置",
-            countLabel: "登录后查看",
-          });
-          return;
-        }
         const map = await getShuttleMap();
         if (!current()) return;
         state.map = map;
@@ -114,6 +108,29 @@ Component({
         const authorized = await mayPreviewLocation();
         if (!current()) return;
         this.setData({ authorized });
+        if (isDemoSession(getSession())) {
+          const point = demoShuttlePosition(),
+            packet = await previewShuttles({
+              captureSession: "demo-preview",
+              seq: 0,
+              clientTime: Date.now(),
+              source: "preview",
+              crs: "gcj02",
+              raw: { ...point },
+            });
+          if (!current()) return;
+          this.setData({
+            latitude: point.latitude,
+            longitude: point.longitude,
+            scale: 16,
+            markers: packet.vehicles.map((bus, i) =>
+              vehicleMarker(bus, 100 + i, 25),
+            ),
+            live: false,
+            status: "校车预览",
+            countLabel: "点击查看",
+          });
+        }
         if (authorized) {
           state.recorder = new ShuttleLocationRecorder({
             status: () => undefined,
@@ -172,11 +189,14 @@ Component({
           }
           return;
         }
-        const raw = await readLocation();
+        const observation = await readLocation();
         // An in-flight getLocation callback remains an observation even if the page just hid.
         if (!isSessionLeaseCurrent(lease)) return;
-        const sample = recorder?.record(raw, "preview");
+        const sample = recorder?.record(observation, "preview");
         if (!sample || !current()) return;
+        const raw = isDemoSession(getSession())
+          ? demoShuttlePosition(observation)
+          : observation;
         const packet = await previewShuttles(sample);
         if (packet.accepted) recorder?.acknowledge(packet.accepted);
         if (!current()) return;
@@ -200,14 +220,18 @@ Component({
             },
           ],
           live: !packet.stale,
-          status: packet.stale
-            ? "校车信号暂未更新"
-            : packet.vehicles.length
-              ? "你附近的校车"
-              : "附近暂无校车",
-          countLabel: packet.stale
-            ? "点击查看详情"
-            : `${packet.vehicles.length} 辆 · 10 秒更新`,
+          status: isDemoSession(getSession())
+            ? "校车预览"
+            : packet.stale
+              ? "校车信号暂未更新"
+              : packet.vehicles.length
+                ? "你附近的校车"
+                : "附近暂无校车",
+          countLabel: isDemoSession(getSession())
+            ? "点击查看"
+            : packet.stale
+              ? "点击查看详情"
+              : `${packet.vehicles.length} 辆 · 10 秒更新`,
         });
         if (packet.mapRevision !== state.map?.revision) {
           const map = await getShuttleMap(true);
@@ -240,10 +264,6 @@ Component({
       state.opening = true;
       const lease = captureSessionLease();
       try {
-        if (isDemoSession(getSession())) {
-          this.feedback("请使用校园账号查看实时校车");
-          return;
-        }
         if (!isSessionLeaseCurrent(lease)) return;
         // Browsing routes never requires location. Ask inside the map page.
         const opened = await navigateTo("/features/pages/shuttle/index");

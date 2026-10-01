@@ -4,7 +4,9 @@ import {
   captureSessionLease,
   isSessionLeaseCurrent,
   type SessionLease,
+  getSession,
 } from "../../store/session";
+import { isDemoSession } from "../../demo/identity";
 import type {
   GeoPoint,
   LocationSample,
@@ -93,6 +95,12 @@ export class ShuttleStream {
     this.selection = selection;
     this.selectionKey = JSON.stringify([selection, this.originPayload()]);
     this.active = true;
+    if (isDemoSession(getSession())) {
+      this.polling = true;
+      this.nextProbeAt = Infinity;
+      void this.poll();
+      return;
+    }
     wx.onNetworkStatusChange?.(this.networkChanged);
     void this.connect();
   }
