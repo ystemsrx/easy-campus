@@ -7,6 +7,17 @@ const root = path.resolve(__dirname, "../miniprogram");
 // Execute real controllers and render helpers with in-memory storage and API
 // fixtures. No request reaches a service or modifies a user's account.
 function runtime(overrides = {}) {
+  // Calendar motion fixtures deliberately span September/October 2026. Keep
+  // their initial month deterministic without changing the application's clock.
+  const startedAt = Date.now();
+  class FixtureDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : [FixtureDate.now()]));
+    }
+    static now() {
+      return new Date(2026, 8, 11, 12).getTime() + Date.now() - startedAt;
+    }
+  }
   const storage = new Map();
   const modules = new Map();
   let definition;
@@ -118,6 +129,7 @@ function runtime(overrides = {}) {
       "getApp",
       "setTimeout",
       "clearTimeout",
+      "Date",
       js,
     )(
       record,
@@ -133,6 +145,7 @@ function runtime(overrides = {}) {
         return timers.length;
       },
       () => undefined,
+      FixtureDate,
     );
     return record.exports;
   }
@@ -273,8 +286,9 @@ function checkScheduleMotionMount() {
     assert.equal(page.renderedData.headerMotionReady, true);
     // Inspect styles applied by SharedValue subscriptions, never manually
     // invoke updater callbacks: correct math alone cannot move a real node.
-    page.setData({ selectedDate: "2026-09-11" });
-    page.rebuildWeek(true);
+    // Use the real date selection flow so its month window also changes when
+    // this fixture is run after September; setData alone leaves today's grid.
+    page.goDate("2026-09-11");
     env.flushRenders();
     const origin = render.scheduleDayIndex(page.data.selectedDate);
     const slot = Math.floor(origin / 7) % 3;
