@@ -1,5 +1,8 @@
 import { apiRequest as interactiveRequest } from "./request";
 import { shuttleRequest as apiRequest } from "./shuttle-request";
+import { isDemoSession } from "../demo/identity";
+import { demoShuttleMap } from "../demo/shuttle";
+import { getSession } from "../store/session";
 import type {
   CampusShuttleMap,
   LocationSample,
@@ -37,9 +40,11 @@ export function planShuttleTrip<T>(data: {
   });
 }
 export const SHUTTLE_CONSENT_VERSION = "shuttle-location-v1";
-const MAP_CACHE_KEY = "easy-swu:shuttle:map:v1";
+const MAP_CACHE_KEY = "easy-swu:shuttle:map:v2";
 let cachedMap: CampusShuttleMap | null = null;
 try {
+  // Reclaim only superseded derived geometry; personal location queues are separate.
+  wx.removeStorageSync("easy-swu:shuttle:map:v1");
   const saved = wx.getStorageSync(MAP_CACHE_KEY) as
     CampusShuttleMap | undefined;
   if (
@@ -55,6 +60,8 @@ try {
 let cachedAt = 0;
 let mapFlight: Promise<CampusShuttleMap> | null = null;
 export function getShuttleMap(force = false): Promise<CampusShuttleMap> {
+  // The review fixture must never replace the real-account public map cache.
+  if (isDemoSession(getSession())) return Promise.resolve(demoShuttleMap());
   if (!force && cachedMap && Date.now() - cachedAt < 60000)
     return Promise.resolve(cachedMap);
   if (mapFlight) return mapFlight;

@@ -72,7 +72,7 @@ export function planPolylines(
       width: plan.id === selectedId ? 5 : 3,
       dottedLine: false,
       borderWidth: 0,
-      arrowLine: false,
+      arrowLine: progress >= 1,
     }))
     .filter((line) => line.points.length > 1);
   return [
@@ -177,7 +177,7 @@ export function tracePolylines(
       color: p.color,
       borderWidth: 0,
       dottedLine: p.dotted,
-      arrowLine: false,
+      arrowLine: !p.dotted && progress >= 1,
     }));
   return [
     ...lines.map((p) => ({
@@ -250,6 +250,12 @@ export class ShuttleRouteReveal {
         return {
           ...entry,
           part,
+          // New walking geometry gets its own reveal clock. The ride entries
+          // retain theirs; elapsed time on the fallback cannot finish this path.
+          started:
+            JSON.stringify(entry.part.points) === JSON.stringify(part.points)
+              ? entry.started
+              : undefined,
           lengths: part.points
             .slice(1)
             .map((q, i) => distanceMeters(part.points[i], q)),

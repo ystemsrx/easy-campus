@@ -141,9 +141,12 @@ export class ShuttleRoadGraph {
   constructor(map: CampusShuttleMap, routeId: string) {
     const endpoints: GeoPoint[] = [];
     map.paths
-      .filter((p) => p.routeIds.includes(routeId))
+      .filter((p) => !routeId || p.routeIds.includes(routeId))
       .forEach((path) => {
-        endpoints.push(path.points[0], path.points[path.points.length - 1]);
+        // Reviewed adaptive geometry already has exact junction vertices.
+        // Walking uses all roads bidirectionally, without expensive road snapping.
+        if (routeId || map.planningMode !== "adaptive")
+          endpoints.push(path.points[0], path.points[path.points.length - 1]);
         path.points.forEach((point) => {
           const id = key(point);
           if (!this.nodes.has(id)) {
@@ -160,11 +163,13 @@ export class ShuttleRoadGraph {
           if (a === b || !length) continue;
           const declared = path.directionByRoute?.[routeId];
           const forward =
-              path.direction !== "backward" &&
-              (!declared || Boolean(declared.forward)),
+              !routeId ||
+              (path.direction !== "backward" &&
+                (!declared || Boolean(declared.forward))),
             backward =
-              path.direction !== "forward" &&
-              (!declared || Boolean(declared.backward));
+              !routeId ||
+              (path.direction !== "forward" &&
+                (!declared || Boolean(declared.backward)));
           if (forward) this.adjacency.get(a)!.push({ to: b, length });
           if (backward) this.adjacency.get(b)!.push({ to: a, length });
           this.segments.push({ a, b, from, to, length, forward, backward });
@@ -393,10 +398,24 @@ export class ShuttlePlanner {
   private graphs = new Map<string, ShuttleRoadGraph>();
   private tracks = new Map<string, RouteTrack | null>();
   private arrivalPositions = new Map<string, { score: number; at: number }[]>();
-  constructor(readonly map: CampusShuttleMap) {}
+  private baseServiceTracks: NonNullable<CampusShuttleMap["serviceTracks"]>;
+  constructor(readonly map: CampusShuttleMap) {
+    this.baseServiceTracks = Object.fromEntries(
+      Object.entries(map.serviceTracks || {}).map(([id, tracks]) => [
+        id,
+        tracks.slice(),
+      ]),
+    );
+  }
   installPlans(plans: { legs: ShuttlePlan[] }[]): void {
     if (this.map.planningMode !== "adaptive") return;
-    this.map.serviceTracks ||= {};
+    // Replace request-scoped tracks instead of accumulating every old planning intent.
+    this.map.serviceTracks = Object.fromEntries(
+      Object.entries(this.baseServiceTracks).map(([id, tracks]) => [
+        id,
+        tracks.slice(),
+      ]),
+    );
     for (const plan of plans)
       for (const leg of plan.legs || []) {
         for (const variant of (
