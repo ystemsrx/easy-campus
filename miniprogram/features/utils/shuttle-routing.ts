@@ -141,9 +141,12 @@ export class ShuttleRoadGraph {
   constructor(map: CampusShuttleMap, routeId: string) {
     const endpoints: GeoPoint[] = [];
     map.paths
-      .filter((p) => p.routeIds.includes(routeId))
+      .filter((p) => !routeId || p.routeIds.includes(routeId))
       .forEach((path) => {
-        endpoints.push(path.points[0], path.points[path.points.length - 1]);
+        // Reviewed adaptive geometry already has exact junction vertices.
+        // Walking uses all roads bidirectionally, without expensive road snapping.
+        if (routeId || map.planningMode !== "adaptive")
+          endpoints.push(path.points[0], path.points[path.points.length - 1]);
         path.points.forEach((point) => {
           const id = key(point);
           if (!this.nodes.has(id)) {
@@ -160,11 +163,13 @@ export class ShuttleRoadGraph {
           if (a === b || !length) continue;
           const declared = path.directionByRoute?.[routeId];
           const forward =
-              path.direction !== "backward" &&
-              (!declared || Boolean(declared.forward)),
+              !routeId ||
+              (path.direction !== "backward" &&
+                (!declared || Boolean(declared.forward))),
             backward =
-              path.direction !== "forward" &&
-              (!declared || Boolean(declared.backward));
+              !routeId ||
+              (path.direction !== "forward" &&
+                (!declared || Boolean(declared.backward)));
           if (forward) this.adjacency.get(a)!.push({ to: b, length });
           if (backward) this.adjacency.get(b)!.push({ to: a, length });
           this.segments.push({ a, b, from, to, length, forward, backward });
@@ -325,6 +330,7 @@ interface RouteTrack extends ShuttleServiceTrack {
   loop: boolean;
 }
 export interface ShuttlePlan {
+  rideSignature?: string;
   serviceTrack?: RouteTrack;
   /** Current directional track interval for a journey already on board. */
   onboard?: { direction: number; from: number; to: number };

@@ -77,6 +77,8 @@ export interface ShuttleWalkingLeg {
   destination?: GeoPoint;
 }
 export interface ShuttleVehicle extends GeoPoint {
+  /** Forward station from the server's directed vehicle prediction. */
+  nextStop?: { stopId: string | null; name: string } | null;
   motion?: {
     startsAt: number;
     duration: number;

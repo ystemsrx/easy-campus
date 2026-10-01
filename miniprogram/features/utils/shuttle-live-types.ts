@@ -9,11 +9,14 @@ export interface ShuttleBoardingVisit {
   serviceDirection?: number;
   serviceOrder?: number;
   platformHeading?: number;
+  alightId?: string;
+  rideSignature?: string;
 }
 export interface ShuttleArrival {
   board: ShuttleBoardingVisit;
   status: "waiting" | "approaching" | "passed" | "unconfirmed";
   seconds: number | null;
+  stops?: number | null;
   departureSeconds?: number | null;
   text: string;
   detail: string;
