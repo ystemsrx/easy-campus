@@ -5,6 +5,7 @@ type Options = NonNullable<Parameters<typeof apiRequest>[1]>;
 interface Gate {
   nextAt: number;
   failures: number;
+  starts?: number[];
   flight?: { key: string; promise: Promise<unknown> };
 }
 const gates = new Map<string, Gate>();
@@ -32,6 +33,14 @@ export function shuttleRequest<T>(
   const requestKey = JSON.stringify(options.data);
   if (gate.flight && gate.flight.key === requestKey)
     return gate.flight.promise as Promise<T>;
+  const planning = path.endsWith("/plans");
+  if (planning) {
+    gate.starts = (gate.starts || []).filter((t) => Date.now() - t < 60000);
+    // Match the server's 20/minute ceiling without imposing five seconds of
+    // latency on every new destination. In-flight work remains coalesced.
+    if (gate.starts.length >= 20)
+      gate.nextAt = Math.max(gate.nextAt, gate.starts[0] + 60000);
+  }
   if (gate.flight || Date.now() < gate.nextAt)
     return Promise.reject(
       Object.assign(new Error("Map refresh deferred"), {
@@ -40,9 +49,9 @@ export function shuttleRequest<T>(
         retryAfterMs: Math.max(1000, gate.nextAt - Date.now()),
       }),
     );
-  const interval =
-    path.endsWith("/walking") || path.endsWith("/plans") ? 5000 : 0;
+  const interval = path.endsWith("/walking") ? 5000 : planning ? 1000 : 0;
   gate.nextAt = Date.now() + interval;
+  if (planning) gate.starts!.push(Date.now());
   const current = gate;
   const promise = apiRequest<T>(path, {
     ...options,

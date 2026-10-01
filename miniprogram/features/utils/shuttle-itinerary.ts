@@ -14,6 +14,8 @@ export interface RideLeg extends ShuttlePlan {
   variants?: ShuttlePlan[];
 }
 export interface ShuttleJourney extends ShuttlePlan {
+  /** Exact platform endpoint selected by the directed server plan. */
+  destinationPoint?: GeoPoint;
   walkLegs?: {
     points: GeoPoint[];
     meters: number;
@@ -229,20 +231,27 @@ export class ShuttleItineraryPlanner {
     const saved = this.cache.get(key);
     if (saved) return saved;
     const walking = distanceMeters(origin, destination);
-    const direct = merge([
-      ...this.planner.plans(
-        origin,
-        destination,
-        boarding,
-        "",
-        destinationStops,
-      ),
-      ...(destinationStops.length
-        ? this.planner.plans(origin, destination, boarding)
-        : []),
-    ]);
+    // Dynamic service inference belongs to the server. On a timeout, a bounded
+    // walking fallback must not run an exhaustive transfer search on the UI thread.
+    const local = this.map.planningMode !== "adaptive";
+    const direct = local
+      ? merge([
+          ...this.planner.plans(
+            origin,
+            destination,
+            boarding,
+            "",
+            destinationStops,
+          ),
+          ...(destinationStops.length
+            ? this.planner.plans(origin, destination, boarding)
+            : []),
+        ])
+      : [];
     const journeys: ShuttleJourney[] = direct.map((leg) => this.journey([leg]));
-    const stops = this.map.places.filter((p) => p.category === "stop");
+    const stops = local
+      ? this.map.places.filter((p) => p.category === "stop")
+      : [];
     for (const stop of stops) {
       const ids = [stop.id];
       if (
@@ -355,7 +364,7 @@ export class ShuttleItineraryPlanner {
     );
     // Selecting a destination platform does not forbid a useful final walk.
     // Keep exact-stop transfers above, and add the same alternatives as a map pin.
-    if (destinationStops.length)
+    if (destinationStops.length && local)
       for (const plan of this.plans(origin, destination, boarding, [], true))
         if (plan.mode === "ride" && !rides.some((p) => p.id === plan.id))
           rides.push(plan);

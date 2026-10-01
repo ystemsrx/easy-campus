@@ -41,6 +41,7 @@ import {
 import { haptic } from "../../../utils/haptics";
 import { getErrorMessage } from "../../../services/request";
 import { isDemoSession } from "../../../demo/identity";
+import { demoShuttlePosition } from "../../../demo/shuttle";
 import {
   distanceLabel,
   distanceMeters,
@@ -98,6 +99,21 @@ import type {
 
 type Tap = WechatMiniprogram.TouchEvent;
 type Journey = "idle" | "waiting" | "riding" | "walking" | "arrived";
+function planTiming(value: Partial<ShuttleJourney>): Partial<ShuttleJourney> {
+  return {
+    availability: value.availability,
+    nextArrivalSeconds: value.nextArrivalSeconds,
+    nextDepartureSeconds: value.nextDepartureSeconds,
+    nextDepartureState: value.nextDepartureState,
+    nextStops: value.nextStops,
+    estimatedAt: value.estimatedAt,
+    totalSeconds: value.totalSeconds,
+    rideSeconds: value.rideSeconds,
+    walkingSeconds: value.walkingSeconds,
+    wait: value.wait,
+    estimateSource: value.estimateSource,
+  };
+}
 interface EdgeHint {
   id: string;
   label: string;
@@ -157,16 +173,15 @@ interface Runtime {
   boardWalk?: { stop: string; origin: GeoPoint; meters: number };
   staticKey?: string;
   markerMasks?: { point: GeoPoint; radius: number }[];
-  routeWalkDeadline?: number;
-  routeWalkTimer?: ReturnType<typeof setTimeout>;
   routeCameraFlight?: boolean;
   planningAt?: number;
   planningFlight?: string;
   planningWait?: string;
-  planningTimer?: ReturnType<typeof setTimeout>;
   planningRetryTimer?: ReturnType<typeof setTimeout>;
   remotePlans?: ShuttleJourney[];
   chosenPlanKey?: string;
+  acceptedPlanKey?: string;
+  pendingPlanResult?: () => void;
   saveTimer?: ReturnType<typeof setTimeout>;
   persistedCommon?: CommonPlace[];
   visible: boolean;
@@ -293,6 +308,24 @@ function originPoint(state: Runtime): GeoPoint | undefined {
     ? state.manualPoint ||
         state.map?.places.find((p) => p.id === state.explicitBoard)
     : state.location;
+}
+function planDestination(
+  state: Runtime,
+  plan?: ShuttleJourney,
+): NamedPoint | undefined {
+  if (!state.destination) return undefined;
+  const point =
+    plan?.destinationPoint ||
+    (plan && state.destinationStops.includes(plan.alight.id)
+      ? plan.alight
+      : undefined);
+  return point
+    ? {
+        ...state.destination,
+        longitude: point.longitude,
+        latitude: point.latitude,
+      }
+    : state.destination;
 }
 const categoryNames: Record<string, string> = {
   stop: "校车候车点",
@@ -497,8 +530,7 @@ Page({
     this.finishLocationChoice();
     // A hidden canvas is cleared, but the active journey and its geometry survive.
     // Restore them immediately without replaying the reveal or choosing a new plan.
-    if (this.data.journey !== "idle" && rt(this).journeyProgress)
-      this.paintRoutes(true);
+    if (rt(this).drawnPlan || rt(this).vehiclePreview) this.paintRoutes(true);
     if (!rt(this).attempted || this.data.authorized || rt(this).manual)
       void this.activate();
   },
@@ -516,7 +548,7 @@ Page({
     });
     this.closeCommonSearch(true);
     if (this.data.searchMounted) this.closeSearch();
-    this.deactivate();
+    this.deactivate(true);
   },
   onUnload() {
     cancelPresence(this);
@@ -568,10 +600,6 @@ Page({
       !ensureAuthenticated()
     )
       return;
-    if (isDemoSession(getSession())) {
-      this.setData({ gateMessage: "请使用校园账号查看实时校车" });
-      return;
-    }
     state.active = true;
     state.attempted = true;
     state.lease = captureSessionLease();
@@ -589,10 +617,13 @@ Page({
       if (!current()) return;
       state.map = map;
       state.planner = new ShuttlePlanner(map);
+      state.planner.installPlans(
+        state.remotePlans || (state.drawnPlan ? [state.drawnPlan] : []),
+      );
       state.itinerary = new ShuttleItineraryPlanner(map, state.planner);
       this.refreshCommonPlaces();
       this.setData({ routes: map.routes });
-      if (this.data.journey !== "idle" && state.journeyProgress) {
+      if (state.drawnPlan || state.vehiclePreview) {
         // Journey planning is deliberately frozen until arrival/cancellation.
         // Do not replace the restored trip with the overview during activation.
         this.paintRoutes(true);
@@ -647,7 +678,9 @@ Page({
         return;
       }
       recorder.start();
-      state.location = sample.raw;
+      state.location = isDemoSession(getSession())
+        ? { ...demoShuttlePosition(sample.raw) }
+        : sample.raw;
       state.lastUi = Date.now();
       state.motion?.clear();
       state.motion = new ShuttleMapMotion(
@@ -683,14 +716,16 @@ Page({
         if (!isSessionLeaseCurrent(lease)) return;
         recorder.record({ ...value }, "change");
         if (!current()) return;
-        state.location = { ...value };
+        state.location = isDemoSession(getSession())
+          ? { ...demoShuttlePosition(value) }
+          : { ...value };
         this.updateJourneyProgress();
         this.paintUser();
         this.refreshRows();
         if (this.data.following)
           this.setData({
-            latitude: value.latitude,
-            longitude: value.longitude,
+            latitude: state.location.latitude,
+            longitude: state.location.longitude,
           });
       };
       wx.onLocationChange(state.listener);
@@ -749,6 +784,13 @@ Page({
           clusters: [],
         });
         this.rebuildPlans(false);
+        if (isDemoSession(getSession()) && state.map) {
+          // Denied GPS stays denied; the review can still use a manual campus origin.
+          state.manualPoint = { ...demoShuttlePosition(), name: "橘园" };
+          state.manual = true;
+          this.setData({ originName: "橘园" });
+          this.startManualOrigin();
+        }
         // Denial leaves a useful map and an explicit retry/settings action.
       }
     } finally {
@@ -827,7 +869,7 @@ Page({
     )
       return;
     const stop = originPoint(state);
-    if (!stop || isDemoSession(getSession())) return;
+    if (!stop) return;
     if (
       state.manual &&
       state.active &&
@@ -871,24 +913,27 @@ Page({
     this.staticMarkers();
     this.startLiveStream();
   },
-  deactivate() {
+  deactivate(suspend = false) {
     const state = rt(this);
     if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
     state.planningRetryTimer = undefined;
-    if (state.planningTimer) clearTimeout(state.planningTimer);
-    state.planningTimer = undefined;
     if (state.planningWait) {
       state.planningWait = undefined;
       state.planningKey = undefined;
       state.planningFlight = undefined;
     }
+    state.planningFlight = undefined;
+    state.pendingPlanResult = undefined;
     state.vehiclePreview = undefined;
     state.journeyProgress?.pause();
     state.onboardDetector?.pause();
     state.visible = false;
     state.active = false;
+    // Commit the accepted geometry before clearing a canvas that disappears on hide.
+    // A foreground restore is not a new route selection or reveal clock.
+    if (suspend && state.routeFinal)
+      this.setData({ polylines: state.routeFinal });
     this.cancelRouteAnimation();
-    state.routePaintKey = undefined;
     state.routeEpoch++;
     state.generation += 1;
     this.setData({ locating: false, selectedVehicleId: "" });
@@ -1098,13 +1143,13 @@ Page({
       oldId = undefined;
       if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
       state.planningRetryTimer = undefined;
-      if (state.planningTimer) clearTimeout(state.planningTimer);
-      state.planningTimer = undefined;
       state.planningWait = planKey || undefined;
       state.planningKey = planKey;
       state.remotePlans = undefined;
       state.planningId = undefined;
       state.planningAt = 0;
+      state.acceptedPlanKey = undefined;
+      state.pendingPlanResult = undefined;
     }
     if (
       planKey &&
@@ -1113,30 +1158,17 @@ Page({
     ) {
       state.planningFlight = planKey;
       state.planningAt = Date.now();
+      const generation = state.generation;
       const coord = (p: GeoPoint): GeoPoint => ({
         longitude: p.longitude,
         latitude: p.latitude,
       });
-      const timingOnly = Boolean(state.planningId && state.remotePlans);
-      if (
-        !timingOnly &&
-        state.planningWait === planKey &&
-        !state.planningTimer
-      ) {
-        state.planningTimer = setTimeout(() => {
-          if (
-            runtimes.get(this) !== state ||
-            !state.visible ||
-            !isSessionLeaseCurrent(state.lease) ||
-            state.planningKey !== planKey
-          )
-            return;
-          state.planningTimer = undefined;
-          state.planningWait = undefined;
-          this.rebuildPlans(true, true);
-          this.fitPlans();
-        }, 8000);
-      }
+      const estimateId = state.planningId;
+      const estimatePlans = state.remotePlans;
+      const timingOnly = Boolean(estimateId && estimatePlans);
+      // An in-flight request still owns the initial result. Only an actual
+      // request failure/timeout may release the offline fallback; a UI timer
+      // must not display a straight walk while that same request is computing.
       const request = {
         origin: coord(origin),
         destination: coord(state.destination!),
@@ -1146,45 +1178,74 @@ Page({
       };
       void (
         timingOnly
-          ? refreshShuttleEstimates(state.planningId!).then((result) => ({
+          ? refreshShuttleEstimates(estimateId!).then((result) => ({
               ...result,
-              planningId: state.planningId!,
-              plans: state.remotePlans!.map((p) => ({
-                ...p,
-                ...result.plans.find((t) => t.id === p.id),
-              })),
+              planningId: estimateId!,
+              plans: estimatePlans!.map((p) => {
+                const timing = result.plans.find((t) => t.id === p.id);
+                return timing ? { ...p, ...planTiming(timing) } : p;
+              }),
             }))
           : cachedShuttlePlan(request, state.map.revision)
       )
         .then((result) => {
-          if (
-            runtimes.get(this) !== state ||
-            !state.visible ||
-            (this.data.journey !== "idle" && !!state.journeyProgress) ||
-            !isSessionLeaseCurrent(state.lease) ||
-            state.planningKey !== planKey ||
-            result.revision !== state.map?.revision
-          )
-            return;
-          // Once the timeout fallback is displayed, a late response may enrich
-          // it, but must not silently replace the user's visible selection.
-          const pinned = !state.planningWait ? state.plan : undefined;
-          state.remotePlans =
-            pinned && !result.plans.some((p) => p.id === pinned.id)
-              ? [pinned, ...result.plans]
+          const install = (): void => {
+            if (
+              runtimes.get(this) !== state ||
+              state.generation !== generation ||
+              !state.visible ||
+              (this.data.journey !== "idle" && !!state.journeyProgress) ||
+              !isSessionLeaseCurrent(state.lease) ||
+              state.planningKey !== planKey ||
+              result.revision !== state.map?.revision
+            )
+              return;
+            // Once accepted, a server itinerary owns the geometry until a new
+            // user intent. Fleet/ETA refreshes do not reselect the best mode.
+            const pinned =
+              state.chosenPlanKey === planKey ||
+              state.acceptedPlanKey === planKey
+                ? state.plan
+                : undefined;
+            // Even a regenerated result with the same ID cannot rewrite an explicit
+            // choice's geometry. Estimates may update its timing, never its itinerary.
+            state.remotePlans = pinned
+              ? [pinned, ...result.plans.filter((p) => p.id !== pinned.id)]
               : result.plans;
-          state.planner?.installPlans(state.remotePlans);
-          if (state.planningTimer) clearTimeout(state.planningTimer);
-          state.planningTimer = undefined;
-          state.planningWait = undefined;
-          state.planningId = result.planningId;
-          if ("cached" in result && result.cached)
-            state.planningAt = Date.now() - 20001;
-          this.rebuildPlans(!timingOnly, true);
-          if (!timingOnly && !pinned) this.fitPlans();
+            if (pinned && timingOnly) {
+              const timing = result.plans.find((p) => p.id === pinned.id);
+              if (timing) Object.assign(pinned, planTiming(timing));
+            }
+            if (!timingOnly) state.planner?.installPlans(state.remotePlans);
+            state.planningWait = undefined;
+            state.planningId = result.planningId;
+            state.acceptedPlanKey = planKey;
+            if ("cached" in result && result.cached)
+              state.planningAt = Date.now() - 20001;
+            if (!timingOnly && !pinned) state.plan = undefined;
+            this.rebuildPlans(!timingOnly, true);
+            if (!timingOnly && !pinned) this.fitPlans();
+          };
+          // An offline fallback can yield to a recovered server result, but never
+          // midway through a reveal. Manual selection is rechecked at install.
+          if (
+            state.drawnPlan &&
+            state.acceptedPlanKey !== planKey &&
+            state.chosenPlanKey !== planKey &&
+            (state.routeTimer || this.data.routeAnimating) &&
+            JSON.stringify(
+              state.drawnPlan.legs.map((l) => [l.route.id, l.points]),
+            ) !==
+              JSON.stringify(
+                result.plans[0]?.legs.map((l) => [l.route.id, l.points]),
+              )
+          )
+            state.pendingPlanResult = install;
+          else install();
         })
         .catch((error) => {
-          if (state.planningKey !== planKey) return;
+          if (state.planningKey !== planKey || state.generation !== generation)
+            return;
           const retryAfter = Number(error?.retryAfterMs);
           if (retryAfter > 0)
             state.planningAt = Date.now() + retryAfter - 20001;
@@ -1218,15 +1279,16 @@ Page({
             state.visible &&
             isSessionLeaseCurrent(state.lease)
           ) {
-            if (state.planningTimer) clearTimeout(state.planningTimer);
-            state.planningTimer = undefined;
             state.planningWait = undefined;
             this.rebuildPlans(true, true);
           }
           /* Keep the last usable plan while the server is unavailable. */
         })
         .finally(() => {
-          if (state.planningFlight === planKey)
+          if (
+            state.planningFlight === planKey &&
+            state.generation === generation
+          )
             state.planningFlight = undefined;
         });
     }
@@ -1349,7 +1411,7 @@ Page({
     }
     if (!state.pendingChoice) {
       state.drawnPlan = state.plan;
-      state.drawnDestination = state.destination;
+      state.drawnDestination = planDestination(state, state.plan);
       state.drawnOrigin = origin;
     }
     if (notify || state.destination || !this.data.polylines.length)
@@ -1435,15 +1497,32 @@ Page({
         12000;
     const variants =
       plan.legs?.[0]?.variants || (plan.legs?.[0] ? [plan.legs[0]] : []);
+    const remoteArrival = (bus: ShuttleVehicle, board: ShuttlePlace) =>
+      packet?.mapRevision === state.map?.revision
+        ? bus.arrivals?.find(
+            (a) =>
+              a.board.stopId === board.id &&
+              a.board.serviceDirection === board.serviceDirection &&
+              a.board.serviceOrder === board.serviceOrder,
+          )
+        : undefined;
     const waiting =
       fresh &&
       variants.some((v) =>
-        packet.vehicles.some(
-          (bus) =>
-            bus.lineId === v.route.id &&
-            state.planner?.arrival(bus, v.board, false, false, packet.fetchedAt)
-              .preparing,
-        ),
+        packet.vehicles.some((bus) => {
+          if (bus.lineId !== v.route.id) return false;
+          const remote = remoteArrival(bus, v.board);
+          return remote
+            ? remote.status === "waiting"
+            : state.map?.planningMode !== "adaptive" &&
+                state.planner?.arrival(
+                  bus,
+                  v.board,
+                  false,
+                  false,
+                  packet.fetchedAt,
+                ).preparing;
+        }),
       );
     if (
       plan.mode !== "walk" &&
@@ -1451,7 +1530,10 @@ Page({
     ) {
       const remoteWaiting = fresh
         ? (packet.vehicles as ShuttleVehicle[]).flatMap((bus) =>
-            (bus.arrivals || []).filter(
+            (packet.mapRevision === state.map?.revision
+              ? bus.arrivals || []
+              : []
+            ).filter(
               (a) =>
                 a.status === "waiting" &&
                 variants.some(
@@ -1465,7 +1547,10 @@ Page({
           )
         : [];
       const seconds = remoteWaiting.length
-        ? remoteWaiting[0].departureSeconds
+        ? remoteWaiting
+            .map((a) => a.departureSeconds)
+            .filter((s): s is number => s != null && Number.isFinite(s))
+            .sort((a, b) => a - b)[0]
         : plan.nextDepartureSeconds;
       const age = remoteWaiting.length
         ? Math.max(0, (Date.now() - state.packetReceivedAt) / 1000)
@@ -1541,13 +1626,9 @@ Page({
   },
   cancelRouteAnimation() {
     const state = rt(this);
-    for (const timer of [
-      state.routeTimer,
-      state.routeHandoff,
-      state.routeWalkTimer,
-    ])
+    for (const timer of [state.routeTimer, state.routeHandoff])
       if (timer) clearTimeout(timer);
-    state.routeTimer = state.routeHandoff = state.routeWalkTimer = undefined;
+    state.routeTimer = state.routeHandoff = undefined;
     state.routeReveal?.stop();
     state.routeReveal = undefined;
     state.routeFinal = undefined;
@@ -1569,6 +1650,9 @@ Page({
     state.routeHandoff = setTimeout(() => {
       if (runtimes.get(this) !== state || epoch !== state.routeEpoch) return;
       this.cancelRouteAnimation();
+      const install = state.pendingPlanResult;
+      state.pendingPlanResult = undefined;
+      install?.();
     }, 160);
   },
   paintRoutes(immediate = false) {
@@ -1583,15 +1667,14 @@ Page({
     const journeyKey = JSON.stringify([
       state.map.revision,
       destination,
-      preview ? undefined : plan?.id,
+      // Server IDs and estimates may change without changing the accepted itinerary.
+      // Only a different directed geometry or endpoint starts a fresh reveal.
       preview ? undefined : plan?.legs.map((l) => [l.route.id, l.points]),
       preview ? undefined : state.drawnOrigin,
       state.manual ? state.manualPoint : undefined,
       preview,
     ]);
     const animate = state.routeJourneyKey !== journeyKey;
-    if (animate) state.routeWalkDeadline = immediate ? 0 : Date.now() + 10000;
-    const expired = Date.now() >= (state.routeWalkDeadline || 0);
     const colors = routePalette(state.map.routes);
     const rides: {
       points: GeoPoint[];
@@ -1610,15 +1693,13 @@ Page({
       });
       journey.push(rides[0]);
     }
-    let walkIndex = 0,
-      ready = true;
+    let walkIndex = 0;
+    const ready = true;
     const walk = (from: GeoPoint, to: GeoPoint, color: string): void => {
       const geometry = plan?.walkLegs?.[walkIndex++];
       if (distanceMeters(from, to) <= 2) return;
-      if (geometry?.source !== "tencent" && !expired && !immediate) {
-        ready = false;
-        return;
-      }
+      // A straight fallback is still a walking leg. Draw it now; a later
+      // refinement can reveal independently without removing the bus overlay.
       walks.push({
         points: geometry?.points.length
           ? [from, ...geometry.points.slice(1, -1), to]
@@ -1657,13 +1738,21 @@ Page({
       ready,
       this.data.motionClass,
     ]);
-    if (key === state.routePaintKey) return;
+    if (
+      key === state.routePaintKey &&
+      (!immediate ||
+        (!state.routeTimer &&
+          !this.data.routeAnimating &&
+          this.data.polylines.length))
+    )
+      return;
     state.routePaintKey = key;
     const base = destination || preview ? [] : roadPolylines(state.map);
     const rideParts = orderedTraces(rides),
       walkParts = orderedTraces(walks);
     const final = [...base, ...tracePolylines([...rideParts, ...walkParts])];
     if (
+      !immediate &&
       !animate &&
       this.data.routeAnimating &&
       state.routeReveal &&
@@ -1686,15 +1775,6 @@ Page({
       state.routeEpoch === epoch &&
       isSessionLeaseCurrent(state.lease);
     this.staticMarkers();
-    if (!ready)
-      state.routeWalkTimer = setTimeout(
-        () => {
-          if (!current()) return;
-          state.routeWalkDeadline = 0;
-          this.paintRoutes();
-        },
-        Math.max(0, (state.routeWalkDeadline || 0) - Date.now()),
-      );
     if (
       immediate ||
       (!destination && !preview) ||
@@ -1780,16 +1860,13 @@ Page({
     const state = rt(this);
     if (!state.context || !state.map) return;
     state.markerPlaces.clear();
-    const markers: ShuttleMarker[] = placeGroups(state.map)
-      .filter((group) => group.stop)
-      .map((group, index) => {
-        const place =
-          group.members.find((p) => p.id === state.board?.id) ||
-          group.members[0];
+    const markers: ShuttleMarker[] = state.map.places
+      .filter((place) => place.category === "stop")
+      .map((place, index) => {
         const id = 100 + index;
         state.markerPlaces.set(id, place);
         return {
-          ...pointMarker(groupPoint(group), id, "stop", 44),
+          ...pointMarker(place, id, "stop", 44),
           iconPath: "/features/assets/shuttle/stop-hit.png",
         };
       });
@@ -1906,22 +1983,6 @@ Page({
             originPoint(state) || state.map!.center,
             bus.lineId,
           );
-        const local = board
-          ? state.planner!.arrival(
-              bus,
-              board,
-              stale,
-              this.data.journey !== "idle",
-              packet?.fetchedAt,
-            )
-          : {
-              text: "待确认",
-              detail: "",
-              seconds: null,
-              distance: null,
-              passed: false,
-              preparing: false,
-            };
         const remote =
           !stale && packet?.mapRevision === state.map!.revision
             ? bus.arrivals?.find(
@@ -1932,6 +1993,28 @@ Page({
                   a.board.serviceOrder === board?.serviceOrder,
               )
             : undefined;
+        const local = remote
+          ? {
+              ...remote,
+              passed: remote.status === "passed",
+              preparing: remote.status === "waiting",
+            }
+          : board
+            ? state.planner!.arrival(
+                bus,
+                board,
+                stale,
+                this.data.journey !== "idle",
+                packet?.fetchedAt,
+              )
+            : {
+                text: "待确认",
+                detail: "",
+                seconds: null,
+                distance: null,
+                passed: false,
+                preparing: false,
+              };
         const arrivalStatus =
           remote?.status ||
           (local.passed
@@ -2056,12 +2139,19 @@ Page({
     const state = rt(this),
       plan = state.plans.find((p) => p.id === event.currentTarget.dataset.id);
     if (!plan || state.planningWait) return;
+    if (
+      state.plan?.id !== plan.id ||
+      state.chosenPlanKey !== state.planningKey
+    ) {
+      state.routePaintKey = undefined;
+      state.routeJourneyKey = undefined;
+    }
     state.plan = plan;
     state.chosenPlanKey = state.planningKey;
     state.board = plan.mode === "walk" ? undefined : plan.board;
     state.pendingChoice = false;
     state.drawnPlan = plan;
-    state.drawnDestination = state.destination;
+    state.drawnDestination = planDestination(state, plan);
     state.drawnOrigin = state.planningOrigin || originPoint(state);
     state.selection.routeId = plan.route.id;
     state.selection.boardingId = plan.board.id;
@@ -2852,10 +2942,8 @@ Page({
     // Invalidate both queued network results and animation frames before using
     // a confirmed origin/destination. Keep the requested endpoints, not the old itinerary.
     state.planningVersion = (state.planningVersion || 0) + 1;
-    if (state.planningTimer) clearTimeout(state.planningTimer);
     if (state.planningRetryTimer) clearTimeout(state.planningRetryTimer);
     state.planningRetryTimer = undefined;
-    state.planningTimer = undefined;
     state.planningKey =
       state.planningContext =
       state.planningFlight =
@@ -2865,6 +2953,8 @@ Page({
     state.planningAt = 0;
     state.remotePlans = undefined;
     state.chosenPlanKey = undefined;
+    state.acceptedPlanKey = undefined;
+    state.pendingPlanResult = undefined;
     state.routeEpoch++;
     this.cancelRouteAnimation();
     state.plan = undefined;
@@ -3060,9 +3150,11 @@ Page({
         this.data.mapHeight,
       );
       let gap = 24;
-      for (const group of placeGroups(state.map).filter((g) => g.stop)) {
+      for (const place of state.map.places.filter(
+        (p) => p.category === "stop",
+      )) {
         const p = projectToScreen(
-          groupPoint(group),
+          place,
           state.bounds,
           this.data.windowWidth,
           this.data.mapHeight,
@@ -3070,7 +3162,7 @@ Page({
         const d = Math.hypot(p.x - screen.x, p.y - screen.y);
         if (d < gap) {
           gap = d;
-          nearby = group.members[0];
+          nearby = place;
         }
       }
     }

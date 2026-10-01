@@ -393,10 +393,24 @@ export class ShuttlePlanner {
   private graphs = new Map<string, ShuttleRoadGraph>();
   private tracks = new Map<string, RouteTrack | null>();
   private arrivalPositions = new Map<string, { score: number; at: number }[]>();
-  constructor(readonly map: CampusShuttleMap) {}
+  private baseServiceTracks: NonNullable<CampusShuttleMap["serviceTracks"]>;
+  constructor(readonly map: CampusShuttleMap) {
+    this.baseServiceTracks = Object.fromEntries(
+      Object.entries(map.serviceTracks || {}).map(([id, tracks]) => [
+        id,
+        tracks.slice(),
+      ]),
+    );
+  }
   installPlans(plans: { legs: ShuttlePlan[] }[]): void {
     if (this.map.planningMode !== "adaptive") return;
-    this.map.serviceTracks ||= {};
+    // Replace request-scoped tracks instead of accumulating every old planning intent.
+    this.map.serviceTracks = Object.fromEntries(
+      Object.entries(this.baseServiceTracks).map(([id, tracks]) => [
+        id,
+        tracks.slice(),
+      ]),
+    );
     for (const plan of plans)
       for (const leg of plan.legs || []) {
         for (const variant of (
