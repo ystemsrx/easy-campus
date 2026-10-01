@@ -37,9 +37,11 @@ export function planShuttleTrip<T>(data: {
   });
 }
 export const SHUTTLE_CONSENT_VERSION = "shuttle-location-v1";
-const MAP_CACHE_KEY = "easy-swu:shuttle:map:v1";
+const MAP_CACHE_KEY = "easy-swu:shuttle:map:v2";
 let cachedMap: CampusShuttleMap | null = null;
 try {
+  // Reclaim only superseded derived geometry; personal location queues are separate.
+  wx.removeStorageSync("easy-swu:shuttle:map:v1");
   const saved = wx.getStorageSync(MAP_CACHE_KEY) as
     CampusShuttleMap | undefined;
   if (

@@ -1954,6 +1954,17 @@ test("boarding vehicle rows prioritize waiting then historical ETA, hide passed 
   );
   assert.equal(page.data.vehicleRows[1].eta, "约 1 分钟");
   assert(page.data.vehicleRows.every((r) => /^距你 /.test(r.distanceLabel)));
+  const prototype = h.load("features/utils/shuttle-routing").ShuttlePlanner
+    .prototype;
+  const arrival = prototype.arrival;
+  try {
+    prototype.arrival = () => {
+      throw Error("unnecessary UI-thread pattern projection");
+    };
+    page.refreshRows();
+  } finally {
+    prototype.arrival = arrival;
+  }
   // A delayed old-selection estimate must not be reused for a different platform.
   page.receiveSnapshot({
     ...packet,
@@ -2078,7 +2089,7 @@ test("late walking results preserve the itinerary trace and vehicle taps only fo
       "the vehicle trace must continue instead of restarting",
     );
     assert(h.calls.some((c) => c[0] === "trace" && c[1].dash.length));
-    tick(2200);
+    tick(2600);
     assert(
       page.data.polylines.some(
         (p) =>
@@ -2277,7 +2288,7 @@ test("confirmed destination switches clear the old route and automatically draw 
   );
   drawn(destinations[0]);
   // Rapid changes must reject the previous destination's late response.
-  storage.delete("easy-swu:shuttle:plans:v3:42");
+  storage.delete("easy-swu:shuttle:plans:v5:42");
   clock.now += 21000;
   search(destinations[1]);
   await settle();
@@ -2309,7 +2320,11 @@ test("confirmed destination switches clear the old route and automatically draw 
   await settle();
   assert.equal(page.data.planning, false);
   assert(page.data.selectedPlanId);
-  assert(!page.data.polylines.some((line) => line.arrowLine));
+  assert(
+    page.data.polylines
+      .filter((line) => line.dottedLine)
+      .every((line) => !line.arrowLine),
+  );
   page.onUnload();
 });
 
@@ -2499,7 +2514,7 @@ test("changing to a custom origin clears old geometry and ignores the previous p
   }
 });
 
-test("planning timeout uses a fallback without letting a late alternative replace it", async () => {
+test("planning timeout preserves an explicit fallback choice when a late alternative arrives", async () => {
   const { campus, point } = onboardFixture();
   const pending = [],
     h = harness({
@@ -2523,6 +2538,7 @@ test("planning timeout uses a fallback without letting a late alternative replac
   assert.equal(page.data.planning, false);
   const selected = page.data.selectedPlanId;
   assert(selected);
+  page.choosePlan({ currentTarget: { dataset: { id: selected } } });
   const before = JSON.stringify(page.data.polylines);
   const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
     { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
@@ -2540,6 +2556,139 @@ test("planning timeout uses a fallback without letting a late alternative replac
   assert.equal(page.data.selectedPlanId, selected);
   assert.equal(JSON.stringify(page.data.polylines), before);
   page.onUnload();
+});
+
+test("an automatic timeout walk yields to a valid server ride, but is never calculated on the UI thread", async () => {
+  const { campus, point } = onboardFixture();
+  campus.planningMode = "adaptive";
+  const pending = [],
+    h = harness({
+      map: campus,
+      mockStream: true,
+      plans: (o) => new Promise((resolve) => pending.push({ o, resolve })),
+    });
+  Object.assign(h.raw, point(0));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.showMapPick({ ...point(900), name: "终点" });
+  page.confirmMapPick();
+  await settle();
+  [...h.jobs.values()].find((j) => j.delay === 8000).f();
+  assert.equal(page.data.selectedPlanId, "walk");
+  assert(page.data.polylines.some((p) => p.dottedLine));
+  const { ShuttlePlanner } = h.load("features/utils/shuttle-routing"),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
+  const legacy = { ...campus, planningMode: undefined },
+    request = pending[0].o.data;
+  const ride = new ShuttleItineraryPlanner(legacy, new ShuttlePlanner(legacy))
+    .plans(request.origin, request.destination)
+    .find((p) => p.mode === "ride");
+  assert(ride);
+  pending[0].resolve({
+    revision: campus.revision,
+    planningId: "late-valid-ride",
+    plans: [ride],
+  });
+  await settle();
+  assert.equal(page.data.selectedPlanId, ride.id);
+  assert.equal(page.data.walking, false);
+  assert(page.data.polylines.some((p) => !p.dottedLine && p.arrowLine));
+  page.onUnload();
+});
+
+test("directional destination markers use the served platform and map markers retain both actual sides", async () => {
+  const { campus, point } = onboardFixture();
+  const correct = campus.places.at(-1);
+  correct.name = "田家炳·东北行";
+  correct.platformHeading = 90;
+  const opposite = {
+    ...correct,
+    ...point(900, 20),
+    id: "opposite",
+    name: "田家炳·西南行",
+    platformHeading: 270,
+  };
+  campus.places.push(opposite);
+  const h = harness({
+    map: campus,
+    mockStream: true,
+    plans: async (o) => {
+      const { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+      const leg = new ShuttlePlanner(campus).plans(
+        o.data.origin,
+        correct,
+        [],
+        "r1",
+        [correct.id],
+      )[0];
+      assert(leg);
+      return {
+        revision: campus.revision,
+        planningId: "platform",
+        plans: [
+          {
+            ...leg,
+            mode: "ride",
+            legs: [{ ...leg, routes: [leg.route] }],
+            score: 0,
+            destinationPoint: {
+              longitude: correct.longitude,
+              latitude: correct.latitude,
+            },
+          },
+        ],
+      };
+    },
+  });
+  Object.assign(h.raw, point(0));
+  const page = h.page();
+  page.onLoad();
+  page.onReady();
+  page.onShow();
+  await settle();
+  page.openDestinationSearch();
+  page.choosePlace({ currentTarget: { dataset: { id: opposite.id } } });
+  await settle();
+  const marker = h.calls
+    .filter((c) => c[0] === "addMarkers")
+    .flatMap((c) => c[1].markers)
+    .filter((m) => m.id === 2)
+    .at(-1);
+  assert(marker);
+  assert.equal(marker.longitude, correct.longitude);
+  assert.equal(marker.latitude, correct.latitude);
+  const physical = h.calls
+    .filter((c) => c[0] === "addMarkers")
+    .flatMap((c) => c[1].markers)
+    .filter((m) => m.id >= 100 && m.id < 10000);
+  for (const p of [correct, opposite])
+    assert(
+      physical.some(
+        (m) => m.longitude === p.longitude && m.latitude === p.latitude,
+      ),
+    );
+  page.onUnload();
+});
+
+test("new destinations are paced at one second with a twenty-per-minute ceiling and unchanged failure backoff", async () => {
+  const clock = { now: 100000 },
+    h = harness({ clock, api: async () => ({ ok: true }) }),
+    { shuttleRequest } = h.load("services/shuttle-request");
+  for (let i = 0; i < 20; i++) {
+    await shuttleRequest("/shuttle/plans", { data: { destination: i } });
+    clock.now += 1000;
+  }
+  await assert.rejects(
+    shuttleRequest("/shuttle/plans", { data: { destination: 20 } }),
+    (e) => e.code === "SHUTTLE_REFRESH_DEFERRED" && e.retryAfterMs === 40000,
+  );
+  assert.equal(h.calls.filter((c) => c[0] === "request").length, 20);
+  clock.now += 40000;
+  await shuttleRequest("/shuttle/plans", { data: { destination: 21 } });
+  assert.equal(h.calls.filter((c) => c[0] === "request").length, 21);
 });
 
 test("default map keeps exactly the latest nearest ten markers without retaining older snapshot vehicles", async () => {
@@ -3881,7 +4030,9 @@ test("all WXML handlers exist on the real page", () => {
 });
 
 test("a cached campus map renders offline and a forced refresh preserves the last valid map", async () => {
-  const storage = new Map([["easy-swu:shuttle:map:v1", structuredClone(map)]]);
+  const storage = new Map([["easy-swu:shuttle:map:v2", structuredClone(map)]]);
+  storage.set("easy-swu:shuttle:map:v1", { revision: "unsafe-old-directions" });
+  storage.set("easy-swu:shuttle:locations:fixture", { preserved: true });
   const h = harness({
     storage,
     api: async () => {
@@ -3889,6 +4040,8 @@ test("a cached campus map renders offline and a forced refresh preserves the las
     },
   });
   const service = h.load("services/shuttle");
+  assert(!storage.has("easy-swu:shuttle:map:v1"));
+  assert(storage.get("easy-swu:shuttle:locations:fixture").preserved);
   assert.equal((await service.getShuttleMap()).revision, map.revision);
   await settle();
   await assert.rejects(
@@ -3896,7 +4049,7 @@ test("a cached campus map renders offline and a forced refresh preserves the las
     (e) => e.code === "SHUTTLE_REFRESH_DEFERRED",
   );
   assert.equal(h.calls.filter((c) => c[0] === "request").length, 1);
-  assert.equal(storage.get("easy-swu:shuttle:map:v1").revision, map.revision);
+  assert.equal(storage.get("easy-swu:shuttle:map:v2").revision, map.revision);
 });
 test("new map metadata replaces an old cached map after location denial without clearing saved places", async () => {
   const old = structuredClone(map),
@@ -3910,7 +4063,7 @@ test("new map metadata replaces an old cached map after location denial without 
       permission: false,
       mockStream: true,
       storage: new Map([
-        ["easy-swu:shuttle:map:v1", old],
+        ["easy-swu:shuttle:map:v2", old],
         [
           "easy-swu:shuttle:common-places:42",
           [
@@ -4900,10 +5053,9 @@ test("straight walking links join the bus path, native handoff happens once and 
   const before = h.calls.filter((c) => c[0] === "polylines").length;
   tick(2200);
   assert.equal(h.calls.filter((c) => c[0] === "polylines").length, before);
-  assert(!h.calls.some((c) => c[0] === "trace" && c[1].dash?.length));
-  [...h.jobs.values()].find((j) => j.delay > 9000 && j.delay <= 10000).f();
-  tick(4000);
-  tick(4900);
+  assert(h.calls.some((c) => c[0] === "trace" && c[1].dash?.length));
+  assert(![...h.jobs.values()].some((j) => j.delay > 9000 && j.delay <= 10000));
+  tick(2600);
   assert.equal(h.calls.filter((c) => c[0] === "polylines").length, before + 1);
   const walk = page.data.polylines
     .filter((p) => p.dottedLine && p.color !== "#FFFFFF")
@@ -4963,7 +5115,16 @@ test("only one itinerary is painted; closing and choosing a draft destination pr
       .length,
     selected.split("|").length,
   );
-  assert(!page.data.polylines.some((p) => p.arrowLine));
+  assert(
+    page.data.polylines.some(
+      (p) => !p.dottedLine && p.color !== "#FFFFFF" && p.arrowLine,
+    ),
+  );
+  assert(
+    page.data.polylines
+      .filter((p) => p.dottedLine || p.color === "#FFFFFF")
+      .every((p) => !p.arrowLine),
+  );
   assert(
     page.data.polylines
       .filter((p) => p.dottedLine)
@@ -5209,7 +5370,7 @@ test("programmatic camera movement keeps revealing canvas paths without native o
     h.frames.delete(id);
     fn(time);
   };
-  [...h.jobs.values()].find((j) => j.delay > 9000 && j.delay <= 10000).f();
+  assert(![...h.jobs.values()].some((j) => j.delay > 9000 && j.delay <= 10000));
   tick(0);
   tick(550);
   const prefix = JSON.stringify(p.data.polylines);
@@ -5596,7 +5757,7 @@ test("walking routes keep their planned origin while the user marker moves and l
   });
   page.confirmMapPick();
   await settle();
-  [...h.jobs.values()].find((j) => j.delay > 9000 && j.delay <= 10000).f();
+  assert(![...h.jobs.values()].some((j) => j.delay > 9000 && j.delay <= 10000));
   const location = { ...h.raw, longitude: h.raw.longitude + 0.00008 };
   h.getListener()(location);
   await settle();
@@ -6197,7 +6358,9 @@ test("switching cached itineraries replays walk-ride-walk in order without anoth
     id,
     walkLegs: walks,
   }));
-  storage.set("easy-swu:shuttle:plans:v3:42", [
+  storage.set("easy-swu:shuttle:plans:v3:42", [{ obsolete: true }]);
+  storage.set("easy-swu:shuttle:plans:v4:42", [{ obsolete: true }]);
+  storage.set("easy-swu:shuttle:plans:v5:42", [
     {
       request: {
         origin: h.raw,
@@ -6223,6 +6386,8 @@ test("switching cached itineraries replays walk-ride-walk in order without anoth
   page.confirmMapPick();
   await settle();
   assert(page.data.plans.some((p) => p.id === "cached-a"));
+  assert(!storage.has("easy-swu:shuttle:plans:v3:42"));
+  assert(!storage.has("easy-swu:shuttle:plans:v4:42"));
   const tick = (time) => {
     const [id, fn] = [...h.frames].at(-1);
     h.frames.delete(id);
@@ -6535,6 +6700,61 @@ test("departure labels consume only confident server durations and expire quietl
   for (const value of [undefined, null, NaN, Infinity, 10, 3700])
     assert.equal(departureLabel(value), "等候中");
   assert.equal(departureLabel(210, 91), "等候中");
+});
+
+test("adaptive timeout fallback never solves dynamic bus paths on the UI thread", () => {
+  const h = harness(),
+    { ShuttleItineraryPlanner } = h.load("features/utils/shuttle-itinerary");
+  const campus = { ...map, planningMode: "adaptive" };
+  const planner = {
+    plans: () => {
+      throw Error("blocking client inference");
+    },
+  };
+  const from = map.center,
+    to = { ...from, longitude: from.longitude + 0.005 };
+  const start = performance.now();
+  const plans = new ShuttleItineraryPlanner(campus, planner).plans(
+    from,
+    to,
+    [],
+    [],
+    true,
+  );
+  assert.deepEqual(
+    Array.from(plans, (p) => p.mode),
+    ["walk"],
+  );
+  assert(performance.now() - start < 100);
+});
+test("repeated adaptive plan changes retain only baseline and current request tracks", () => {
+  const h = harness(),
+    { ShuttlePlanner } = h.load("features/utils/shuttle-routing");
+  const route = map.routes[0],
+    p = map.places[0];
+  const baseline = {
+    id: "base",
+    points: [p],
+    offsets: [0],
+    stops: [{ place: p, order: 0, at: 0 }],
+    loop: false,
+  };
+  const campus = {
+    ...map,
+    planningMode: "adaptive",
+    serviceTracks: { [route.id]: [baseline] },
+  };
+  const planner = new ShuttlePlanner(campus);
+  for (let i = 0; i < 100; i++) {
+    const track = { ...baseline, id: `request-${i}` },
+      leg = { route, board: { ...p }, alight: { ...p }, serviceTrack: track };
+    planner.installPlans([{ legs: [leg] }]);
+    assert.equal(campus.serviceTracks[route.id].length, 2);
+    assert.equal(
+      campus.serviceTracks[route.id][leg.board.serviceDirection].id,
+      track.id,
+    );
+  }
 });
 
 (async () => {

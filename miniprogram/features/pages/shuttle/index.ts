@@ -157,8 +157,6 @@ interface Runtime {
   boardWalk?: { stop: string; origin: GeoPoint; meters: number };
   staticKey?: string;
   markerMasks?: { point: GeoPoint; radius: number }[];
-  routeWalkDeadline?: number;
-  routeWalkTimer?: ReturnType<typeof setTimeout>;
   routeCameraFlight?: boolean;
   planningAt?: number;
   planningFlight?: string;
@@ -293,6 +291,24 @@ function originPoint(state: Runtime): GeoPoint | undefined {
     ? state.manualPoint ||
         state.map?.places.find((p) => p.id === state.explicitBoard)
     : state.location;
+}
+function planDestination(
+  state: Runtime,
+  plan?: ShuttleJourney,
+): NamedPoint | undefined {
+  if (!state.destination) return undefined;
+  const point =
+    plan?.destinationPoint ||
+    (plan && state.destinationStops.includes(plan.alight.id)
+      ? plan.alight
+      : undefined);
+  return point
+    ? {
+        ...state.destination,
+        longitude: point.longitude,
+        latitude: point.latitude,
+      }
+    : state.destination;
 }
 const categoryNames: Record<string, string> = {
   stop: "校车候车点",
@@ -1166,20 +1182,24 @@ Page({
             result.revision !== state.map?.revision
           )
             return;
-          // Once the timeout fallback is displayed, a late response may enrich
-          // it, but must not silently replace the user's visible selection.
-          const pinned = !state.planningWait ? state.plan : undefined;
+          // Only an explicit user choice is pinned. An automatic timeout walk
+          // must not permanently hide a later, valid server ride recommendation.
+          const pinned =
+            !state.planningWait && state.chosenPlanKey === planKey
+              ? state.plan
+              : undefined;
           state.remotePlans =
             pinned && !result.plans.some((p) => p.id === pinned.id)
               ? [pinned, ...result.plans]
               : result.plans;
-          state.planner?.installPlans(state.remotePlans);
+          if (!timingOnly) state.planner?.installPlans(state.remotePlans);
           if (state.planningTimer) clearTimeout(state.planningTimer);
           state.planningTimer = undefined;
           state.planningWait = undefined;
           state.planningId = result.planningId;
           if ("cached" in result && result.cached)
             state.planningAt = Date.now() - 20001;
+          if (!timingOnly && !pinned) state.plan = undefined;
           this.rebuildPlans(!timingOnly, true);
           if (!timingOnly && !pinned) this.fitPlans();
         })
@@ -1349,7 +1369,7 @@ Page({
     }
     if (!state.pendingChoice) {
       state.drawnPlan = state.plan;
-      state.drawnDestination = state.destination;
+      state.drawnDestination = planDestination(state, state.plan);
       state.drawnOrigin = origin;
     }
     if (notify || state.destination || !this.data.polylines.length)
@@ -1435,15 +1455,32 @@ Page({
         12000;
     const variants =
       plan.legs?.[0]?.variants || (plan.legs?.[0] ? [plan.legs[0]] : []);
+    const remoteArrival = (bus: ShuttleVehicle, board: ShuttlePlace) =>
+      packet?.mapRevision === state.map?.revision
+        ? bus.arrivals?.find(
+            (a) =>
+              a.board.stopId === board.id &&
+              a.board.serviceDirection === board.serviceDirection &&
+              a.board.serviceOrder === board.serviceOrder,
+          )
+        : undefined;
     const waiting =
       fresh &&
       variants.some((v) =>
-        packet.vehicles.some(
-          (bus) =>
-            bus.lineId === v.route.id &&
-            state.planner?.arrival(bus, v.board, false, false, packet.fetchedAt)
-              .preparing,
-        ),
+        packet.vehicles.some((bus) => {
+          if (bus.lineId !== v.route.id) return false;
+          const remote = remoteArrival(bus, v.board);
+          return remote
+            ? remote.status === "waiting"
+            : state.map?.planningMode !== "adaptive" &&
+                state.planner?.arrival(
+                  bus,
+                  v.board,
+                  false,
+                  false,
+                  packet.fetchedAt,
+                ).preparing;
+        }),
       );
     if (
       plan.mode !== "walk" &&
@@ -1451,7 +1488,10 @@ Page({
     ) {
       const remoteWaiting = fresh
         ? (packet.vehicles as ShuttleVehicle[]).flatMap((bus) =>
-            (bus.arrivals || []).filter(
+            (packet.mapRevision === state.map?.revision
+              ? bus.arrivals || []
+              : []
+            ).filter(
               (a) =>
                 a.status === "waiting" &&
                 variants.some(
@@ -1541,13 +1581,9 @@ Page({
   },
   cancelRouteAnimation() {
     const state = rt(this);
-    for (const timer of [
-      state.routeTimer,
-      state.routeHandoff,
-      state.routeWalkTimer,
-    ])
+    for (const timer of [state.routeTimer, state.routeHandoff])
       if (timer) clearTimeout(timer);
-    state.routeTimer = state.routeHandoff = state.routeWalkTimer = undefined;
+    state.routeTimer = state.routeHandoff = undefined;
     state.routeReveal?.stop();
     state.routeReveal = undefined;
     state.routeFinal = undefined;
@@ -1590,8 +1626,6 @@ Page({
       preview,
     ]);
     const animate = state.routeJourneyKey !== journeyKey;
-    if (animate) state.routeWalkDeadline = immediate ? 0 : Date.now() + 10000;
-    const expired = Date.now() >= (state.routeWalkDeadline || 0);
     const colors = routePalette(state.map.routes);
     const rides: {
       points: GeoPoint[];
@@ -1610,15 +1644,13 @@ Page({
       });
       journey.push(rides[0]);
     }
-    let walkIndex = 0,
-      ready = true;
+    let walkIndex = 0;
+    const ready = true;
     const walk = (from: GeoPoint, to: GeoPoint, color: string): void => {
       const geometry = plan?.walkLegs?.[walkIndex++];
       if (distanceMeters(from, to) <= 2) return;
-      if (geometry?.source !== "tencent" && !expired && !immediate) {
-        ready = false;
-        return;
-      }
+      // A straight fallback is still a walking leg. Draw it now; a later
+      // refinement can reveal independently without removing the bus overlay.
       walks.push({
         points: geometry?.points.length
           ? [from, ...geometry.points.slice(1, -1), to]
@@ -1657,13 +1689,21 @@ Page({
       ready,
       this.data.motionClass,
     ]);
-    if (key === state.routePaintKey) return;
+    if (
+      key === state.routePaintKey &&
+      (!immediate ||
+        (!state.routeTimer &&
+          !this.data.routeAnimating &&
+          this.data.polylines.length))
+    )
+      return;
     state.routePaintKey = key;
     const base = destination || preview ? [] : roadPolylines(state.map);
     const rideParts = orderedTraces(rides),
       walkParts = orderedTraces(walks);
     const final = [...base, ...tracePolylines([...rideParts, ...walkParts])];
     if (
+      !immediate &&
       !animate &&
       this.data.routeAnimating &&
       state.routeReveal &&
@@ -1686,15 +1726,6 @@ Page({
       state.routeEpoch === epoch &&
       isSessionLeaseCurrent(state.lease);
     this.staticMarkers();
-    if (!ready)
-      state.routeWalkTimer = setTimeout(
-        () => {
-          if (!current()) return;
-          state.routeWalkDeadline = 0;
-          this.paintRoutes();
-        },
-        Math.max(0, (state.routeWalkDeadline || 0) - Date.now()),
-      );
     if (
       immediate ||
       (!destination && !preview) ||
@@ -1780,16 +1811,13 @@ Page({
     const state = rt(this);
     if (!state.context || !state.map) return;
     state.markerPlaces.clear();
-    const markers: ShuttleMarker[] = placeGroups(state.map)
-      .filter((group) => group.stop)
-      .map((group, index) => {
-        const place =
-          group.members.find((p) => p.id === state.board?.id) ||
-          group.members[0];
+    const markers: ShuttleMarker[] = state.map.places
+      .filter((place) => place.category === "stop")
+      .map((place, index) => {
         const id = 100 + index;
         state.markerPlaces.set(id, place);
         return {
-          ...pointMarker(groupPoint(group), id, "stop", 44),
+          ...pointMarker(place, id, "stop", 44),
           iconPath: "/features/assets/shuttle/stop-hit.png",
         };
       });
@@ -1906,22 +1934,6 @@ Page({
             originPoint(state) || state.map!.center,
             bus.lineId,
           );
-        const local = board
-          ? state.planner!.arrival(
-              bus,
-              board,
-              stale,
-              this.data.journey !== "idle",
-              packet?.fetchedAt,
-            )
-          : {
-              text: "待确认",
-              detail: "",
-              seconds: null,
-              distance: null,
-              passed: false,
-              preparing: false,
-            };
         const remote =
           !stale && packet?.mapRevision === state.map!.revision
             ? bus.arrivals?.find(
@@ -1932,6 +1944,28 @@ Page({
                   a.board.serviceOrder === board?.serviceOrder,
               )
             : undefined;
+        const local = remote
+          ? {
+              ...remote,
+              passed: remote.status === "passed",
+              preparing: remote.status === "waiting",
+            }
+          : board
+            ? state.planner!.arrival(
+                bus,
+                board,
+                stale,
+                this.data.journey !== "idle",
+                packet?.fetchedAt,
+              )
+            : {
+                text: "待确认",
+                detail: "",
+                seconds: null,
+                distance: null,
+                passed: false,
+                preparing: false,
+              };
         const arrivalStatus =
           remote?.status ||
           (local.passed
@@ -2061,7 +2095,7 @@ Page({
     state.board = plan.mode === "walk" ? undefined : plan.board;
     state.pendingChoice = false;
     state.drawnPlan = plan;
-    state.drawnDestination = state.destination;
+    state.drawnDestination = planDestination(state, plan);
     state.drawnOrigin = state.planningOrigin || originPoint(state);
     state.selection.routeId = plan.route.id;
     state.selection.boardingId = plan.board.id;
@@ -3060,9 +3094,11 @@ Page({
         this.data.mapHeight,
       );
       let gap = 24;
-      for (const group of placeGroups(state.map).filter((g) => g.stop)) {
+      for (const place of state.map.places.filter(
+        (p) => p.category === "stop",
+      )) {
         const p = projectToScreen(
-          groupPoint(group),
+          place,
           state.bounds,
           this.data.windowWidth,
           this.data.mapHeight,
@@ -3070,7 +3106,7 @@ Page({
         const d = Math.hypot(p.x - screen.x, p.y - screen.y);
         if (d < gap) {
           gap = d;
-          nearby = group.members[0];
+          nearby = place;
         }
       }
     }
